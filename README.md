@@ -35,9 +35,12 @@ pnpm test         # 核心测试（9 个）
 pnpm demo L01     # 终端打印一关
 ```
 
+> 需要 pnpm 9+。没有的话先装：`npm install -g pnpm`（或 `corepack enable pnpm`）。
+
 ## 版本
 
 - `v0.1.0`：核心引擎 + 40 关数据
 - `v0.2.0`：Web 端（和弦 / 音阶 / 游戏）
+- `v0.2.1`：修复关卡选择器只显示当前章节
 
 版本记录见 [CHANGELOG.md](CHANGELOG.md)，发版流程见 [docs/versioning.md](docs/versioning.md)。
