@@ -11,6 +11,17 @@
 - DSH 插件（速查 + 每日一题）
 - Tauri（Windows）/ Capacitor（Android）壳
 
+## [0.2.3] - 2026-10-31
+
+### Fixed
+- 指板方向改为传统六线谱：**横轴为品、纵轴为弦**（1 弦在上，6 弦在下），0–12 品从左到右。
+- 修复 `CHANGELOG.md` 被 PowerShell 以 ANSI 读取后重写导致的乱码。
+
+## [0.2.2] - 2026-10-31
+
+### Fixed
+- 移除配置文件中的 UTF-8 BOM，修复 Vite 启动时 PostCSS 配置 JSON 解析错误。
+
 ## [0.2.1] - 2026-10-31
 
 ### Fixed
