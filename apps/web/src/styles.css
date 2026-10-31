@@ -248,11 +248,72 @@ button, select, input { font: inherit; color: inherit; }
 /* 勾选框本身小，但整行是 <label>，点文字也能切换；这里把可视尺寸也放大一点 */
 .settings-row input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--accent); cursor: pointer; }
 
+/* mode switch：主线 / 今日挑战 */
+.mode-switch { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.mode-switch .chip {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 8px 16px;
+  min-height: 40px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.mode-switch .chip.active {
+  border-color: var(--accent);
+  background: rgba(232, 176, 75, 0.12);
+  color: var(--accent);
+  font-weight: 700;
+}
+.daily-streak { font-size: 12px; }
+
+/* stats */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; margin: 14px 0 6px; }
+.stat-card {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-card b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat-card span { color: var(--muted); font-size: 12px; }
+.stat-sub { margin: 22px 0 10px; font-size: 15px; }
+
+.week { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.week-day {
+  min-width: 46px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 4px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+}
+.week-day.done { border-color: rgba(232, 176, 75, 0.5); background: rgba(232, 176, 75, 0.1); color: var(--accent); }
+.week-day .stars { font-size: 11px; }
+.week-empty { color: #3d444d; }
+
+.stat-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.stat-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+  font-size: 13px;
+}
+.stat-list li:last-child { border-bottom: 0; }
+
 @media (max-width: 720px) {
   .app { padding: 12px 10px 6px; }
   .chord-layout { grid-template-columns: 1fr; }
   .clock { font-size: 24px; }
-  /* 点按目标 ≥ 40px：不压缩格子，让指板内部横向滚动（见 ux.md §7） */
+  /* 点按目标 ≥ 40px：不压缩格子，让指板内部横向滚动（见 ux.md §8） */
   .fb-cell { font-size: 13px; }
   .fretboard { padding: 8px; -webkit-overflow-scrolling: touch; }
   .stars-lg { font-size: 22px; }

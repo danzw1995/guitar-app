@@ -1,14 +1,19 @@
 import {
   fromLegacyBest,
   parseProgress,
+  type LevelProgress,
   type ProgressMap,
 } from "@guitar/core";
 import { LEVELS, parMsOf } from "./levels";
 
 export const PROGRESS_KEY = "guitar.progress.v1";
 export const SETTINGS_KEY = "guitar.settings.v1";
+/** 每日挑战记录：日期 -> 进度（复用同一套星级规则）。 */
+export const DAILY_KEY = "guitar.daily.v1";
 /** v0.2.x 只存每关最佳时间，迁移时读一次。 */
 const LEGACY_BEST_PREFIX = "guitar.best.";
+
+export type DailyMap = Record<string, LevelProgress>;
 
 export interface Settings {
   /** 严格拼写：拼错算错，拿不到 2 星以上。 */
@@ -70,10 +75,23 @@ export function saveProgress(progress: ProgressMap): void {
   writeJson(PROGRESS_KEY, progress);
 }
 
+/**
+ * 每日挑战记录：`{ "2026-10-31": LevelProgress }`。
+ * 复用 `parseProgress` 校验（这里传不了 parMs，星级沿用存档值），坏条目直接丢。
+ */
+export function loadDaily(): DailyMap {
+  return parseProgress(readJson(DAILY_KEY)) as DailyMap;
+}
+
+export function saveDaily(daily: DailyMap): void {
+  writeJson(DAILY_KEY, daily);
+}
+
 /** 清空进度，并顺手删掉旧版键，避免下次启动又被迁移回来。 */
 export function clearProgress(): void {
   try {
     localStorage.removeItem(PROGRESS_KEY);
+    localStorage.removeItem(DAILY_KEY);
     for (const level of LEVELS) localStorage.removeItem(LEGACY_BEST_PREFIX + level.id);
   } catch {
     // 忽略：清不掉时 refresh 后旧值会回来，但不影响当前会话。

@@ -11,7 +11,7 @@
 ```bash
 pnpm install
 pnpm dev        # http://127.0.0.1:5173
-pnpm test       # core 测试（24 个）
+pnpm test       # core 测试（33 个）
 pnpm check:styles  # 移动端样式断言（点按 ≥ 40px、iOS 字号 16px、弦名 sticky）
 pnpm build      # apps/web/dist
 pnpm demo L01   # 终端打印一关
@@ -39,10 +39,10 @@ docs/            产品、架构、规则、UX、路线图
 pnpm test
 ```
 
-覆盖：调弦、调号拼写、音高类、目标格、出题、判定三态、40 关完整性、进度与星级、键盘音名输入。
+覆盖：调弦、调号拼写、音高类、目标格、出题、判定三态、40 关完整性、进度与星级、键盘音名输入、每日挑战与统计。
 
-游戏逻辑（星级、达标时间、解锁、迁移）都在 `packages/core/src/progress.ts`，改规则先改那里再补 `test/core.test.ts`；
-`apps/web/src/lib/storage.ts` 只做读写与迁移，不放规则。
+游戏逻辑（星级、达标时间、解锁、迁移）在 `packages/core/src/progress.ts`，每日出参与统计在 `daily.ts`；
+改规则先改那里再补 `test/core.test.ts`。`apps/web/src/lib/storage.ts` 只做读写与迁移，不放规则。
 
 UI 目前没有浏览器测试。`pnpm check:styles` 只做静态断言（解析 `styles.css`，检查移动端点按尺寸、
 iOS 表单字号、弦名 sticky），**不渲染页面**，改 UI 后仍要手动过一遍：

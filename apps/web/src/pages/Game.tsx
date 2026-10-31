@@ -7,39 +7,39 @@ import {
   cellKey,
   checkAnswer,
   completedCount,
+  dailySpecFor,
+  dateKeyOf,
   expectedNameMap,
   generatePuzzle,
   isPerfect,
   isUnlocked,
   nextNoteQuery,
   noteCandidates,
+  parMsFor,
   pitchClassAt,
   starsForAttempt,
+  streakOf,
   totalStars,
   type AttemptResult,
   type Cell,
+  type LevelDef,
   type ProgressMap,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS, parMsOf } from "../lib/levels";
 import {
   clearProgress,
+  loadDaily,
   loadProgress,
   loadSettings,
+  saveDaily,
   saveProgress,
   saveSettings,
+  type DailyMap,
   type Settings,
 } from "../lib/storage";
 import Fretboard from "../components/Fretboard";
 import Stars, { starText } from "../components/Stars";
-
-function fmt(ms: number): string {
-  if (ms <= 0) return "0:00.0";
-  const total = ms / 1000;
-  const m = Math.floor(total / 60);
-  const s = Math.floor(total % 60);
-  const d = Math.floor((total * 10) % 10);
-  return `${m}:${String(s).padStart(2, "0")}.${d}`;
-}
+import { fmt } from "../lib/format";
 
 function scaleName(scaleId: string): string {
   return SCALE_BY_ID.get(scaleId)?.name ?? scaleId;
@@ -63,10 +63,16 @@ interface Gain {
   unlocked: string | null;
 }
 
+type Mode = "levels" | "daily";
+
 export default function Game() {
   const [progress, setProgress] = useState<ProgressMap>(() => loadProgress());
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [levelId, setLevelId] = useState(() => pickStartLevel(loadProgress()));
+  const [mode, setMode] = useState<Mode>("levels");
+  /** 挂载时固定「今天」；跨零点继续开着的话切一下模式或刷新即可。 */
+  const [todayKey] = useState(() => dateKeyOf(new Date()));
+  const [daily, setDaily] = useState<DailyMap>(() => loadDaily());
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [picker, setPicker] = useState<Cell | null>(null);
   const [result, setResult] = useState<AttemptResult | null>(null);
@@ -79,10 +85,30 @@ export default function Game() {
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
 
-  const level = LEVELS.find((l) => l.id === levelId) ?? LEVELS[0];
+  /** 每日挑战用同一套渲染，只是题目参数来自日期。 */
+  const dailyLevel = useMemo<LevelDef>(() => {
+    const spec = dailySpecFor(todayKey);
+    return {
+      id: `daily:${todayKey}`,
+      chapter: 0,
+      index: 0,
+      title: `每日挑战 · ${todayKey}`,
+      keyId: spec.keyId,
+      scaleId: spec.scaleId,
+      tuningId: "standard",
+      fretMin: spec.fretMin,
+      fretMax: spec.fretMax,
+      seed: spec.seed,
+      givenRatio: spec.givenRatio,
+      givens: [],
+      // 每日题不是关卡，targetCount / difficulty 由出题结果决定（见下面的 parMs）
+      targetCount: 0,
+      difficulty: 0,
+    };
+  }, [todayKey]);
+
+  const level = mode === "daily" ? dailyLevel : (LEVELS.find((l) => l.id === levelId) ?? LEVELS[0]);
   const levelIndex = LEVELS.findIndex((l) => l.id === level.id);
-  const parMs = parMsOf(level);
-  const record = progress[level.id];
 
   const puzzle = useMemo(
     () =>
@@ -97,6 +123,14 @@ export default function Game() {
       }),
     [level.id],
   );
+
+  const parMs =
+    mode === "daily"
+      ? parMsFor({ targetCount: puzzle.target.length, difficulty: puzzle.difficulty })
+      : parMsOf(level);
+  const record = mode === "daily" ? daily[todayKey] : progress[level.id];
+  const streak = useMemo(() => streakOf(Object.keys(daily), todayKey), [daily, todayKey]);
+
   const expected = useMemo(() => expectedNameMap(puzzle), [puzzle]);
 
   const givenKeys = useMemo(() => new Set(puzzle.givens.map(cellKey)), [puzzle]);
@@ -193,7 +227,7 @@ export default function Game() {
   const elapsed = startedAt ? (endedAt ?? now) - startedAt : 0;
   const done = completedCount(LEVEL_IDS, progress);
   const stars = totalStars(progress);
-  const next = LEVELS[levelIndex + 1];
+  const next = mode === "levels" ? LEVELS[levelIndex + 1] : undefined;
 
   function choose(cell: Cell, value: string) {
     if (result) return;
@@ -218,13 +252,26 @@ export default function Game() {
 
     const elapsedMs = Date.now() - startedAt;
     setEndedAt(Date.now());
+    const ctx = { elapsedMs, strictSpelling: settings.strictSpelling, parMs };
+
+    // 每日挑战：记到 guitar.daily.v1，不动主线进度、不算解锁。
+    if (mode === "daily") {
+      const beforeDaily = daily[todayKey];
+      const afterDaily = applyAttempt(beforeDaily, r, ctx);
+      const nextDaily = { ...daily, [todayKey]: afterDaily };
+      setDaily(nextDaily);
+      saveDaily(nextDaily);
+      const beforeBest = beforeDaily?.bestMs ?? null;
+      setGain({
+        stars: starsForAttempt(r, ctx),
+        newBest: afterDaily.bestMs !== null && (beforeBest === null || afterDaily.bestMs < beforeBest),
+        unlocked: null,
+      });
+      return;
+    }
 
     const before = progress[level.id];
-    const after = applyAttempt(before, r, {
-      elapsedMs,
-      strictSpelling: settings.strictSpelling,
-      parMs,
-    });
+    const after = applyAttempt(before, r, ctx);
     const nextProgress = { ...progress, [level.id]: after };
     setProgress(nextProgress);
     saveProgress(nextProgress);
@@ -233,7 +280,7 @@ export default function Game() {
     const beforeBest = before?.bestMs ?? null;
     setGain({
       // 显示这一把的星，不是历史最高；历史最高在下拉和「最快全对」里。
-      stars: starsForAttempt(r, { elapsedMs, strictSpelling: settings.strictSpelling, parMs }),
+      stars: starsForAttempt(r, ctx),
       newBest: after.bestMs !== null && (beforeBest === null || after.bestMs < beforeBest),
       unlocked:
         nextIdx < LEVEL_IDS.length &&
@@ -264,11 +311,18 @@ export default function Game() {
   }
 
   function wipeProgress() {
-    if (!window.confirm("重置会清空 40 关的星级和最快成绩，确定吗？")) return;
+    if (!window.confirm("重置会清空 40 关的星级、最快成绩和每日挑战记录，确定吗？")) return;
     clearProgress();
     setProgress({});
+    setDaily({});
     setLevelId(LEVEL_IDS[0]);
     reset();
+  }
+
+  function switchMode(next: Mode) {
+    if (next === mode) return;
+    setMode(next);
+    setPicker(null);
   }
 
   function selectLevel(id: string) {
@@ -288,14 +342,41 @@ export default function Game() {
 
   return (
     <section className="panel game">
+      <div className="mode-switch" role="tablist" aria-label="题目来源">
+        <button
+          role="tab"
+          aria-selected={mode === "levels"}
+          className={mode === "levels" ? "chip active" : "chip"}
+          onClick={() => switchMode("levels")}
+        >
+          主线关卡
+        </button>
+        <button
+          role="tab"
+          aria-selected={mode === "daily"}
+          className={mode === "daily" ? "chip active" : "chip"}
+          onClick={() => switchMode("daily")}
+        >
+          今日挑战
+          {streak.todayDone ? " ✓" : ""}
+        </button>
+        <span className="muted daily-streak">
+          连续 {streak.current} 天{streak.current > 0 && !streak.todayDone ? "（今天还没做）" : ""}
+        </span>
+      </div>
+
       <div className="game-top">
         <div className="game-title">
           <h2>{level.title}</h2>
           <p>
             {scaleName(level.scaleId)} · 给定 {puzzle.givens.length} / 目标 {puzzle.target.length} ·{" "}
-            <span className="progress-line">
-              已通关 {done}/{LEVELS.length} · ★ {stars}/{MAX_TOTAL_STARS}
-            </span>
+            {mode === "daily" ? (
+              <span className="progress-line">每日挑战不影响主线解锁</span>
+            ) : (
+              <span className="progress-line">
+                已通关 {done}/{LEVELS.length} · ★ {stars}/{MAX_TOTAL_STARS}
+              </span>
+            )}
           </p>
         </div>
         <div className="game-clock" aria-live="polite">
@@ -307,33 +388,35 @@ export default function Game() {
       </div>
 
       <div className="toolbar">
-        <label>
-          关卡
-          <select value={level.id} onChange={(e) => selectLevel(e.target.value)}>
-            {[1, 2, 3, 4].map((ch) => (
-              <optgroup key={ch} label={`第 ${ch} 章`}>
-                {LEVELS.filter((l) => l.chapter === ch).map((l) => {
-                  const idx = LEVELS.findIndex((x) => x.id === l.id);
-                  const open = isUnlocked(LEVEL_IDS, idx, progress);
-                  const stars = progress[l.id]?.stars ?? 0;
-                  return (
-                    <option key={l.id} value={l.id} disabled={!open}>
-                      {l.id} · {l.title}
-                      {open ? ` ${starText(stars)}` : " · 未解锁"}
-                    </option>
-                  );
-                })}
-              </optgroup>
-            ))}
-          </select>
-        </label>
+        {mode === "levels" && (
+          <label>
+            关卡
+            <select value={level.id} onChange={(e) => selectLevel(e.target.value)}>
+              {[1, 2, 3, 4].map((ch) => (
+                <optgroup key={ch} label={`第 ${ch} 章`}>
+                  {LEVELS.filter((l) => l.chapter === ch).map((l) => {
+                    const idx = LEVELS.findIndex((x) => x.id === l.id);
+                    const open = isUnlocked(LEVEL_IDS, idx, progress);
+                    const stars = progress[l.id]?.stars ?? 0;
+                    return (
+                      <option key={l.id} value={l.id} disabled={!open}>
+                        {l.id} · {l.title}
+                        {open ? ` ${starText(stars)}` : " · 未解锁"}
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+        )}
         <button className="btn ghost" onClick={reset}>
           重来
         </button>
         <button className="btn primary" onClick={submit} disabled={!!result}>
           提交
         </button>
-        {next && (
+        {mode === "levels" && next && (
           <button
             className="btn ghost"
             onClick={() => selectLevel(next.id)}
@@ -454,7 +537,11 @@ export default function Game() {
           )}
 
           <div className="result-actions">
-            {next ? (
+            {mode === "daily" ? (
+              <span className="muted">
+                每日挑战 · 连续 {streak.current} 天{streak.todayDone ? "（今天已完成）" : ""}
+              </span>
+            ) : next ? (
               <button
                 className="btn primary"
                 onClick={() => selectLevel(next.id)}
