@@ -31,7 +31,13 @@ packages/core (纯 TS：理论 / 出题 / 判定 / 数据)
 - React 18 + Vite 5，函数组件 + hooks。
 - 三页：`Chords` / `Scales` / `Game`，共用 `Fretboard`。
 - 关卡数据用 Vite 的 JSON import 直接读 `packages/core/data/levels.json`，不经过 `levels.ts`。
-- 状态：页面内 `useState`；跨会话只存 localStorage。
+  统一在 `src/lib/levels.ts` 里读一次，顺带算三星达标时间。
+- `src/lib/storage.ts` 是**唯一**直接碰 localStorage 的地方：`guitar.progress.v1`、
+  `guitar.settings.v1`，并负责把 v0.2.x 的 `guitar.best.*` 迁移过来。
+  换壳（Tauri / Capacitor / 小程序）时只换这一层。
+- 状态：页面内 `useState`；跨会话一律走 `storage.ts`，不在组件里直接写键。
+- 版本号由 `vite.config.ts` 的 `define` 注入 `__APP_VERSION__`（取自 `apps/web/package.json`），
+  页脚不再硬编码。
 
 ### 未来 packages/ui（计划）
 
@@ -59,7 +65,7 @@ levels.json ──► generatePuzzle(level params)
 
 | 能力 | Web | 小程序（未来） | 桌面/安卓 |
 |---|---|---|---|
-| 存储 | localStorage | `wx.setStorageSync` | WebView localStorage |
+| 存储 | `lib/storage.ts`（localStorage） | `wx.setStorageSync` | WebView localStorage |
 | 计时 | `Date.now` + interval | 同左 + `onHide` | 同左 |
 | 音频 | Web Audio（v0.6） | InnerAudioContext | Web Audio |
 | 分享 | Clipboard / URL | `onShareAppMessage` | 系统分享 |

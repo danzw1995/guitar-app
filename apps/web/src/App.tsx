@@ -43,7 +43,7 @@ export default function App() {
         {tab === "game" && <Game />}
       </main>
 
-      <footer className="app-footer">v0.2.0 · Web-first · 标准调弦</footer>
+      <footer className="app-footer">v{__APP_VERSION__} · Web-first · 标准调弦</footer>
     </div>
   );
 }
