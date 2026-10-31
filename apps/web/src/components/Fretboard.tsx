@@ -11,6 +11,9 @@ export interface FretboardProps {
   isDisabled?: (s: number, f: number) => boolean;
 }
 
+/**
+ * 传统六线谱方向：纵轴 = 1–6 弦（1 弦在上），横轴 = 品（左到右）。
+ */
 export default function Fretboard({
   fretMin,
   fretMax,
@@ -23,18 +26,21 @@ export default function Fretboard({
   for (let f = fretMin; f <= fretMax; f++) frets.push(f);
 
   return (
-    <div className="fretboard" style={{ gridTemplateColumns: `34px repeat(6, minmax(42px, 1fr))` }}>
+    <div
+      className="fretboard"
+      style={{ gridTemplateColumns: `34px repeat(${frets.length}, minmax(40px, 1fr))` }}
+    >
       <div className="fb-corner" />
-      {STRING_LABELS.map((label, i) => (
-        <div key={`h${i}`} className="fb-string-label">
-          {label}
+      {frets.map((f) => (
+        <div key={`h${f}`} className="fb-fret-label">
+          {f}
         </div>
       ))}
 
-      {frets.map((f) => (
-        <div key={`row${f}`} className="fb-row-contents">
-          <div className="fb-fret-label">{f === 0 ? "0" : f}</div>
-          {[0, 1, 2, 3, 4, 5].map((s) => {
+      {[0, 1, 2, 3, 4, 5].map((s) => (
+        <div key={`row${s}`} className="fb-row">
+          <div className="fb-string-label">{STRING_LABELS[s]}</div>
+          {frets.map((f) => {
             const disabled = isDisabled ? isDisabled(s, f) : !onCellClick;
             const cls = ["fb-cell", cellClass ? cellClass(s, f) : ""].filter(Boolean).join(" ");
             return (

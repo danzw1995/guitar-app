@@ -115,10 +115,10 @@ button, select, input { font: inherit; color: inherit; }
   padding: 10px;
   overflow-x: auto;
 }
-.fb-row-contents { display: contents; }
+.fb-row { display: contents; }
 .fb-corner, .fb-string-label, .fb-fret-label { display: grid; place-items: center; color: var(--muted); font-size: 12px; }
-.fb-string-label { font-weight: 700; color: #c9d1d9; }
-.fb-fret-label { height: 38px; }
+.fb-string-label { font-weight: 700; color: #c9d1d9; height: 38px; }
+.fb-fret-label { height: 24px; }
 .fb-cell {
   min-height: 38px;
   min-width: 40px;
