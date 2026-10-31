@@ -92,8 +92,58 @@ difficulty = 0.45*coverage + 0.20*keys + 0.15*span + 0.10*strings + 0.10*weight
 - 首次点击目标格开始计时；提交停止。
 - `elapsed = endAt - startAt`，用 `Date.now()`，不用累加 interval。
 - 页面切后台（后续壳）应暂停：记录 `pausedAt`，回来补回。
-- 当前只存每关最佳时间：`localStorage["guitar.best.<levelId>"]`。
-- v0.3.0 起改为完整 `progress`：`completed / stars / bestMs / attempts`。
+- 没填就提交：照常显示判定，但**不记进度**（`elapsedMs = 0` 不产生最快成绩）。
+
+### 进度模型
+
+`localStorage["guitar.progress.v1"]`：
+
+```json
+{
+  "L01": { "completed": true, "stars": 3, "bestMs": 41000, "attempts": 4, "lastAt": 1761900000000 }
+}
+```
+
+| 字段 | 含义 |
+|---|---|
+| `completed` | 至少完成过一次（无空格）；一旦 true 不会回退 |
+| `bestMs` | 最快「全对」用时；从未全对是 `null` |
+| `attempts` | 提交次数（含没做完就提交的） |
+| `lastAt` | 最后一次提交时间戳；v0.2.x 迁移来的为 `null` |
+
+「全对」按当前判定模式算：宽松模式下拼写错误算对，严格模式下不算（见 §5）。
+
+### 星级
+
+`stars` 只是缓存，唯一真相是 `starsOf({ completed, bestMs }, parMs)`：
+
+| 星 | 条件 |
+|---|---|
+| 0 | 没做完（有空格） |
+| 1 | 做完，但没全对过 |
+| 2 | 全对，但最快全对用时 > 达标时间 |
+| 3 | 全对，且最快全对用时 ≤ 达标时间 |
+
+因为 `bestMs` 只在全对时更新，所以「三星 ⇔ bestMs ≤ parMs」永远自洽，不会出现星星和时间打架。
+
+### 三星达标时间
+
+```
+parMs = targetCount × (2 + 3 × difficulty) × 1000
+```
+
+参考：L01（18 格、难度 0.300）≈ 52s；L40（48 格、难度 0.678）≈ 194s。
+
+### 解锁
+
+- L01 常开；其余关需要上一关 `completed`（至少 1 星）。
+- 已解锁关卡永远是连续前缀，不会出现「中间没过却能进后面」。
+
+### 迁移（v0.2.x → v0.3.0）
+
+旧版只存 `guitar.best.<levelId>`，且仅在全对时写入。读到旧键、且该关没有新记录时，转成
+`{ completed: true, bestMs: 旧值, attempts: 1 }`，星级按达标时间重算（可能是 3 星）。
+两个键都存在时以 `guitar.progress.v1` 为准；「重置进度」会同时删掉旧键。
 
 ## 8. 40 关课程
 
