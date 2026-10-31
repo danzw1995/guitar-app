@@ -1,0 +1,14 @@
+﻿{
+    "name":  "guitar-app",
+    "private":  true,
+    "version":  "0.1.0",
+    "packageManager":  "pnpm@9.15.9",
+    "scripts":  {
+                    "dev":  "pnpm --filter @guitar/web dev",
+                    "build":  "pnpm --filter @guitar/web build",
+                    "preview":  "pnpm --filter @guitar/web preview",
+                    "test":  "pnpm --filter @guitar/core test",
+                    "gen:levels":  "pnpm --filter @guitar/core gen:levels",
+                    "demo":  "pnpm --filter @guitar/core demo"
+                }
+}
