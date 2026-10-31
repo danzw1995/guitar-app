@@ -8,6 +8,7 @@
     "build": "pnpm --filter @guitar/web build",
     "preview": "pnpm --filter @guitar/web preview",
     "test": "pnpm --filter @guitar/core test",
+    "check:styles": "node apps/web/scripts/check-styles.mjs",
     "gen:levels": "pnpm --filter @guitar/core gen:levels",
     "demo": "pnpm --filter @guitar/core demo"
   }

@@ -4,9 +4,19 @@
 
 ## [Unreleased]
 
+### Added
+- `pnpm check:styles`（`apps/web/scripts/check-styles.mjs`）：解析 `styles.css`，断言移动端点按尺寸、
+  iOS 表单字号、弦名 sticky 与格子最小尺寸，防止改样式时悄悄退回。静态检查，不渲染页面。
+
+### Fixed
+- 移动端点按尺寸：工具栏按钮、标签页、关卡下拉统一到 `min-height: 40px`，音符按钮 44px，
+  设置行 44px（整行是 `<label>`，点文字也能切换）。
+- iOS Safari 聚焦缩放：窄屏（≤720px）下 `select` / `input` / `textarea` 字号统一 16px，
+  避免控件字号 < 16px 时点一下页面被自动放大且不缩回。
+- 指板横向滚动时弦名列（含左上角）改为 `position: sticky` 固定在左侧，滑到 12 品也能对上弦。
+
 ### Planned
 - 每日挑战（日期 seed）、连续天数、统计页、分享文案（v0.3.1）
-- 375px 真机点按尺寸与 iOS 输入缩放复核
 - DSH 插件（v0.4.0）
 - Tauri（Windows）/ Capacitor（Android）（v0.5.0）
 - 节拍器与音频（v0.6.0）

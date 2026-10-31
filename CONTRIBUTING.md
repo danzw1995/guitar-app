@@ -12,6 +12,7 @@
 pnpm install
 pnpm dev        # http://127.0.0.1:5173
 pnpm test       # core 测试（24 个）
+pnpm check:styles  # 移动端样式断言（点按 ≥ 40px、iOS 字号 16px、弦名 sticky）
 pnpm build      # apps/web/dist
 pnpm demo L01   # 终端打印一关
 ```
@@ -43,7 +44,9 @@ pnpm test
 游戏逻辑（星级、达标时间、解锁、迁移）都在 `packages/core/src/progress.ts`，改规则先改那里再补 `test/core.test.ts`；
 `apps/web/src/lib/storage.ts` 只做读写与迁移，不放规则。
 
-UI 目前没有自动化测试；改 UI 后至少手动过一遍：和弦页、音阶页、L01、L40、提交与重来。
+UI 目前没有浏览器测试。`pnpm check:styles` 只做静态断言（解析 `styles.css`，检查移动端点按尺寸、
+iOS 表单字号、弦名 sticky），**不渲染页面**，改 UI 后仍要手动过一遍：
+和弦页、音阶页、L01、L40、提交与重来、375px 宽度。
 
 ## 发版
 
