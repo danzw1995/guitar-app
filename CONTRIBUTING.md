@@ -59,3 +59,17 @@ UI 目前没有自动化测试；改 UI 后至少手动过一遍：和弦页、�
 
 - 当前 DSH 沙箱禁止 esbuild 启动子进程，`pnpm build` 可能失败；用 `pnpm dev` + `tsc --noEmit` 验证。
 - `pnpm dev` 首次启动若报 PostCSS/JSON 解析错误，检查 `package.json` 是否带 BOM。
+- **DSH 沙箱以低完整性（Low IL）进程运行**。工作区子目录如果没有同样的 Low 标记，
+  `git commit` 会报 `Unable to create '.git/index.lock': Permission denied`，写 `docs/`、`packages/` 也一样。
+  本机已修过一次：需要当前用户对目录有完全控制（设标记要 `WRITE_OWNER`），再把 Low 标记递归下去。
+  一次性修复（在沙箱外执行，`<SID>` 换成自己的用户 SID）：
+
+  ```powershell
+  icacls . /grant:r "*<SID>:(OI)(CI)F" /T
+  icacls . /setintegritylevel "(OI)(CI)low" /T
+  ```
+
+  撤销：`icacls . /remove:g "*<SID>" /T`，再用同样语法把 `low` 换回 `medium`。
+  新增的目录/文件会从父目录继承这两个设置，不用重复执行。
+- pnpm 的 store 锁在 `%LOCALAPPDATA%\pnpm-store-operation-locks`（工作区外），沙箱同样写不了；
+  需要跑 `pnpm test` 时可直接 `node packages/core/test/core.test.ts` 绕开。
