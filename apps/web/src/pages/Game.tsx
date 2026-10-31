@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  NOTE_NAMES,
   SCALE_BY_ID,
   STANDARD_TUNING,
   applyAttempt,
@@ -10,6 +11,8 @@ import {
   generatePuzzle,
   isPerfect,
   isUnlocked,
+  nextNoteQuery,
+  noteCandidates,
   pitchClassAt,
   starsForAttempt,
   totalStars,
@@ -28,8 +31,6 @@ import {
 } from "../lib/storage";
 import Fretboard from "../components/Fretboard";
 import Stars, { starText } from "../components/Stars";
-
-const NOTE_CHOICES = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
 
 function fmt(ms: number): string {
   if (ms <= 0) return "0:00.0";
@@ -74,6 +75,9 @@ export default function Game() {
   const [now, setNow] = useState(() => Date.now());
   const [gain, setGain] = useState<Gain | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** 键盘输入的音名前缀，如 "E" / "Eb" / "C#"；空表示没输入。 */
+  const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
 
   const level = LEVELS.find((l) => l.id === levelId) ?? LEVELS[0];
   const levelIndex = LEVELS.findIndex((l) => l.id === level.id);
@@ -114,6 +118,12 @@ export default function Game() {
     return [...counts.entries()].sort((a, b) => a[0] - b[0]);
   }, [result]);
 
+  /** 键盘候选：前缀过滤，精确匹配排最前（输 "B" 时 B 在 Bb 前面）。 */
+  const candidates = useMemo(() => noteCandidates(query), [query]);
+
+  const activeIndex = candidates.length ? Math.min(cursor, candidates.length - 1) : -1;
+  const activeNote = activeIndex >= 0 ? candidates[activeIndex] : null;
+
   useEffect(() => {
     const init: Record<string, string> = {};
     for (const g of puzzle.givens) {
@@ -133,6 +143,53 @@ export default function Game() {
     return () => window.clearInterval(id);
   }, [startedAt, endedAt]);
 
+  // 键盘：音名选择器打开时接管按键。Tab 到目标格 -> Enter 打开 -> 输入音名 -> Enter 确认。
+  useEffect(() => {
+    if (!picker) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      const key = e.key;
+
+      if (key === "Escape") {
+        e.preventDefault();
+        setPicker(null);
+        return;
+      }
+      if (key === "Backspace" || key === "Delete") {
+        e.preventDefault();
+        setQuery((q) => q.slice(0, -1));
+        setCursor(0);
+        return;
+      }
+      if (key === "Enter") {
+        e.preventDefault();
+        const note = candidates[Math.min(cursor, Math.max(0, candidates.length - 1))];
+        if (note) choose(picker!, note);
+        return;
+      }
+      if (key === "ArrowDown" || key === "ArrowRight") {
+        e.preventDefault();
+        setCursor((c) => (candidates.length ? (c + 1) % candidates.length : 0));
+        return;
+      }
+      if (key === "ArrowUp" || key === "ArrowLeft") {
+        e.preventDefault();
+        setCursor((c) => (candidates.length ? (c - 1 + candidates.length) % candidates.length : 0));
+        return;
+      }
+      // 音名输入（含 # / b）走 core 的纯函数，规则只写一份。
+      const nextQuery = nextNoteQuery(query, key);
+      if (nextQuery !== null) {
+        e.preventDefault();
+        setQuery(nextQuery);
+        setCursor(0);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [picker, candidates, cursor, query]);
+
   const elapsed = startedAt ? (endedAt ?? now) - startedAt : 0;
   const done = completedCount(LEVEL_IDS, progress);
   const stars = totalStars(progress);
@@ -140,7 +197,8 @@ export default function Game() {
 
   function choose(cell: Cell, value: string) {
     if (result) return;
-    if (!startedAt) setStartedAt(Date.now());
+    // 用函数式更新：键盘 effect 的闭包里 startedAt 可能是旧值，别把计时重置掉。
+    setStartedAt((prev) => prev ?? Date.now());
     setAnswers((prev) => ({ ...prev, [cellKey(cell)]: value }));
     setPicker(null);
   }
@@ -311,7 +369,9 @@ export default function Game() {
         </div>
       )}
 
-      <p className="hint">? = 待填 · 灰格 = 非音阶 · 点 ? 选音名；第一次选择开始计时。</p>
+      <p className="hint">
+        ? = 待填 · 灰格 = 非音阶 · 点 ? 选音名；第一次选择开始计时。桌面可用 Tab 选格，Enter 打开后直接输入音名。
+      </p>
 
       <Fretboard
         fretMin={puzzle.fretMin}
@@ -340,6 +400,8 @@ export default function Game() {
         onCellClick={(s, f) => {
           const k = `${s}:${f}`;
           if (!targetKeys.has(k) || givenKeys.has(k) || result) return;
+          setQuery("");
+          setCursor(0);
           setPicker({ s, f });
         }}
       />
@@ -416,18 +478,27 @@ export default function Game() {
             <div className="picker-head">
               <span>
                 {picker.s + 1} 弦 · {picker.f} 品
+                {query && ` · 输入 ${query}`}
               </span>
               <button className="btn ghost" onClick={() => choose(picker, "")}>
                 清除
               </button>
             </div>
             <div className="picker-grid">
-              {NOTE_CHOICES.map((n) => (
-                <button key={n} className="note-btn" onClick={() => choose(picker, n)}>
+              {NOTE_NAMES.map((n) => (
+                <button
+                  key={n}
+                  className={n === activeNote ? "note-btn active" : "note-btn"}
+                  onClick={() => choose(picker, n)}
+                >
                   {n}
                 </button>
               ))}
             </div>
+            {candidates.length === 0 && <p className="picker-hint">没有匹配的音名</p>}
+            <p className="picker-hint">
+              键盘：输入音名（可加 # 或 b）· 方向键选择 · Enter 确认 · Esc 关闭
+            </p>
           </div>
         </div>
       )}

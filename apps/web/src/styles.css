@@ -117,10 +117,10 @@ button, select, input { font: inherit; color: inherit; }
 }
 .fb-row { display: contents; }
 .fb-corner, .fb-string-label, .fb-fret-label { display: grid; place-items: center; color: var(--muted); font-size: 12px; }
-.fb-string-label { font-weight: 700; color: #c9d1d9; height: 38px; }
+.fb-string-label { font-weight: 700; color: #c9d1d9; height: 40px; }
 .fb-fret-label { height: 24px; }
 .fb-cell {
-  min-height: 38px;
+  min-height: 40px;
   min-width: 40px;
   border-radius: 8px;
   border: 1px solid transparent;
@@ -189,12 +189,14 @@ button, select, input { font: inherit; color: inherit; }
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 .picker-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
+.picker-hint { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
 .picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 8px; }
 .note-btn {
   padding: 14px 6px; border-radius: 10px; border: 1px solid var(--line);
   background: var(--panel-2); cursor: pointer; font-weight: 700;
 }
 .note-btn:hover { border-color: var(--accent); color: var(--accent); }
+.note-btn.active { border-color: var(--accent); color: var(--accent); box-shadow: inset 0 0 0 1px rgba(232, 176, 75, 0.45); }
 
 /* progress & stars */
 .stars { display: inline-flex; gap: 2px; line-height: 1; }
@@ -237,7 +239,20 @@ button, select, input { font: inherit; color: inherit; }
   .app { padding: 12px 10px 6px; }
   .chord-layout { grid-template-columns: 1fr; }
   .clock { font-size: 24px; }
-  .fb-cell { min-width: 36px; min-height: 36px; font-size: 12px; }
-  .fretboard { padding: 8px; }
+  /* 点按目标 ≥ 40px：不压缩格子，让指板内部横向滚动（见 ux.md §7） */
+  .fb-cell { font-size: 13px; }
+  .fretboard { padding: 8px; -webkit-overflow-scrolling: touch; }
   .stars-lg { font-size: 22px; }
+  .toolbar select { max-width: 100%; }
+  .toolbar { gap: 10px; }
+}
+
+@media (max-width: 420px) {
+  .panel { padding: 14px; }
+  .game-title h2 { font-size: 16px; }
+  .game-clock .clock { font-size: 22px; }
+  .result-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .picker-backdrop { padding: 10px; }
+  .picker-grid { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+  .note-btn { padding: 12px 4px; }
 }

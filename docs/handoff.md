@@ -16,7 +16,7 @@ Web-first 的吉他学习应用：常用和弦、标准调弦音阶指板、40 �
 ```bash
 pnpm install
 pnpm dev      # http://127.0.0.1:5173
-pnpm test     # 22 个 core 测试
+pnpm test     # 24 个 core 测试
 pnpm build    # apps/web/dist
 pnpm demo L01 # 终端打印一关
 ```
@@ -35,13 +35,14 @@ pnpm demo L01 # 终端打印一关
 - 存储键 `guitar.progress.v1` / `guitar.settings.v1`；`apps/web/src/lib/storage.ts` 是唯一访问点，自动迁移 v0.2.x 的 `guitar.best.*`。
 - 游戏页：顶部进度条、关卡下拉带星级与锁、结果面板（星级 / 三星目标 / 新纪录 / 解锁徽章 / 按弦错误分布）、设置面板（严格拼写、重置进度）。
 - 开局落在「第一个未通关的已解锁关卡」。
+- 键盘操作：Tab 选格 → Enter 打开选择器 → 字母输入音名（可加 `#`/`b`）→ 方向键选择 → Enter 确认，Esc 关闭；规则在 core 的 `nextNoteQuery` / `noteCandidates`。
+- 移动端样式：点按目标 ≥ 40×40px（不再压到 36px），720px / 420px 两档断点，指板内部横向滚动。
 - 页脚版本号改为 Vite `define` 注入 `__APP_VERSION__`，不再硬编码。
-- 测试：9 → 22 个（新增 13 个 progress 单测：星级、达标时间、解锁、迁移、本次得星）。
+- 测试：9 → 24 个（新增 progress 与键盘音名输入单测）。
 
-### 还没做（v0.3.0 剩余 P1）
+### 还没做（v0.3.0 剩余）
 
-- 手机竖屏 375px 实测与修正（指板横向滚动、点按 ≥ 40px）。
-- 键盘操作（桌面：Tab 选格、数字/字母选音）。
+- 375px 竖屏真机复核：样式已按规则改好，但**没有实际设备/设备模拟验证**，发版前需要过一遍。
 
 ## 当前限制 / 已知问题
 
@@ -62,19 +63,19 @@ pnpm demo L01 # 终端打印一关
 
 ## 下一步
 
-1. **收尾 v0.3.0**：手机竖屏 375px 实测、键盘操作（见 `roadmap.md` P1），然后发版。
+1. **收尾 v0.3.0**：375px 竖屏真机复核（样式已改好，只差实测），然后发版。
    发版动作：`CHANGELOG` 建 `[0.3.0]` 段 → 根与 `apps/web` 版本改 `0.3.0` → commit → annotated tag。
 2. **v0.3.1**：每日挑战（日期 seed）+ 连续天数 + 统计页 + 分享文案。
 3. 之后的顺序见 `roadmap.md`（v0.4 DSH 插件 → v0.5 壳 → v0.6 音频 → v1.0 稳定）。
 
 ## 新会话开场白
 
-> 读 `docs/README.md`、`docs/handoff.md`、`docs/roadmap.md`，当前 v0.2.4（v0.3.0 进行中），继续 v0.3.0 剩余 P1。
+> 读 `docs/README.md`、`docs/handoff.md`、`docs/roadmap.md`，当前 v0.2.4（v0.3.0 进行中），只剩 375px 竖屏复核与发版。
 
 ## 版本状态
 
 ```
-v0.3.0  （进行中）进度与星级：已完成 P0 + 关卡选择，剩竖屏与键盘
+v0.3.0  （进行中）进度与星级 + 键盘操作已完成，剩 375px 真机复核
 v0.2.4  docs baseline（本文档集）
 v0.2.3  指板方向 + CHANGELOG 修复
 v0.2.2  UTF-8 BOM 修复
