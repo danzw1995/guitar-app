@@ -1,4 +1,4 @@
-﻿import fs from "node:fs";
+import fs from "node:fs";
 import type { LevelDef } from "./types.ts";
 
 export function loadLevels(): LevelDef[] {
