@@ -1,0 +1,12 @@
+﻿{
+  "name": "@guitar/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "test": "node test/core.test.ts",
+    "gen:levels": "node scripts/gen-levels.ts",
+    "demo": "node scripts/demo.ts"
+  }
+}
