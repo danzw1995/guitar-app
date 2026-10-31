@@ -112,7 +112,6 @@ export default function Game() {
     setPicker(null);
   }
 
-  const chapterLevels = LEVELS.filter((l) => l.chapter === level.chapter);
   const next = LEVELS[LEVELS.findIndex((l) => l.id === level.id) + 1];
 
   return (
@@ -134,7 +133,7 @@ export default function Game() {
           <select value={levelId} onChange={(e) => setLevelId(e.target.value)}>
             {[1, 2, 3, 4].map((ch) => (
               <optgroup key={ch} label={`第 ${ch} 章`}>
-                {chapterLevels.filter((l) => l.chapter === ch).map((l) => (
+                {LEVELS.filter((l) => l.chapter === ch).map((l) => (
                   <option key={l.id} value={l.id}>{l.id} · {l.title}</option>
                 ))}
               </optgroup>
