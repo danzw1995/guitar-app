@@ -45,8 +45,9 @@ pnpm demo L01 # 终端打印一关
 - 点按目标统一 ≥ 40px：格子 40×40、音符按钮 44px、工具栏/标签页/下拉 40px、设置行 44px（整行是 `<label>`）。
 - 窄屏（≤720px）`select` / `input` / `textarea` 字号统一 16px，规避 iOS Safari 聚焦自动放大。
 - 指板弦名列 `.fb-string-label` / `.fb-corner` 改为 `position: sticky`，横滑时不丢失弦名。
-- 以上三条由 `pnpm check:styles`（`apps/web/scripts/check-styles.mjs`）静态断言；
-  **它不渲染页面**，真机点按手感仍需人眼确认。
+- 以上三条由 `pnpm check:styles`（`apps/web/scripts/check-styles.mjs`）静态断言，12/12 通过。
+- 人眼确认过的部分（桌面浏览器窄宽度）：指板横滑正常、**滑到 12 品弦名仍在**、按钮尺寸正常、375px 无横向溢出。
+  **没有确认过的**：iPhone 真机上的聚焦缩放（无设备，仅靠 16px 规则保证）与真机点按手感。
 
 ## 当前限制 / 已知问题
 
@@ -54,7 +55,7 @@ pnpm demo L01 # 终端打印一关
 - “严格拼写”开关已可用（默认关），但只影响星级判定，格子颜色仍把拼写错标成橙色。
 - 没有音频、节拍器、连续天数、统计页。
 - 没有 DSH 插件、Tauri / Capacitor 壳、PWA 配置。
-- UI 只在桌面浏览器实际看过；手机竖屏只验证了「375px 无横向溢出」，点按尺寸与 iOS 行为未逐一确认。
+- UI 在桌面浏览器看过，窄宽度下横滑 / sticky / 按钮尺寸正常；**iOS 真机行为（聚焦缩放、点按手感）未验证**。
 - 本沙箱里 `pnpm build` 因 esbuild 启动子进程被拦截而无法验证；`pnpm dev` 在用户机器上已跑通。
 
 ## 关键决策（不要轻易推翻）
