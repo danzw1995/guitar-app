@@ -71,5 +71,26 @@ UI 目前没有自动化测试；改 UI 后至少手动过一遍：和弦页、�
 
   撤销：`icacls . /remove:g "*<SID>" /T`，再用同样语法把 `low` 换回 `medium`。
   新增的目录/文件会从父目录继承这两个设置，不用重复执行。
-- pnpm 的 store 锁在 `%LOCALAPPDATA%\pnpm-store-operation-locks`（工作区外），沙箱同样写不了；
-  需要跑 `pnpm test` 时可直接 `node packages/core/test/core.test.ts` 绕开。
+- 沙箱真正生效的写权限是它自己的能力 SID（形如 `S-1-4-…:(OI)(CI)(W,D,DC)`）——
+  光靠 `Authenticated Users` 的 `Modify` 和 Low 标记都不够。这个 SID `icacls` 映射不了账户名，
+  只能用 .NET 按 SID 授权。
+- **pnpm 的 store / 锁目录在工作区外**（`%LOCALAPPDATA%`），默认写不了，`pnpm test` 会报
+  `ERR_PNPM_STORE_DIR_OPEN_OPERATION_LOCK`。本机已修：给 `pnpm\package-manager-store`、`pnpm-cache`、
+  `pnpm-state`、`pnpm-store-operation-locks`、`pnpm-dir-locks` 加了能力 SID 的写权限 + Low 标记（1410 个对象）。
+  **没有**动 `pnpm\global`（那里放全局安装的命令，不把写权限交给沙箱）。
+  该 SID 由沙箱分配，换机器或沙箱版本变化后可能要重来一次；重新授权用：
+
+  ```powershell
+  $sid = [System.Security.Principal.SecurityIdentifier]::new('S-1-4-<沙箱 SID>')
+  $rights = [System.Security.AccessControl.FileSystemRights]::Write -bor
+            [System.Security.AccessControl.FileSystemRights]::Delete -bor
+            [System.Security.AccessControl.FileSystemRights]::DeleteSubdirectoriesAndFiles
+  $allow  = [System.Security.AccessControl.AccessControlType]::Allow
+  $inh    = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
+            [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+  # 对目标目录及其子项：Get-Acl -> AddAccessRule($sid,$rights,$inh) -> Set-Acl
+  ```
+
+  撤销：对同样的路径用 `RemoveAccessRule` 删掉这条 SID 的权限项，再
+  `icacls <dir> /setintegritylevel "(OI)(CI)medium" /T`。
+  临时绕法（不改权限）：`node packages/core/test/core.test.ts`。
