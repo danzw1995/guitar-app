@@ -4,37 +4,39 @@
 
 ## [Unreleased]
 
+### Planned
+- 每日挑战（日期 seed）、连续天数、统计页、分享文案（v0.3.1）
+- 375px 真机点按尺寸与 iOS 输入缩放复核
+- DSH 插件（v0.4.0）
+- Tauri（Windows）/ Capacitor（Android）（v0.5.0）
+- 节拍器与音频（v0.6.0）
+
+## [0.3.0] - 2026-10-31
+
 ### Added
-- **键盘操作**（v0.3.0）：Tab 在可填格间移动，Enter/Space 打开音名选择器，直接输入音名
-  （`C`–`B`，可跟 `#`/`b`，如 `Eb`、`C#`），方向键选候选，Enter 确认，Esc 关闭，Backspace 清空；
-  规则由 core 的 `nextNoteQuery` / `noteCandidates` 提供，不在组件里重复判断。
-- **移动端样式**（v0.3.0）：点按目标 ≥ 40×40px（不再压到 36px），新增 420px 断点，
-  指板在窄屏内部横向滚动而不压缩格子。
-- **进度模型**（v0.3.0）：每关 `completed / stars / bestMs / attempts / lastAt`，存 `guitar.progress.v1`；
-  首次启动自动迁移 v0.2.x 的 `guitar.best.*`（旧成绩直接换算星级）。
-- **星级与解锁**：0 未完成 / 1 完成 / 2 全对 / 3 全对且达到三星目标时间；1 星解锁下一关，
-  L01 常开；未解锁关卡在下拉里禁用。
+- **进度与星级**：每关 `completed / stars / bestMs / attempts / lastAt`，存 `guitar.progress.v1`；
+  首次启动自动迁移 v0.2.x 的 `guitar.best.*`（旧成绩按三星目标时间换算星级）。
+- **星级与解锁**：0 未完成 / 1 完成 / 2 全对 / 3 全对且达到三星目标时间
+  （`targetCount × (2 + 3 × difficulty)` 秒）；1 星解锁下一关，L01 常开；未解锁关卡在下拉里禁用。
 - **结果页升级**：星级、三星目标时间、最快全对、`新纪录` 与 `已解锁 Lxx` 徽章、按弦错误分布、
   `下一关` / `再练一次`。
-- **设置面板**：严格拼写开关（默认关，拼错算错、拿不到 2 星以上）与重置进度（二次确认，
-  同时清理旧版键）。
+- **设置面板**：严格拼写开关（默认关，拼错算错、拿不到 2 星以上）与重置进度（二次确认，同时清理旧版键）。
+- **键盘操作**：Tab 在可填格间移动，Enter/Space 打开音名选择器，直接输入音名
+  （`C`–`B`，可跟 `#`/`b`，如 `Eb`、`C#`），方向键选候选，Enter 确认，Esc 关闭，Backspace 清空；
+  规则由 core 的 `nextNoteQuery` / `noteCandidates` 提供，不在组件里重复判断。
+- **移动端样式**：点按目标 ≥ 40×40px（不再压到 36px），新增 420px 断点；
+  指板在窄屏内部横向滚动而不压缩格子，375px 竖屏实测无横向溢出。
 - 顶部显示 `已通关 x/40 · ★ y/120`；开局自动落在第一个未通关的已解锁关卡。
 - `packages/core/src/progress.ts`：星级、达标时间、解锁、迁移全部纯函数；
   `theory.ts` 增加 `NOTE_NAMES` / `noteCandidates` / `nextNoteQuery`。配套 15 个新单测。
 
 ### Changed
 - 页脚版本号改为 Vite `define` 注入 `__APP_VERSION__`，不再硬编码（v0.2.x 曾停在 v0.2.0）。
+- `packages/core` 版本 `0.1.0` → `0.2.0`（新增 progress 与音名输入 API）；根与 `apps/web` 升到 `0.3.0`。
 - 核心测试 9 → 24 个。
 
 ### Fixed
 - 关卡标题的音乐术语改为查 `SCALE_BY_ID`，不再用「大调/否则小调」的二元判断。
-
-### Planned
-- 375px 竖屏真机复核（v0.3.0 收尾）
-- 每日挑战（v0.3.1）
-- DSH 插件（v0.4.0）
-- Tauri（Windows）/ Capacitor（Android）（v0.5.0）
-- 节拍器与音频（v0.6.0）
 
 ## [0.2.4] - 2026-10-31
 
