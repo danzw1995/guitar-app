@@ -14,6 +14,9 @@ import {
   generatePuzzle,
   isPerfect,
   isUnlocked,
+  nextNoteQuery,
+  noteCandidates,
+  NOTE_NAMES,
   parMsFor,
   parseProgress,
   parseNote,
@@ -330,4 +333,29 @@ test("进度可序列化：JSON 往返不丢字段", () => {
   });
   const round = parseProgress(JSON.parse(JSON.stringify({ L01: p })), () => L01_PAR).L01;
   assert.deepEqual(round, p);
+});
+
+// ---- 键盘音名输入 ----
+
+test("nextNoteQuery: 字母 + 升降号", () => {
+  assert.equal(nextNoteQuery("", "e"), "E");
+  assert.equal(nextNoteQuery("", "B"), "B");
+  assert.equal(nextNoteQuery("", "b"), "B", "没有前置字母时 b 就是音名 B");
+  assert.equal(nextNoteQuery("B", "b"), "Bb");
+  assert.equal(nextNoteQuery("E", "b"), "Eb");
+  assert.equal(nextNoteQuery("C", "#"), "C#");
+  assert.equal(nextNoteQuery("C#", "#"), "C#", "不叠加成 C##");
+  assert.equal(nextNoteQuery("Bb", "d"), "D", "再按字母就是新音名");
+  assert.equal(nextNoteQuery("", "#"), "", "没有字母时 # 不生效");
+  assert.equal(nextNoteQuery("C", "x"), null);
+  assert.equal(nextNoteQuery("C", "1"), null);
+});
+
+test("noteCandidates: 前缀过滤，精确优先", () => {
+  assert.deepEqual(noteCandidates(""), NOTE_NAMES);
+  assert.deepEqual(noteCandidates("B"), ["B", "Bb"]);
+  assert.deepEqual(noteCandidates("bb"), ["Bb"], "大小写不敏感");
+  assert.deepEqual(noteCandidates("E"), ["E", "Eb"]);
+  assert.deepEqual(noteCandidates("z"), []);
+  for (const n of NOTE_NAMES) assert.equal(parseNote(n) !== null, true, `${n} 应可解析`);
 });

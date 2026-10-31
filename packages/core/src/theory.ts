@@ -140,3 +140,38 @@ export function targetCells(
 export function accidentalCount(key: KeyDef): number {
   return diatonicNames(key).filter((n) => n.includes("#") || n.includes("b")).length;
 }
+
+/**
+ * 音名选择器的候选列表（含等音），数组顺序就是按钮顺序。
+ * 点按钮和键盘输入共用这一份，避免两套名字对不上。
+ */
+export const NOTE_NAMES = [
+  "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb",
+  "G", "G#", "Ab", "A", "A#", "Bb", "B",
+];
+
+/** 前缀过滤；精确匹配排最前（输 "B" 得到 ["B", "Bb"]）。 */
+export function noteCandidates(query: string): string[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [...NOTE_NAMES];
+  return NOTE_NAMES.filter((n) => n.toLowerCase().startsWith(q)).sort(
+    (a, b) => Number(b.toLowerCase() === q) - Number(a.toLowerCase() === q),
+  );
+}
+
+/**
+ * 键盘按下一键后的音名查询串；`null` 表示这个键不归音名输入管。
+ *
+ * - 字母 a–g 起头（转大写）；
+ * - 已有一个字母时再按 `b` 当降号：`B` + `b` = `Bb`、`E` + `b` = `Eb`；
+ * - 已有一个字母时再按 `#` 当升号：`C` + `#` = `C#`；
+ * - 其他位置按 `#`/`b` 不改变查询，避免出现 `C##` 这种无意义输入。
+ */
+export function nextNoteQuery(current: string, key: string): string | null {
+  if (key === "#") return current.length === 1 ? `${current}#` : current;
+  if (/^[a-g]$/i.test(key)) {
+    const isFlat = key === "b";
+    return isFlat && current.length === 1 ? `${current}b` : key.toUpperCase();
+  }
+  return null;
+}
