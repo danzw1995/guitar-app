@@ -8,12 +8,19 @@ import {
   applyAttempt,
   cellKey,
   completedCount,
+  dailyPuzzle,
+  dailySpecFor,
+  dateKeyOf,
+  dayNumberOf,
   diatonicNames,
   expectedNameMap,
   fromLegacyBest,
   generatePuzzle,
   isPerfect,
   isUnlocked,
+  isValidDateKey,
+  lastNDays,
+  nextDateKey,
   nextNoteQuery,
   noteCandidates,
   NOTE_NAMES,
@@ -21,9 +28,12 @@ import {
   parseProgress,
   parseNote,
   pitchClassAt,
+  previousDateKey,
   scaleNames,
   starsForAttempt,
   starsOf,
+  streakOf,
+  summarizeProgress,
   targetCells,
   totalStars,
   checkAnswer,
@@ -358,4 +368,114 @@ test("noteCandidates: 前缀过滤，精确优先", () => {
   assert.deepEqual(noteCandidates("E"), ["E", "Eb"]);
   assert.deepEqual(noteCandidates("z"), []);
   for (const n of NOTE_NAMES) assert.equal(parseNote(n) !== null, true, `${n} 应可解析`);
+});
+
+// ---- 每日挑战与统计 ----
+
+test("dateKeyOf: 本地日期补零", () => {
+  assert.equal(dateKeyOf(new Date(2026, 0, 5)), "2026-01-05");
+  assert.equal(dateKeyOf(new Date(2026, 9, 31)), "2026-10-31");
+});
+
+test("isValidDateKey: 拒绝不存在的日期", () => {
+  assert.equal(isValidDateKey("2026-10-31"), true);
+  assert.equal(isValidDateKey("2026-02-28"), true);
+  assert.equal(isValidDateKey("2026-02-30"), false, "2 月没有 30 号");
+  assert.equal(isValidDateKey("2026-13-01"), false);
+  assert.equal(isValidDateKey("2026-1-5"), false, "必须补零");
+  assert.equal(isValidDateKey("abc"), false);
+});
+
+test("日期前后移动跨月跨年", () => {
+  assert.equal(previousDateKey("2026-03-01"), "2026-02-28");
+  assert.equal(previousDateKey("2026-01-01"), "2025-12-31");
+  assert.equal(nextDateKey("2026-12-31"), "2027-01-01");
+  assert.equal(nextDateKey("2024-02-28"), "2024-02-29", "闰年");
+});
+
+test("lastNDays: 升序且含今天", () => {
+  const days = lastNDays("2026-10-31", 7);
+  assert.equal(days.length, 7);
+  assert.equal(days[0], "2026-10-25");
+  assert.equal(days[6], "2026-10-31");
+});
+
+test("dailySpecFor: 同日期同题、参数自洽", () => {
+  const a = dailySpecFor("2026-10-31");
+  assert.deepEqual(a, dailySpecFor("2026-10-31"), "同一天必须完全一致");
+  assert.equal(a.seed, dayNumberOf("2026-10-31"));
+
+  const key = KEY_BY_ID.get(a.keyId)!;
+  assert.equal(a.scaleId, key.mode === "minor" ? "naturalMinor" : "major", "音阶跟着调式走");
+  assert.ok([[1, 5], [1, 7], [0, 12]].some(([lo, hi]) => a.fretMin === lo && a.fretMax === hi));
+  assert.ok(a.givenRatio > 0 && a.givenRatio < 1);
+});
+
+test("dailySpecFor: 66 天内覆盖所有品域与多数调", () => {
+  const keys = new Set<string>();
+  const ranges = new Set<string>();
+  let date = "2026-01-01";
+  for (let i = 0; i < 66; i++) {
+    const spec = dailySpecFor(date);
+    keys.add(spec.keyId);
+    ranges.add(`${spec.fretMin}-${spec.fretMax}`);
+    assert.ok(dailyPuzzle(spec).target.length > 2, `${date} 出不来题`);
+    date = nextDateKey(date);
+  }
+  assert.equal(ranges.size, 3, "三个品域都应出现");
+  assert.ok(keys.size >= 20, `调覆盖不足：${keys.size}`);
+});
+
+test("dailyPuzzle: 可复现，不同日期不同", () => {
+  const a = dailyPuzzle(dailySpecFor("2026-10-31"));
+  const b = dailyPuzzle(dailySpecFor("2026-10-31"));
+  const c = dailyPuzzle(dailySpecFor("2026-11-01"));
+  assert.deepEqual(a, b);
+  assert.notDeepEqual(a.givens, c.givens);
+});
+
+test("streakOf: 连续、隔天、今天未打卡", () => {
+  const today = "2026-10-31";
+  assert.deepEqual(
+    streakOf(["2026-10-29", "2026-10-30", "2026-10-31"], today),
+    { current: 3, longest: 3, todayDone: true },
+  );
+
+  // 今天没做，但昨天做了：连续仍算到昨天
+  const s = streakOf(["2026-10-29", "2026-10-30"], today);
+  assert.equal(s.current, 2);
+  assert.equal(s.todayDone, false);
+
+  // 前天做过、昨天断了：连续归零
+  assert.equal(streakOf(["2026-10-29"], today).current, 0);
+
+  // 最长连续不等于当前连续
+  const g = streakOf(["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-31"], today);
+  assert.equal(g.current, 1);
+  assert.equal(g.longest, 3);
+
+  assert.deepEqual(streakOf([], today), { current: 0, longest: 0, todayDone: false });
+});
+
+test("summarizeProgress: 统计口径", () => {
+  const ids = ["L01", "L02", "L03"];
+  const progress = {
+    L01: { completed: true, stars: 3, bestMs: 40000, attempts: 2, lastAt: 1 },
+    L02: { completed: true, stars: 1, bestMs: null, attempts: 3, lastAt: 2 },
+    L03: { ...EMPTY_PROGRESS, attempts: 1 },
+  };
+  const s = summarizeProgress(ids, progress);
+  assert.equal(s.completed, 2);
+  assert.equal(s.total, 3);
+  assert.equal(s.stars, 4);
+  assert.equal(s.maxStars, 9);
+  assert.equal(s.averageStars, 2, "4 星 / 2 关");
+  assert.equal(s.attempts, 6);
+  assert.equal(s.bestSumMs, 40000);
+  assert.equal(s.perfectCount, 1);
+
+  const empty = summarizeProgress(ids, {});
+  assert.equal(empty.completed, 0);
+  assert.equal(empty.averageStars, 0);
+  assert.equal(empty.maxStars, 9);
 });
