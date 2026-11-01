@@ -161,6 +161,7 @@ button, select, input { font: inherit; color: inherit; }
 }
 .fb-cell:disabled { cursor: default; }
 .fb-dot {
+  position: relative; /* 八度点绝对定位，主文字始终居中 */
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -169,28 +170,38 @@ button, select, input { font: inherit; color: inherit; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
   line-height: 1.05;
   background: transparent;
   color: var(--text);
 }
-/* 简谱八度记号：上点/下点 */
-.fb-oct { display: flex; gap: 2px; height: 4px; align-items: center; }
+/* 简谱八度记号：上点/下点，浮在圆点上下边缘，不挤动文字 */
+.fb-oct {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  height: 4px;
+  align-items: center;
+}
+.fb-oct.up { top: 1px; }
+.fb-oct.down { bottom: 1px; }
 .fb-oct i { display: block; width: 3.5px; height: 3.5px; border-radius: 50%; background: currentColor; }
 .fb-main { font-size: 12px; font-weight: 700; }
 .fb-sub { font-size: 9px; font-weight: 600; opacity: 0.75; }
+/* 圆点一律用不透明底色：弦线从圆点下面穿过时不会透出来，视觉上圆点「坐在弦上」 */
 .fb-cell.off .fb-dot { visibility: hidden; }
 .fb-cell.given .fb-dot { background: #21262d; border-color: #3d444d; color: #c9d1d9; }
-.fb-cell.target .fb-dot { border: 1px dashed #4b5563; color: var(--muted); }
+.fb-cell.target .fb-dot { background: #0b0f14; border: 1px dashed #4b5563; color: var(--muted); }
 .fb-cell.target:hover .fb-dot { border-color: var(--accent); color: var(--accent); }
-.fb-cell.filled .fb-dot { background: rgba(88, 166, 255, 0.15); border-color: rgba(88, 166, 255, 0.55); color: #9ecbff; }
+.fb-cell.filled .fb-dot { background: #14263c; border-color: rgba(88, 166, 255, 0.55); color: #b9d8ff; }
 .fb-cell.root .fb-dot { background: var(--accent); border-color: var(--accent); color: #1a1205; }
-.fb-cell.scale .fb-dot { background: rgba(88, 166, 255, 0.16); border-color: rgba(88, 166, 255, 0.45); color: #9ecbff; }
-.fb-cell.chromatic .fb-dot { background: rgba(139, 148, 158, 0.08); border-color: #2d333b; color: #8b949e; }
-.fb-cell.ok .fb-dot { background: rgba(63, 185, 80, 0.2); border-color: var(--green); color: #7ee787; }
-.fb-cell.spell .fb-dot { background: rgba(210, 153, 34, 0.2); border-color: var(--orange); color: #e3b341; }
-.fb-cell.bad .fb-dot { background: rgba(248, 81, 73, 0.2); border-color: var(--red); color: #ff7b72; }
-.fb-cell.empty .fb-dot { border: 1px dashed rgba(248, 81, 73, 0.6); color: #ff7b72; }
+.fb-cell.scale .fb-dot { background: #16283f; border-color: rgba(88, 166, 255, 0.55); color: #b9d8ff; }
+.fb-cell.chromatic .fb-dot { background: #191d23; border-color: #2d333b; color: #8b949e; }
+.fb-cell.ok .fb-dot { background: #13291b; border-color: var(--green); color: #7ee787; }
+.fb-cell.spell .fb-dot { background: #2b2310; border-color: var(--orange); color: #e3b341; }
+.fb-cell.bad .fb-dot { background: #2b1616; border-color: var(--red); color: #ff7b72; }
+.fb-cell.empty .fb-dot { background: #0b0f14; border: 1px dashed rgba(248, 81, 73, 0.6); color: #ff7b72; }
 .fb-cell:focus-visible { outline: none; }
 .fb-cell:focus-visible .fb-dot { outline: 2px solid var(--accent); outline-offset: 2px; }
 

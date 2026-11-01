@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
-/** 简谱的八度记号：上点/下点，最多画三个。 */
-function OctaveDots({ n }: { n: number }) {
+/** 简谱的八度记号：上点/下点，最多画三个。绝对定位，不参与文字排版。 */
+function OctaveDots({ n, dir }: { n: number; dir: "up" | "down" }) {
   const count = Math.min(3, Math.abs(n));
   return (
-    <span className="fb-oct" aria-hidden="true">
+    <span className={`fb-oct ${dir}`} aria-hidden="true">
       {Array.from({ length: count }, (_, i) => (
         <i key={i} />
       ))}
@@ -161,10 +161,10 @@ export default function Fretboard({
                     onClick={() => onCellClick?.(s, f)}
                   >
                     <span className="fb-dot">
-                      {shift > 0 && <OctaveDots n={shift} />}
+                      {shift > 0 && <OctaveDots n={shift} dir="up" />}
                       <span className="fb-main">{renderCell(s, f)}</span>
                       {sub ? <span className="fb-sub">{sub}</span> : null}
-                      {shift < 0 && <OctaveDots n={-shift} />}
+                      {shift < 0 && <OctaveDots n={-shift} dir="down" />}
                     </span>
                   </button>
                 );

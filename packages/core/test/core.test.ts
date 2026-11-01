@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   EMPTY_PROGRESS,
+  FLAT_NAMES,
   KEY_BY_ID,
   SCALE_BY_ID,
+  SHARP_NAMES,
   STANDARD_TUNING,
   applyAttempt,
   cellKey,
@@ -420,6 +422,17 @@ test("solfegeAlternatives: 黑键有升/降两种叫法", () => {
 
   const syl = { system: "movable", style: "syllable" } as const;
   assert.deepEqual(solfegeAlternatives(1, 0, syl), { primary: "升do", alternate: "降re" });
+});
+
+test("音名等音：SHARP_NAMES 与 FLAT_NAMES 一一对应", () => {
+  assert.equal(SHARP_NAMES.length, 12);
+  assert.equal(FLAT_NAMES.length, 12);
+  for (let pc = 0; pc < 12; pc++) {
+    assert.equal(parseNote(SHARP_NAMES[pc]), pc, `升号名 ${SHARP_NAMES[pc]}`);
+    assert.equal(parseNote(FLAT_NAMES[pc]), pc, `降号名 ${FLAT_NAMES[pc]}`);
+  }
+  assert.equal(SHARP_NAMES[1], "C#");
+  assert.equal(FLAT_NAMES[1], "Db");
 });
 
 test("solfegeOctaveShift: 八度按中央 C 附近的 1 为基准", () => {

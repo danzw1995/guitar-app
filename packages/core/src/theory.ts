@@ -3,6 +3,8 @@ import type { Cell, KeyDef, Mode, ScaleType, Tuning } from "./types.ts";
 export const LETTERS = ["C", "D", "E", "F", "G", "A", "B"] as const;
 export const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
 export const SHARP_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+/** 降号拼写，用来给黑键标出等音的另一种叫法（C# 也是 Db）。 */
+export const FLAT_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
 
 const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11];
 const MINOR_STEPS = [0, 2, 3, 5, 7, 8, 10];

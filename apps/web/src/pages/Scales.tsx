@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  FLAT_NAMES,
   KEYS,
   SCALES,
   SHARP_NAMES,
@@ -124,9 +125,11 @@ export default function Scales() {
               system: settings.solfegeSystem,
               style: settings.solfegeStyle,
             });
+            const sharp = SHARP_NAMES[pc];
+            const flat = FLAT_NAMES[pc];
             return (
               <span key={pc} className={byPc.has(pc) ? "solfege-cell on" : "solfege-cell"}>
-                <b>{SHARP_NAMES[pc]}</b>
+                <b>{sharp === flat ? sharp : `${sharp} / ${flat}`}</b>
                 {alternate ? `${primary} / ${alternate}` : primary}
               </span>
             );
