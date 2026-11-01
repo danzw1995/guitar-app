@@ -30,6 +30,8 @@ import {
   pitchClassAt,
   previousDateKey,
   scaleNames,
+  solfegeLabel,
+  solfegeTable,
   starsForAttempt,
   starsOf,
   streakOf,
@@ -368,6 +370,42 @@ test("noteCandidates: 前缀过滤，精确优先", () => {
   assert.deepEqual(noteCandidates("E"), ["E", "Eb"]);
   assert.deepEqual(noteCandidates("z"), []);
   for (const n of NOTE_NAMES) assert.equal(parseNote(n) !== null, true, `${n} 应可解析`);
+});
+
+// ---- 唱名 ----
+
+test("solfegeLabel: 固定唱名（C=do）", () => {
+  const opts = { system: "fixed", style: "number" } as const;
+  assert.equal(solfegeLabel(0, 0, opts), "1");
+  assert.equal(solfegeLabel(2, 0, opts), "2");
+  assert.equal(solfegeLabel(1, 0, opts), "升1");
+  assert.equal(solfegeLabel(10, 0, opts), "降7", "Bb 在固定唱名里是降 7");
+  assert.equal(solfegeLabel(6, 0, opts), "升4");
+  assert.equal(solfegeLabel(10, 5, opts), "降7", "固定唱名与调无关");
+});
+
+test("solfegeLabel: 首调（当前调主音=1）随调变化", () => {
+  const opts = { system: "movable", style: "number" } as const;
+  // F 大调：F=1、Bb=4、C=5
+  assert.equal(solfegeLabel(5, 5, opts), "1");
+  assert.equal(solfegeLabel(10, 5, opts), "4");
+  assert.equal(solfegeLabel(6, 5, opts), "升1");
+  assert.equal(solfegeLabel(0, 5, opts), "5");
+  // A 小调：A=1、C=降3、F=降6、G=降7
+  assert.equal(solfegeLabel(9, 9, opts), "1");
+  assert.equal(solfegeLabel(0, 9, opts), "降3");
+  assert.equal(solfegeLabel(5, 9, opts), "降6");
+  assert.equal(solfegeLabel(7, 9, opts), "降7");
+});
+
+test("solfegeLabel: 12 个音全覆盖，do re mi 写法也带升降", () => {
+  const table = solfegeTable({ system: "fixed", style: "number" });
+  assert.equal(table.length, 12);
+  assert.equal(new Set(table).size, 12, "12 个唱名不应重复");
+  const syl = { system: "movable", style: "syllable" } as const;
+  assert.equal(solfegeLabel(3, 0, syl), "降mi");
+  assert.equal(solfegeLabel(6, 0, syl), "升fa");
+  assert.equal(solfegeLabel(0, 0, syl), "do");
 });
 
 // ---- 每日挑战与统计 ----

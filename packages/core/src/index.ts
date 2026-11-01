@@ -3,4 +3,5 @@ export * from "./theory.ts";
 export * from "./puzzle.ts";
 export * from "./progress.ts";
 export * from "./daily.ts";
+export * from "./solfege.ts";
 export * from "./chords.ts";
