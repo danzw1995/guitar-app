@@ -50,7 +50,10 @@ export default function ResultPanel({
   return (
     <div className="result">
       <div className="result-head">
-        <h3>{headline}</h3>
+        <div className="result-heading">
+          <span className="result-kicker">本关结果</span>
+          <h3>{headline}</h3>
+        </div>
         {mode === "recall" ? (
           <span className="muted">推算模式 · 不计星级</span>
         ) : (

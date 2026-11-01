@@ -318,7 +318,15 @@ button, select, input { font: inherit; color: inherit; }
 .progress-line { white-space: nowrap; }
 
 .result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
-.result-head h3 { margin: 0; }
+.result-head h3 { margin: 0; font-size: 20px; }
+.result-heading { display: flex; flex-direction: column; gap: 2px; }
+/* 「本关结果」小标题：让这块面板一眼看得出是结果，不是又一块题目区 */
+.result-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
 .result-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 12px; color: var(--muted); font-size: 12px; }
 .badge {
   border: 1px solid rgba(232, 176, 75, 0.5);
