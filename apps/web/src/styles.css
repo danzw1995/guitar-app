@@ -182,6 +182,7 @@ button, select, input { font: inherit; color: inherit; }
 .fb-cell.filled .fb-dot { background: rgba(88, 166, 255, 0.15); border-color: rgba(88, 166, 255, 0.55); color: #9ecbff; }
 .fb-cell.root .fb-dot { background: var(--accent); border-color: var(--accent); color: #1a1205; }
 .fb-cell.scale .fb-dot { background: rgba(88, 166, 255, 0.16); border-color: rgba(88, 166, 255, 0.45); color: #9ecbff; }
+.fb-cell.chromatic .fb-dot { background: rgba(139, 148, 158, 0.08); border-color: #2d333b; color: #8b949e; }
 .fb-cell.ok .fb-dot { background: rgba(63, 185, 80, 0.2); border-color: var(--green); color: #7ee787; }
 .fb-cell.spell .fb-dot { background: rgba(210, 153, 34, 0.2); border-color: var(--orange); color: #e3b341; }
 .fb-cell.bad .fb-dot { background: rgba(248, 81, 73, 0.2); border-color: var(--red); color: #ff7b72; }

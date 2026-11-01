@@ -6,6 +6,7 @@ import {
   STANDARD_TUNING,
   KEY_BY_ID,
   SCALE_BY_ID,
+  fallbackName,
   pitchClassAt,
   scaleNames,
   scalePcs,
@@ -20,6 +21,8 @@ export default function Scales() {
   const [keyId, setKeyId] = useState("C");
   const [scaleId, setScaleId] = useState("major");
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
+  /** 打开后把调外音也画出来（暗一点），这样 C 大调里也能看到 升1 / 降3 这类唱名。 */
+  const [showChromatic, setShowChromatic] = useState(false);
 
   const key = KEY_BY_ID.get(keyId)!;
   const scale = SCALE_BY_ID.get(scaleId)!;
@@ -37,13 +40,23 @@ export default function Scales() {
     saveSettings(next);
   }
 
-  const nameAt = (s: number, f: number) => byPc.get(pitchClassAt(STANDARD_TUNING, s, f));
+  /** 0 品是空弦区，只靠左侧的弦名就够了，不画音点。 */
+  const cellNote = (s: number, f: number): { name: string; state: string; pc: number } | null => {
+    if (f === 0) return null;
+    const pc = pitchClassAt(STANDARD_TUNING, s, f);
+    const scaleName = byPc.get(pc);
+    if (scaleName) {
+      return { name: scaleName, state: pc === key.tonicPc ? "root" : "scale", pc };
+    }
+    if (!showChromatic) return null;
+    return { name: fallbackName(pc), state: "chromatic", pc };
+  };
 
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>音阶指板</h2>
-        <p>标准调弦，0–12 品。金色是主音，蓝色是音阶音。</p>
+        <p>标准调弦，1–12 品。金色是主音，蓝色是音阶音。</p>
       </div>
 
       <div className="toolbar">
@@ -64,32 +77,36 @@ export default function Scales() {
           </select>
         </label>
         <LabelControls settings={settings} onChange={updateSettings} />
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={showChromatic}
+            onChange={(e) => setShowChromatic(e.target.checked)}
+          />
+          显示调外音（带升降）
+        </label>
       </div>
 
       <div className="legend">
         <span><i className="dot root" /> 主音 {rootName}</span>
         <span><i className="dot scale" /> 音阶音</span>
-        <span><i className="dot muted" /> 非音阶</span>
+        {showChromatic && <span><i className="dot muted" /> 调外音</span>}
       </div>
 
       <Fretboard
-        fretMin={0}
+        fretMin={1}
         fretMax={12}
         renderCell={(s, f) => {
-          const name = nameAt(s, f);
-          if (!name) return "";
-          return cellLabel(name, pitchClassAt(STANDARD_TUNING, s, f), key.tonicPc, settings).main;
+          const note = cellNote(s, f);
+          if (!note) return "";
+          return cellLabel(note.name, note.pc, key.tonicPc, settings).main;
         }}
         renderCellSub={(s, f) => {
-          const name = nameAt(s, f);
-          if (!name) return null;
-          return cellLabel(name, pitchClassAt(STANDARD_TUNING, s, f), key.tonicPc, settings).sub;
+          const note = cellNote(s, f);
+          if (!note) return null;
+          return cellLabel(note.name, note.pc, key.tonicPc, settings).sub;
         }}
-        cellClass={(s, f) => {
-          const name = nameAt(s, f);
-          if (!name) return "off";
-          return pitchClassAt(STANDARD_TUNING, s, f) === key.tonicPc ? "root" : "scale";
-        }}
+        cellClass={(s, f) => cellNote(s, f)?.state ?? "off"}
       />
 
       {settings.labels !== "name" && (
