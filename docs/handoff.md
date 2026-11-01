@@ -16,7 +16,7 @@ Web-first 的吉他学习应用：常用和弦、标准调弦音阶指板、40 �
 ```bash
 pnpm install
 pnpm dev      # http://127.0.0.1:5173
-pnpm test     # 33 个 core 测试
+pnpm test     # 36 个 core 测试
 pnpm build    # apps/web/dist
 pnpm demo L01 # 终端打印一关
 ```
@@ -57,7 +57,15 @@ pnpm demo L01 # 终端打印一关
 - 连续天数由日期集合算出，不单独存状态。
 - 统计页（第 4 个 Tab）：已通关、星星、平均星级、提交次数、最佳成绩合计、连续天数、最近 7 天、最近 5 关战绩。
 - 游戏页顶部加「主线关卡 / 今日挑战」切换。
-- 测试：24 → 33 个。
+- 测试：24 → 36 个。
+
+### 指板画法与唱名（v0.3.1 之后补的）
+
+- `Fretboard` 重写：SVG 画弦线（低音弦更粗）、品丝、0 品琴枕、3/5/7/9/12 品位记号，
+  音是圆点；透明按钮层负责点按/Tab/禁用态，两层共用 `FRET_W / STRING_H / TOP_H` 常量。
+- 弦名列移到滚动容器外（不再用 sticky），横滑时不会跑；1 弦与 6 弦弦名统一大写。
+- 唱名：`packages/core/src/solfege.ts`，首调/固定 × 数字/do re mi，变化音带升/降前缀。
+- 设置项 `labels / solfegeSystem / solfegeStyle` 存 `guitar.settings.v1`，音阶页与游戏页共用。
 
 ## 当前限制 / 已知问题
 

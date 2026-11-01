@@ -108,51 +108,86 @@ button, select, input { font: inherit; color: inherit; }
 .dot.scale { background: var(--blue); }
 .dot.muted { background: #484f58; }
 
-/* fretboard */
+/* fretboard：SVG 画弦线与品丝，透明按钮层负责交互 */
 .fretboard {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: stretch;
   background: #0b0f14;
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 10px;
-  overflow-x: auto;
+  overflow: hidden;
 }
-.fb-row { display: contents; }
-.fb-corner, .fb-string-label, .fb-fret-label { display: grid; place-items: center; color: var(--muted); font-size: 12px; }
-.fb-string-label { font-weight: 700; color: #c9d1d9; height: 40px; }
-.fb-fret-label { height: 24px; }
-/* 指板横向滚动时把弦名固定在左侧：否则滑到右边就分不清哪行是哪根弦 */
-.fb-corner,
+/* 弦名列在滚动容器外面，横滑时不会跑掉 */
+.fb-labels {
+  flex: 0 0 auto;
+  width: 36px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+}
 .fb-string-label {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  background: #0b0f14;
+  display: grid;
+  place-items: center;
+  color: #c9d1d9;
+  font-size: 12px;
+  font-weight: 700;
 }
+.fb-scroll {
+  flex: 1 1 auto;
+  min-width: 0; /* 没有这行，flex 子项不会收缩，整页会横向溢出 */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.fb-board { position: relative; }
+.fb-bg { position: absolute; inset: 0; display: block; }
+.fb-grid { position: absolute; inset: 0; display: grid; }
+.fb-fret-num { fill: var(--muted); font-size: 11px; text-anchor: middle; dominant-baseline: middle; }
+.fb-string { stroke: #8b949e; stroke-linecap: round; }
+.fb-wire { stroke: #3d444d; stroke-width: 1.5; }
+.fb-nut { stroke: #6b7280; stroke-width: 6; }
+.fb-inlay { fill: #30363d; }
+
 .fb-cell {
-  min-height: 40px;
+  display: grid;
+  place-items: center;
   min-width: 40px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
   background: transparent;
   color: var(--text);
+  font: inherit;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
 }
 .fb-cell:disabled { cursor: default; }
-.fb-cell.off { background: transparent; border-color: transparent; }
-.fb-cell.given { background: #21262d; border-color: #3d444d; color: #c9d1d9; }
-.fb-cell.target { border: 1px dashed #4b5563; color: var(--muted); }
-.fb-cell.target:hover { border-color: var(--accent); color: var(--accent); }
-.fb-cell.filled { background: rgba(88, 166, 255, 0.12); border-color: rgba(88, 166, 255, 0.5); }
-.fb-cell.root { background: rgba(232, 176, 75, 0.2); border-color: rgba(232, 176, 75, 0.6); color: var(--accent); }
-.fb-cell.scale { background: rgba(88, 166, 255, 0.1); border-color: rgba(88, 166, 255, 0.25); color: #9ecbff; }
-.fb-cell.ok { background: rgba(63, 185, 80, 0.18); border-color: rgba(63, 185, 80, 0.6); color: #7ee787; }
-.fb-cell.spell { background: rgba(210, 153, 34, 0.18); border-color: rgba(210, 153, 34, 0.6); color: #e3b341; }
-.fb-cell.bad { background: rgba(248, 81, 73, 0.18); border-color: rgba(248, 81, 73, 0.6); color: #ff7b72; }
-.fb-cell.empty { border-color: rgba(248, 81, 73, 0.5); border-style: dashed; }
+.fb-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.05;
+  background: transparent;
+  color: var(--text);
+}
+.fb-main { font-size: 12px; font-weight: 700; }
+.fb-sub { font-size: 9px; font-weight: 600; opacity: 0.75; }
+.fb-cell.off .fb-dot { visibility: hidden; }
+.fb-cell.given .fb-dot { background: #21262d; border-color: #3d444d; color: #c9d1d9; }
+.fb-cell.target .fb-dot { border: 1px dashed #4b5563; color: var(--muted); }
+.fb-cell.target:hover .fb-dot { border-color: var(--accent); color: var(--accent); }
+.fb-cell.filled .fb-dot { background: rgba(88, 166, 255, 0.15); border-color: rgba(88, 166, 255, 0.55); color: #9ecbff; }
+.fb-cell.root .fb-dot { background: var(--accent); border-color: var(--accent); color: #1a1205; }
+.fb-cell.scale .fb-dot { background: rgba(88, 166, 255, 0.16); border-color: rgba(88, 166, 255, 0.45); color: #9ecbff; }
+.fb-cell.ok .fb-dot { background: rgba(63, 185, 80, 0.2); border-color: var(--green); color: #7ee787; }
+.fb-cell.spell .fb-dot { background: rgba(210, 153, 34, 0.2); border-color: var(--orange); color: #e3b341; }
+.fb-cell.bad .fb-dot { background: rgba(248, 81, 73, 0.2); border-color: var(--red); color: #ff7b72; }
+.fb-cell.empty .fb-dot { border: 1px dashed rgba(248, 81, 73, 0.6); color: #ff7b72; }
+.fb-cell:focus-visible { outline: none; }
+.fb-cell:focus-visible .fb-dot { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* chords */
 .chord-layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; margin-top: 14px; }
@@ -247,6 +282,13 @@ button, select, input { font: inherit; color: inherit; }
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; min-height: 44px; }
 /* 勾选框本身小，但整行是 <label>，点文字也能切换；这里把可视尺寸也放大一点 */
 .settings-row input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--accent); cursor: pointer; }
+.settings-labels { align-items: flex-start; }
+.settings-controls { display: flex; flex-wrap: wrap; gap: 12px; }
+.settings-controls label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.settings-controls select {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 10px; color: var(--text); min-height: 40px;
+}
 
 /* mode switch：主线 / 今日挑战 */
 .mode-switch { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -313,9 +355,8 @@ button, select, input { font: inherit; color: inherit; }
   .app { padding: 12px 10px 6px; }
   .chord-layout { grid-template-columns: 1fr; }
   .clock { font-size: 24px; }
-  /* 点按目标 ≥ 40px：不压缩格子，让指板内部横向滚动（见 ux.md §8） */
-  .fb-cell { font-size: 13px; }
-  .fretboard { padding: 8px; -webkit-overflow-scrolling: touch; }
+  /* 点按目标 ≥ 40px：格子由网格尺寸保证（54×40），不压缩 */
+  .fretboard { border-radius: 10px; }
   .stars-lg { font-size: 22px; }
   .toolbar select { max-width: 100%; }
   .toolbar { gap: 10px; }

@@ -10,11 +10,14 @@ import {
   scalePcs,
 } from "@guitar/core";
 import Fretboard from "../components/Fretboard";
+import LabelControls from "../components/LabelControls";
+import { cellLabel } from "../lib/labels";
+import { loadSettings, saveSettings, type Settings } from "../lib/storage";
 
 export default function Scales() {
   const [keyId, setKeyId] = useState("C");
   const [scaleId, setScaleId] = useState("major");
-  const [showNames, setShowNames] = useState(true);
+  const [settings, setSettings] = useState<Settings>(() => loadSettings());
 
   const key = KEY_BY_ID.get(keyId)!;
   const scale = SCALE_BY_ID.get(scaleId)!;
@@ -27,13 +30,18 @@ export default function Scales() {
     return { byPc: map, rootName: names[0] };
   }, [keyId, scaleId]);
 
-  const isScale = (s: number, f: number) => byPc.has(pitchClassAt(STANDARD_TUNING, s, f));
+  function updateSettings(next: Settings) {
+    setSettings(next);
+    saveSettings(next);
+  }
+
+  const nameAt = (s: number, f: number) => byPc.get(pitchClassAt(STANDARD_TUNING, s, f));
 
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>音阶指板</h2>
-        <p>标准调弦，0–12 品。红色是主音，蓝色是音阶音。</p>
+        <p>标准调弦，0–12 品。金色是主音，蓝色是音阶音。</p>
       </div>
 
       <div className="toolbar">
@@ -53,10 +61,7 @@ export default function Scales() {
             ))}
           </select>
         </label>
-        <label className="check">
-          <input type="checkbox" checked={showNames} onChange={(e) => setShowNames(e.target.checked)} />
-          显示音名
-        </label>
+        <LabelControls settings={settings} onChange={updateSettings} />
       </div>
 
       <div className="legend">
@@ -69,14 +74,19 @@ export default function Scales() {
         fretMin={0}
         fretMax={12}
         renderCell={(s, f) => {
-          const pc = pitchClassAt(STANDARD_TUNING, s, f);
-          if (!byPc.has(pc)) return "";
-          return showNames ? byPc.get(pc) : "";
+          const name = nameAt(s, f);
+          if (!name) return "";
+          return cellLabel(name, pitchClassAt(STANDARD_TUNING, s, f), key.tonicPc, settings).main;
+        }}
+        renderCellSub={(s, f) => {
+          const name = nameAt(s, f);
+          if (!name) return null;
+          return cellLabel(name, pitchClassAt(STANDARD_TUNING, s, f), key.tonicPc, settings).sub;
         }}
         cellClass={(s, f) => {
-          const pc = pitchClassAt(STANDARD_TUNING, s, f);
-          if (!byPc.has(pc)) return "off";
-          return pc === key.tonicPc ? "root" : "scale";
+          const name = nameAt(s, f);
+          if (!name) return "off";
+          return pitchClassAt(STANDARD_TUNING, s, f) === key.tonicPc ? "root" : "scale";
         }}
       />
     </section>

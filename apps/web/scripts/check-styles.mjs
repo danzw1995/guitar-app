@@ -84,7 +84,7 @@ function expect(label, ok, detail) {
 }
 
 // 1. 点按目标 ≥ 40px（窄屏也不能被媒体查询压小）
-for (const selector of [".fb-cell", ".btn", ".tab", ".toolbar select", ".note-btn", ".settings-row", ".mode-switch .chip"]) {
+for (const selector of [".fb-cell", ".btn", ".tab", ".toolbar select", ".note-btn", ".settings-row", ".mode-switch .chip", ".settings-controls select"]) {
   const decls = narrowDecls(selector);
   const minHeight = px(decls.get("min-height"));
   expect(
@@ -105,17 +105,35 @@ for (const selector of [".fb-cell", ".btn", ".tab", ".toolbar select", ".note-bt
   );
 }
 
-// 3. 横向滚动时弦名列固定
-for (const selector of [".fb-string-label", ".fb-corner"]) {
-  const decls = narrowDecls(selector);
+// 3. 音点是圆形、尺寸足够看清（30px 直径，里面可能放两行字）
+{
+  const dot = narrowDecls(".fb-dot");
+  const w = px(dot.get("width"));
+  const h = px(dot.get("height"));
   expect(
-    `${selector} 固定在左侧（sticky）`,
-    decls.get("position") === "sticky" && /^0(px)?$/.test(decls.get("left") ?? ""),
-    `position = ${decls.get("position") ?? "未设置"}, left = ${decls.get("left") ?? "未设置"}`,
+    ".fb-dot 是 30px 左右的圆形音点",
+    w !== null && w >= 26 && h !== null && h >= 26 && dot.get("border-radius") === "50%",
+    `width = ${dot.get("width")}, height = ${dot.get("height")}, border-radius = ${dot.get("border-radius")}`,
   );
 }
 
-// 4. iOS Safari：表单控件字号 ≥ 16px，否则聚焦会放大页面
+// 4. 弦名列在滚动容器外面（结构性，不靠 sticky）：.fb-labels 不参与横向滚动
+{
+  const labels = narrowDecls(".fb-labels");
+  const scroll = narrowDecls(".fb-scroll");
+  expect(
+    ".fb-labels 固定宽度且不收缩",
+    labels.get("flex") === "0 0 auto" && px(labels.get("width")) !== null,
+    `flex = ${labels.get("flex")}, width = ${labels.get("width")}`,
+  );
+  expect(
+    ".fb-scroll 才是横向滚动容器",
+    scroll.get("overflow-x") === "auto",
+    `overflow-x = ${scroll.get("overflow-x")}`,
+  );
+}
+
+// 5. iOS Safari：表单控件字号 ≥ 16px，否则聚焦会放大页面
 for (const selector of ["select", "input", "textarea"]) {
   const decls = narrowDecls(selector);
   const size = px(decls.get("font-size"));

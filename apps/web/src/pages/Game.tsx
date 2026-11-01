@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   NOTE_NAMES,
+  KEY_BY_ID,
   SCALE_BY_ID,
   STANDARD_TUNING,
   applyAttempt,
@@ -39,6 +40,8 @@ import {
 } from "../lib/storage";
 import Fretboard from "../components/Fretboard";
 import Stars, { starText } from "../components/Stars";
+import LabelControls from "../components/LabelControls";
+import { cellLabel } from "../lib/labels";
 import { fmt } from "../lib/format";
 
 function scaleName(scaleId: string): string {
@@ -128,6 +131,8 @@ export default function Game() {
     mode === "daily"
       ? parMsFor({ targetCount: puzzle.target.length, difficulty: puzzle.difficulty })
       : parMsOf(level);
+  /** 首调唱名要按当前调的主音算。 */
+  const tonicPc = KEY_BY_ID.get(level.keyId)?.tonicPc ?? 0;
   const record = mode === "daily" ? daily[todayKey] : progress[level.id];
   const streak = useMemo(() => streakOf(Object.keys(daily), todayKey), [daily, todayKey]);
 
@@ -305,9 +310,12 @@ export default function Game() {
   }
 
   function toggleStrict(next: boolean) {
-    const s = { ...settings, strictSpelling: next };
-    setSettings(s);
-    saveSettings(s);
+    updateSettings({ ...settings, strictSpelling: next });
+  }
+
+  function updateSettings(next: Settings) {
+    setSettings(next);
+    saveSettings(next);
   }
 
   function wipeProgress() {
@@ -443,6 +451,12 @@ export default function Game() {
               onChange={(e) => toggleStrict(e.target.checked)}
             />
           </label>
+          <div className="settings-row settings-labels">
+            <span>指板显示</span>
+            <div className="settings-controls">
+              <LabelControls settings={settings} onChange={updateSettings} />
+            </div>
+          </div>
           <div className="settings-row">
             <span className="muted">重置会清空星级和最快成绩（只影响本机）。</span>
             <button className="btn ghost" onClick={wipeProgress}>
@@ -461,10 +475,19 @@ export default function Game() {
         fretMax={puzzle.fretMax}
         renderCell={(s, f) => {
           const k = `${s}:${f}`;
-          if (givenKeys.has(k)) return expected.get(pitchClassAt(STANDARD_TUNING, s, f)) ?? "";
+          if (givenKeys.has(k)) {
+            const pc = pitchClassAt(STANDARD_TUNING, s, f);
+            return cellLabel(expected.get(pc) ?? "", pc, tonicPc, settings).main;
+          }
           if (answers[k]) return answers[k];
           if (targetKeys.has(k)) return "?";
           return "";
+        }}
+        renderCellSub={(s, f) => {
+          const k = `${s}:${f}`;
+          if (!givenKeys.has(k)) return null;
+          const pc = pitchClassAt(STANDARD_TUNING, s, f);
+          return cellLabel(expected.get(pc) ?? "", pc, tonicPc, settings).sub;
         }}
         cellClass={(s, f) => {
           const k = `${s}:${f}`;

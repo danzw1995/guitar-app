@@ -3,6 +3,8 @@ import {
   parseProgress,
   type LevelProgress,
   type ProgressMap,
+  type SolfegeStyle,
+  type SolfegeSystem,
 } from "@guitar/core";
 import { LEVELS, parMsOf } from "./levels";
 
@@ -15,12 +17,23 @@ const LEGACY_BEST_PREFIX = "guitar.best.";
 
 export type DailyMap = Record<string, LevelProgress>;
 
+/** 指板上显示什么：音名 / 唱名 / 两者。 */
+export type LabelMode = "name" | "solfege" | "both";
+
 export interface Settings {
   /** 严格拼写：拼错算错，拿不到 2 星以上。 */
   strictSpelling: boolean;
+  labels: LabelMode;
+  solfegeSystem: SolfegeSystem;
+  solfegeStyle: SolfegeStyle;
 }
 
-export const DEFAULT_SETTINGS: Settings = { strictSpelling: false };
+export const DEFAULT_SETTINGS: Settings = {
+  strictSpelling: false,
+  labels: "name",
+  solfegeSystem: "movable",
+  solfegeStyle: "number",
+};
 
 function readJson(key: string): unknown {
   try {
@@ -102,9 +115,20 @@ export function loadSettings(): Settings {
   const raw = readJson(SETTINGS_KEY);
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ...DEFAULT_SETTINGS };
   const v = raw as Record<string, unknown>;
-  return { strictSpelling: v.strictSpelling === true };
+
+  const labels: LabelMode =
+    v.labels === "solfege" || v.labels === "both" ? v.labels : "name";
+  const solfegeSystem: SolfegeSystem = v.solfegeSystem === "fixed" ? "fixed" : "movable";
+  const solfegeStyle: SolfegeStyle = v.solfegeStyle === "syllable" ? "syllable" : "number";
+
+  return { strictSpelling: v.strictSpelling === true, labels, solfegeSystem, solfegeStyle };
 }
 
 export function saveSettings(settings: Settings): void {
-  writeJson(SETTINGS_KEY, { strictSpelling: settings.strictSpelling });
+  writeJson(SETTINGS_KEY, {
+    strictSpelling: settings.strictSpelling,
+    labels: settings.labels,
+    solfegeSystem: settings.solfegeSystem,
+    solfegeStyle: settings.solfegeStyle,
+  });
 }
