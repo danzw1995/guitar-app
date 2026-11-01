@@ -7,10 +7,12 @@ import {
   SCALES,
   SCALE_BY_ID,
   STANDARD_TUNING,
+  cellKey,
   chordInfo,
   dateKeyOf,
   dailyPuzzle,
   dailySpecFor,
+  expectedNameMap,
   fingeringOf,
   pitchClassAt,
   scaleNames,
@@ -18,12 +20,10 @@ import {
 } from "../../../packages/core/dist/index.js";
 
 /**
- * Guitar Lab 的对话侧面板：和弦指法图 / 音阶指板 / 今日一题。
+ * Guitar Lab 的对话侧整页面板：和弦指法图 / 音阶指板 / 今日一题。
  *
- * 挂在 conversation.view —— 和 Chat / Trajectory 并列的整页标签（list 槽，可多注册）。
- * 不要挂 conversation.header：那是 single 槽，宿主自己占了，注册会直接抛
- * "single slot already has a registration"。
- * 也不要挂 conversation.composer.dock：那是输入框内放 token 统计的一行，塞不下指板。
+ * 挂在 conversation.view（list 槽，和 Chat / Trajectory 并列）。
+ * 不要挂 conversation.header —— 那是 single 槽，宿主自己占了，注册直接抛错。
  */
 
 const SLOT = "conversation.view";
@@ -34,49 +34,33 @@ const TONE = "#3b82f6";
 const INK = "#0d1117";
 
 /* ---------- 几何：一个 SVG 单位 = 1，靠 viewBox 缩放 ---------- */
-const LABEL_W = 24;
 const FRET_W = 38;
 const STRING_H = 22;
 const PAD_TOP = 12;
-const PAD_BOT = 10;
+const AXIS_H = 18;
 const STRINGS = 6;
+const SCALE_GUTTER = 30;
+const CHORD_GUTTER = 48;
 
-function geometry(fretMin, fretMax) {
+/**
+ * @param fretMin 最左一品的编号
+ * @param fretMax 最右一品
+ * @param gutter  左侧留给弦名（+和弦的 ○/× 标记）的宽度
+ */
+function geometry(fretMin, fretMax, gutter = SCALE_GUTTER) {
   const frets = fretMax - fretMin + 1;
   return {
-    w: LABEL_W + frets * FRET_W,
-    h: PAD_TOP + (STRINGS - 1) * STRING_H + PAD_BOT,
-    // 第 f 品的左边界
-    edge: (f) => LABEL_W + (f - fretMin) * FRET_W,
-    // 第 f 品的中心
-    center: (f) => LABEL_W + (f - fretMin + 0.5) * FRET_W,
-    // 第 s 根弦的中心线（s = 0 是 1 弦，最上面）
+    gutter,
+    w: gutter + frets * FRET_W,
+    h: PAD_TOP + (STRINGS - 1) * STRING_H + 12 + AXIS_H,
+    edge: (f) => gutter + (f - fretMin) * FRET_W,
+    center: (f) => gutter + (f - fretMin + 0.5) * FRET_W,
     line: (s) => PAD_TOP + s * STRING_H,
+    axis: PAD_TOP + (STRINGS - 1) * STRING_H + 12 + 13,
   };
 }
 
-function StringLabels({ g }) {
-  return h(
-    "g",
-    null,
-    ["E", "B", "G", "D", "A", "E"].map((name, s) =>
-      h(
-        "text",
-        {
-          key: s,
-          x: LABEL_W - 10,
-          y: g.line(s) + 3.5,
-          textAnchor: "end",
-          fontSize: 10,
-          fill: "currentColor",
-          opacity: 0.55,
-        },
-        name,
-      ),
-    ),
-  );
-}
-
+/** 弦名 + 琴格 + 品位数字。 */
 function Board({ g, fretMin, fretMax }) {
   const frets = [];
   for (let f = fretMin; f <= fretMax; f++) {
@@ -89,11 +73,10 @@ function Board({ g, fretMin, fretMax }) {
         y2: g.line(STRINGS - 1) + 6,
         stroke: "currentColor",
         strokeWidth: f === fretMin ? 3 : 0.8,
-        opacity: f === fretMin ? 0.75 : 0.35,
+        opacity: f === fretMin ? 0.7 : 0.3,
       }),
     );
   }
-  // 右边界
   frets.push(
     h("line", {
       key: "fEnd",
@@ -103,10 +86,12 @@ function Board({ g, fretMin, fretMax }) {
       y2: g.line(STRINGS - 1) + 6,
       stroke: "currentColor",
       strokeWidth: 0.8,
-      opacity: 0.35,
+      opacity: 0.3,
     }),
   );
+
   const inlays = [3, 5, 7, 9, 12].filter((f) => f >= fretMin && f <= fretMax);
+
   return h(
     "g",
     null,
@@ -117,52 +102,96 @@ function Board({ g, fretMin, fretMax }) {
         cy: (g.line(0) + g.line(STRINGS - 1)) / 2,
         r: 4.5,
         fill: "currentColor",
-        opacity: 0.1,
+        opacity: 0.08,
       }),
     ),
     frets,
     Array.from({ length: STRINGS }, (_, s) =>
       h("line", {
         key: `s${s}`,
-        x1: LABEL_W - 6,
+        x1: g.gutter - 6,
         y1: g.line(s),
         x2: g.edge(fretMax + 1),
         y2: g.line(s),
         stroke: "currentColor",
         strokeWidth: s === STRINGS - 1 ? 1.7 : 0.9,
-        opacity: 0.5,
+        opacity: 0.45,
       }),
     ),
-    h(StringLabels, { g }),
+    // 弦名靠最左
+    ["E", "B", "G", "D", "A", "E"].map((name, s) =>
+      h(
+        "text",
+        {
+          key: `n${s}`,
+          x: 4,
+          y: g.line(s) + 3.2,
+          textAnchor: "start",
+          fontSize: 9,
+          fill: "currentColor",
+          opacity: 0.5,
+        },
+        name,
+      ),
+    ),
+    // 品位数字
+    Array.from({ length: fretMax - fretMin + 1 }, (_, i) => {
+      const f = fretMin + i;
+      return h(
+        "text",
+        {
+          key: `a${f}`,
+          x: g.center(f),
+          y: g.axis,
+          textAnchor: "middle",
+          fontSize: 8.5,
+          fill: "currentColor",
+          opacity: 0.4,
+        },
+        String(f),
+      );
+    }),
   );
 }
 
 function Dot({ cx, cy, label, kind, r }) {
+  if (kind === "ghost") {
+    return h(
+      "g",
+      null,
+      h("circle", { cx, cy, r, fill: "none", stroke: "currentColor", strokeWidth: 1, opacity: 0.45 }),
+      h(
+        "text",
+        { x: cx, y: cy + 3.2, textAnchor: "middle", fontSize: 8.5, fill: "currentColor", opacity: 0.75 },
+        label,
+      ),
+    );
+  }
   const fill = kind === "root" ? ROOT : kind === "tone" ? TONE : "currentColor";
+  const isPending = kind === "idle";
   return h(
     "g",
     null,
-    h("circle", { cx, cy, r, fill, opacity: kind === "idle" ? 0.25 : 1 }),
-    label
-      ? h(
-          "text",
-          {
-            x: cx,
-            y: cy + 3.4,
-            textAnchor: "middle",
-            fontSize: label.length > 2 ? 7.5 : 9,
-            fontWeight: 600,
-            fill: kind === "idle" ? "currentColor" : INK,
-          },
-          label,
-        )
-      : null,
+    h("circle", { cx, cy, r, fill, opacity: isPending ? 0.14 : 1 }),
+    h(
+      "text",
+      {
+        x: cx,
+        y: cy + 3.2,
+        textAnchor: "middle",
+        fontSize: label && label.length > 2 ? 7 : 8.5,
+        fontWeight: 600,
+        fill: isPending ? "currentColor" : INK,
+        opacity: isPending ? 0.6 : 1,
+      },
+      label,
+    ),
   );
 }
 
-/** 和弦指法图：0–5 品，空弦画空心圈、闷弦画 ×。 */
+/** 和弦指法图：1–5 品；空弦 ○、闷弦 ×，各占左侧独立一栏，不和弦名挤。 */
 function ChordBoard({ shape }) {
-  const g = geometry(1, 5);
+  const g = geometry(1, 5, CHORD_GUTTER);
   const info = useMemo(() => chordInfo(shape), [shape]);
   const toneByPc = useMemo(() => {
     const map = new Map();
@@ -174,17 +203,18 @@ function ChordBoard({ shape }) {
   for (let s = 0; s < STRINGS; s++) {
     const fret = shape.frets[STRINGS - 1 - s];
     const y = g.line(s);
+    const markX = g.gutter - 14;
     if (fret < 0) {
       marks.push(
         h(
           "text",
-          { key: `x${s}`, x: LABEL_W - 8, y: y + 3.5, textAnchor: "middle", fontSize: 10, fill: "currentColor", opacity: 0.45 },
+          { key: `x${s}`, x: markX, y: y + 3.4, textAnchor: "middle", fontSize: 9.5, fill: "currentColor", opacity: 0.4 },
           "×",
         ),
       );
     } else if (fret === 0) {
       marks.push(
-        h("circle", { key: `o${s}`, cx: LABEL_W - 8, cy: y, r: 3.4, fill: "none", stroke: "currentColor", strokeWidth: 1, opacity: 0.55 }),
+        h("circle", { key: `o${s}`, cx: markX, cy: y, r: 3.2, fill: "none", stroke: "currentColor", strokeWidth: 1, opacity: 0.5 }),
       );
     } else if (fret >= 1 && fret <= 5) {
       const pc = pitchClassAt(STANDARD_TUNING, s, fret);
@@ -207,19 +237,15 @@ function ChordBoard({ shape }) {
     { className: "gl-board gl-chord-max" },
     h(
       "svg",
-      {
-        viewBox: `0 0 ${g.w} ${g.h}`,
-        role: "img",
-        "aria-label": `${shape.name} ${info.quality.name} ${fingeringOf(shape)}`,
-      },
+      { viewBox: `0 0 ${g.w} ${g.h}`, role: "img", "aria-label": `${shape.name} ${info.quality.name}` },
       h(Board, { g, fretMin: 1, fretMax: 5 }),
       marks,
     ),
   );
 }
 
-/** 音阶指板：1–12 品，主音金色、其余音阶音蓝色、调外音不画。 */
-function ScaleBoard({ keyId, scaleId }) {
+/** 音阶指板：主音金色、其余音阶音蓝色，圆点里是音名；调外音不画。 */
+function ScaleBoard({ keyId, scaleId, fretMin = 1, fretMax = 12 }) {
   const data = useMemo(() => {
     const key = KEY_BY_ID.get(keyId);
     const scale = SCALE_BY_ID.get(scaleId);
@@ -231,12 +257,12 @@ function ScaleBoard({ keyId, scaleId }) {
     return { key, scale, nameByPc };
   }, [keyId, scaleId]);
 
-  const g = geometry(1, 12);
+  const g = geometry(fretMin, fretMax);
   if (!data) return null;
 
   const dots = [];
   for (let s = 0; s < STRINGS; s++) {
-    for (let f = 1; f <= 12; f++) {
+    for (let f = fretMin; f <= fretMax; f++) {
       const pc = pitchClassAt(STANDARD_TUNING, s, f);
       const name = data.nameByPc.get(pc);
       if (!name) continue;
@@ -259,8 +285,80 @@ function ScaleBoard({ keyId, scaleId }) {
     h(
       "svg",
       { viewBox: `0 0 ${g.w} ${g.h}`, role: "img", "aria-label": `${keyId} ${data.scale.name}` },
-      h(Board, { g, fretMin: 1, fretMax: 12 }),
+      h(Board, { g, fretMin, fretMax }),
       dots,
+    ),
+  );
+}
+
+/**
+ * 今日一题：按当天的 spec 出题（品域、给定格都来自 `dailyPuzzle`）。
+ * 给定格直接显示音名，其余格是 `?`；点空格单独看答案，或一次显示全部。
+ */
+function TodayBoard({ spec, t }) {
+  const puzzle = useMemo(() => dailyPuzzle(spec), [spec]);
+  const expected = useMemo(() => expectedNameMap(puzzle), [puzzle]);
+  const givenKeys = useMemo(() => new Set(puzzle.givens.map(cellKey)), [puzzle]);
+  const targetKeys = useMemo(() => new Set(puzzle.target.map(cellKey)), [puzzle]);
+
+  const [revealAll, setRevealAll] = useState(false);
+  const [shown, setShown] = useState(() => new Set());
+  const tonicPc = KEY_BY_ID.get(spec.keyId)?.tonicPc ?? 0;
+
+  const g = geometry(spec.fretMin, spec.fretMax);
+  const dots = [];
+  for (let s = 0; s < STRINGS; s++) {
+    for (let f = spec.fretMin; f <= spec.fretMax; f++) {
+      const k = `${s}:${f}`;
+      const pc = pitchClassAt(STANDARD_TUNING, s, f);
+      const name = expected.get(pc);
+      if (!name) continue;
+      const given = givenKeys.has(k);
+      const target = targetKeys.has(k);
+      if (!given && !target) continue;
+      const opened = given || revealAll || shown.has(k);
+      dots.push(
+        h(
+          "g",
+          {
+            key: k,
+            onClick: given ? undefined : () => setShown((prev) => {
+              const next = new Set(prev);
+              if (next.has(k)) next.delete(k);
+              else next.add(k);
+              return next;
+            }),
+            style: given ? undefined : { cursor: "pointer" },
+          },
+          h(Dot, {
+            cx: g.center(f),
+            cy: g.line(s),
+            label: opened ? name : "?",
+            kind: given ? (pc === tonicPc ? "root" : "tone") : opened ? "ghost" : "idle",
+            r: 7.5,
+          }),
+        ),
+      );
+    }
+  }
+
+  return h(
+    "div",
+    { className: "gl-stack" },
+    h(
+      "div",
+      { className: "gl-board" },
+      h("svg", { viewBox: `0 0 ${g.w} ${g.h}`, role: "img", "aria-label": `${spec.keyId} ${spec.dateKey}` }, h(Board, { g, fretMin: spec.fretMin, fretMax: spec.fretMax }), dots),
+    ),
+    h(
+      "div",
+      { className: "gl-meta" },
+      h(
+        "button",
+        { type: "button", className: "gl-btn", onClick: () => setRevealAll((v) => !v) },
+        revealAll ? t("hideAnswers", "隐藏答案") : t("showAnswers", "显示答案"),
+      ),
+      h("span", null, t("tapHint", "点「?」可单独看这一格")),
     ),
   );
 }
@@ -274,7 +372,7 @@ const CSS = `
   color: var(--dsw-alias-label-primary, inherit);
   font: var(--dsw-font-xs-13, 13px/20px var(--dsw-font-family, inherit));
 }
-.gl-inner { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.gl-inner { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 .gl-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .gl-heading { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .gl-title { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; }
@@ -304,6 +402,13 @@ const CSS = `
   border: 1px solid var(--dsw-alias-border-l2, rgba(127, 127, 127, 0.3));
   border-radius: 8px; padding: 3px 8px; min-height: 26px;
 }
+.gl-btn {
+  font: inherit; color: inherit; cursor: pointer;
+  background: var(--dsw-alias-bg-layer-1, transparent);
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 127, 127, 0.3));
+  border-radius: 8px; padding: 3px 12px; min-height: 26px;
+}
+.gl-btn:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, 0.12)); }
 .gl-card {
   border: 1px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.16));
   border-radius: 12px;
@@ -311,9 +416,10 @@ const CSS = `
   padding: 16px;
   display: flex; flex-direction: column; gap: 12px;
 }
+.gl-stack { display: flex; flex-direction: column; gap: 10px; }
 .gl-board { width: 100%; max-width: 760px; }
 .gl-board svg { display: block; width: 100%; height: auto; }
-.gl-chord-max { max-width: 340px; }
+.gl-chord-max { max-width: 320px; }
 .gl-meta {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   color: var(--dsw-alias-label-secondary, inherit); font-size: 12px; line-height: 18px;
@@ -360,6 +466,9 @@ function Panel({ t, initialTab = "chord" }) {
   const spec = useMemo(() => dailySpecFor(dateKeyOf(new Date())), []);
   const today = useMemo(() => dailyPuzzle(spec), [spec]);
 
+  const keyName = (id) => KEY_BY_ID.get(id)?.name ?? id;
+  const scaleName = (id) => SCALE_BY_ID.get(id)?.name ?? id;
+
   return h(
     "div",
     { className: "gl-page", "data-guitar-lab": true },
@@ -374,7 +483,13 @@ function Panel({ t, initialTab = "chord" }) {
           "div",
           { className: "gl-heading" },
           h("h2", { className: "gl-title" }, "Guitar Lab"),
-          h("span", { className: "gl-sub" }, t("subtitle", "标准调弦 · 音名")),
+          h(
+            "span",
+            { className: "gl-sub" },
+            tab === "today"
+              ? `${keyName(spec.keyId)} · ${scaleName(spec.scaleId)} · ${spec.fretMin}–${spec.fretMax} 品`
+              : t("subtitle", "标准调弦 · 音名"),
+          ),
         ),
         h(
           "div",
@@ -392,7 +507,7 @@ function Panel({ t, initialTab = "chord" }) {
                 h(
                   "select",
                   { key: "k", className: "gl-select", value: keyId, onChange: (e) => setKeyId(e.target.value), "aria-label": t("key", "调") },
-                  KEYS.map((k) => h("option", { key: k.id, value: k.id }, k.id)),
+                  KEYS.map((k) => h("option", { key: k.id, value: k.id }, k.name ?? k.id)),
                 ),
                 h(
                   "select",
@@ -408,7 +523,7 @@ function Panel({ t, initialTab = "chord" }) {
         { className: "gl-card" },
         tab === "chord" && shape ? h(ChordBoard, { shape }) : null,
         tab === "scale" ? h(ScaleBoard, { keyId, scaleId }) : null,
-        tab === "today" ? h(ScaleBoard, { keyId: spec.keyId, scaleId: spec.scaleId }) : null,
+        tab === "today" ? h(TodayBoard, { spec, t }) : null,
       ),
       tab === "chord" && shape && info
         ? h(
@@ -441,10 +556,8 @@ function Panel({ t, initialTab = "chord" }) {
         ? h(
             "div",
             { className: "gl-meta" },
-            h("span", null, spec.dateKey),
-            h("span", null, spec.keyId),
-            h("span", null, `${spec.fretMin}–${spec.fretMax} 品`),
-            h("span", null, `${t("toFill", "要填")} ${today.target.length - today.givens.length} 格`),
+            h("span", null, `${keyName(spec.keyId)} · ${scaleName(spec.scaleId)}`),
+            h("span", null, `${t("toFill", "要填")} ${today.target.length - today.givens.length} / ${today.target.length} 格`),
           )
         : null,
     ),
@@ -465,7 +578,7 @@ function makeT(ctx) {
 
 export const inject = ["slots"];
 
-/** 也导出给无浏览器测试用（`initialTab` 可以指定渲染哪一页）。 */
+/** 也导出给无浏览器测试用（`initialTab` 指定渲染哪一页）。 */
 export { Panel };
 
 export function apply(ctx) {

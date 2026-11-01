@@ -12,9 +12,11 @@
   rollup 打包成 `window.__ModuleLoader__` 工厂。样式用宿主真实 token，文案走 `ctx.locale.t`。
 
 ### Fixed
-- DSH 插件面板把 `<style>` 元素弄丢了：CSS 常量被 tree-shake，面板是裸的（只有 class 名没有样式）。
-  同时改用宿主的真实 token（`--dsw-alias-label-primary` / `--dsw-alias-border-l1` / `--dsw-font-xs-13`），
-  测试里加了「必须注入 `<style>` 且含 token」的断言。
+- 插件面板丢了 `<style>` 元素：CSS 常量被 tree-shake，整页没有样式；现已恢复，并改用宿主真实 token
+  （`--dsw-alias-label-primary` / `--dsw-alias-border-l1` / `--dsw-font-xs-13`），测试断言必须有 `<style>` 且含 token。
+- 插件指板的三个可见问题：左侧弦名与 `○`/`×` 标记重叠（现在分成 弦名 / 标记 / 琴枕 三栏）、
+  没有品位数字（底部补 1–12）、以及今日页只画了一张"看起来像 C 大调"的完整音阶
+  （A 自然小调与 C 大调音高集合相同）——现在按当天 spec 出题，带 `?`、可点开单格答案、可一键显示全部。
 - 插件挂错插槽两次：`conversation.composer.dock` 是输入框里的统计行（挤），
   `conversation.header` 是 single 槽（已被占用、注册即报错），最终落在 `conversation.view`（整页标签）。
 
