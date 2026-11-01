@@ -204,7 +204,7 @@ function ChordBoard({ shape }) {
 
   return h(
     "div",
-    { className: "gl-board" },
+    { className: "gl-board gl-chord-max" },
     h(
       "svg",
       {
@@ -269,41 +269,58 @@ function ScaleBoard({ keyId, scaleId }) {
 
 const CSS = `
 .gl-page {
-  box-sizing: border-box; width: 100%; height: 100%;
-  overflow: auto; padding: 18px 22px 24px;
+  box-sizing: border-box; width: 100%; height: 100%; overflow: auto;
+  padding: 24px;
+  color: var(--dsw-alias-label-primary, inherit);
+  font: var(--dsw-font-xs-13, 13px/20px var(--dsw-font-family, inherit));
+}
+.gl-inner { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.gl-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.gl-heading { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.gl-title { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; }
+.gl-sub { color: var(--dsw-alias-label-tertiary, rgba(127, 127, 127, 0.8)); font-size: 12px; line-height: 18px; }
+.gl-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gl-tabs {
+  display: flex; align-items: center; gap: 2px; padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.16));
+  border-radius: 999px;
+}
+.gl-tab {
+  appearance: none; border: 1px solid transparent; background: transparent;
+  color: var(--dsw-alias-label-secondary, inherit);
+  font: inherit; padding: 3px 12px; border-radius: 999px; cursor: pointer;
+  min-height: 26px;
+}
+.gl-tab:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, 0.12)); }
+.gl-tab[aria-selected='true'] {
+  color: var(--dsw-alias-label-primary, inherit);
+  font-weight: 600;
+  background: var(--dsw-alias-bg-layer-2, rgba(127, 127, 127, 0.14));
+  border-color: var(--dsw-alias-border-l2, rgba(127, 127, 127, 0.3));
+}
+.gl-select {
   font: inherit; color: inherit;
+  background: var(--dsw-alias-bg-layer-1, transparent);
+  border: 1px solid var(--dsw-alias-border-l2, rgba(127, 127, 127, 0.3));
+  border-radius: 8px; padding: 3px 8px; min-height: 26px;
+}
+.gl-card {
+  border: 1px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.16));
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1, transparent);
+  padding: 16px;
   display: flex; flex-direction: column; gap: 12px;
 }
-.gl-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.gl-title { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
-.gl-sub { font-size: 12px; opacity: 0.55; }
-.gl-tabs { display: flex; gap: 2px; }
-.gl-tab {
-  appearance: none; border: 1px solid transparent; background: transparent; color: inherit;
-  font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 999px;
-  cursor: pointer; opacity: 0.6; min-height: 30px;
-}
-.gl-tab:hover { opacity: 0.9; background: rgba(127, 127, 127, 0.12); }
-.gl-tab[aria-selected='true'] {
-  opacity: 1; font-weight: 600;
-  border-color: rgba(127, 127, 127, 0.35);
-  background: rgba(127, 127, 127, 0.14);
-}
-.gl-spacer { flex: 1 1 auto; }
-.gl-select {
-  font: inherit; font-size: 13px; color: inherit; background: transparent;
-  border: 1px solid rgba(127, 127, 127, 0.35); border-radius: 7px;
-  padding: 3px 8px; min-height: 30px;
-}
-.gl-select option { color: #111; }
-.gl-body { display: flex; flex-direction: column; gap: 10px; }
-.gl-board { max-width: 780px; width: 100%; }
+.gl-board { width: 100%; max-width: 760px; }
 .gl-board svg { display: block; width: 100%; height: auto; }
-.gl-chord-max { max-width: 320px; }
-.gl-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 13px; opacity: 0.8; }
-.gl-legend { display: flex; gap: 14px; font-size: 12px; opacity: 0.7; }
-.gl-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
-.gl-fingering { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: 0.1em; }
+.gl-chord-max { max-width: 340px; }
+.gl-meta {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  color: var(--dsw-alias-label-secondary, inherit); font-size: 12px; line-height: 18px;
+}
+.gl-legend { display: flex; align-items: center; gap: 12px; }
+.gl-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.gl-fingering { font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: 0.12em; color: var(--dsw-alias-label-primary, inherit); }
 `;
 
 function Tabs({ tab, setTab, t }) {
@@ -346,77 +363,89 @@ function Panel({ t, initialTab = "chord" }) {
   return h(
     "div",
     { className: "gl-page", "data-guitar-lab": true },
+    h("style", null, CSS),
     h(
       "div",
-      { className: "gl-head" },
-      h("span", { className: "gl-title" }, "Guitar Lab"),
-      h("span", { className: "gl-sub" }, t("subtitle", "标准调弦 · 音名")),
-      h("span", { className: "gl-spacer" }),
-      h(Tabs, { tab, setTab, t }),
-      tab === "chord"
+      { className: "gl-inner" },
+      h(
+        "div",
+        { className: "gl-head" },
+        h(
+          "div",
+          { className: "gl-heading" },
+          h("h2", { className: "gl-title" }, "Guitar Lab"),
+          h("span", { className: "gl-sub" }, t("subtitle", "标准调弦 · 音名")),
+        ),
+        h(
+          "div",
+          { className: "gl-controls" },
+          h(Tabs, { tab, setTab, t }),
+          tab === "chord"
+            ? h(
+                "select",
+                { className: "gl-select", value: chordName, onChange: (e) => setChordName(e.target.value), "aria-label": t("chord", "和弦") },
+                CHORDS.map((c) => h("option", { key: c.name, value: c.name }, c.name)),
+              )
+            : null,
+          tab === "scale"
+            ? [
+                h(
+                  "select",
+                  { key: "k", className: "gl-select", value: keyId, onChange: (e) => setKeyId(e.target.value), "aria-label": t("key", "调") },
+                  KEYS.map((k) => h("option", { key: k.id, value: k.id }, k.id)),
+                ),
+                h(
+                  "select",
+                  { key: "s", className: "gl-select", value: scaleId, onChange: (e) => setScaleId(e.target.value), "aria-label": t("scale", "音阶") },
+                  SCALES.map((s) => h("option", { key: s.id, value: s.id }, s.name)),
+                ),
+              ]
+            : null,
+        ),
+      ),
+      h(
+        "div",
+        { className: "gl-card" },
+        tab === "chord" && shape ? h(ChordBoard, { shape }) : null,
+        tab === "scale" ? h(ScaleBoard, { keyId, scaleId }) : null,
+        tab === "today" ? h(ScaleBoard, { keyId: spec.keyId, scaleId: spec.scaleId }) : null,
+      ),
+      tab === "chord" && shape && info
         ? h(
-            "select",
-            { className: "gl-select", value: chordName, onChange: (e) => setChordName(e.target.value), "aria-label": t("chord", "和弦") },
-            CHORDS.map((c) => h("option", { key: c.name, value: c.name }, c.name)),
+            "div",
+            { className: "gl-meta" },
+            h("span", null, `${info.rootName} ${info.quality.name}`),
+            h("span", { className: "gl-fingering" }, fingeringOf(shape)),
+            h(
+              "span",
+              { className: "gl-legend" },
+              h("span", null, h("i", { className: "gl-swatch", style: { background: ROOT } }), t("legend.root", "根音")),
+              h("span", null, h("i", { className: "gl-swatch", style: { background: TONE } }), t("legend.tone", "构成音")),
+            ),
+            h("span", null, info.tones.map((tone) => `${tone.name} ${tone.degree}`).join(" · ")),
           )
         : null,
       tab === "scale"
-        ? [
+        ? h(
+            "div",
+            { className: "gl-meta" },
             h(
-              "select",
-              { key: "k", className: "gl-select", value: keyId, onChange: (e) => setKeyId(e.target.value), "aria-label": t("key", "调") },
-              KEYS.map((k) => h("option", { key: k.id, value: k.id }, k.id)),
-            ),
-            h(
-              "select",
-              { key: "s", className: "gl-select", value: scaleId, onChange: (e) => setScaleId(e.target.value), "aria-label": t("scale", "音阶") },
-              SCALES.map((s) => h("option", { key: s.id, value: s.id }, s.name)),
-            ),
-          ]
-        : null,
-    ),
-    h(
-      "div",
-      { className: "gl-body" },
-      tab === "chord" && shape && info
-        ? [
-            h("div", { key: "board", className: "gl-board gl-chord-max" }, h(ChordBoard, { shape })),
-            h(
-              "div",
-              { key: "meta", className: "gl-meta" },
-              h("span", null, `${info.rootName} ${info.quality.name}`),
-              h("span", { className: "gl-fingering" }, fingeringOf(shape)),
-              h("span", { className: "gl-legend" },
-                h("span", null, h("i", { className: "gl-swatch", style: { background: ROOT } }), t("legend.root", "根音")),
-                h("span", null, h("i", { className: "gl-swatch", style: { background: TONE } }), t("legend.tone", "构成音")),
-              ),
-              h("span", null, info.tones.map((tone) => `${tone.name} ${tone.degree}`).join(" · ")),
-            ),
-          ]
-        : null,
-      tab === "scale"
-        ? [
-            h("div", { key: "board", className: "gl-board" }, h(ScaleBoard, { keyId, scaleId })),
-            h(
-              "div",
-              { key: "legend", className: "gl-legend" },
+              "span",
+              { className: "gl-legend" },
               h("span", null, h("i", { className: "gl-swatch", style: { background: ROOT } }), t("legend.root", "主音")),
               h("span", null, h("i", { className: "gl-swatch", style: { background: TONE } }), t("legend.tone", "音阶音")),
             ),
-          ]
+          )
         : null,
       tab === "today"
-        ? [
-            h(
-              "div",
-              { key: "meta", className: "gl-meta" },
-              h("span", null, spec.dateKey),
-              h("span", null, spec.keyId),
-              h("span", null, `${spec.fretMin}–${spec.fretMax} 品`),
-              h("span", null, `${t("toFill", "要填")} ${today.target.length - today.givens.length} 格`),
-            ),
-            h("div", { key: "board", className: "gl-board" }, h(ScaleBoard, { keyId: spec.keyId, scaleId: spec.scaleId })),
-          ]
+        ? h(
+            "div",
+            { className: "gl-meta" },
+            h("span", null, spec.dateKey),
+            h("span", null, spec.keyId),
+            h("span", null, `${spec.fretMin}–${spec.fretMax} 品`),
+            h("span", null, `${t("toFill", "要填")} ${today.target.length - today.givens.length} 格`),
+          )
         : null,
     ),
   );

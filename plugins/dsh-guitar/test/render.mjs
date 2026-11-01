@@ -84,7 +84,9 @@ assert.ok(todayHtml.includes(spec.keyId), "今日页没有调");
 assert.ok(todayHtml.includes("<svg"), "今日页没有指板");
 console.log("today page: ok");
 
-// —— 样式只依赖 currentColor / 明确的音点颜色，不猜主题变量 ——
-assert.ok(!code.includes("--dsw-alias"), "不要再猜主题变量名");
-console.log("theme: uses currentColor, no token guessing");
+// —— 样式必须真的注入：rehype 的 <style> 里要有我们的 token ——
+assert.ok(chordHtml.includes("<style>"), "面板没有注入 <style>，样式会完全丢失");
+assert.ok(chordHtml.includes("--dsw-alias-label-primary"), "样式里没有用宿主的文字色 token");
+assert.ok(chordHtml.includes("--dsw-alias-border-l1"), "样式里没有用宿主的边框 token");
+console.log("styles injected: ok");
 console.log("all plugin render checks passed");
