@@ -1,4 +1,4 @@
-import { solfegeLabel } from "@guitar/core";
+import { solfegeLabel, solfegeOctaveShift } from "@guitar/core";
 import type { Settings } from "./storage";
 
 export interface CellLabel {
@@ -26,4 +26,13 @@ export function cellLabel(noteName: string, pc: number, tonicPc: number, setting
   return settings.labels === "solfege"
     ? { main: solfege, sub: null }
     : { main: noteName, sub: solfege };
+}
+
+/**
+ * 这个音相对「中央 C 附近的 1」的八度偏移，用来画简谱的上点/下点。
+ * 只显示音名时不画点（音名本身不带八度信息）。
+ */
+export function octaveShiftFor(midi: number, tonicPc: number, settings: Settings): number {
+  if (settings.labels === "name") return 0;
+  return solfegeOctaveShift(midi, tonicPc, { system: settings.solfegeSystem });
 }

@@ -1,11 +1,23 @@
 import type { ReactNode } from "react";
 
+/** 简谱的八度记号：上点/下点，最多画三个。 */
+function OctaveDots({ n }: { n: number }) {
+  const count = Math.min(3, Math.abs(n));
+  return (
+    <span className="fb-oct" aria-hidden="true">
+      {Array.from({ length: count }, (_, i) => (
+        <i key={i} />
+      ))}
+    </span>
+  );
+}
+
 /** 指板的几何常量；SVG 背景与按钮网格共用，保证像素级对齐。 */
 export const FRET_W = 54;
 export const STRING_H = 40;
 export const LABEL_W = 36;
 export const TOP_H = 26;
-export const DOT = 30;
+export const DOT = 32;
 
 /** 1 弦（高音）在上；统一大写，靠位置区分 6 弦的低音 E。 */
 const STRING_LABELS = ["E", "B", "G", "D", "A", "E"];
@@ -20,6 +32,8 @@ export interface FretboardProps {
   renderCell: (s: number, f: number) => ReactNode;
   /** 副标签（「音名 + 唱名」模式下放唱名）。 */
   renderCellSub?: (s: number, f: number) => string | null;
+  /** 八度偏移：>0 在圆点上方画点，<0 在下方画点（简谱的八度记号）。 */
+  octaveShift?: (s: number, f: number) => number;
   cellClass?: (s: number, f: number) => string;
   onCellClick?: (s: number, f: number) => void;
   isDisabled?: (s: number, f: number) => boolean;
@@ -38,6 +52,7 @@ export default function Fretboard({
   fretMax,
   renderCell,
   renderCellSub,
+  octaveShift,
   cellClass,
   onCellClick,
   isDisabled,
@@ -135,6 +150,7 @@ export default function Fretboard({
                 const disabled = isDisabled ? isDisabled(s, f) : !onCellClick;
                 const cls = ["fb-cell", cellClass ? cellClass(s, f) : ""].filter(Boolean).join(" ");
                 const sub = renderCellSub ? renderCellSub(s, f) : null;
+                const shift = octaveShift ? octaveShift(s, f) : 0;
                 return (
                   <button
                     key={`${s}-${f}`}
@@ -145,8 +161,10 @@ export default function Fretboard({
                     onClick={() => onCellClick?.(s, f)}
                   >
                     <span className="fb-dot">
+                      {shift > 0 && <OctaveDots n={shift} />}
                       <span className="fb-main">{renderCell(s, f)}</span>
                       {sub ? <span className="fb-sub">{sub}</span> : null}
+                      {shift < 0 && <OctaveDots n={-shift} />}
                     </span>
                   </button>
                 );

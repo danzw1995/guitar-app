@@ -30,7 +30,9 @@ import {
   pitchClassAt,
   previousDateKey,
   scaleNames,
+  solfegeAlternatives,
   solfegeLabel,
+  solfegeOctaveShift,
   solfegeTable,
   starsForAttempt,
   starsOf,
@@ -406,6 +408,37 @@ test("solfegeLabel: 12 个音全覆盖，do re mi 写法也带升降", () => {
   assert.equal(solfegeLabel(3, 0, syl), "降mi");
   assert.equal(solfegeLabel(6, 0, syl), "升fa");
   assert.equal(solfegeLabel(0, 0, syl), "do");
+});
+
+test("solfegeAlternatives: 黑键有升/降两种叫法", () => {
+  const num = { system: "movable", style: "number" } as const;
+  assert.deepEqual(solfegeAlternatives(1, 0, num), { primary: "升1", alternate: "降2" });
+  assert.deepEqual(solfegeAlternatives(3, 0, num), { primary: "降3", alternate: "升2" });
+  assert.deepEqual(solfegeAlternatives(6, 0, num), { primary: "升4", alternate: "降5" });
+  assert.deepEqual(solfegeAlternatives(10, 0, num), { primary: "降7", alternate: "升6" });
+  assert.deepEqual(solfegeAlternatives(0, 0, num), { primary: "1", alternate: null }, "自然音没有对照");
+
+  const syl = { system: "movable", style: "syllable" } as const;
+  assert.deepEqual(solfegeAlternatives(1, 0, syl), { primary: "升do", alternate: "降re" });
+});
+
+test("solfegeOctaveShift: 八度按中央 C 附近的 1 为基准", () => {
+  const movable = { system: "movable" } as const;
+  // C 大调：C4 不标，C3 下面一点，C5 上面一点
+  assert.equal(solfegeOctaveShift(60, 0, movable), 0);
+  assert.equal(solfegeOctaveShift(48, 0, movable), -1);
+  assert.equal(solfegeOctaveShift(72, 0, movable), 1);
+  // 用户举的例子：4 弦 3 品 F3(53) 比 6 弦 1 品 F2(41) 高一个八度
+  assert.equal(solfegeOctaveShift(53, 0, movable), -1);
+  assert.equal(solfegeOctaveShift(41, 0, movable), -2);
+  // G 大调：G4 与 F#5 同属一组
+  assert.equal(solfegeOctaveShift(67, 7, movable), 0);
+  assert.equal(solfegeOctaveShift(78, 7, movable), 0);
+  assert.equal(solfegeOctaveShift(66, 7, movable), -1);
+  // 固定唱名永远以 C4 为基准，与调无关
+  const fixed = { system: "fixed" } as const;
+  assert.equal(solfegeOctaveShift(70, 5, fixed), 0);
+  assert.equal(solfegeOctaveShift(58, 5, fixed), -1);
 });
 
 // ---- 每日挑战与统计 ----

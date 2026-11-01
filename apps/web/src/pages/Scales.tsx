@@ -7,14 +7,15 @@ import {
   KEY_BY_ID,
   SCALE_BY_ID,
   fallbackName,
+  midiAt,
   pitchClassAt,
   scaleNames,
   scalePcs,
-  solfegeTable,
+  solfegeAlternatives,
 } from "@guitar/core";
 import Fretboard from "../components/Fretboard";
 import LabelControls from "../components/LabelControls";
-import { cellLabel } from "../lib/labels";
+import { cellLabel, octaveShiftFor } from "../lib/labels";
 import { loadSettings, saveSettings, type Settings } from "../lib/storage";
 
 export default function Scales() {
@@ -107,6 +108,9 @@ export default function Scales() {
           return cellLabel(note.name, note.pc, key.tonicPc, settings).sub;
         }}
         cellClass={(s, f) => cellNote(s, f)?.state ?? "off"}
+        octaveShift={(s, f) =>
+          octaveShiftFor(midiAt(STANDARD_TUNING, s, f), key.tonicPc, settings)
+        }
       />
 
       {settings.labels !== "name" && (
@@ -115,15 +119,18 @@ export default function Scales() {
             唱名对照 · {settings.solfegeSystem === "movable" ? "首调" : "固定"} ·
             {settings.solfegeStyle === "number" ? " 数字" : " do re mi"}
           </span>
-          {solfegeTable(
-            { system: settings.solfegeSystem, style: settings.solfegeStyle },
-            key.tonicPc,
-          ).map((label, pc) => (
-            <span key={pc} className={byPc.has(pc) ? "solfege-cell on" : "solfege-cell"}>
-              <b>{SHARP_NAMES[pc]}</b>
-              {label}
-            </span>
-          ))}
+          {Array.from({ length: 12 }, (_, pc) => {
+            const { primary, alternate } = solfegeAlternatives(pc, key.tonicPc, {
+              system: settings.solfegeSystem,
+              style: settings.solfegeStyle,
+            });
+            return (
+              <span key={pc} className={byPc.has(pc) ? "solfege-cell on" : "solfege-cell"}>
+                <b>{SHARP_NAMES[pc]}</b>
+                {alternate ? `${primary} / ${alternate}` : primary}
+              </span>
+            );
+          })}
         </div>
       )}
     </section>

@@ -14,6 +14,7 @@ import {
   generatePuzzle,
   isPerfect,
   isUnlocked,
+  midiAt,
   nextNoteQuery,
   noteCandidates,
   parMsFor,
@@ -41,7 +42,7 @@ import {
 import Fretboard from "../components/Fretboard";
 import Stars, { starText } from "../components/Stars";
 import LabelControls from "../components/LabelControls";
-import { cellLabel } from "../lib/labels";
+import { cellLabel, octaveShiftFor } from "../lib/labels";
 import { fmt } from "../lib/format";
 
 function scaleName(scaleId: string): string {
@@ -488,6 +489,11 @@ export default function Game() {
           if (!givenKeys.has(k)) return null;
           const pc = pitchClassAt(STANDARD_TUNING, s, f);
           return cellLabel(expected.get(pc) ?? "", pc, tonicPc, settings).sub;
+        }}
+        octaveShift={(s, f) => {
+          const k = `${s}:${f}`;
+          if (!givenKeys.has(k)) return 0;
+          return octaveShiftFor(midiAt(STANDARD_TUNING, s, f), tonicPc, settings);
         }}
         cellClass={(s, f) => {
           const k = `${s}:${f}`;

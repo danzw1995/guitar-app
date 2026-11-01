@@ -161,18 +161,22 @@ button, select, input { font: inherit; color: inherit; }
 }
 .fb-cell:disabled { cursor: default; }
 .fb-dot {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: 1px solid transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   line-height: 1.05;
   background: transparent;
   color: var(--text);
 }
+/* 简谱八度记号：上点/下点 */
+.fb-oct { display: flex; gap: 2px; height: 4px; align-items: center; }
+.fb-oct i { display: block; width: 3.5px; height: 3.5px; border-radius: 50%; background: currentColor; }
 .fb-main { font-size: 12px; font-weight: 700; }
 .fb-sub { font-size: 9px; font-weight: 600; opacity: 0.75; }
 .fb-cell.off .fb-dot { visibility: hidden; }
