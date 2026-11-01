@@ -18,12 +18,15 @@
 
 ## 插在哪个槽
 
-`conversation.header`——整条对话的顶部，全宽。
+`conversation.view`——和 Chat / Trajectory 并列的**整页标签**，list 类型，可以多注册。
 
-**不要**用 `conversation.composer.dock`：那是输入框下面放 token 统计的小行，
-塞进去会挤成一团（第一版就踩了这个坑）。
+踩过的两个坑（DSH 的插槽分 `single` / `list` / `keyed` / `chain`，注册到 single 槽会直接抛错）：
 
-面板默认展开，右上角「收起」可以折成一行，省出纵向空间。
+| 槽 | 类型 | 结果 |
+|---|---|---|
+| `conversation.composer.dock` | list | 能装，但那是输入框里放 token 统计的一行，挤成一团 |
+| `conversation.header` | **single** | 宿主已占，报 `single slot "conversation.header" already has a registration at priority 0` |
+| `conversation.view` | list | ✅ 整页，宽度高度都够 |
 
 ## 构建
 
@@ -61,16 +64,16 @@ plugin_manager action=install_bundle target="F:\program\workspace\guitar-app\plu
 已验证（`node test/render.mjs`，不是靠"应该能跑"）：
 
 - bundle 被 `window.__ModuleLoader__` 加载，导出 `apply` / `inject`；
-- `apply` 注册到 `conversation.header`，id `guitar-lab`；
+- `apply` 注册到 `conversation.view`，id `guitar-lab`，带 `label`；
 - 和弦页：C 大三渲染出 2 个根音点、1 个三音点、1 个 ×（对应 `x32010`）；
 - 音阶页：G 大调 1–12 品的圆点数量与 core 逐个算出来的位置完全一致（6 个主音 / 36 个音阶音）；
 - 今日页：日期与调取自 `dailySpecFor`，指板存在。
 
-**未验证**：真实 Harness 里 header 的实际高度与留白、`ctx.locale.t` 的真实签名
+**未验证**：真实 Harness 里 view 标签的渲染容器（宽度/内边距）、`ctx.locale.t` 的真实签名
 （取不到走中文兜底）。
 
 ## 下一步
 
-1. 确认面板在 header 里的高度和观感；挤的话我可以改成默认收起。
+1. 确认 view 标签里能正常渲染、宽度合适。
 2. 用一个最小 Host 工具试 `import` 是否可用；通了就把 `guitar.lookupChord` /
    `guitar.generatePuzzle` 接上（`harness.defineTool` + `ctx.tools.register`）。

@@ -37,8 +37,10 @@ mod.apply({
   slots: { inject: (key, fn) => fn(), register: (options, Component) => { entry = { options, Component }; } },
 });
 assert.ok(entry, "apply 没有注册任何东西");
-assert.equal(entry.options.name, "conversation.header", "面板要挂在全宽的 header，不是 composer.dock");
+assert.equal(entry.options.name, "conversation.view", "面板要挂在 list 类型的整页插槽");
 assert.equal(entry.options.id, "guitar-lab");
+assert.equal(typeof entry.options.label, "function", "整页插槽需要 label（标签页标题）");
+assert.equal(entry.options.label(), "Guitar Lab");
 
 const t = (_key, fallback) => fallback;
 const mount = (initialTab) =>

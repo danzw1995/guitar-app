@@ -20,11 +20,13 @@ import {
 /**
  * Guitar Lab 的对话侧面板：和弦指法图 / 音阶指板 / 今日一题。
  *
- * 挂在 conversation.header（全宽），不要挂 composer.dock —— 那是输入框下面
- * 放 token 统计的小行，塞不进指板。
+ * 挂在 conversation.view —— 和 Chat / Trajectory 并列的整页标签（list 槽，可多注册）。
+ * 不要挂 conversation.header：那是 single 槽，宿主自己占了，注册会直接抛
+ * "single slot already has a registration"。
+ * 也不要挂 conversation.composer.dock：那是输入框内放 token 统计的一行，塞不下指板。
  */
 
-const SLOT = "conversation.header";
+const SLOT = "conversation.view";
 const ID = "guitar-lab";
 
 const ROOT = "#d4a72c";
@@ -266,44 +268,42 @@ function ScaleBoard({ keyId, scaleId }) {
 /* ---------- 面板 ---------- */
 
 const CSS = `
-.gl-root {
-  width: 100%; box-sizing: border-box;
-  border-bottom: 1px solid rgba(127, 127, 127, 0.18);
+.gl-page {
+  box-sizing: border-box; width: 100%; height: 100%;
+  overflow: auto; padding: 18px 22px 24px;
   font: inherit; color: inherit;
+  display: flex; flex-direction: column; gap: 12px;
 }
-.gl-bar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  padding: 5px 14px; min-height: 34px;
-}
-.gl-brand { font-size: 10px; font-weight: 700; letter-spacing: 0.16em; opacity: 0.55; }
+.gl-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gl-title { font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+.gl-sub { font-size: 12px; opacity: 0.55; }
 .gl-tabs { display: flex; gap: 2px; }
 .gl-tab {
-  appearance: none; border: 0; background: transparent; color: inherit;
-  font: inherit; font-size: 12px; padding: 3px 9px; border-radius: 999px;
-  cursor: pointer; opacity: 0.6; min-height: 26px;
+  appearance: none; border: 1px solid transparent; background: transparent; color: inherit;
+  font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 999px;
+  cursor: pointer; opacity: 0.6; min-height: 30px;
 }
 .gl-tab:hover { opacity: 0.9; background: rgba(127, 127, 127, 0.12); }
-.gl-tab[aria-selected='true'] { opacity: 1; background: rgba(127, 127, 127, 0.16); font-weight: 600; }
+.gl-tab[aria-selected='true'] {
+  opacity: 1; font-weight: 600;
+  border-color: rgba(127, 127, 127, 0.35);
+  background: rgba(127, 127, 127, 0.14);
+}
 .gl-spacer { flex: 1 1 auto; }
 .gl-select {
-  font: inherit; font-size: 12px; color: inherit; background: transparent;
-  border: 1px solid rgba(127, 127, 127, 0.3); border-radius: 6px;
-  padding: 2px 6px; min-height: 26px; max-width: 40vw;
+  font: inherit; font-size: 13px; color: inherit; background: transparent;
+  border: 1px solid rgba(127, 127, 127, 0.35); border-radius: 7px;
+  padding: 3px 8px; min-height: 30px;
 }
 .gl-select option { color: #111; }
-.gl-toggle {
-  appearance: none; border: 1px solid rgba(127, 127, 127, 0.3); background: transparent;
-  color: inherit; font: inherit; font-size: 12px; padding: 3px 10px;
-  border-radius: 6px; cursor: pointer; min-height: 26px;
-}
-.gl-body { padding: 2px 14px 10px; display: flex; flex-direction: column; gap: 6px; }
+.gl-body { display: flex; flex-direction: column; gap: 10px; }
+.gl-board { max-width: 780px; width: 100%; }
 .gl-board svg { display: block; width: 100%; height: auto; }
-.gl-board { max-width: 720px; }
-.gl-chord-max { max-width: 260px; }
-.gl-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; opacity: 0.75; }
-.gl-legend { display: flex; gap: 12px; font-size: 11px; opacity: 0.7; }
-.gl-swatch { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
-.gl-fingering { font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: 0.08em; opacity: 0.9; }
+.gl-chord-max { max-width: 320px; }
+.gl-meta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 13px; opacity: 0.8; }
+.gl-legend { display: flex; gap: 14px; font-size: 12px; opacity: 0.7; }
+.gl-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.gl-fingering { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: 0.1em; }
 `;
 
 function Tabs({ tab, setTab, t }) {
@@ -334,7 +334,6 @@ function Tabs({ tab, setTab, t }) {
 
 function Panel({ t, initialTab = "chord" }) {
   const [tab, setTab] = useState(initialTab);
-  const [open, setOpen] = useState(true);
   const [chordName, setChordName] = useState("C");
   const [keyId, setKeyId] = useState("G");
   const [scaleId, setScaleId] = useState("major");
@@ -346,13 +345,14 @@ function Panel({ t, initialTab = "chord" }) {
 
   return h(
     "div",
-    { className: "gl-root", "data-guitar-lab": true },
+    { className: "gl-page", "data-guitar-lab": true },
     h(
       "div",
-      { className: "gl-bar" },
-      h("span", { className: "gl-brand" }, "GUITAR LAB"),
-      h(Tabs, { tab, setTab, t }),
+      { className: "gl-head" },
+      h("span", { className: "gl-title" }, "Guitar Lab"),
+      h("span", { className: "gl-sub" }, t("subtitle", "标准调弦 · 音名")),
       h("span", { className: "gl-spacer" }),
+      h(Tabs, { tab, setTab, t }),
       tab === "chord"
         ? h(
             "select",
@@ -374,58 +374,51 @@ function Panel({ t, initialTab = "chord" }) {
             ),
           ]
         : null,
-      h(
-        "button",
-        { type: "button", className: "gl-toggle", onClick: () => setOpen((v) => !v), "aria-expanded": open },
-        open ? t("collapse", "收起") : t("expand", "展开"),
-      ),
     ),
-    open
-      ? h(
-          "div",
-          { className: "gl-body" },
-          tab === "chord" && shape && info
-            ? [
-                h("div", { key: "board", className: "gl-board gl-chord-max" }, h(ChordBoard, { shape })),
-                h(
-                  "div",
-                  { key: "meta", className: "gl-meta" },
-                  h("span", null, info.rootName + " " + info.quality.name),
-                  h("span", { className: "gl-fingering" }, fingeringOf(shape)),
-                  h(
-                    "span",
-                    null,
-                    info.tones.map((tone) => `${tone.name} ${tone.degree}`).join(" · "),
-                  ),
-                ),
-              ]
-            : null,
-          tab === "scale"
-            ? [
-                h("div", { key: "board", className: "gl-board" }, h(ScaleBoard, { keyId, scaleId })),
-                h(
-                  "div",
-                  { key: "legend", className: "gl-legend" },
-                  h("span", null, h("i", { className: "gl-swatch", style: { background: ROOT } }), t("legend.root", "主音")),
-                  h("span", null, h("i", { className: "gl-swatch", style: { background: TONE } }), t("legend.tone", "音阶音")),
-                ),
-              ]
-            : null,
-          tab === "today"
-            ? [
-                h(
-                  "div",
-                  { key: "meta", className: "gl-meta" },
-                  h("span", null, spec.dateKey),
-                  h("span", null, spec.keyId),
-                  h("span", null, `${spec.fretMin}–${spec.fretMax} 品`),
-                  h("span", null, `${t("toFill", "要填")} ${today.target.length - today.givens.length} 格`),
-                ),
-                h("div", { key: "board", className: "gl-board" }, h(ScaleBoard, { keyId: spec.keyId, scaleId: spec.scaleId })),
-              ]
-            : null,
-        )
-      : null,
+    h(
+      "div",
+      { className: "gl-body" },
+      tab === "chord" && shape && info
+        ? [
+            h("div", { key: "board", className: "gl-board gl-chord-max" }, h(ChordBoard, { shape })),
+            h(
+              "div",
+              { key: "meta", className: "gl-meta" },
+              h("span", null, `${info.rootName} ${info.quality.name}`),
+              h("span", { className: "gl-fingering" }, fingeringOf(shape)),
+              h("span", { className: "gl-legend" },
+                h("span", null, h("i", { className: "gl-swatch", style: { background: ROOT } }), t("legend.root", "根音")),
+                h("span", null, h("i", { className: "gl-swatch", style: { background: TONE } }), t("legend.tone", "构成音")),
+              ),
+              h("span", null, info.tones.map((tone) => `${tone.name} ${tone.degree}`).join(" · ")),
+            ),
+          ]
+        : null,
+      tab === "scale"
+        ? [
+            h("div", { key: "board", className: "gl-board" }, h(ScaleBoard, { keyId, scaleId })),
+            h(
+              "div",
+              { key: "legend", className: "gl-legend" },
+              h("span", null, h("i", { className: "gl-swatch", style: { background: ROOT } }), t("legend.root", "主音")),
+              h("span", null, h("i", { className: "gl-swatch", style: { background: TONE } }), t("legend.tone", "音阶音")),
+            ),
+          ]
+        : null,
+      tab === "today"
+        ? [
+            h(
+              "div",
+              { key: "meta", className: "gl-meta" },
+              h("span", null, spec.dateKey),
+              h("span", null, spec.keyId),
+              h("span", null, `${spec.fretMin}–${spec.fretMax} 品`),
+              h("span", null, `${t("toFill", "要填")} ${today.target.length - today.givens.length} 格`),
+            ),
+            h("div", { key: "board", className: "gl-board" }, h(ScaleBoard, { keyId: spec.keyId, scaleId: spec.scaleId })),
+          ]
+        : null,
+    ),
   );
 }
 
@@ -450,6 +443,14 @@ export function apply(ctx) {
   const t = makeT(ctx);
   const Component = () => h(Panel, { t });
   ctx.slots.inject(SLOT, () =>
-    ctx.slots.register({ name: SLOT, id: ID, order: 5 }, Component),
+    ctx.slots.register(
+      {
+        name: SLOT,
+        id: ID,
+        order: 10,
+        label: () => t("view.label", "Guitar Lab"),
+      },
+      Component,
+    ),
   );
 }

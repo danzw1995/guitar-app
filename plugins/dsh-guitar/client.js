@@ -329,11 +329,13 @@ window.__ModuleLoader__.load({
     /**
      * Guitar Lab 的对话侧面板：和弦指法图 / 音阶指板 / 今日一题。
      *
-     * 挂在 conversation.header（全宽），不要挂 composer.dock —— 那是输入框下面
-     * 放 token 统计的小行，塞不进指板。
+     * 挂在 conversation.view —— 和 Chat / Trajectory 并列的整页标签（list 槽，可多注册）。
+     * 不要挂 conversation.header：那是 single 槽，宿主自己占了，注册会直接抛
+     * "single slot already has a registration"。
+     * 也不要挂 conversation.composer.dock：那是输入框内放 token 统计的一行，塞不下指板。
      */
 
-    const SLOT = "conversation.header";
+    const SLOT = "conversation.view";
     const ID = "guitar-lab";
 
     const ROOT = "#d4a72c";
@@ -600,7 +602,6 @@ window.__ModuleLoader__.load({
 
     function Panel({ t, initialTab = "chord" }) {
       const [tab, setTab] = react.useState(initialTab);
-      const [open, setOpen] = react.useState(true);
       const [chordName, setChordName] = react.useState("C");
       const [keyId, setKeyId] = react.useState("G");
       const [scaleId, setScaleId] = react.useState("major");
@@ -612,13 +613,14 @@ window.__ModuleLoader__.load({
 
       return react.createElement(
         "div",
-        { className: "gl-root", "data-guitar-lab": true },
+        { className: "gl-page", "data-guitar-lab": true },
         react.createElement(
           "div",
-          { className: "gl-bar" },
-          react.createElement("span", { className: "gl-brand" }, "GUITAR LAB"),
-          react.createElement(Tabs, { tab, setTab, t }),
+          { className: "gl-head" },
+          react.createElement("span", { className: "gl-title" }, "Guitar Lab"),
+          react.createElement("span", { className: "gl-sub" }, t("subtitle", "标准调弦 · 音名")),
           react.createElement("span", { className: "gl-spacer" }),
+          react.createElement(Tabs, { tab, setTab, t }),
           tab === "chord"
             ? react.createElement(
                 "select",
@@ -640,58 +642,51 @@ window.__ModuleLoader__.load({
                 ),
               ]
             : null,
-          react.createElement(
-            "button",
-            { type: "button", className: "gl-toggle", onClick: () => setOpen((v) => !v), "aria-expanded": open },
-            open ? t("collapse", "收起") : t("expand", "展开"),
-          ),
         ),
-        open
-          ? react.createElement(
-              "div",
-              { className: "gl-body" },
-              tab === "chord" && shape && info
-                ? [
-                    react.createElement("div", { key: "board", className: "gl-board gl-chord-max" }, react.createElement(ChordBoard, { shape })),
-                    react.createElement(
-                      "div",
-                      { key: "meta", className: "gl-meta" },
-                      react.createElement("span", null, info.rootName + " " + info.quality.name),
-                      react.createElement("span", { className: "gl-fingering" }, fingeringOf(shape)),
-                      react.createElement(
-                        "span",
-                        null,
-                        info.tones.map((tone) => `${tone.name} ${tone.degree}`).join(" · "),
-                      ),
-                    ),
-                  ]
-                : null,
-              tab === "scale"
-                ? [
-                    react.createElement("div", { key: "board", className: "gl-board" }, react.createElement(ScaleBoard, { keyId, scaleId })),
-                    react.createElement(
-                      "div",
-                      { key: "legend", className: "gl-legend" },
-                      react.createElement("span", null, react.createElement("i", { className: "gl-swatch", style: { background: ROOT } }), t("legend.root", "主音")),
-                      react.createElement("span", null, react.createElement("i", { className: "gl-swatch", style: { background: TONE } }), t("legend.tone", "音阶音")),
-                    ),
-                  ]
-                : null,
-              tab === "today"
-                ? [
-                    react.createElement(
-                      "div",
-                      { key: "meta", className: "gl-meta" },
-                      react.createElement("span", null, spec.dateKey),
-                      react.createElement("span", null, spec.keyId),
-                      react.createElement("span", null, `${spec.fretMin}–${spec.fretMax} 品`),
-                      react.createElement("span", null, `${t("toFill", "要填")} ${today.target.length - today.givens.length} 格`),
-                    ),
-                    react.createElement("div", { key: "board", className: "gl-board" }, react.createElement(ScaleBoard, { keyId: spec.keyId, scaleId: spec.scaleId })),
-                  ]
-                : null,
-            )
-          : null,
+        react.createElement(
+          "div",
+          { className: "gl-body" },
+          tab === "chord" && shape && info
+            ? [
+                react.createElement("div", { key: "board", className: "gl-board gl-chord-max" }, react.createElement(ChordBoard, { shape })),
+                react.createElement(
+                  "div",
+                  { key: "meta", className: "gl-meta" },
+                  react.createElement("span", null, `${info.rootName} ${info.quality.name}`),
+                  react.createElement("span", { className: "gl-fingering" }, fingeringOf(shape)),
+                  react.createElement("span", { className: "gl-legend" },
+                    react.createElement("span", null, react.createElement("i", { className: "gl-swatch", style: { background: ROOT } }), t("legend.root", "根音")),
+                    react.createElement("span", null, react.createElement("i", { className: "gl-swatch", style: { background: TONE } }), t("legend.tone", "构成音")),
+                  ),
+                  react.createElement("span", null, info.tones.map((tone) => `${tone.name} ${tone.degree}`).join(" · ")),
+                ),
+              ]
+            : null,
+          tab === "scale"
+            ? [
+                react.createElement("div", { key: "board", className: "gl-board" }, react.createElement(ScaleBoard, { keyId, scaleId })),
+                react.createElement(
+                  "div",
+                  { key: "legend", className: "gl-legend" },
+                  react.createElement("span", null, react.createElement("i", { className: "gl-swatch", style: { background: ROOT } }), t("legend.root", "主音")),
+                  react.createElement("span", null, react.createElement("i", { className: "gl-swatch", style: { background: TONE } }), t("legend.tone", "音阶音")),
+                ),
+              ]
+            : null,
+          tab === "today"
+            ? [
+                react.createElement(
+                  "div",
+                  { key: "meta", className: "gl-meta" },
+                  react.createElement("span", null, spec.dateKey),
+                  react.createElement("span", null, spec.keyId),
+                  react.createElement("span", null, `${spec.fretMin}–${spec.fretMax} 品`),
+                  react.createElement("span", null, `${t("toFill", "要填")} ${today.target.length - today.givens.length} 格`),
+                ),
+                react.createElement("div", { key: "board", className: "gl-board" }, react.createElement(ScaleBoard, { keyId: spec.keyId, scaleId: spec.scaleId })),
+              ]
+            : null,
+        ),
       );
     }
 
@@ -713,7 +708,15 @@ window.__ModuleLoader__.load({
       const t = makeT(ctx);
       const Component = () => react.createElement(Panel, { t });
       ctx.slots.inject(SLOT, () =>
-        ctx.slots.register({ name: SLOT, id: ID, order: 5 }, Component),
+        ctx.slots.register(
+          {
+            name: SLOT,
+            id: ID,
+            order: 10,
+            label: () => t("view.label", "Guitar Lab"),
+          },
+          Component,
+        ),
       );
     }
 
