@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Guitar Lab 探针",
+    "description": "一次性检查：安装成包的插件能不能 import Guitar Lab 的 core 模块。看到结果后可以删掉。"
+  }
+}

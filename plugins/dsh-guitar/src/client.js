@@ -1,4 +1,4 @@
-import { createElement as h, useMemo, useState } from "react";
+import { createElement as h, useEffect, useMemo, useRef, useState } from "react";
 import {
   CHORDS,
   CHORD_BY_NAME,
@@ -305,6 +305,37 @@ function TodayBoard({ spec, t }) {
   const [shown, setShown] = useState(() => new Set());
   const tonicPc = KEY_BY_ID.get(spec.keyId)?.tonicPc ?? 0;
 
+  // 单格答案只看 2 秒：计时器按格子存，卸载时全部清掉，避免泄漏。
+  const timers = useRef(new Map());
+  useEffect(() => () => {
+    for (const id of timers.current.values()) clearTimeout(id);
+    timers.current.clear();
+  }, []);
+
+  function peek(k) {
+    const running = timers.current.get(k);
+    if (running !== undefined) {
+      clearTimeout(running);
+      timers.current.delete(k);
+      setShown((prev) => {
+        const next = new Set(prev);
+        next.delete(k);
+        return next;
+      });
+      return;
+    }
+    setShown((prev) => new Set(prev).add(k));
+    const id = setTimeout(() => {
+      timers.current.delete(k);
+      setShown((prev) => {
+        const next = new Set(prev);
+        next.delete(k);
+        return next;
+      });
+    }, 2000);
+    timers.current.set(k, id);
+  }
+
   const g = geometry(spec.fretMin, spec.fretMax);
   const dots = [];
   for (let s = 0; s < STRINGS; s++) {
@@ -322,12 +353,7 @@ function TodayBoard({ spec, t }) {
           "g",
           {
             key: k,
-            onClick: given ? undefined : () => setShown((prev) => {
-              const next = new Set(prev);
-              if (next.has(k)) next.delete(k);
-              else next.add(k);
-              return next;
-            }),
+            onClick: given ? undefined : () => peek(k),
             style: given ? undefined : { cursor: "pointer" },
           },
           h(Dot, {
@@ -358,7 +384,7 @@ function TodayBoard({ spec, t }) {
         { type: "button", className: "gl-btn", onClick: () => setRevealAll((v) => !v) },
         revealAll ? t("hideAnswers", "隐藏答案") : t("showAnswers", "显示答案"),
       ),
-      h("span", null, t("tapHint", "点「?」可单独看这一格")),
+      h("span", null, t("tapHint", "点「?」看一眼，2 秒后自动收回")),
     ),
   );
 }

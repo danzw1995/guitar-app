@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Guitar Lab Probe",
+    "description": "One-off check: can an installed bundle import the Guitar Lab core module? Remove it after reading the result."
+  }
+}

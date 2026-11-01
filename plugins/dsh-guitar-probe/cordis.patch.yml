@@ -1,0 +1,3 @@
+- insert:
+    - id: guitar-probe
+      name: '@local/guitar-probe'
