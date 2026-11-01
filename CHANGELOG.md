@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Added
+- core 的构建产物：`pnpm --filter @guitar/core build` 用 `tsc` 输出 ESM + `.d.ts` 到 `dist/`
+  （不依赖 esbuild，沙箱里可跑），供 DSH 插件这类 Node 消费者使用；Vite 仍直接吃源码。
+
 ### Planned
 - DSH 插件（v0.5.0）
 - Tauri（Windows）/ Capacitor（Android）（v0.6.0）

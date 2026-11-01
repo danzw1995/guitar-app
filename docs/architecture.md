@@ -101,5 +101,12 @@ v1 是练习工具，本地进度足够；账号/云同步会引入后端、隐�
 ## 7. 已知工程约束
 
 - 本机 PowerShell 5.1 写 UTF-8 会带 BOM，导致 Vite 读 `package.json` 失败；**新增 JSON 必须无 BOM**。
-- DSH 沙箱禁止 esbuild 启动子进程，`pnpm build` 在当前环境无法验证；以 `pnpm dev` + `tsc --noEmit` 为准。
+- DSH 沙箱禁止 esbuild 启动子进程，`pnpm build`（Vite）在当前环境无法验证；以 `pnpm dev` + `tsc --noEmit` 为准。
 - Node 26 可直接跑 `.ts`，core 测试不需要构建。
+- **core 的构建用 `tsc`，不用 esbuild/tsup**：`pnpm --filter @guitar/core build`
+  走 `packages/core/tsconfig.build.json`，输出 ESM + `.d.ts` 到 `packages/core/dist/`（已 gitignore）。
+  源码里的 `.ts` 后缀靠 TS 5.7+ 的 `rewriteRelativeImportExtensions` 改写成 `.js`；
+  `src/levels.ts` 依赖 `node:fs`，只给脚本用，排除在构建外。
+  Vite 仍然直接吃源码（`exports["."] = ./src/index.ts`），`exports["./dist"]` 给 DSH 插件用。
+- **不要用 PowerShell 的 `Get-Content -Raw` / `Set-Content` 改仓库里的文本文件**：它会按 ANSI 读 UTF-8，
+  中文会变成乱码并吞掉换行（本仓库已经踩过一次，靠 `git checkout` 才恢复）。用编辑工具，或显式指定 `-Encoding utf8`。

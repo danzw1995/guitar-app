@@ -3,10 +3,17 @@
   "version": "0.4.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts",
+    "./dist": "./dist/index.js"
+  },
   "scripts": {
     "test": "node test/core.test.ts",
+    "build": "tsc -p tsconfig.build.json",
     "gen:levels": "node scripts/gen-levels.ts",
     "demo": "node scripts/demo.ts"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }
