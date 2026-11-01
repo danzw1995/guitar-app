@@ -7,6 +7,9 @@
 ### Added
 - core 的构建产物：`pnpm --filter @guitar/core build` 用 `tsc` 输出 ESM + `.d.ts` 到 `dist/`
   （不依赖 esbuild，沙箱里可跑），供 DSH 插件这类 Node 消费者使用；Vite 仍直接吃源码。
+- **DSH 插件（第一版，仅 Client）**：`plugins/dsh-guitar` 往输入框上方挂一块面板，
+  和弦 / 音阶 / 今日一题三页，数据来自 `@guitar/core`；rollup 打包成 `window.__ModuleLoader__` 工厂。
+  样式只用 `--dsw-alias-*` 并带深色兜底，文案走 `ctx.locale.t`、取不到用中文。
 
 ### Planned
 - DSH 插件（v0.5.0）

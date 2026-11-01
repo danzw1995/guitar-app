@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "title": "Guitar Lab",
+    "description": "在对话里速查和弦构成音、音阶音与今日一题，不用切回 Web 应用。"
+  },
+  "tab.chord": "和弦",
+  "tab.scale": "音阶",
+  "tab.today": "今日",
+  "chord": "和弦",
+  "key": "调",
+  "frets": "品",
+  "toFill": "要填",
+  "today": "今日",
+  "tonic": "主音位置"
+}

@@ -11,5 +11,9 @@
     "check:styles": "node apps/web/scripts/check-styles.mjs",
     "gen:levels": "pnpm --filter @guitar/core gen:levels",
     "demo": "pnpm --filter @guitar/core demo"
+  },
+  "devDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "4.67.2",
+    "rollup": "4.67.2"
   }
 }

@@ -79,18 +79,23 @@
 
 ### v0.5.0 — DSH 插件（约 1 周）
 
-**前置**：给 core 加构建（`tsup`，CJS + ESM + d.ts），供插件与未来小程序使用。
+**前置**（✅）：core 用 `tsc` 产出 ESM + `.d.ts` 到 `dist/`——不是计划里写的 `tsup`，
+因为沙箱里 esbuild 起不了子进程；`pnpm --filter @guitar/core build` 即可。
 
-| 任务 | 说明 |
-|---|---|
-| Host 工具 | `guitar.generatePuzzle`、`guitar.lookupChord`、`guitar.explainAnswer` |
-| Client 面板 | 复用 `Fretboard`，做和弦/音阶速查 + 每日一题 |
-| 主题/locale | 继承 `--dsw-alias-*`，文案走 locale service |
-| 安装 | `plugin_manager install_bundle`，验证 slot 渲染 |
+| 任务 | 状态 | 说明 |
+|---|---|---|
+| Client 面板 | ✅ | `plugins/dsh-guitar`：dock 面板，和弦 / 音阶 / 今日一题三页；rollup 打包成 `client.js` |
+| 主题/locale | ✅ | 只用 `--dsw-alias-*` 并带深色兜底；文案走 `ctx.locale.t`，取不到用中文 |
+| 安装 | ⬜ | 需要 `plugin_manager install_bundle`（当前会话没有这个工具，由人装） |
+| Host 工具 | ⬜ | `guitar.lookupChord` / `guitar.generatePuzzle`；先确认沙箱里能否 `import` |
 
-**验收**：插件安装后侧栏可用；工具可被 agent 调用；卸载无残留。
+**验收**：插件安装后输入框上方出现面板；工具可被 agent 调用；卸载无残留。
 
 **注意**：DSH 插件是“伴生”，不是主形态；不允许 iframe。
+
+**已验证 / 待验证**：bundle 能被 `window.__ModuleLoader__` 加载、`apply` 注册进
+`conversation.composer.dock`、`react-dom/server` 渲染出完整面板（3.5KB HTML）；
+真实插槽位置与主题变量名**未验证**。
 
 ---
 

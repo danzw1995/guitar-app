@@ -1,0 +1,15 @@
+{
+  "meta": {
+    "title": "Guitar Lab",
+    "description": "Look up chord tones, scale notes and today's practice question without leaving the conversation."
+  },
+  "tab.chord": "Chords",
+  "tab.scale": "Scales",
+  "tab.today": "Today",
+  "chord": "Chord",
+  "key": "Key",
+  "frets": "Frets",
+  "toFill": "To fill",
+  "today": "Today",
+  "tonic": "Tonic positions"
+}
