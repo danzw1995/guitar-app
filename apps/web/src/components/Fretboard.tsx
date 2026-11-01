@@ -17,7 +17,7 @@ export const FRET_W = 54;
 export const STRING_H = 40;
 export const LABEL_W = 36;
 export const TOP_H = 26;
-export const DOT = 32;
+export const DOT = 36;
 
 /** 1 弦（高音）在上；统一大写，靠位置区分 6 弦的低音 E。 */
 const STRING_LABELS = ["E", "B", "G", "D", "A", "E"];
