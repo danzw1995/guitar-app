@@ -189,6 +189,29 @@ button, select, input { font: inherit; color: inherit; }
 .fb-cell:focus-visible { outline: none; }
 .fb-cell:focus-visible .fb-dot { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+.solfege-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 14px 0 4px;
+  font-size: 12px;
+}
+.solfege-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 46px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+}
+.solfege-cell b { color: var(--text); font-size: 11px; font-weight: 600; }
+.solfege-cell.on { border-color: rgba(88, 166, 255, 0.5); background: rgba(88, 166, 255, 0.1); color: #9ecbff; }
+.solfege-cell.on b { color: #cfe6ff; }
+
 /* chords */
 .chord-layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; margin-top: 14px; }
 .chord-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; align-content: start; }

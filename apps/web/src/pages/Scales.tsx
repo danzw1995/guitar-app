@@ -2,12 +2,14 @@ import { useMemo, useState } from "react";
 import {
   KEYS,
   SCALES,
+  SHARP_NAMES,
   STANDARD_TUNING,
   KEY_BY_ID,
   SCALE_BY_ID,
   pitchClassAt,
   scaleNames,
   scalePcs,
+  solfegeTable,
 } from "@guitar/core";
 import Fretboard from "../components/Fretboard";
 import LabelControls from "../components/LabelControls";
@@ -89,6 +91,24 @@ export default function Scales() {
           return pitchClassAt(STANDARD_TUNING, s, f) === key.tonicPc ? "root" : "scale";
         }}
       />
+
+      {settings.labels !== "name" && (
+        <div className="solfege-strip">
+          <span className="muted">
+            唱名对照 · {settings.solfegeSystem === "movable" ? "首调" : "固定"} ·
+            {settings.solfegeStyle === "number" ? " 数字" : " do re mi"}
+          </span>
+          {solfegeTable(
+            { system: settings.solfegeSystem, style: settings.solfegeStyle },
+            key.tonicPc,
+          ).map((label, pc) => (
+            <span key={pc} className={byPc.has(pc) ? "solfege-cell on" : "solfege-cell"}>
+              <b>{SHARP_NAMES[pc]}</b>
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

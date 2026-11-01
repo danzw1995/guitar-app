@@ -71,12 +71,14 @@ export default function Fretboard({
             aria-hidden="true"
             focusable="false"
           >
-            {/* 品号 */}
-            {frets.map((f) => (
-              <text key={`n${f}`} className="fb-fret-num" x={fretCenterX(f)} y={TOP_H / 2}>
-                {f}
-              </text>
-            ))}
+            {/* 品号从 1 开始：0 品是琴枕左侧的空弦区，不占「一格」，所以不标号 */}
+            {frets.map((f) =>
+              f === 0 ? null : (
+                <text key={`n${f}`} className="fb-fret-num" x={fretCenterX(f)} y={TOP_H / 2}>
+                  {f}
+                </text>
+              ),
+            )}
 
             {/* 品位记号 */}
             {INLAY_FRETS.filter((f) => f >= fretMin && f <= fretMax).map((f) =>
@@ -103,10 +105,11 @@ export default function Fretboard({
               />
             ))}
 
-            {/* 品丝；0 品位置是更粗的琴枕 */}
+            {/* 品丝；fretMin = 0 时，琴枕画在空弦区与 1 品之间，左边缘不画线 */}
             {Array.from({ length: frets.length + 1 }, (_, i) => {
+              if (fretMin === 0 && i === 0) return null;
               const x = i * FRET_W;
-              const isNut = i === 0 && fretMin === 0;
+              const isNut = fretMin === 0 && i === 1;
               return (
                 <line
                   key={`w${i}`}
