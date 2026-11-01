@@ -63,7 +63,8 @@ const CHAPTERS: ChapterSpec[] = [
       { id: "Bm", count: 1 },
     ],
     scaleId: "naturalMinor",
-    fretMin: 0,
+    // 不用空弦：空弦在指板上是琴枕左侧的特殊列，混在关卡里既不好看也不好填
+    fretMin: 1,
     fretMax: 12,
     ratioFrom: 0.4,
     ratioTo: 0.2,

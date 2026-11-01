@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   NOTE_NAMES,
+  KEYS,
   KEY_BY_ID,
   SCALE_BY_ID,
   STANDARD_TUNING,
@@ -19,6 +20,7 @@ import {
   noteCandidates,
   parMsFor,
   pitchClassAt,
+  solfegeLabel,
   starsForAttempt,
   streakOf,
   totalStars,
@@ -67,13 +69,34 @@ interface Gain {
   unlocked: string | null;
 }
 
-type Mode = "levels" | "daily";
+type Mode = "levels" | "daily" | "recall";
+
+interface RecallRound {
+  keyId: string;
+  seed: number;
+  /** 唯一提示：某一根弦的某一品是主音（do / 1）。 */
+  anchor: Cell;
+}
+
+/** 推算模式：随机调 + 随机一个主音位置，其它全靠推。 */
+function makeRecallRound(): RecallRound {
+  const key = KEYS[Math.floor(Math.random() * KEYS.length)];
+  const scaleId = key.mode === "minor" ? "naturalMinor" : "major";
+  const seed = Math.floor(Math.random() * 1_000_000_000);
+  const probe = generatePuzzle({ seed, keyId: key.id, scaleId, fretMin: 1, fretMax: 12, givenRatio: 0.5 });
+  const tonicCells = probe.target.filter(
+    (c) => pitchClassAt(STANDARD_TUNING, c.s, c.f) === key.tonicPc,
+  );
+  const pool = tonicCells.length ? tonicCells : probe.target;
+  return { keyId: key.id, seed, anchor: pool[Math.floor(Math.random() * pool.length)] };
+}
 
 export default function Game() {
   const [progress, setProgress] = useState<ProgressMap>(() => loadProgress());
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
   const [levelId, setLevelId] = useState(() => pickStartLevel(loadProgress()));
   const [mode, setMode] = useState<Mode>("levels");
+  const [round, setRound] = useState<RecallRound>(() => makeRecallRound());
   /** 挂载时固定「今天」；跨零点继续开着的话切一下模式或刷新即可。 */
   const [todayKey] = useState(() => dateKeyOf(new Date()));
   const [daily, setDaily] = useState<DailyMap>(() => loadDaily());
@@ -113,10 +136,31 @@ export default function Game() {
     };
   }, [todayKey]);
 
-  const level = mode === "daily" ? dailyLevel : (LEVELS.find((l) => l.id === levelId) ?? LEVELS[0]);
+  /** 推算模式的「关卡」只是个壳，用来提供调、音阶、品域。 */
+  const recallLevel = useMemo<LevelDef>(() => {
+    const key = KEY_BY_ID.get(round.keyId)!;
+    return {
+      id: `recall:${round.seed}`,
+      chapter: 0,
+      index: 0,
+      title: `推算模式 · ${key.name}`,
+      keyId: key.id,
+      scaleId: key.mode === "minor" ? "naturalMinor" : "major",
+      tuningId: "standard",
+      fretMin: 1,
+      fretMax: 12,
+      seed: round.seed,
+      givenRatio: 0.5,
+      givens: [],
+      targetCount: 0,
+      difficulty: 0,
+    };
+  }, [round]);
+
+  const level = mode === "daily" ? dailyLevel : mode === "recall" ? recallLevel : (LEVELS.find((l) => l.id === levelId) ?? LEVELS[0]);
   const levelIndex = LEVELS.findIndex((l) => l.id === level.id);
 
-  const puzzle = useMemo(
+  const levelPuzzle = useMemo(
     () =>
       generatePuzzle({
         id: level.id,
@@ -130,13 +174,33 @@ export default function Game() {
     [level.id],
   );
 
+  /** 推算模式：只把那个主音当作给定，其余格子都是空的；判定时排除这一格。 */
+  const recallPuzzle = useMemo(() => {
+    const base = generatePuzzle({
+      id: recallLevel.id,
+      seed: recallLevel.seed,
+      keyId: recallLevel.keyId,
+      scaleId: recallLevel.scaleId,
+      fretMin: recallLevel.fretMin,
+      fretMax: recallLevel.fretMax,
+      givenRatio: recallLevel.givenRatio,
+    });
+    return {
+      ...base,
+      givens: [round.anchor],
+      target: base.target.filter((c) => !(c.s === round.anchor.s && c.f === round.anchor.f)),
+    };
+  }, [recallLevel, round.anchor]);
+
+  const puzzle = mode === "recall" ? recallPuzzle : levelPuzzle;
+
   const parMs =
-    mode === "daily"
-      ? parMsFor({ targetCount: puzzle.target.length, difficulty: puzzle.difficulty })
-      : parMsOf(level);
+    mode === "levels"
+      ? parMsOf(level)
+      : parMsFor({ targetCount: puzzle.target.length, difficulty: puzzle.difficulty });
   /** 首调唱名要按当前调的主音算。 */
   const tonicPc = KEY_BY_ID.get(level.keyId)?.tonicPc ?? 0;
-  const record = mode === "daily" ? daily[todayKey] : progress[level.id];
+  const record = mode === "daily" ? daily[todayKey] : mode === "recall" ? undefined : progress[level.id];
   const streak = useMemo(() => streakOf(Object.keys(daily), todayKey), [daily, todayKey]);
   const expected = useMemo(() => expectedNameMap(puzzle), [puzzle]);
   /** 难度按 0–10 显示；要填的格数 = 目标 − 给定。 */
@@ -264,6 +328,12 @@ export default function Game() {
     setEndedAt(Date.now());
     const ctx = { elapsedMs, strictSpelling: settings.strictSpelling, parMs };
 
+    // 推算模式：只判定这一把，不写进度、不算星级。
+    if (mode === "recall") {
+      setGain(null);
+      return;
+    }
+
     // 每日挑战：记到 guitar.daily.v1，不动主线进度、不算解锁。
     if (mode === "daily") {
       const beforeDaily = daily[todayKey];
@@ -353,6 +423,11 @@ export default function Game() {
       : perfect
         ? "全对！"
         : "完成";
+  /** 推算模式里那唯一一格提示的唱名（always 主音，所以是 1 / do）。 */
+  const anchorLabel = solfegeLabel(tonicPc, tonicPc, {
+    system: settings.solfegeSystem,
+    style: settings.solfegeStyle,
+  });
 
   return (
     <section className="panel game">
@@ -374,6 +449,14 @@ export default function Game() {
           今日挑战
           {streak.todayDone ? " ✓" : ""}
         </button>
+        <button
+          role="tab"
+          aria-selected={mode === "recall"}
+          className={mode === "recall" ? "chip active" : "chip"}
+          onClick={() => switchMode("recall")}
+        >
+          推算模式
+        </button>
         <span className="muted daily-streak">
           连续 {streak.current} 天{streak.current > 0 && !streak.todayDone ? "（今天还没做）" : ""}
         </span>
@@ -382,22 +465,33 @@ export default function Game() {
       <div className="game-top">
         <div className="game-title">
           <h2>{level.title}</h2>
-          <p>
-            {scaleName(level.scaleId)} · 难度 {difficulty10}/10 · 给定 {puzzle.givens.length} / 目标{" "}
-            {puzzle.target.length}（要填 {fillCount}） ·{" "}
-            {mode === "daily" ? (
-              <span className="progress-line">每日挑战不影响主线解锁</span>
-            ) : (
-              <span className="progress-line">
-                已通关 {done}/{LEVELS.length} · ★ {stars}/{MAX_TOTAL_STARS}
-              </span>
-            )}
-          </p>
+          {mode === "recall" ? (
+            <p>
+              只有一格提示：<b>{6 - round.anchor.s} 弦 {round.anchor.f} 品 = {anchorLabel}</b>
+              {" · "}其余格子自己推，调外音可以空着（提交时只校验调内音）
+            </p>
+          ) : (
+            <p>
+              {scaleName(level.scaleId)} · 难度 {difficulty10}/10 · 给定 {puzzle.givens.length} / 目标{" "}
+              {puzzle.target.length}（要填 {fillCount}） ·{" "}
+              {mode === "daily" ? (
+                <span className="progress-line">每日挑战不影响主线解锁</span>
+              ) : (
+                <span className="progress-line">
+                  已通关 {done}/{LEVELS.length} · ★ {stars}/{MAX_TOTAL_STARS}
+                </span>
+              )}
+            </p>
+          )}
         </div>
         <div className="game-clock" aria-live="polite">
           <span className="clock">{fmt(elapsed)}</span>
           <span className="muted">
-            {record?.bestMs != null ? `最快全对 ${fmt(record.bestMs)}` : "还没全对过"}
+            {mode === "recall"
+              ? "本模式不记录成绩"
+              : record?.bestMs != null
+                ? `最快全对 ${fmt(record.bestMs)}`
+                : "还没全对过"}
           </span>
         </div>
       </div>
@@ -443,6 +537,11 @@ export default function Game() {
         <button className="btn primary" onClick={submit} disabled={!!result}>
           提交
         </button>
+        {mode === "recall" && (
+          <button className="btn ghost" onClick={() => setRound(makeRecallRound())}>
+            换一题
+          </button>
+        )}
         {mode === "levels" && next && (
           <button
             className="btn ghost"
@@ -495,41 +594,51 @@ export default function Game() {
         renderCell={(s, f) => {
           const k = `${s}:${f}`;
           if (givenKeys.has(k)) {
+            // 推算模式：那一格显示的是级数（1 / do），不是音名——给了音名就没得推了
+            if (mode === "recall") return anchorLabel;
             const pc = pitchClassAt(STANDARD_TUNING, s, f);
             return cellLabel(expected.get(pc) ?? "", pc, tonicPc, settings).main;
           }
           if (answers[k]) return answers[k];
+          if (mode === "recall") return "";
           if (targetKeys.has(k)) return "?";
           return "";
         }}
         renderCellSub={(s, f) => {
+          if (mode === "recall") return null;
           const k = `${s}:${f}`;
           if (!givenKeys.has(k)) return null;
           const pc = pitchClassAt(STANDARD_TUNING, s, f);
           return cellLabel(expected.get(pc) ?? "", pc, tonicPc, settings).sub;
         }}
         octaveShift={(s, f) => {
+          if (mode === "recall") return 0;
           const k = `${s}:${f}`;
           if (!givenKeys.has(k)) return 0;
           return octaveShiftFor(midiAt(STANDARD_TUNING, s, f), tonicPc, settings);
         }}
         cellClass={(s, f) => {
           const k = `${s}:${f}`;
-          if (givenKeys.has(k)) return "given";
+          if (givenKeys.has(k)) return mode === "recall" ? "anchor" : "given";
           if (result && statusByKey.has(k)) {
             const st = statusByKey.get(k)!;
             return st === "correct" ? "ok" : st === "spelling" ? "spell" : st === "wrong" ? "bad" : "empty";
           }
-          if (targetKeys.has(k)) return answers[k] ? "filled" : "target";
+          if (answers[k]) return "filled";
+          if (mode === "recall") return "blank";
+          if (targetKeys.has(k)) return "target";
           return "off";
         }}
         isDisabled={(s, f) => {
           const k = `${s}:${f}`;
-          return !targetKeys.has(k) || givenKeys.has(k) || !!result;
+          if (givenKeys.has(k) || !!result) return true;
+          // 推算模式每格都能填；其它模式只开放目标格
+          return mode === "recall" ? false : !targetKeys.has(k);
         }}
         onCellClick={(s, f) => {
           const k = `${s}:${f}`;
-          if (!targetKeys.has(k) || givenKeys.has(k) || result) return;
+          if (givenKeys.has(k) || result) return;
+          if (mode !== "recall" && !targetKeys.has(k)) return;
           setQuery("");
           setCursor(0);
           setPicker({ s, f });
@@ -540,7 +649,11 @@ export default function Game() {
         <div className="result">
           <div className="result-head">
             <h3>{headline}</h3>
-            <Stars n={gain?.stars ?? 0} size="lg" />
+            {mode === "recall" ? (
+              <span className="muted">推算模式 · 不计星级</span>
+            ) : (
+              <Stars n={gain?.stars ?? 0} size="lg" />
+            )}
           </div>
           <div className="result-grid">
             <div>
@@ -566,10 +679,19 @@ export default function Game() {
           </div>
 
           <div className="result-meta">
-            <span>三星目标 {fmt(parMs)}</span>
-            <span>{record?.bestMs != null ? `最快全对 ${fmt(record.bestMs)}` : "还没全对过"}</span>
-            {gain?.newBest && <span className="badge">新纪录</span>}
-            {gain?.unlocked && <span className="badge">已解锁 {gain.unlocked}</span>}
+            {mode === "recall" ? (
+              <>
+                <span>只校验调内音（{result.total} 格），调外格忽略</span>
+                <span>提示格：{anchorLabel}</span>
+              </>
+            ) : (
+              <>
+                <span>三星目标 {fmt(parMs)}</span>
+                <span>{record?.bestMs != null ? `最快全对 ${fmt(record.bestMs)}` : "还没全对过"}</span>
+                {gain?.newBest && <span className="badge">新纪录</span>}
+                {gain?.unlocked && <span className="badge">已解锁 {gain.unlocked}</span>}
+              </>
+            )}
           </div>
 
           {errorByString.length > 0 && (
@@ -584,7 +706,11 @@ export default function Game() {
           )}
 
           <div className="result-actions">
-            {mode === "daily" ? (
+            {mode === "recall" ? (
+              <button className="btn primary" onClick={() => setRound(makeRecallRound())}>
+                换一题（随机调）
+              </button>
+            ) : mode === "daily" ? (
               <span className="muted">
                 每日挑战 · 连续 {streak.current} 天{streak.todayDone ? "（今天已完成）" : ""}
               </span>

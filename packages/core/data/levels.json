@@ -1735,30 +1735,22 @@
       "id": "L31",
       "chapter": 4,
       "index": 1,
-      "title": "A 小调 · 0–12 品",
+      "title": "A 小调 · 1–12 品",
       "keyId": "Am",
       "scaleId": "naturalMinor",
       "tuningId": "standard",
-      "fretMin": 0,
+      "fretMin": 1,
       "fretMax": 12,
       "seed": 4001,
       "givenRatio": 0.4,
       "givens": [
         {
           "s": 0,
-          "f": 0
-        },
-        {
-          "s": 0,
-          "f": 10
+          "f": 1
         },
         {
           "s": 0,
           "f": 12
-        },
-        {
-          "s": 1,
-          "f": 0
         },
         {
           "s": 1,
@@ -1766,15 +1758,19 @@
         },
         {
           "s": 1,
+          "f": 3
+        },
+        {
+          "s": 1,
           "f": 6
         },
         {
           "s": 2,
-          "f": 0
+          "f": 2
         },
         {
           "s": 2,
-          "f": 7
+          "f": 9
         },
         {
           "s": 2,
@@ -1782,19 +1778,15 @@
         },
         {
           "s": 3,
-          "f": 0
+          "f": 2
         },
         {
           "s": 3,
-          "f": 3
+          "f": 5
         },
         {
           "s": 3,
           "f": 7
-        },
-        {
-          "s": 3,
-          "f": 10
         },
         {
           "s": 3,
@@ -1802,7 +1794,7 @@
         },
         {
           "s": 4,
-          "f": 0
+          "f": 2
         },
         {
           "s": 4,
@@ -1810,7 +1802,7 @@
         },
         {
           "s": 4,
-          "f": 10
+          "f": 8
         },
         {
           "s": 4,
@@ -1818,32 +1810,32 @@
         },
         {
           "s": 5,
-          "f": 8
+          "f": 10
         }
       ],
-      "targetCount": 48,
-      "difficulty": 0.537
+      "targetCount": 42,
+      "difficulty": 0.52
     },
     {
       "id": "L32",
       "chapter": 4,
       "index": 2,
-      "title": "A 小调 · 0–12 品",
+      "title": "A 小调 · 1–12 品",
       "keyId": "Am",
       "scaleId": "naturalMinor",
       "tuningId": "standard",
-      "fretMin": 0,
+      "fretMin": 1,
       "fretMax": 12,
       "seed": 4002,
       "givenRatio": 0.38,
       "givens": [
         {
           "s": 0,
-          "f": 0
+          "f": 1
         },
         {
           "s": 0,
-          "f": 1
+          "f": 3
         },
         {
           "s": 0,
@@ -1855,23 +1847,19 @@
         },
         {
           "s": 1,
-          "f": 0
-        },
-        {
-          "s": 1,
           "f": 1
         },
         {
           "s": 1,
-          "f": 6
+          "f": 3
         },
         {
           "s": 1,
           "f": 10
         },
         {
-          "s": 2,
-          "f": 2
+          "s": 1,
+          "f": 12
         },
         {
           "s": 2,
@@ -1887,94 +1875,82 @@
         },
         {
           "s": 3,
-          "f": 0
-        },
-        {
-          "s": 3,
-          "f": 7
-        },
-        {
-          "s": 4,
-          "f": 0
-        },
-        {
-          "s": 4,
-          "f": 5
-        },
-        {
-          "s": 4,
-          "f": 12
-        },
-        {
-          "s": 5,
-          "f": 8
-        }
-      ],
-      "targetCount": 48,
-      "difficulty": 0.546
-    },
-    {
-      "id": "L33",
-      "chapter": 4,
-      "index": 3,
-      "title": "A 小调 · 0–12 品",
-      "keyId": "Am",
-      "scaleId": "naturalMinor",
-      "tuningId": "standard",
-      "fretMin": 0,
-      "fretMax": 12,
-      "seed": 4003,
-      "givenRatio": 0.36,
-      "givens": [
-        {
-          "s": 0,
-          "f": 3
-        },
-        {
-          "s": 0,
-          "f": 12
-        },
-        {
-          "s": 1,
-          "f": 1
-        },
-        {
-          "s": 1,
-          "f": 6
-        },
-        {
-          "s": 1,
-          "f": 8
-        },
-        {
-          "s": 1,
-          "f": 12
-        },
-        {
-          "s": 2,
           "f": 2
-        },
-        {
-          "s": 2,
-          "f": 7
-        },
-        {
-          "s": 2,
-          "f": 12
-        },
-        {
-          "s": 3,
-          "f": 3
-        },
-        {
-          "s": 3,
-          "f": 5
         },
         {
           "s": 3,
           "f": 9
         },
         {
+          "s": 4,
+          "f": 2
+        },
+        {
+          "s": 4,
+          "f": 7
+        },
+        {
+          "s": 5,
+          "f": 8
+        }
+      ],
+      "targetCount": 42,
+      "difficulty": 0.531
+    },
+    {
+      "id": "L33",
+      "chapter": 4,
+      "index": 3,
+      "title": "A 小调 · 1–12 品",
+      "keyId": "Am",
+      "scaleId": "naturalMinor",
+      "tuningId": "standard",
+      "fretMin": 1,
+      "fretMax": 12,
+      "seed": 4003,
+      "givenRatio": 0.36,
+      "givens": [
+        {
+          "s": 0,
+          "f": 5
+        },
+        {
+          "s": 0,
+          "f": 12
+        },
+        {
+          "s": 1,
+          "f": 3
+        },
+        {
+          "s": 1,
+          "f": 6
+        },
+        {
+          "s": 1,
+          "f": 8
+        },
+        {
+          "s": 2,
+          "f": 4
+        },
+        {
+          "s": 2,
+          "f": 12
+        },
+        {
+          "s": 3,
+          "f": 5
+        },
+        {
+          "s": 3,
+          "f": 7
+        },
+        {
+          "s": 3,
+          "f": 10
+        },
+        {
           "s": 3,
           "f": 12
         },
@@ -1992,40 +1968,40 @@
         },
         {
           "s": 5,
-          "f": 12
+          "f": 5
         }
       ],
-      "targetCount": 48,
-      "difficulty": 0.556
+      "targetCount": 42,
+      "difficulty": 0.542
     },
     {
       "id": "L34",
       "chapter": 4,
       "index": 4,
-      "title": "A 小调 · 0–12 品",
+      "title": "A 小调 · 1–12 品",
       "keyId": "Am",
       "scaleId": "naturalMinor",
       "tuningId": "standard",
-      "fretMin": 0,
+      "fretMin": 1,
       "fretMax": 12,
       "seed": 4004,
       "givenRatio": 0.33,
       "givens": [
         {
           "s": 0,
-          "f": 0
+          "f": 1
         },
         {
           "s": 0,
-          "f": 7
+          "f": 8
         },
         {
           "s": 0,
           "f": 10
         },
         {
-          "s": 1,
-          "f": 5
+          "s": 0,
+          "f": 12
         },
         {
           "s": 1,
@@ -2037,19 +2013,11 @@
         },
         {
           "s": 2,
+          "f": 4
+        },
+        {
+          "s": 3,
           "f": 2
-        },
-        {
-          "s": 3,
-          "f": 0
-        },
-        {
-          "s": 3,
-          "f": 5
-        },
-        {
-          "s": 3,
-          "f": 7
         },
         {
           "s": 3,
@@ -2065,29 +2033,29 @@
         },
         {
           "s": 5,
-          "f": 3
-        },
-        {
-          "s": 5,
           "f": 5
         },
         {
           "s": 5,
-          "f": 10
+          "f": 7
+        },
+        {
+          "s": 5,
+          "f": 12
         }
       ],
-      "targetCount": 48,
-      "difficulty": 0.565
+      "targetCount": 42,
+      "difficulty": 0.553
     },
     {
       "id": "L35",
       "chapter": 4,
       "index": 5,
-      "title": "E 小调 · 0–12 品",
+      "title": "E 小调 · 1–12 品",
       "keyId": "Em",
       "scaleId": "naturalMinor",
       "tuningId": "standard",
-      "fretMin": 0,
+      "fretMin": 1,
       "fretMax": 12,
       "seed": 4005,
       "givenRatio": 0.31,
@@ -2102,7 +2070,68 @@
         },
         {
           "s": 1,
-          "f": 0
+          "f": 1
+        },
+        {
+          "s": 1,
+          "f": 3
+        },
+        {
+          "s": 1,
+          "f": 10
+        },
+        {
+          "s": 2,
+          "f": 4
+        },
+        {
+          "s": 2,
+          "f": 7
+        },
+        {
+          "s": 2,
+          "f": 9
+        },
+        {
+          "s": 3,
+          "f": 9
+        },
+        {
+          "s": 4,
+          "f": 2
+        },
+        {
+          "s": 4,
+          "f": 9
+        },
+        {
+          "s": 4,
+          "f": 12
+        },
+        {
+          "s": 5,
+          "f": 2
+        }
+      ],
+      "targetCount": 42,
+      "difficulty": 0.592
+    },
+    {
+      "id": "L36",
+      "chapter": 4,
+      "index": 6,
+      "title": "E 小调 · 1–12 品",
+      "keyId": "Em",
+      "scaleId": "naturalMinor",
+      "tuningId": "standard",
+      "fretMin": 1,
+      "fretMax": 12,
+      "seed": 4006,
+      "givenRatio": 0.29,
+      "givens": [
+        {
+          "s": 0,
+          "f": 2
         },
         {
           "s": 1,
@@ -2114,7 +2143,7 @@
         },
         {
           "s": 2,
-          "f": 4
+          "f": 2
         },
         {
           "s": 2,
@@ -2122,86 +2151,13 @@
         },
         {
           "s": 2,
-          "f": 7
-        },
-        {
-          "s": 3,
           "f": 9
         },
         {
-          "s": 4,
-          "f": 0
-        },
-        {
-          "s": 4,
-          "f": 7
-        },
-        {
-          "s": 4,
-          "f": 12
-        },
-        {
-          "s": 5,
-          "f": 0
-        },
-        {
-          "s": 5,
-          "f": 2
-        },
-        {
-          "s": 5,
-          "f": 8
-        }
-      ],
-      "targetCount": 48,
-      "difficulty": 0.603
-    },
-    {
-      "id": "L36",
-      "chapter": 4,
-      "index": 6,
-      "title": "E 小调 · 0–12 品",
-      "keyId": "Em",
-      "scaleId": "naturalMinor",
-      "tuningId": "standard",
-      "fretMin": 0,
-      "fretMax": 12,
-      "seed": 4006,
-      "givenRatio": 0.29,
-      "givens": [
-        {
-          "s": 0,
-          "f": 2
-        },
-        {
-          "s": 1,
-          "f": 0
-        },
-        {
-          "s": 1,
-          "f": 8
-        },
-        {
-          "s": 2,
-          "f": 0
-        },
-        {
-          "s": 2,
+          "s": 3,
           "f": 4
         },
         {
-          "s": 2,
-          "f": 7
-        },
-        {
-          "s": 3,
-          "f": 2
-        },
-        {
-          "s": 3,
-          "f": 7
-        },
-        {
           "s": 3,
           "f": 9
         },
@@ -2211,40 +2167,36 @@
         },
         {
           "s": 4,
-          "f": 3
-        },
-        {
-          "s": 4,
           "f": 12
         },
         {
           "s": 5,
-          "f": 3
+          "f": 5
         },
         {
           "s": 5,
-          "f": 10
+          "f": 12
         }
       ],
-      "targetCount": 48,
-      "difficulty": 0.612
+      "targetCount": 42,
+      "difficulty": 0.603
     },
     {
       "id": "L37",
       "chapter": 4,
       "index": 7,
-      "title": "E 小调 · 0–12 品",
+      "title": "E 小调 · 1–12 品",
       "keyId": "Em",
       "scaleId": "naturalMinor",
       "tuningId": "standard",
-      "fretMin": 0,
+      "fretMin": 1,
       "fretMax": 12,
       "seed": 4007,
       "givenRatio": 0.27,
       "givens": [
         {
           "s": 0,
-          "f": 3
+          "f": 5
         },
         {
           "s": 0,
@@ -2252,19 +2204,15 @@
         },
         {
           "s": 1,
-          "f": 0
+          "f": 1
         },
         {
           "s": 1,
-          "f": 3
-        },
-        {
-          "s": 1,
-          "f": 10
+          "f": 5
         },
         {
           "s": 2,
-          "f": 2
+          "f": 4
         },
         {
           "s": 2,
@@ -2279,34 +2227,30 @@
           "f": 5
         },
         {
-          "s": 3,
-          "f": 10
-        },
-        {
           "s": 4,
-          "f": 0
+          "f": 2
         },
         {
           "s": 5,
-          "f": 2
+          "f": 3
         },
         {
           "s": 5,
           "f": 10
         }
       ],
-      "targetCount": 48,
-      "difficulty": 0.622
+      "targetCount": 42,
+      "difficulty": 0.613
     },
     {
       "id": "L38",
       "chapter": 4,
       "index": 8,
-      "title": "D 小调 · 0–12 品",
+      "title": "D 小调 · 1–12 品",
       "keyId": "Dm",
       "scaleId": "naturalMinor",
       "tuningId": "standard",
-      "fretMin": 0,
+      "fretMin": 1,
       "fretMax": 12,
       "seed": 4008,
       "givenRatio": 0.24,
@@ -2321,15 +2265,11 @@
         },
         {
           "s": 2,
-          "f": 2
-        },
-        {
-          "s": 2,
           "f": 3
         },
         {
           "s": 2,
-          "f": 7
+          "f": 5
         },
         {
           "s": 3,
@@ -2345,7 +2285,7 @@
         },
         {
           "s": 4,
-          "f": 1
+          "f": 3
         },
         {
           "s": 5,
@@ -2356,25 +2296,25 @@
           "f": 12
         }
       ],
-      "targetCount": 47,
-      "difficulty": 0.638
+      "targetCount": 42,
+      "difficulty": 0.624
     },
     {
       "id": "L39",
       "chapter": 4,
       "index": 9,
-      "title": "D 小调 · 0–12 品",
+      "title": "D 小调 · 1–12 品",
       "keyId": "Dm",
       "scaleId": "naturalMinor",
       "tuningId": "standard",
-      "fretMin": 0,
+      "fretMin": 1,
       "fretMax": 12,
       "seed": 4009,
       "givenRatio": 0.22,
       "givens": [
         {
           "s": 0,
-          "f": 3
+          "f": 5
         },
         {
           "s": 0,
@@ -2386,7 +2326,7 @@
         },
         {
           "s": 2,
-          "f": 0
+          "f": 2
         },
         {
           "s": 2,
@@ -2394,15 +2334,11 @@
         },
         {
           "s": 3,
-          "f": 2
-        },
-        {
-          "s": 3,
-          "f": 5
+          "f": 7
         },
         {
           "s": 4,
-          "f": 5
+          "f": 7
         },
         {
           "s": 5,
@@ -2410,21 +2346,21 @@
         },
         {
           "s": 5,
-          "f": 5
+          "f": 6
         }
       ],
-      "targetCount": 47,
-      "difficulty": 0.648
+      "targetCount": 42,
+      "difficulty": 0.635
     },
     {
       "id": "L40",
       "chapter": 4,
       "index": 10,
-      "title": "B 小调 · 0–12 品",
+      "title": "B 小调 · 1–12 品",
       "keyId": "Bm",
       "scaleId": "naturalMinor",
       "tuningId": "standard",
-      "fretMin": 0,
+      "fretMin": 1,
       "fretMax": 12,
       "seed": 4010,
       "givenRatio": 0.2,
@@ -2432,10 +2368,6 @@
         {
           "s": 0,
           "f": 12
-        },
-        {
-          "s": 1,
-          "f": 0
         },
         {
           "s": 1,
@@ -2451,15 +2383,11 @@
         },
         {
           "s": 3,
-          "f": 0
+          "f": 2
         },
         {
           "s": 4,
           "f": 7
-        },
-        {
-          "s": 4,
-          "f": 10
         },
         {
           "s": 4,
@@ -2470,8 +2398,8 @@
           "f": 3
         }
       ],
-      "targetCount": 48,
-      "difficulty": 0.678
+      "targetCount": 42,
+      "difficulty": 0.674
     }
   ]
 }

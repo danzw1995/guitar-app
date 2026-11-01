@@ -201,6 +201,10 @@ button, select, input { font: inherit; color: inherit; }
 .fb-cell.root .fb-dot { background: var(--accent); border-color: var(--accent); color: #1a1205; }
 .fb-cell.scale .fb-dot { background: #16283f; border-color: rgba(88, 166, 255, 0.55); color: #b9d8ff; }
 .fb-cell.chromatic .fb-dot { background: #191d23; border-color: #2d333b; color: #8b949e; }
+/* 推算模式：唯一提示格（金色描边）与所有可填空格（无事发生时不可见） */
+.fb-cell.anchor .fb-dot { background: #2b2410; border-color: var(--accent); color: var(--accent); }
+.fb-cell.blank .fb-dot { border-color: transparent; }
+.fb-cell.blank:hover .fb-dot { border-color: #3d444d; background: rgba(255, 255, 255, 0.03); }
 .fb-cell.ok .fb-dot { background: #13291b; border-color: var(--green); color: #7ee787; }
 .fb-cell.spell .fb-dot { background: #2b2310; border-color: var(--orange); color: #e3b341; }
 .fb-cell.bad .fb-dot { background: #2b1616; border-color: var(--red); color: #ff7b72; }
