@@ -1,12 +1,15 @@
 import type { ChordShape } from "@guitar/core";
 
 const W = 200;
-const H = 240;
+const H = 250;
 const LEFT = 30;
 const TOP = 45;
 const GAP_X = 28;
 const GAP_Y = 30;
 const FRETS = 5;
+
+/** 从左到右：6 弦（低音 E）到 1 弦（高音 E），统一大写。 */
+const STRING_NAMES = ["E", "A", "D", "G", "B", "E"];
 
 export default function ChordDiagram({ chord }: { chord: ChordShape }) {
   const positive = chord.frets.filter((f) => f > 0);
@@ -78,6 +81,19 @@ export default function ChordDiagram({ chord }: { chord: ChordShape }) {
             </text>
           ) : null}
         </g>
+      ))}
+
+      {/* 弦名：标在图下方，方便对上 ○ / × 是哪一根弦 */}
+      {STRING_NAMES.map((name, i) => (
+        <text
+          key={`sn${i}`}
+          x={stringX(i)}
+          y={TOP + FRETS * GAP_Y + 18}
+          textAnchor="middle"
+          className="chord-string-name"
+        >
+          {name}
+        </text>
       ))}
     </svg>
   );

@@ -38,7 +38,7 @@ CONTRIBUTING.md   开发与发版约定
 pnpm install
 pnpm dev          # http://127.0.0.1:5173
 pnpm build        # 产物在 apps/web/dist
-pnpm test         # 核心测试（36 个）
+pnpm test         # 核心测试（42 个）
 pnpm demo L01     # 终端打印一关
 ```
 

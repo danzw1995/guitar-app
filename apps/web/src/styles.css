@@ -249,6 +249,24 @@ button, select, input { font: inherit; color: inherit; }
 .chord-svg { width: 100%; max-width: 230px; height: auto; }
 .chord-fretnum { fill: var(--muted); font-size: 12px; }
 .chord-finger { fill: #1a1205; font-size: 11px; font-weight: 700; }
+.chord-string-name { fill: var(--muted); font-size: 11px; }
+
+.chord-quality { margin: 0 0 6px; color: var(--muted); font-size: 13px; }
+.chord-tones { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 10px 0 4px; }
+.tone-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel);
+}
+.tone-chip b { font-size: 13px; }
+.tone-chip i { font-style: normal; font-size: 11px; color: var(--muted); }
+.chord-explain { margin: 8px 0; font-size: 13px; line-height: 1.6; }
+.chord-hint { text-align: left; line-height: 1.7; margin-top: 4px; }
+.chord-hint b { color: var(--text); }
 
 /* game */
 .game-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }

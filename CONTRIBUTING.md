@@ -11,7 +11,7 @@
 ```bash
 pnpm install
 pnpm dev        # http://127.0.0.1:5173
-pnpm test       # core 测试（36 个）
+pnpm test       # core 测试（42 个）
 pnpm check:styles  # 移动端样式断言（点按 ≥ 40px、iOS 字号 16px、弦名 sticky）
 pnpm build      # apps/web/dist
 pnpm demo L01   # 终端打印一关

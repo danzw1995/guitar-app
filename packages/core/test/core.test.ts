@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  CHORDS,
+  CHORD_BY_NAME,
   EMPTY_PROGRESS,
   FLAT_NAMES,
   KEY_BY_ID,
@@ -9,6 +11,7 @@ import {
   STANDARD_TUNING,
   applyAttempt,
   cellKey,
+  chordInfo,
   completedCount,
   dailyPuzzle,
   dailySpecFor,
@@ -16,6 +19,7 @@ import {
   dayNumberOf,
   diatonicNames,
   expectedNameMap,
+  fingeringOf,
   fromLegacyBest,
   generatePuzzle,
   isPerfect,
@@ -374,6 +378,41 @@ test("noteCandidates: 前缀过滤，精确优先", () => {
   assert.deepEqual(noteCandidates("E"), ["E", "Eb"]);
   assert.deepEqual(noteCandidates("z"), []);
   for (const n of NOTE_NAMES) assert.equal(parseNote(n) !== null, true, `${n} 应可解析`);
+});
+
+// ---- 和弦 ----
+
+test("和弦构成音：性质与拼写", () => {
+  const toneNames = (name: string) => chordInfo(CHORD_BY_NAME.get(name)!).tones.map((t) => t.name);
+  assert.deepEqual(toneNames("C"), ["C", "E", "G"]);
+  assert.deepEqual(toneNames("Am"), ["A", "C", "E"]);
+  assert.deepEqual(toneNames("C7"), ["C", "E", "G", "Bb"], "七音用降号拼写");
+  assert.deepEqual(toneNames("Fmaj7"), ["F", "A", "C", "E"]);
+  assert.deepEqual(toneNames("Am7"), ["A", "C", "E", "G"]);
+  assert.deepEqual(toneNames("Bm"), ["B", "D", "F#"]);
+  assert.equal(chordInfo(CHORD_BY_NAME.get("Am")!).quality.name, "小三和弦");
+  assert.equal(chordInfo(CHORD_BY_NAME.get("G7")!).quality.name, "属七和弦");
+  assert.equal(chordInfo(CHORD_BY_NAME.get("Fmaj7")!).quality.name, "大七和弦");
+});
+
+test("每个和弦：按到的音都是构成音，且至少出现一次根音", () => {
+  for (const chord of CHORDS) {
+    const info = chordInfo(chord);
+    const pcs = new Set(info.tones.map((t) => t.pc));
+    assert.ok(pcs.has(info.rootPc), `${chord.name} 缺根音`);
+    chord.frets.forEach((fret, i) => {
+      if (fret < 0) return;
+      const stringIndex = 5 - i; // frets[0] 是 6 弦
+      const pc = ((STANDARD_TUNING.strings[stringIndex] + fret) % 12 + 12) % 12;
+      assert.ok(pcs.has(pc), `${chord.name} 第 ${6 - i} 弦上的音不是构成音`);
+    });
+  }
+});
+
+test("指法串：x 表示不弹，0 表示空弦", () => {
+  assert.equal(fingeringOf(CHORD_BY_NAME.get("C")!), "x32010");
+  assert.equal(fingeringOf(CHORD_BY_NAME.get("F")!), "133211");
+  assert.equal(fingeringOf(CHORD_BY_NAME.get("D")!), "xx0232");
 });
 
 // ---- 唱名 ----
