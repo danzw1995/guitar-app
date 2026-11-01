@@ -97,3 +97,17 @@ iOS 表单字号、弦名 sticky），**不渲染页面**，改 UI 后仍要手�
   撤销：对同样的路径用 `RemoveAccessRule` 删掉这条 SID 的权限项，再
   `icacls <dir> /setintegritylevel "(OI)(CI)medium" /T`。
   临时绕法（不改权限）：`node packages/core/test/core.test.ts`。
+- **`pnpm dev` 报 `[BABEL] .../main.tsx: missing ) after argument list`，但 `tsc` 正常**：
+  不是代码问题，是 `node_modules` 里某个依赖文件被写坏了。本机遇到过
+  `@babel/parser/lib/index.js` 混进 2 个坏字节（`chunkSta` 后多出一个 `0xF2`），
+  Babel 连 `const a = 1` 都解析不了。`pnpm store status` 会误报「untouched」，删包重装也没用。
+  修法是按 shasum 校验后从 registry 重新解出该包：
+
+  ```powershell
+  # 从 registry 拿 tarball，校验 shasum 后覆盖到对应目录
+  tar -xzf <pkg-version>.tgz -C node_modules\.pnpm\<pkg>@<ver>\node_modules\<pkg> --strip-components=1
+  ```
+
+  验证：`node -e "require('<...>/@babel/core').transformSync('const a = 1')"` 能跑通即恢复。
+  排查同类问题：扫描 `node_modules` 下 `.js/.json/.ts` 的 UTF-8 合法性（本机扫过 1769 个文件，
+  只有这一个坏）。
