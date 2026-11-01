@@ -10,20 +10,40 @@
 | `src/client.js` | 面板源码（React，`createElement` 写法，无 JSX） |
 | `build.mjs` | 用 rollup 打成 `client.js`（CJS 工厂 + `window.__ModuleLoader__.load`） |
 | `client.js` | **构建产物**，插件加载的就是它 |
+| `test/render.mjs` | 无浏览器验证：加载 bundle、渲染三页、把圆点数量和 core 算出来的位置对齐 |
 | `index.js` | Host 半，现在只有 `apply() {}` |
 | `cordis.patch.yml` | 往 profile 里插入一行插件 |
 | `locale/*.json` | 插件管理器的标题/描述 |
 | `icon.svg` | 插件图标 |
 
+## 插在哪个槽
+
+`conversation.header`——整条对话的顶部，全宽。
+
+**不要**用 `conversation.composer.dock`：那是输入框下面放 token 统计的小行，
+塞进去会挤成一团（第一版就踩了这个坑）。
+
+面板默认展开，右上角「收起」可以折成一行，省出纵向空间。
+
 ## 构建
 
 ```bash
-# 先把 core 产出来（client.js 里 import 的是 dist，不是 src）
-pnpm --filter @guitar/core build
+pnpm --filter @guitar/core build     # client.js import 的是 dist，不是 src
 node plugins/dsh-guitar/build.mjs
+node plugins/dsh-guitar/test/render.mjs
 ```
 
 不用 esbuild/tsup：DSH 沙箱里 esbuild 起不了子进程，rollup 是纯 JS。
+
+## 画了什么
+
+- **和弦**：0–5 品指法图，红点=根音、蓝点=其余构成音、○=空弦、×=闷弦，圆点里是音名；
+  下方一行给性质和指法串（`x32010`）。
+- **音阶**：1–12 品全指板，主音金色、其余音阶音蓝色，圆点里是音名；
+  调外音不画（和 Web 应用里的默认视图一致）。
+- **今日**：今天的日期、调、品域、要填格数，外加该调的指板。
+
+样式只用 `currentColor` 和 `color-mix`，所以亮色/暗色主题都跟宿主一致，**不再猜 `--dsw-alias-*` 变量名**。
 
 ## 安装
 
@@ -38,14 +58,19 @@ plugin_manager action=install_bundle target="F:\program\workspace\guitar-app\plu
 
 ## 已验证 / 未验证
 
-- 已验证：bundle 能被 `window.__ModuleLoader__` 加载；`apply` 注册到
-  `conversation.composer.dock`；用 `react-dom/server` 渲染出 3.5KB HTML，
-  和弦/性质/指法/标签都在。
-- **未验证**：真实 Harness 里的插槽位置与宽度、`--dsw-alias-*` 主题变量名
-  （每个变量都写了深色兜底色，取不到也能看）、`ctx.locale.t` 的实际签名（取不到走中文兜底）。
+已验证（`node test/render.mjs`，不是靠"应该能跑"）：
+
+- bundle 被 `window.__ModuleLoader__` 加载，导出 `apply` / `inject`；
+- `apply` 注册到 `conversation.header`，id `guitar-lab`；
+- 和弦页：C 大三渲染出 2 个根音点、1 个三音点、1 个 ×（对应 `x32010`）；
+- 音阶页：G 大调 1–12 品的圆点数量与 core 逐个算出来的位置完全一致（6 个主音 / 36 个音阶音）；
+- 今日页：日期与调取自 `dailySpecFor`，指板存在。
+
+**未验证**：真实 Harness 里 header 的实际高度与留白、`ctx.locale.t` 的真实签名
+（取不到走中文兜底）。
 
 ## 下一步
 
-1. 确认面板在真实对话里能出现、宽度合适。
+1. 确认面板在 header 里的高度和观感；挤的话我可以改成默认收起。
 2. 用一个最小 Host 工具试 `import` 是否可用；通了就把 `guitar.lookupChord` /
    `guitar.generatePuzzle` 接上（`harness.defineTool` + `ctx.tools.register`）。
