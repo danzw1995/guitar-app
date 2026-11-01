@@ -85,6 +85,8 @@ export default function Game() {
   const [now, setNow] = useState(() => Date.now());
   const [gain, setGain] = useState<Gain | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** 试玩：允许进入还没解锁的关卡，方便评估后面的难度。 */
+  const [tryLocked, setTryLocked] = useState(false);
   /** 键盘输入的音名前缀，如 "E" / "Eb" / "C#"；空表示没输入。 */
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -136,8 +138,10 @@ export default function Game() {
   const tonicPc = KEY_BY_ID.get(level.keyId)?.tonicPc ?? 0;
   const record = mode === "daily" ? daily[todayKey] : progress[level.id];
   const streak = useMemo(() => streakOf(Object.keys(daily), todayKey), [daily, todayKey]);
-
   const expected = useMemo(() => expectedNameMap(puzzle), [puzzle]);
+  /** 难度按 0–10 显示；要填的格数 = 目标 − 给定。 */
+  const difficulty10 = Math.round(puzzle.difficulty * 10);
+  const fillCount = puzzle.target.length - puzzle.givens.length;
 
   const givenKeys = useMemo(() => new Set(puzzle.givens.map(cellKey)), [puzzle]);
   const targetKeys = useMemo(() => new Set(puzzle.target.map(cellKey)), [puzzle]);
@@ -336,7 +340,8 @@ export default function Game() {
 
   function selectLevel(id: string) {
     const idx = LEVELS.findIndex((l) => l.id === id);
-    if (idx < 0 || !isUnlocked(LEVEL_IDS, idx, progress)) return;
+    if (idx < 0) return;
+    if (!tryLocked && !isUnlocked(LEVEL_IDS, idx, progress)) return;
     setLevelId(id);
   }
 
@@ -378,7 +383,8 @@ export default function Game() {
         <div className="game-title">
           <h2>{level.title}</h2>
           <p>
-            {scaleName(level.scaleId)} · 给定 {puzzle.givens.length} / 目标 {puzzle.target.length} ·{" "}
+            {scaleName(level.scaleId)} · 难度 {difficulty10}/10 · 给定 {puzzle.givens.length} / 目标{" "}
+            {puzzle.target.length}（要填 {fillCount}） ·{" "}
             {mode === "daily" ? (
               <span className="progress-line">每日挑战不影响主线解锁</span>
             ) : (
@@ -407,9 +413,11 @@ export default function Game() {
                     const idx = LEVELS.findIndex((x) => x.id === l.id);
                     const open = isUnlocked(LEVEL_IDS, idx, progress);
                     const stars = progress[l.id]?.stars ?? 0;
+                    const d10 = Math.round(l.difficulty * 10);
+                    const fill = l.targetCount - l.givens.length;
                     return (
-                      <option key={l.id} value={l.id} disabled={!open}>
-                        {l.id} · {l.title}
+                      <option key={l.id} value={l.id} disabled={!open && !tryLocked}>
+                        {l.id} · {l.title} · 难度 {d10} · 填 {fill}
                         {open ? ` ${starText(stars)}` : " · 未解锁"}
                       </option>
                     );
@@ -417,6 +425,16 @@ export default function Game() {
                 </optgroup>
               ))}
             </select>
+          </label>
+        )}
+        {mode === "levels" && (
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={tryLocked}
+              onChange={(e) => setTryLocked(e.target.checked)}
+            />
+            试玩未解锁
           </label>
         )}
         <button className="btn ghost" onClick={reset}>
@@ -429,7 +447,7 @@ export default function Game() {
           <button
             className="btn ghost"
             onClick={() => selectLevel(next.id)}
-            disabled={!isUnlocked(LEVEL_IDS, levelIndex + 1, progress)}
+            disabled={!tryLocked && !isUnlocked(LEVEL_IDS, levelIndex + 1, progress)}
           >
             下一关 →
           </button>
@@ -574,7 +592,7 @@ export default function Game() {
               <button
                 className="btn primary"
                 onClick={() => selectLevel(next.id)}
-                disabled={!isUnlocked(LEVEL_IDS, levelIndex + 1, progress)}
+                disabled={!tryLocked && !isUnlocked(LEVEL_IDS, levelIndex + 1, progress)}
               >
                 下一关：{next.title}
               </button>
