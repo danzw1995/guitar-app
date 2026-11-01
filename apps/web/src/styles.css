@@ -174,7 +174,7 @@ button, select, input { font: inherit; color: inherit; }
   background: transparent;
   color: var(--text);
 }
-/* 简谱八度记号：上点/下点，浮在圆点上下边缘，不挤动文字 */
+/* 简谱八度记号：浮在数字上下，离圆点边缘留白，不挤字也不贴边 */
 .fb-oct {
   position: absolute;
   left: 50%;
@@ -184,11 +184,11 @@ button, select, input { font: inherit; color: inherit; }
   height: 4px;
   align-items: center;
 }
-.fb-oct.up { top: 1px; }
-.fb-oct.down { bottom: 1px; }
-.fb-oct i { display: block; width: 3.5px; height: 3.5px; border-radius: 50%; background: currentColor; }
-.fb-main { font-size: 12px; font-weight: 700; }
-.fb-sub { font-size: 9px; font-weight: 600; opacity: 0.75; }
+.fb-oct.up { top: 4px; }
+.fb-oct.down { bottom: 4px; }
+.fb-oct i { display: block; width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
+.fb-main { font-size: 12px; font-weight: 700; line-height: 1.1; }
+.fb-sub { font-size: 8.5px; font-weight: 600; line-height: 1; opacity: 0.8; }
 /* 圆点一律用不透明底色：弦线从圆点下面穿过时不会透出来，视觉上圆点「坐在弦上」 */
 .fb-cell.off .fb-dot { visibility: hidden; }
 .fb-cell.given .fb-dot { background: #21262d; border-color: #3d444d; color: #c9d1d9; }
