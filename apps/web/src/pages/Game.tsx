@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  NOTE_NAMES,
   KEYS,
   KEY_BY_ID,
   SCALE_BY_ID,
@@ -13,11 +12,7 @@ import {
   dateKeyOf,
   expectedNameMap,
   generatePuzzle,
-  isPerfect,
   isUnlocked,
-  midiAt,
-  nextNoteQuery,
-  noteCandidates,
   parMsFor,
   pitchClassAt,
   solfegeLabel,
@@ -39,9 +34,11 @@ import {
   type DailyMap,
   type Settings,
 } from "../lib/storage";
-import Fretboard from "../components/Fretboard";
-import Stars, { starText } from "../components/Stars";
-import { cellLabel, octaveShiftFor } from "../lib/labels";
+import { starText } from "../components/Stars";
+import NotePicker from "../components/NotePicker";
+import PuzzleBoard from "../components/PuzzleBoard";
+import ResultPanel from "../components/ResultPanel";
+import { copyText } from "../lib/clipboard";
 import { fmt } from "../lib/format";
 
 function scaleName(scaleId: string): string {
@@ -65,7 +62,6 @@ interface Gain {
   /** 这一把刚刚解锁的下一关。 */
   unlocked: string | null;
 }
-
 type Mode = "levels" | "daily" | "recall";
 
 interface RecallRound {
@@ -106,9 +102,7 @@ export default function Game() {
   const [gain, setGain] = useState<Gain | null>(null);
   /** 试玩：允许进入还没解锁的关卡，方便评估后面的难度。 */
   const [tryLocked, setTryLocked] = useState(false);
-  /** 键盘输入的音名前缀，如 "E" / "Eb" / "C#"；空表示没输入。 */
-  const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   /** 每日挑战用同一套渲染，只是题目参数来自日期。 */
   const dailyLevel = useMemo<LevelDef>(() => {
@@ -203,14 +197,6 @@ export default function Game() {
   const difficulty10 = Math.round(puzzle.difficulty * 10);
   const fillCount = puzzle.target.length - puzzle.givens.length;
 
-  const givenKeys = useMemo(() => new Set(puzzle.givens.map(cellKey)), [puzzle]);
-  const targetKeys = useMemo(() => new Set(puzzle.target.map(cellKey)), [puzzle]);
-  const statusByKey = useMemo(() => {
-    const m = new Map<string, AttemptResult["cells"][number]["status"]>();
-    result?.cells.forEach((c) => m.set(cellKey(c.cell), c.status));
-    return m;
-  }, [result]);
-
   /** 错误分布：按弦统计，告诉玩家该重点看哪根弦。 */
   const errorByString = useMemo(() => {
     if (!result) return [];
@@ -221,12 +207,6 @@ export default function Game() {
     }
     return [...counts.entries()].sort((a, b) => a[0] - b[0]);
   }, [result]);
-
-  /** 键盘候选：前缀过滤，精确匹配排最前（输 "B" 时 B 在 Bb 前面）。 */
-  const candidates = useMemo(() => noteCandidates(query), [query]);
-
-  const activeIndex = candidates.length ? Math.min(cursor, candidates.length - 1) : -1;
-  const activeNote = activeIndex >= 0 ? candidates[activeIndex] : null;
 
   useEffect(() => {
     const init: Record<string, string> = {};
@@ -246,53 +226,6 @@ export default function Game() {
     const id = window.setInterval(() => setNow(Date.now()), 200);
     return () => window.clearInterval(id);
   }, [startedAt, endedAt]);
-
-  // 键盘：音名选择器打开时接管按键。Tab 到目标格 -> Enter 打开 -> 输入音名 -> Enter 确认。
-  useEffect(() => {
-    if (!picker) return;
-
-    function onKeyDown(e: KeyboardEvent) {
-      const key = e.key;
-
-      if (key === "Escape") {
-        e.preventDefault();
-        setPicker(null);
-        return;
-      }
-      if (key === "Backspace" || key === "Delete") {
-        e.preventDefault();
-        setQuery((q) => q.slice(0, -1));
-        setCursor(0);
-        return;
-      }
-      if (key === "Enter") {
-        e.preventDefault();
-        const note = candidates[Math.min(cursor, Math.max(0, candidates.length - 1))];
-        if (note) choose(picker!, note);
-        return;
-      }
-      if (key === "ArrowDown" || key === "ArrowRight") {
-        e.preventDefault();
-        setCursor((c) => (candidates.length ? (c + 1) % candidates.length : 0));
-        return;
-      }
-      if (key === "ArrowUp" || key === "ArrowLeft") {
-        e.preventDefault();
-        setCursor((c) => (candidates.length ? (c - 1 + candidates.length) % candidates.length : 0));
-        return;
-      }
-      // 音名输入（含 # / b）走 core 的纯函数，规则只写一份。
-      const nextQuery = nextNoteQuery(query, key);
-      if (nextQuery !== null) {
-        e.preventDefault();
-        setQuery(nextQuery);
-        setCursor(0);
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [picker, candidates, cursor, query]);
 
   const elapsed = startedAt ? (endedAt ?? now) - startedAt : 0;
   const done = completedCount(LEVEL_IDS, progress);
@@ -381,6 +314,18 @@ export default function Game() {
   }
 
 
+  /** 复制一条可分享的战绩文案。 */
+  async function shareResult() {
+    if (!result) return;
+    const ms = formatDuration(result, startedAt, endedAt);
+    const stars = gain?.stars ?? record?.stars ?? 0;
+    const headlineText = mode === "levels" ? `${level.id} ${level.title}` : level.title;
+    const scoreText = mode === "recall" ? `答对 ${result.correct}/${result.total}` : starText(stars);
+    const ok = await copyText(`Guitar Lab · ${headlineText}｜${scoreText}｜用时 ${fmt(ms)}`);
+    setCopied(ok);
+    if (ok) window.setTimeout(() => setCopied(false), 2000);
+  }
+
   function switchMode(next: Mode) {
     if (next === mode) return;
     setMode(next);
@@ -394,14 +339,6 @@ export default function Game() {
     setLevelId(id);
   }
 
-  const perfect = result ? isPerfect(result, settings.strictSpelling) : false;
-  const headline = !result
-    ? ""
-    : !result.finished
-      ? `还差 ${result.empty} 格`
-      : perfect
-        ? "全对！"
-        : "完成";
   /** 推算模式里那唯一一格提示的级数（任意调内音，不一定是 1）。 */
   const anchorLabel = solfegeLabel(
     pitchClassAt(STANDARD_TUNING, round.anchor.s, round.anchor.f),
@@ -537,125 +474,33 @@ export default function Game() {
         ? = 待填 · 灰格 = 非音阶 · 点 ? 选音名；第一次选择开始计时。桌面可用 Tab 选格，Enter 打开后直接输入音名。
       </p>
 
-      <Fretboard
-        fretMin={puzzle.fretMin}
-        fretMax={puzzle.fretMax}
-        renderCell={(s, f) => {
-          const k = `${s}:${f}`;
-          if (givenKeys.has(k)) {
-            // 推算模式：那一格显示的是级数（1 / do），不是音名——给了音名就没得推了
-            if (mode === "recall") return anchorLabel;
-            const pc = pitchClassAt(STANDARD_TUNING, s, f);
-            return cellLabel(expected.get(pc) ?? "", pc, tonicPc, settings).main;
-          }
-          if (answers[k]) return answers[k];
-          if (mode === "recall") return "";
-          if (targetKeys.has(k)) return "?";
-          return "";
-        }}
-        renderCellSub={(s, f) => {
-          if (mode === "recall") return null;
-          const k = `${s}:${f}`;
-          if (!givenKeys.has(k)) return null;
-          const pc = pitchClassAt(STANDARD_TUNING, s, f);
-          return cellLabel(expected.get(pc) ?? "", pc, tonicPc, settings).sub;
-        }}
-        octaveShift={(s, f) => {
-          if (mode === "recall") return 0;
-          const k = `${s}:${f}`;
-          if (!givenKeys.has(k)) return 0;
-          return octaveShiftFor(midiAt(STANDARD_TUNING, s, f), tonicPc, settings);
-        }}
-        cellClass={(s, f) => {
-          const k = `${s}:${f}`;
-          if (givenKeys.has(k)) return mode === "recall" ? "anchor" : "given";
-          if (result && statusByKey.has(k)) {
-            const st = statusByKey.get(k)!;
-            return st === "correct" ? "ok" : st === "spelling" ? "spell" : st === "wrong" ? "bad" : "empty";
-          }
-          if (answers[k]) return "filled";
-          if (mode === "recall") return "blank";
-          if (targetKeys.has(k)) return "target";
-          return "off";
-        }}
-        isDisabled={(s, f) => {
-          const k = `${s}:${f}`;
-          if (givenKeys.has(k) || !!result) return true;
-          // 推算模式每格都能填；其它模式只开放目标格
-          return mode === "recall" ? false : !targetKeys.has(k);
-        }}
-        onCellClick={(s, f) => {
-          const k = `${s}:${f}`;
-          if (givenKeys.has(k) || result) return;
-          if (mode !== "recall" && !targetKeys.has(k)) return;
-          setQuery("");
-          setCursor(0);
-          setPicker({ s, f });
-        }}
+      <PuzzleBoard
+        puzzle={puzzle}
+        mode={mode}
+        answers={answers}
+        result={result}
+        settings={settings}
+        tonicPc={tonicPc}
+        anchorLabel={anchorLabel}
+        onPickCell={(cell) => setPicker(cell)}
       />
 
       {result && (
-        <div className="result">
-          <div className="result-head">
-            <h3>{headline}</h3>
-            {mode === "recall" ? (
-              <span className="muted">推算模式 · 不计星级</span>
-            ) : (
-              <Stars n={gain?.stars ?? 0} size="lg" />
-            )}
-          </div>
-          <div className="result-grid">
-            <div>
-              <b>{fmt(formatDuration(result, startedAt, endedAt))}</b>
-              <span>用时</span>
-            </div>
-            <div>
-              <b>{result.correct}/{result.total}</b>
-              <span>正确</span>
-            </div>
-            <div>
-              <b>{result.spelling}</b>
-              <span>拼写提示</span>
-            </div>
-            <div>
-              <b>{result.wrong + result.empty}</b>
-              <span>错误/空</span>
-            </div>
-            <div>
-              <b>{Math.round(result.accuracy * 100)}%</b>
-              <span>准确率</span>
-            </div>
-          </div>
-
-          <div className="result-meta">
-            {mode === "recall" ? (
-              <>
-                <span>只校验调内音（{result.total} 格），调外格忽略</span>
-                <span>提示格：{anchorLabel}</span>
-              </>
-            ) : (
-              <>
-                <span>三星目标 {fmt(parMs)}</span>
-                <span>{record?.bestMs != null ? `最快全对 ${fmt(record.bestMs)}` : "还没全对过"}</span>
-                {gain?.newBest && <span className="badge">新纪录</span>}
-                {gain?.unlocked && <span className="badge">已解锁 {gain.unlocked}</span>}
-              </>
-            )}
-          </div>
-
-          {errorByString.length > 0 && (
-            <div className="result-dist">
-              <span className="muted">错误分布</span>
-              {errorByString.map(([s, n]) => (
-                <span key={s} className="chip">
-                  {s + 1} 弦 ×{n}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <div className="result-actions">
-            {mode === "recall" ? (
+        <ResultPanel
+          result={result}
+          mode={mode}
+          gain={gain}
+          record={record}
+          parMs={parMs}
+          elapsedMs={formatDuration(result, startedAt, endedAt)}
+          strictSpelling={settings.strictSpelling}
+          errorByString={errorByString}
+          anchorLabel={anchorLabel}
+          copied={copied}
+          onCopy={shareResult}
+          onRetry={reset}
+          actions={
+            mode === "recall" ? (
               <button className="btn primary" onClick={() => setRound(makeRecallRound())}>
                 换一题（随机调）
               </button>
@@ -673,43 +518,17 @@ export default function Game() {
               </button>
             ) : (
               <span className="muted">已是最后一关</span>
-            )}
-            <button className="btn ghost" onClick={reset}>
-              再练一次
-            </button>
-          </div>
-        </div>
+            )
+          }
+        />
       )}
 
       {picker && (
-        <div className="picker-backdrop" onClick={() => setPicker(null)}>
-          <div className="picker" onClick={(e) => e.stopPropagation()}>
-            <div className="picker-head">
-              <span>
-                {picker.s + 1} 弦 · {picker.f} 品
-                {query && ` · 输入 ${query}`}
-              </span>
-              <button className="btn ghost" onClick={() => choose(picker, "")}>
-                清除
-              </button>
-            </div>
-            <div className="picker-grid">
-              {NOTE_NAMES.map((n) => (
-                <button
-                  key={n}
-                  className={n === activeNote ? "note-btn active" : "note-btn"}
-                  onClick={() => choose(picker, n)}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            {candidates.length === 0 && <p className="picker-hint">没有匹配的音名</p>}
-            <p className="picker-hint">
-              键盘：输入音名（可加 # 或 b）· 方向键选择 · Enter 确认 · Esc 关闭
-            </p>
-          </div>
-        </div>
+        <NotePicker
+          cell={picker}
+          onPick={(value) => choose(picker, value)}
+          onClose={() => setPicker(null)}
+        />
       )}
     </section>
   );

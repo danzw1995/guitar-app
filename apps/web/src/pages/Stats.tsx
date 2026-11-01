@@ -58,6 +58,10 @@ export default function Stats() {
           <b>{fmtSpan(summary.bestSumMs)}</b>
           <span>最佳成绩合计</span>
         </div>
+        <div className="stat-card">
+          <b>{fmtSpan(summary.totalMs)}</b>
+          <span>累计练习时长</span>
+        </div>
       </div>
 
       <h3 className="stat-sub">每日挑战</h3>

@@ -4,9 +4,16 @@
 
 ## [Unreleased]
 
+### Added
+- 结果页「复制成绩」：复制一条战绩文案（关卡 / 星级 / 用时），走剪贴板 API，失败退回 textarea 方案。
+- 累计练习时长：`LevelProgress.totalMs` 每次提交累加（没开始就提交的不算），
+  统计页新增「累计练习时长」，与「最佳成绩合计」分开展示。
+
+### Changed
+- 游戏页拆成三个组件：`PuzzleBoard`（题目板）、`NotePicker`（选音器 + 键盘）、`ResultPanel`（结果面板）；
+  `Game.tsx` 从 722 行降到 488 行，三种模式的差异集中在组件里。
+
 ### Planned
-- 分享文案（复制成绩）与累计练习时长
-- 「题目板 / 选音器 / 结果面板」抽成组件（给 Game.tsx 减负）
 - DSH 插件（v0.5.0）
 - Tauri（Windows）/ Capacitor（Android）（v0.6.0）
 - 节拍器与音频（v0.7.0）

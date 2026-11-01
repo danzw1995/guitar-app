@@ -21,6 +21,8 @@ export interface LevelProgress {
   bestMs: number | null;
   /** 提交次数（含未完成就提交的）。 */
   attempts: number;
+  /** 累计练习时长（毫秒）：每把的用时累加；没开始就提交的不算。 */
+  totalMs: number;
   /** 最后一次提交时间戳；旧数据迁移来的是 null。 */
   lastAt: number | null;
 }
@@ -34,6 +36,7 @@ export const EMPTY_PROGRESS: LevelProgress = {
   stars: 0,
   bestMs: null,
   attempts: 0,
+  totalMs: 0,
   lastAt: null,
 };
 
@@ -121,6 +124,7 @@ export function applyAttempt(
     stars: starsOf({ completed, bestMs }, ctx.parMs),
     bestMs,
     attempts: base.attempts + 1,
+    totalMs: base.totalMs + Math.max(0, ctx.elapsedMs),
     lastAt: ctx.at ?? Date.now(),
   };
 }
@@ -159,6 +163,7 @@ export function fromLegacyBest(bestMs: number, parMs: number): LevelProgress {
     stars: starsOf({ completed, bestMs }, parMs),
     bestMs,
     attempts: 1,
+    totalMs: 0,
     lastAt: null,
   };
 }
@@ -202,6 +207,7 @@ export function parseProgress(
         : clampStars(v.stars, completed),
       bestMs,
       attempts,
+      totalMs: toNumber(v.totalMs, 0) ?? 0,
       lastAt: toNumber(v.lastAt, null),
     };
   }

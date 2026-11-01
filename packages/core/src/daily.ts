@@ -162,6 +162,8 @@ export interface ProgressSummary {
   bestSumMs: number;
   /** 全对过的关卡数。 */
   perfectCount: number;
+  /** 累计练习时长（每关每把用时之和）。 */
+  totalMs: number;
 }
 
 export function summarizeProgress(
@@ -173,6 +175,7 @@ export function summarizeProgress(
   let attempts = 0;
   let bestSumMs = 0;
   let perfectCount = 0;
+  let totalMs = 0;
 
   for (const id of levelIds) {
     const p = progress[id];
@@ -180,6 +183,7 @@ export function summarizeProgress(
     if (p.completed) completed++;
     stars += Math.max(0, Math.min(MAX_STARS, p.stars));
     attempts += Math.max(0, p.attempts);
+    totalMs += Math.max(0, p.totalMs);
     if (p.bestMs !== null) {
       bestSumMs += p.bestMs;
       perfectCount++;
@@ -195,5 +199,6 @@ export function summarizeProgress(
     attempts,
     bestSumMs,
     perfectCount,
+    totalMs,
   };
 }

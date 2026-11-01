@@ -208,6 +208,7 @@ test("applyAttempt: 首次完成给 1 星，全对才记最快成绩", () => {
   assert.equal(slowWrong.stars, 1);
   assert.equal(slowWrong.bestMs, null);
   assert.equal(slowWrong.attempts, 1);
+  assert.equal(slowWrong.totalMs, 90000, "累计时长要加上这一把");
   assert.equal(slowWrong.lastAt, 111);
 
   // 全对但超时 -> 2 星，并且记下用时
@@ -216,6 +217,7 @@ test("applyAttempt: 首次完成给 1 星，全对才记最快成绩", () => {
   });
   assert.equal(slowPerfect.stars, 2);
   assert.equal(slowPerfect.bestMs, 120000);
+  assert.equal(slowPerfect.totalMs, 210000, "累计时长跨多次尝试累加");
 
   // 再次全对且更快 -> 3 星
   const fastPerfect = applyAttempt(slowPerfect, fakeResult(18, 0, 0, 0), {
@@ -224,6 +226,7 @@ test("applyAttempt: 首次完成给 1 星，全对才记最快成绩", () => {
   assert.equal(fastPerfect.stars, 3);
   assert.equal(fastPerfect.bestMs, 40000);
   assert.equal(fastPerfect.attempts, 3);
+  assert.equal(fastPerfect.totalMs, 250000);
 });
 
 test("applyAttempt: 不改旧记录、更慢不覆盖最快、未完成不降级", () => {
@@ -317,6 +320,7 @@ test("parseProgress: 坏数据丢掉，星级按达标时间重算", () => {
   const withPar = parseProgress(raw, () => L01_PAR);
   assert.equal(withPar.L01.stars, 3, "30000ms 在达标时间内");
   assert.equal(withPar.L01.attempts, 5);
+  assert.equal(withPar.L01.totalMs, 0, "旧存档没有 totalMs，补 0");
   assert.equal(withPar.L02.stars, 1, "没有全对记录就是 1 星");
 
   const noPar = parseProgress(raw);
@@ -583,9 +587,9 @@ test("streakOf: 连续、隔天、今天未打卡", () => {
 test("summarizeProgress: 统计口径", () => {
   const ids = ["L01", "L02", "L03"];
   const progress = {
-    L01: { completed: true, stars: 3, bestMs: 40000, attempts: 2, lastAt: 1 },
-    L02: { completed: true, stars: 1, bestMs: null, attempts: 3, lastAt: 2 },
-    L03: { ...EMPTY_PROGRESS, attempts: 1 },
+    L01: { completed: true, stars: 3, bestMs: 40000, attempts: 2, totalMs: 90000, lastAt: 1 },
+    L02: { completed: true, stars: 1, bestMs: null, attempts: 3, totalMs: 30000, lastAt: 2 },
+    L03: { ...EMPTY_PROGRESS, attempts: 1, totalMs: 5000 },
   };
   const s = summarizeProgress(ids, progress);
   assert.equal(s.completed, 2);
@@ -596,6 +600,7 @@ test("summarizeProgress: 统计口径", () => {
   assert.equal(s.attempts, 6);
   assert.equal(s.bestSumMs, 40000);
   assert.equal(s.perfectCount, 1);
+  assert.equal(s.totalMs, 125000, "累计时长按关卡加总");
 
   const empty = summarizeProgress(ids, {});
   assert.equal(empty.completed, 0);
