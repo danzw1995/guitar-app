@@ -84,7 +84,7 @@ function expect(label, ok, detail) {
 }
 
 // 1. 点按目标 ≥ 40px（窄屏也不能被媒体查询压小）
-for (const selector of [".fb-cell", ".btn", ".tab", ".toolbar select", ".note-btn", ".settings-row", ".mode-switch .chip", ".settings-controls select"]) {
+for (const selector of [".fb-cell", ".btn", ".tab", ".toolbar select", ".note-btn", ".settings-row", ".mode-switch .chip", ".settings-row select"]) {
   const decls = narrowDecls(selector);
   const minHeight = px(decls.get("min-height"));
   expect(

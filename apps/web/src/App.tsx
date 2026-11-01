@@ -3,14 +3,16 @@ import Chords from "./pages/Chords";
 import Scales from "./pages/Scales";
 import Game from "./pages/Game";
 import Stats from "./pages/Stats";
+import Settings from "./pages/Settings";
 
-type Tab = "chords" | "scales" | "game" | "stats";
+type Tab = "chords" | "scales" | "game" | "stats" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "chords", label: "和弦" },
   { id: "scales", label: "音阶" },
   { id: "game", label: "音阶游戏" },
   { id: "stats", label: "统计" },
+  { id: "settings", label: "设置" },
 ];
 
 export default function App() {
@@ -44,6 +46,7 @@ export default function App() {
         {tab === "scales" && <Scales />}
         {tab === "game" && <Game />}
         {tab === "stats" && <Stats />}
+        {tab === "settings" && <Settings />}
       </main>
 
       <footer className="app-footer">v{__APP_VERSION__} · Web-first · 标准调弦</footer>

@@ -15,14 +15,14 @@ import {
   solfegeAlternatives,
 } from "@guitar/core";
 import Fretboard from "../components/Fretboard";
-import LabelControls from "../components/LabelControls";
 import { cellLabel, octaveShiftFor } from "../lib/labels";
-import { loadSettings, saveSettings, type Settings } from "../lib/storage";
+import { loadSettings, type Settings } from "../lib/storage";
 
 export default function Scales() {
   const [keyId, setKeyId] = useState("C");
   const [scaleId, setScaleId] = useState("major");
-  const [settings, setSettings] = useState<Settings>(() => loadSettings());
+  /** 只读：显示方式在「设置」页里统一改。 */
+  const [settings] = useState<Settings>(() => loadSettings());
   /** 打开后把调外音也画出来（暗一点），这样 C 大调里也能看到 升1 / 降3 这类唱名。 */
   const [showChromatic, setShowChromatic] = useState(false);
 
@@ -36,11 +36,6 @@ export default function Scales() {
     pcs.forEach((pc, i) => map.set(pc, names[i]));
     return { byPc: map, rootName: names[0] };
   }, [keyId, scaleId]);
-
-  function updateSettings(next: Settings) {
-    setSettings(next);
-    saveSettings(next);
-  }
 
   /** 0 品是空弦区，只靠左侧的弦名就够了，不画音点。 */
   const cellNote = (s: number, f: number): { name: string; state: string; pc: number } | null => {
@@ -78,7 +73,6 @@ export default function Scales() {
             ))}
           </select>
         </label>
-        <LabelControls settings={settings} onChange={updateSettings} />
         <label className="check">
           <input
             type="checkbox"
@@ -87,6 +81,9 @@ export default function Scales() {
           />
           显示调外音（带升降）
         </label>
+        <span className="muted" style={{ fontSize: 12 }}>
+          音名 / 唱名的显示方式在「设置」里改
+        </span>
       </div>
 
       <div className="legend">

@@ -31,19 +31,16 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS, parMsOf } from "../lib/levels";
 import {
-  clearProgress,
   loadDaily,
   loadProgress,
   loadSettings,
   saveDaily,
   saveProgress,
-  saveSettings,
   type DailyMap,
   type Settings,
 } from "../lib/storage";
 import Fretboard from "../components/Fretboard";
 import Stars, { starText } from "../components/Stars";
-import LabelControls from "../components/LabelControls";
 import { cellLabel, octaveShiftFor } from "../lib/labels";
 import { fmt } from "../lib/format";
 
@@ -78,16 +75,16 @@ interface RecallRound {
   anchor: Cell;
 }
 
-/** 推算模式：随机调 + 随机一个主音位置，其它全靠推。 */
+/**
+ * 推算模式：随机调 + 随机一个「调内音」位置作为唯一提示。
+ * 锚点不一定是主音——给个三音、五音甚至降七，推起来更费脑子。
+ */
 function makeRecallRound(): RecallRound {
   const key = KEYS[Math.floor(Math.random() * KEYS.length)];
   const scaleId = key.mode === "minor" ? "naturalMinor" : "major";
   const seed = Math.floor(Math.random() * 1_000_000_000);
   const probe = generatePuzzle({ seed, keyId: key.id, scaleId, fretMin: 1, fretMax: 12, givenRatio: 0.5 });
-  const tonicCells = probe.target.filter(
-    (c) => pitchClassAt(STANDARD_TUNING, c.s, c.f) === key.tonicPc,
-  );
-  const pool = tonicCells.length ? tonicCells : probe.target;
+  const pool = probe.target;
   return { keyId: key.id, seed, anchor: pool[Math.floor(Math.random() * pool.length)] };
 }
 
@@ -107,7 +104,6 @@ export default function Game() {
   const [endedAt, setEndedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [gain, setGain] = useState<Gain | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   /** 试玩：允许进入还没解锁的关卡，方便评估后面的难度。 */
   const [tryLocked, setTryLocked] = useState(false);
   /** 键盘输入的音名前缀，如 "E" / "Eb" / "C#"；空表示没输入。 */
@@ -384,23 +380,6 @@ export default function Game() {
     setPicker(null);
   }
 
-  function toggleStrict(next: boolean) {
-    updateSettings({ ...settings, strictSpelling: next });
-  }
-
-  function updateSettings(next: Settings) {
-    setSettings(next);
-    saveSettings(next);
-  }
-
-  function wipeProgress() {
-    if (!window.confirm("重置会清空 40 关的星级、最快成绩和每日挑战记录，确定吗？")) return;
-    clearProgress();
-    setProgress({});
-    setDaily({});
-    setLevelId(LEVEL_IDS[0]);
-    reset();
-  }
 
   function switchMode(next: Mode) {
     if (next === mode) return;
@@ -423,11 +402,12 @@ export default function Game() {
       : perfect
         ? "全对！"
         : "完成";
-  /** 推算模式里那唯一一格提示的唱名（always 主音，所以是 1 / do）。 */
-  const anchorLabel = solfegeLabel(tonicPc, tonicPc, {
-    system: settings.solfegeSystem,
-    style: settings.solfegeStyle,
-  });
+  /** 推算模式里那唯一一格提示的级数（任意调内音，不一定是 1）。 */
+  const anchorLabel = solfegeLabel(
+    pitchClassAt(STANDARD_TUNING, round.anchor.s, round.anchor.f),
+    tonicPc,
+    { system: settings.solfegeSystem, style: settings.solfegeStyle },
+  );
 
   return (
     <section className="panel game">
@@ -551,38 +531,7 @@ export default function Game() {
             下一关 →
           </button>
         )}
-        <button className="btn ghost" onClick={() => setSettingsOpen((v) => !v)}>
-          设置
-        </button>
       </div>
-
-      {settingsOpen && (
-        <div className="settings">
-          <label className="settings-row">
-            <span>
-              严格拼写
-              <span className="muted"> · 拼错算错，拿不到 2 星以上</span>
-            </span>
-            <input
-              type="checkbox"
-              checked={settings.strictSpelling}
-              onChange={(e) => toggleStrict(e.target.checked)}
-            />
-          </label>
-          <div className="settings-row settings-labels">
-            <span>指板显示</span>
-            <div className="settings-controls">
-              <LabelControls settings={settings} onChange={updateSettings} />
-            </div>
-          </div>
-          <div className="settings-row">
-            <span className="muted">重置会清空星级和最快成绩（只影响本机）。</span>
-            <button className="btn ghost" onClick={wipeProgress}>
-              重置进度
-            </button>
-          </div>
-        </div>
-      )}
 
       <p className="hint">
         ? = 待填 · 灰格 = 非音阶 · 点 ? 选音名；第一次选择开始计时。桌面可用 Tab 选格，Enter 打开后直接输入音名。

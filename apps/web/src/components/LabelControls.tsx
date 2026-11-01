@@ -7,13 +7,16 @@ export interface LabelControlsProps {
 
 /**
  * 指板显示方式：音名 / 唱名 / 两者，以及唱名用首调还是固定、数字还是 do re mi。
- * 音阶页和游戏页共用同一份 `Settings`，所以两边看到的是同一套设置。
+ * 这是全局配置，在「设置」页里改，音阶页和游戏页都读同一份。
  */
 export default function LabelControls({ settings, onChange }: LabelControlsProps) {
   return (
     <>
-      <label>
-        指板显示
+      <label className="settings-row">
+        <span>
+          指板显示
+          <span className="muted"> · 圆点里写音名还是唱名</span>
+        </span>
         <select
           value={settings.labels}
           onChange={(e) => onChange({ ...settings, labels: e.target.value as Settings["labels"] })}
@@ -26,8 +29,11 @@ export default function LabelControls({ settings, onChange }: LabelControlsProps
 
       {settings.labels !== "name" && (
         <>
-          <label>
-            唱名体系
+          <label className="settings-row">
+            <span>
+              唱名体系
+              <span className="muted"> · 首调跟着调走，固定永远 C=do</span>
+            </span>
             <select
               value={settings.solfegeSystem}
               onChange={(e) =>
@@ -38,8 +44,11 @@ export default function LabelControls({ settings, onChange }: LabelControlsProps
               <option value="fixed">固定（C=do）</option>
             </select>
           </label>
-          <label>
-            唱名写法
+          <label className="settings-row">
+            <span>
+              唱名写法
+              <span className="muted"> · 数字或 do re mi，变化音带升/降</span>
+            </span>
             <select
               value={settings.solfegeStyle}
               onChange={(e) =>
