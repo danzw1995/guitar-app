@@ -6,8 +6,50 @@
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { chordLookup, dailyLookup, noteAt, scaleLookup } from "../lib/guitar.js";
+import { apply, makeTool, TOOL_SPECS } from "../index.js";
 
 const url = (p) => new URL(p, import.meta.url);
+
+// —— 注册：模拟 ctx.tools.register 的契约（见 dsh-tools 的 register 实现）——
+const registered = [];
+const fakeCtx = {
+  tools: {
+    register(definition) {
+      // 真实实现会做这两条校验
+      assert.ok(definition.name, "工具必须有 name");
+      assert.equal(typeof definition.output?.render, "function", "工具必须声明 output.render");
+      registered.push(definition);
+      return () => {};
+    },
+  },
+};
+apply(fakeCtx);
+assert.equal(registered.length, 4, "应该注册 4 个工具");
+assert.deepEqual(
+  registered.map((d) => d.name).sort(),
+  ["guitar_chord", "guitar_daily", "guitar_note_at", "guitar_scale"],
+);
+
+for (const tool of registered) {
+  assert.ok(tool.description.length > 10, `${tool.name} 缺少描述`);
+  assert.equal(tool.parameters.type, "object", `${tool.name} 的 parameters 必须是 object 根`);
+  assert.ok(tool.parameters.properties, `${tool.name} 缺少 properties`);
+}
+
+const scaleTool = registered.find((d) => d.name === "guitar_scale");
+assert.deepEqual(scaleTool.parameters.required, ["key"], "只有 key 是必填");
+const noteTool = registered.find((d) => d.name === "guitar_note_at");
+assert.deepEqual(noteTool.parameters.required.sort(), ["fret", "string"]);
+
+// render 必须返回内容块数组
+const blocks = scaleTool.output.render({ key: "G" }, { text: "G 大调：G A B C D E F#" });
+assert.deepEqual(blocks, [{ type: "text", text: "G 大调：G A B C D E F#" }]);
+
+// execute 走真实逻辑
+const result = await scaleTool.execute({ key: "G" });
+assert.equal(result.notes.join(""), "GABCDEF#");
+assert.ok(result.text.includes("G 大调"));
+console.log("register: 4 个工具，参数与 render 形状正确");
 
 // —— 和弦 ——
 const c = chordLookup("C");
