@@ -4,30 +4,34 @@
 
 ## [Unreleased]
 
+### Planned
+- 面板里加推算模式；今日一题做成能判分的小练习（需要插件自己的存储）
+- Tauri（Windows）/ Capacitor（Android）（v0.6.0）
+- 节拍器与音频（v0.7.0）
+
+## [0.5.0] - 2026-11-02
+
 ### Added
+- **DSH 插件** `plugins/dsh-guitar`：注册一个 `conversation.view` 整页标签（和 Chat / Trajectory 并列），
+  三页 —— 和弦指法图（弦名 / `○`空弦 / `×`闷弦三栏 + 底部品号）、音阶指板（1–12 品）、
+  今日一题（按当天 spec 出题，给定格显音名、其余 `?`，点一下看 2 秒答案，可一键显示全部）。
+  Client 半由 rollup 打成 `window.__ModuleLoader__` 工厂，样式用宿主真实 token。
+- **4 个 agent 工具**：`guitar_chord`、`guitar_scale`、`guitar_daily`、`guitar_note_at`——
+  agent 回答吉他问题时有真实数据可查（已实测被调用并返回正确结果）。
 - core 的构建产物：`pnpm --filter @guitar/core build` 用 `tsc` 输出 ESM + `.d.ts` 到 `dist/`
-  （不依赖 esbuild，沙箱里可跑），供 DSH 插件这类 Node 消费者使用；Vite 仍直接吃源码。
-- **DSH 插件（仅 Client）**：`plugins/dsh-guitar` 注册一个 `conversation.view` 整页标签，
-  和弦指法图 / 音阶指板 / 今日一题三页，数据来自 `@guitar/core` 的构建产物；
-  rollup 打包成 `window.__ModuleLoader__` 工厂。样式用宿主真实 token，文案走 `ctx.locale.t`。
+  （不依赖 esbuild，沙箱里可跑），供 Node 侧消费者使用；Vite 仍直接吃源码。
+- `scripts/session-grep.mjs`：解多帧 zstd 的 session 文件，可查"某个工具到底有没有被调用"。
 
 ### Fixed
 - **Host 工具静默失效**：`@deepseek-ai/dsh-tools` 打在 app.asar 里，从插件目录 `import` 会
   `ERR_MODULE_NOT_FOUND`，于是 `defineTool` 拿不到、四个工具一个都没注册（面板却正常，看不出问题）。
   改为直接构造工具定义——`ctx.tools.register()` 只校验 `name` 与 `output.render`，`parameters`
-  原样作为 JSON Schema，零依赖；测试补了"注册契约"断言（4 个工具、必填项、`render` 返回内容块）。
-- 插件面板丢了 `<style>` 元素：CSS 常量被 tree-shake，整页没有样式；现已恢复，并改用宿主真实 token
-  （`--dsw-alias-label-primary` / `--dsw-alias-border-l1` / `--dsw-font-xs-13`），测试断言必须有 `<style>` 且含 token。
-- 插件指板的三个可见问题：左侧弦名与 `○`/`×` 标记重叠（现在分成 弦名 / 标记 / 琴枕 三栏）、
-  没有品位数字（底部补 1–12）、以及今日页只画了一张"看起来像 C 大调"的完整音阶
-  （A 自然小调与 C 大调音高集合相同）——现在按当天 spec 出题，带 `?`、可点开单格答案、可一键显示全部。
+  原样作为 JSON Schema，零依赖；测试补了"注册契约"断言。
+- 插件面板丢了 `<style>` 元素：CSS 常量被 tree-shake，整页没有样式；现已恢复并改用宿主真实 token。
+- 插件指板的三个可见问题：弦名与 `○`/`×` 重叠、没有品位数字、今日页只画了一张"看起来像 C 大调"的
+  完整音阶（A 自然小调与 C 大调音高集合相同）——现在按当天 spec 出题。
 - 插件挂错插槽两次：`conversation.composer.dock` 是输入框里的统计行（挤），
-  `conversation.header` 是 single 槽（已被占用、注册即报错），最终落在 `conversation.view`（整页标签）。
-
-### Planned
-- DSH 插件 Host 工具（`guitar.lookupChord` / `guitar.generatePuzzle`）
-- Tauri（Windows）/ Capacitor（Android）（v0.6.0）
-- 节拍器与音频（v0.7.0）
+  `conversation.header` 是 single 槽（已被占用、注册即报错），最终落在 `conversation.view`。
 
 ## [0.4.1] - 2026-11-01
 

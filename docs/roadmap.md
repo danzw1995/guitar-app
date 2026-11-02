@@ -5,10 +5,11 @@
 
 ## 0. 当前状态
 
-- 最新版本：**v0.4.1**
+- 最新版本：**v0.5.0**
 - 可用功能：和弦库、音阶指板、40 关游戏（计时 / 判定 / 结果）、进度与星级、逐关解锁、
-  严格拼写、键盘操作、移动端 40px 点按、每日挑战、统计页、推算模式、全局设置
-- 下一版：**v0.5.0**（DSH 插件，前置是给 core 加 `tsup` 构建）
+  严格拼写、键盘操作、移动端 40px 点按、每日挑战、统计页、推算模式、全局设置、
+  **DSH 插件（面板 + 4 个 agent 工具）**
+- 下一版：**v0.6.0**（PWA / Tauri / Capacitor 壳）
 
 ## 1. 版本路线
 
@@ -77,25 +78,29 @@
 
 ---
 
-### v0.5.0 — DSH 插件（约 1 周）
+### v0.5.0 — DSH 插件（已发布）
 
 **前置**（✅）：core 用 `tsc` 产出 ESM + `.d.ts` 到 `dist/`——不是计划里写的 `tsup`，
 因为沙箱里 esbuild 起不了子进程；`pnpm --filter @guitar/core build` 即可。
 
 | 任务 | 状态 | 说明 |
 |---|---|---|
-| Client 面板 | ✅ | `plugins/dsh-guitar`：dock 面板，和弦 / 音阶 / 今日一题三页；rollup 打包成 `client.js` |
-| 主题/locale | ✅ | 只用 `--dsw-alias-*` 并带深色兜底；文案走 `ctx.locale.t`，取不到用中文 |
-| 安装 | ⬜ | 需要 `plugin_manager install_bundle`（当前会话没有这个工具，由人装） |
-| Host 工具 | ⬜ | `guitar.lookupChord` / `guitar.generatePuzzle`；先确认沙箱里能否 `import` |
+| Client 面板 | ✅ | `plugins/dsh-guitar`：`conversation.view` 整页标签，和弦 / 音阶 / 今日一题三页 |
+| 主题/locale | ✅ | 用宿主真实 token（`--dsw-alias-label-primary` 等）；文案走 `ctx.locale.t` |
+| 安装 | ✅ | 本地目录 `install_bundle`（Junction 链接），面板与工具都已实测生效 |
+| Host 工具 | ✅ | `guitar_chord` / `guitar_scale` / `guitar_daily` / `guitar_note_at`，已实测被 agent 调用 |
 
-**验收**：插件安装后输入框上方出现面板；工具可被 agent 调用；卸载无残留。
+**验收**：✅ 面板在 `Guitar Lab` 标签页渲染；✅ agent 调用 `guitar_scale` 返回真实数据。
 
-**注意**：DSH 插件是“伴生”，不是主形态；不允许 iframe。
+**踩过的坑（写下来省下次）**：
 
-**已验证 / 待验证**：bundle 能被 `window.__ModuleLoader__` 加载、`apply` 注册进
-`conversation.composer.dock`、`react-dom/server` 渲染出完整面板（3.5KB HTML）；
-真实插槽位置与主题变量名**未验证**。
+1. **插槽分 `single` / `list` / `keyed` / `chain`**：注册到 `single` 槽会直接抛
+   `single slot "…" already has a registration`。可用的整页槽是 `conversation.view`（list）；
+   `conversation.composer.dock` 是输入框里放 token 统计的 list 行（挤）；`conversation.header` 是 single（宿主占用）。
+2. **Host 半不能 `import` dsh 内部包**：`@deepseek-ai/dsh-tools` 在 app.asar 里，
+   从插件目录解析会 `ERR_MODULE_NOT_FOUND`；`harness.defineTool` 只存在于动态插件。
+   正确做法是直接构造定义对象交给 `ctx.tools.register()`——它只校验 `name` 与 `output.render`。
+3. **Client 半必须自己渲染 `<style>`**：否则 CSS 常量被 tree-shake，页面裸奔。
 
 ---
 

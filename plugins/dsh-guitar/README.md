@@ -59,24 +59,26 @@ node plugins/dsh-guitar/test/render.mjs
 plugin_manager action=install_bundle target="F:\program\workspace\guitar-app\plugins\dsh-guitar"
 ```
 
-装完刷新页面，输入框上方（`conversation.composer.dock`）会出现面板。
-`target` 必须是**绝对路径的包目录**（有 `package.json` 的那一层）。
+`target` 必须是**绝对路径的包目录**（有 `package.json` 的那一层）。装完重启 DSH
+（Host 半是 Node 模块，不热更新；Client 半会），对话上方会出现 `Guitar Lab` 标签页。
 
-## 已验证 / 未验证
+## 已验证
 
-已验证（`node test/render.mjs`，不是靠"应该能跑"）：
+`node plugins/dsh-guitar/test/render.mjs`（面板）与 `test/host.mjs`（工具）都跑在 Node 里，
+不依赖浏览器或 DSH：
 
 - bundle 被 `window.__ModuleLoader__` 加载，导出 `apply` / `inject`；
 - `apply` 注册到 `conversation.view`，id `guitar-lab`，带 `label`；
-- 和弦页：C 大三渲染出 2 个根音点、1 个三音点、1 个 ×（对应 `x32010`）；
+- 和弦页：C 大三渲染出 2 个根音点、1 个三音点、1 个 ×（对应 `x32010`），底部有 1–5 品号；
 - 音阶页：G 大调 1–12 品的圆点数量与 core 逐个算出来的位置完全一致（6 个主音 / 36 个音阶音）；
-- 今日页：日期与调取自 `dailySpecFor`，指板存在。
+- 今日页：按当天 spec 出题，含 `?` 与「显示答案」；
+- 工具：4 个定义形状正确（`parameters.type === "object"`、必填项、`render` 返回内容块），
+  `execute` 返回真实数据。
 
-**未验证**：真实 Harness 里 view 标签的渲染容器（宽度/内边距）、`ctx.locale.t` 的真实签名
-（取不到走中文兜底）。
+**真机已验证**：面板在 `Guitar Lab` 标签页正常渲染；agent 调用 `guitar_scale` 返回
+`G 大调：G A B C D E F#（首调唱名 1 2 3 4 5 6 7）`，`isError: false`。
 
 ## 下一步
 
-1. 确认 view 标签里能正常渲染、宽度合适。
-2. 用一个最小 Host 工具试 `import` 是否可用；通了就把 `guitar.lookupChord` /
-   `guitar.generatePuzzle` 接上（`harness.defineTool` + `ctx.tools.register`）。
+1. 面板里补推算模式；今日一题做成能判分的练习（需要插件自己的存储）。
+2. 用 `scripts/session-grep.mjs <工具名> --calls` 随时确认工具是否真的被调用。

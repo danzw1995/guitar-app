@@ -77,7 +77,10 @@ core 里不出现这些 API。
 - **Web / PWA**：主形态，先跑通。
 - **Tauri（Windows）**：包 Web 产物，体积小。
 - **Capacitor（Android）**：包 Web 产物。
-- **DSH 插件**：Client 插件，React 组件注册到 slot；不允许 iframe，必须继承宿主主题与 locale。
+- **DSH 插件**（v0.5.0 已实现）：`plugins/dsh-guitar` 是一个 bundle，两条加载路径：
+  Client 半（`client.js`，租 rollup 打包成 `window.__ModuleLoader__` 工厂）挂 `conversation.view`；
+  Host 半（`index.js`，Node ESM）用 `ctx.tools.register()` 暴露 4 个吉他工具。
+  不允许 iframe，必须继承宿主主题与 locale。
 - **微信小程序**：暂缓。未来“原生 UI + core 的 CJS 构建”，不用 Taro。
 
 ## 6. 关键技术决策
@@ -110,3 +113,11 @@ v1 是练习工具，本地进度足够；账号/云同步会引入后端、隐�
   Vite 仍然直接吃源码（`exports["."] = ./src/index.ts`），`exports["./dist"]` 给 DSH 插件用。
 - **不要用 PowerShell 的 `Get-Content -Raw` / `Set-Content` 改仓库里的文本文件**：它会按 ANSI 读 UTF-8，
   中文会变成乱码并吞掉换行（本仓库已经踩过一次，靠 `git checkout` 才恢复）。用编辑工具，或显式指定 `-Encoding utf8`。
+- **DSH 插件的 Host 半不能 `import` dsh 内部包**：`@deepseek-ai/dsh-tools` 等在 `app.asar` 里，
+  从插件目录解析必然 `ERR_MODULE_NOT_FOUND`；`harness.defineTool` 只是动态插件的沙箱全局。
+  工具定义要自己拼（`ctx.tools.register()` 只校验 `name` 与 `output.render`），见
+  `plugins/dsh-guitar/README.md`。
+- **插件插槽有类型**：`single` / `list` / `keyed` / `chain`。注册到 `single` 槽会抛
+  `single slot "…" already has a registration`；整页面板要用 `conversation.view`（list）。
+- **DSH 的 session 是多帧 zstd**（`session.v4.jsonl.zstd`），普通文本搜索无效；
+  用 `node scripts/session-grep.mjs <关键字> --calls` 查工具调用记录。

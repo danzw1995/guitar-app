@@ -1,7 +1,8 @@
 # 交接说明（Handoff）
 
 > 给下一个会话 / 新维护者：**先读这份**，再读 `architecture.md` 和 `roadmap.md`。
-> 当前版本：**v0.4.1**（真琴指板、唱名、和弦说明、每日挑战、统计、推算模式、全局设置、复制成绩、累计时长）。
+> 当前版本：**v0.5.0**（真琴指板、唱名、和弦说明、每日挑战、统计、推算模式、全局设置、复制成绩、
+> 累计时长、**DSH 插件：`Guitar Lab` 整页面板 + 4 个 agent 工具**）。
 
 ## 一句话
 
@@ -87,16 +88,18 @@ pnpm demo L01 # 终端打印一关
 
 ## 下一步
 
-1. **v0.5.0**：DSH 插件。前置是给 core 加 `tsup` 构建（CJS + ESM + d.ts），再做 Host 工具与 Client 面板。
-2. 之后的顺序见 `roadmap.md`（v0.6 壳 → v0.7 音频 → v1.0 稳定）。
+1. **v0.6.0**：PWA / Tauri（Windows）/ Capacitor（Android）壳，见 `roadmap.md`。
+2. DSH 插件还能继续补：面板里加推算模式、把「今日一题」做成能判分的小练习（需要插件自己的存储）。
+3. 之后再 v0.7.0 音频、v1.0 稳定。
 
 ## 新会话开场白
 
-> 读 `docs/README.md`、`docs/handoff.md`、`docs/roadmap.md`，当前 v0.4.1，从 v0.5.0 的 DSH 插件开始。
+> 读 `docs/README.md`、`docs/handoff.md`、`docs/roadmap.md`，当前 v0.5.0，从 v0.6.0 的壳开始。
 
 ## 版本状态
 
 ```
+v0.5.0  DSH 插件：conversation.view 面板（和弦/音阶/今日）+ 4 个 agent 工具；core 构建产物
 v0.4.1  复制成绩、累计练习时长、游戏页拆组件、结果面板标题
 v0.4.0  真琴指板、唱名、和弦说明、每日挑战、统计、推算模式、全局设置
 v0.3.0  进度与星级、逐关解锁、严格拼写设置、键盘操作、移动端 40px 点按

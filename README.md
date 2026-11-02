@@ -2,7 +2,7 @@
 
 Web-first 的吉他学习应用：常用和弦、标准调弦音阶指板、40 关音阶推算游戏。
 
-当前版本：**v0.4.1**
+当前版本：**v0.5.0**
 
 ## 功能
 
@@ -16,6 +16,9 @@ Web-first 的吉他学习应用：常用和弦、标准调弦音阶指板、40 �
 - **每日挑战**：题目按日期生成（同一天同题），独立记录与连续天数；不影响主线解锁。
 - **统计**：通关进度、星级、平均星级、提交次数、最近 7 天与最近战绩，全部本机保存。
 - **设置**：指板显示、唱名体系与写法、严格拼写、重置进度集中一处。
+- **DSH 插件**（`plugins/dsh-guitar`）：在 DeepSeek Harness 里加一个 `Guitar Lab` 整页标签
+  （和弦指法图 / 音阶指板 / 今日一题），并把同一份数据暴露成 4 个 agent 工具
+  （`guitar_chord` / `guitar_scale` / `guitar_daily` / `guitar_note_at`）。
 - **核心引擎**：调号拼写、出题、难度、判定、唱名、和弦构成，纯 TS + 单测。
 
 ## 技术栈
@@ -57,7 +60,8 @@ pnpm demo L01     # 终端打印一关
 | [docs/ux.md](docs/ux.md) | 页面、指板方向、状态色、交互 |
 | [docs/roadmap.md](docs/roadmap.md) | v0.3 → v1.0 计划 |
 | [docs/versioning.md](docs/versioning.md) | SemVer / tag / 发版 |
+| [plugins/dsh-guitar/README.md](plugins/dsh-guitar/README.md) | DSH 插件：插槽、构建、安装、踩过的坑 |
 
 ## 下一步
 
-**v0.5.0**：DSH 插件（前置：给 core 加 `tsup` 构建）。详见 [docs/roadmap.md](docs/roadmap.md)。
+**v0.6.0**：PWA / Tauri（Windows）/ Capacitor（Android）壳。详见 [docs/roadmap.md](docs/roadmap.md)。

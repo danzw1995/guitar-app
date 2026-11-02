@@ -18,7 +18,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `apps/web` | 产品版本 | 跟随根 |
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 
-当前：产品 `0.4.1`，core `0.4.0`（v0.4.1 给 `LevelProgress` 加了 `totalMs`，core 从 0.3.0 升到 0.4.0）。
+当前：产品 `0.5.0`，core `0.4.0`（v0.5.0 只给 core 加了构建配置与 `./dist` 导出，API 未变，版本不动）。
 
 ## 一次发版的流程
 
