@@ -9,10 +9,10 @@
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
-  "files": ["index.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
+  "files": ["index.js", "lib/*.js", "client.js", "cordis.patch.yml", "locale/*.json", "icon.svg"],
   "scripts": {
     "build": "node build.mjs",
-    "test": "node test/render.mjs"
+    "test": "node test/render.mjs && node test/host.mjs"
   },
   "dsh": {
     "bundle": { "patch": "./cordis.patch.yml" },
