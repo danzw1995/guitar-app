@@ -12,6 +12,10 @@
   rollup 打包成 `window.__ModuleLoader__` 工厂。样式用宿主真实 token，文案走 `ctx.locale.t`。
 
 ### Fixed
+- **Host 工具静默失效**：`@deepseek-ai/dsh-tools` 打在 app.asar 里，从插件目录 `import` 会
+  `ERR_MODULE_NOT_FOUND`，于是 `defineTool` 拿不到、四个工具一个都没注册（面板却正常，看不出问题）。
+  改为直接构造工具定义——`ctx.tools.register()` 只校验 `name` 与 `output.render`，`parameters`
+  原样作为 JSON Schema，零依赖；测试补了"注册契约"断言（4 个工具、必填项、`render` 返回内容块）。
 - 插件面板丢了 `<style>` 元素：CSS 常量被 tree-shake，整页没有样式；现已恢复，并改用宿主真实 token
   （`--dsw-alias-label-primary` / `--dsw-alias-border-l1` / `--dsw-font-xs-13`），测试断言必须有 `<style>` 且含 token。
 - 插件指板的三个可见问题：左侧弦名与 `○`/`×` 标记重叠（现在分成 弦名 / 标记 / 琴枕 三栏）、
