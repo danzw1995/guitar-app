@@ -943,6 +943,78 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--text);
 }
 
+/* CAGED 五把位 */
+.caged {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.caged-strip {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.caged-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  min-height: 38px;
+}
+.caged-tab b {
+  font-size: 12px;
+}
+.caged-tab i {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--muted);
+}
+.caged-tab.on {
+  border-color: var(--accent);
+  background: rgba(212, 167, 44, 0.14);
+}
+.caged-tab.on i {
+  color: var(--accent);
+}
+.caged-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--text);
+}
+.caged-range {
+  fill: rgba(212, 167, 44, 0.08);
+}
+.caged-dot {
+  fill: #2b5f9e;
+  stroke: #3b82f6;
+  stroke-width: 1;
+}
+.caged-dot.root {
+  fill: #d4a72c;
+  stroke: #d4a72c;
+}
+.caged-label {
+  fill: #eaf2ff;
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.caged-label.root {
+  fill: #0d1117;
+}
+.caged-mute {
+  fill: var(--muted);
+  font-size: 12px;
+}
+
 /* 和弦页的「级数」徽章 */
 .chord-degree {
   display: flex;

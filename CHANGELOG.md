@@ -18,6 +18,9 @@
 - `packages/core/src/degrees.ts`：`chordDegreeInKey`（和弦在某调的级数、该级数应有的性质、
   是否相符）与 `degreesOfKey`（某调的七个级数，根音拼写跟调走）。和弦页据此新增
   **级数徽章**：选一个调，看当前和弦是几级、起什么作用，或提示「调外」。
+- `packages/core/src/caged.ts`：`cagedShapes(rootPc)` 算出同一和弦的五个把位（形状名、平移量、
+  按法、覆盖区间、根音所在的弦）。乐理第 9 课用 `CagedBoard` 做成交互图：
+  选和弦（C/A/G/E/D）→ 点形状切换，图上看按法、金色根音与覆盖品位。
 - `packages/core/src/intervals.ts`：音程表、按字母步进的 `spellInterval`、12 平均律表、
   频率 / 音分、`stackThirds`（三度叠置），以及音程与三度两类练习题生成器。
 - `packages/core/src/circle.ts`：五度圈 12 调（升降号带正负、关系小调、相邻调、圈上距离）与练习题。

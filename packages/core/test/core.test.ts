@@ -68,6 +68,7 @@ import {
   twelveToneTable,
   chordDegreeInKey,
   degreesOfKey,
+  cagedShapes,
 } from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
 
@@ -785,4 +786,42 @@ test("和弦级数：C 大调 I–vii°、大小写与性质对得上", () => {
     ["I", "ii", "iii", "IV", "V", "vi", "vii°"],
   );
   assert.equal(table[6].root, "F#dim");
+});
+
+test("CAGED：同一个和弦的五个把位", () => {
+  const c = cagedShapes(0);
+  assert.deepEqual(
+    c.map((shape) => shape.id),
+    ["C", "A", "G", "E", "D"],
+    "顺序就是 CAGED",
+  );
+  assert.deepEqual(
+    c.map((shape) => shape.shift),
+    [0, 3, 5, 8, 10],
+    "C 和弦的五个位置：0 / 3 / 5 / 8 / 10 品",
+  );
+  assert.deepEqual(c[0].frets, [-1, 3, 2, 0, 1, 0], "C 形就是开放的 C");
+  assert.deepEqual(c[3].frets, [8, 10, 10, 9, 8, 8], "E 形横按在第 8 品");
+  assert.deepEqual(c[3].rootStrings, [0, 2, 5], "E 形的根音在 6 / 4 / 1 弦");
+
+  // G 和弦：G 形回到 0 品，E 形落在 3 品
+  const g = cagedShapes(7);
+  assert.equal(g.find((shape) => shape.id === "G")!.shift, 0);
+  assert.equal(g.find((shape) => shape.id === "E")!.shift, 3);
+
+  // 不变量：每个形状按到的音，都必须是大三和弦的构成音（根 / 三 / 五）
+  for (const rootPc of [0, 2, 5, 7, 11]) {
+    const allowed = [rootPc, (rootPc + 4) % 12, (rootPc + 7) % 12];
+    for (const shape of cagedShapes(rootPc)) {
+      assert.ok(shape.rootStrings.length > 0, `${shape.name} 必须能指出根音`);
+      shape.frets.forEach((fret, index) => {
+        if (fret < 0) return;
+        const pc = pitchClassAt(STANDARD_TUNING, 5 - index, fret);
+        assert.ok(
+          allowed.includes(pc),
+          `根音 ${rootPc} 的 ${shape.name}：${6 - index} 弦 ${fret} 品不该出现 ${pc}`,
+        );
+      });
+    }
+  }
 });

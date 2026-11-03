@@ -8,3 +8,4 @@ export * from "./chords.ts";
 export * from "./intervals.ts";
 export * from "./circle.ts";
 export * from "./degrees.ts";
+export * from "./caged.ts";

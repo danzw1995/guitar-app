@@ -17,6 +17,7 @@ import {
 import PianoStrip from "../components/PianoStrip";
 import StringStrip from "../components/StringStrip";
 import ScaleMap from "../components/ScaleMap";
+import CagedBoard from "../components/CagedBoard";
 import ChordDiagram from "../components/ChordDiagram";
 import TheoryQuiz from "../components/TheoryQuiz";
 
@@ -62,6 +63,13 @@ export default function Theory() {
   const [chordName, setChordName] = useState("C");
   const [quiz, setQuiz] = useState<"interval" | "third" | null>(null);
   const [mapNames, setMapNames] = useState(false);
+  const [cagedChord, setCagedChord] = useState("C");
+
+  const cagedShape = CHORD_BY_NAME.get(cagedChord);
+  const cagedRootPc = useMemo(
+    () => (cagedShape ? chordInfo(cagedShape).rootPc : 0),
+    [cagedShape],
+  );
 
   const chord = CHORD_BY_NAME.get(chordName);
   const info = useMemo(() => (chord ? chordInfo(chord) : null), [chord]);
@@ -345,7 +353,6 @@ export default function Theory() {
         </p>
       </section>
 
-      {/* ---------- 8. 指板规律 ---------- */}
       <section className="lesson">
         <h3>
           <span className="lesson-no">8</span>指板规律：把上面的东西变成「形状」
@@ -470,12 +477,44 @@ export default function Theory() {
         <p className="lesson-cap">
           同一个大三和弦，在琴颈上有 <b>5 种按法</b>，分别叫 <b>C、A、G、E、D</b>（就是五个开放和弦的形状），
           沿着琴颈往上平移、用横按替换空弦即可。它们之间的位移，就是前面那条「八度 +2 / +3」和
-          「相邻弦差 5 品」决定的。这是前人总结得最完整的一套指板规律。
+          「相邻弦差 5 品」决定的。<b>下一节</b>可以点着看这五个形状。
         </p>
 
         <p className="lesson-note">
           三条规律 + 空弦音 <b>E A D G B E</b>，就能推任意一个音：先找到最近的空弦或已知音，
           再用「同弦 + 半音」「同品跨弦 +3 级」「八度 +2/+3」走两步就到了。
+        </p>
+      </section>
+
+      {/* ---------- 9. CAGED ---------- */}
+      <section className="lesson">
+        <h3>
+          <span className="lesson-no">9</span>CAGED：一个和弦的五种按法
+        </h3>
+        <p className="lesson-lead">
+          同一个大三和弦在琴颈上有 <b>5 个位置</b>，来自五个开放和弦的形状：
+          <b>C、A、G、E、D</b>（连起来读就是 CAGED）。把开放形状整块往上平移、
+          空弦处改成横按，就得到同一个和弦在别的把位。点下面的和弦换一个，再点形状按钮看它怎么挪。
+        </p>
+        <div className="lesson-buttons">
+          {["C", "A", "G", "E", "D"].map((name) => (
+            <button
+              key={name}
+              type="button"
+              className={name === cagedChord ? "chip on" : "chip"}
+              onClick={() => setCagedChord(name)}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <div className="lesson-figure">
+          <CagedBoard rootPc={cagedRootPc} rootName={cagedChord} />
+        </div>
+        <p className="lesson-note">
+          为什么正好五个、为什么位置是 <b>0 / 3 / 5 / 8 / 10</b> 品（以 C 为例）？
+          因为它们之间的间距就是前面那些形状：相邻形状的根音在弦上相差 3 品或 2 品，
+          一圈下来正好 12 品回到原样。练熟这五个形状，换把、找和弦、改调都不用重新学。
         </p>
       </section>
 
