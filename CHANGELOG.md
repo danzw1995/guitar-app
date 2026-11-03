@@ -4,8 +4,17 @@
 
 ## [Unreleased]
 
+### Added
+- **错误边界**：顶层包一层 `ErrorBoundary`，渲染抛错时显示兜底页（`role="alert"`），
+  说明进度保存在本机、可重试或重新加载。
+- **离线提示**：`OfflineBanner`（`role="status"` + `aria-live`），离线时说明「功能与进度都在本机」。
+- **可访问性**：跳过导航链接、`<main id="main">` 可聚焦、`nav` 带 `aria-label` 与 `aria-current`、
+  指板每格有 `aria-label`（「6 弦 3 品 G」）、装饰性 SVG `aria-hidden`、
+  选音器 `role="dialog"` + 焦点进弹层/关闭归还、统计页空状态、`prefers-reduced-motion`。
+- `pnpm check:a11y`（8 项静态结构断言）与 `pnpm check:all`（测试 + 样式 / PWA / a11y）。
+
 ### Planned
-- 面板里加推算模式；今日一题做成能判分的小练习（需要插件自己的存储）
+- 新手引导；40 关难度复核；GitHub Actions CI（v1.0.0 剩余项）
 - Tauri（Windows）/ Capacitor（Android），v0.7.0，需先装工具链
 - 节拍器与音频（v0.8.0）
 

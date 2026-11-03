@@ -29,6 +29,12 @@ export default function Stats() {
         <p>只记录在这台设备上，清浏览器数据会一起清掉。</p>
       </div>
 
+      {summary.attempts === 0 && (
+        <p className="empty-hint">
+          还没有记录。去「音阶游戏」玩第一关，这里就会出现星级、正确率和练习时长。
+        </p>
+      )}
+
       <div className="stat-grid">
         <div className="stat-card">
           <b>

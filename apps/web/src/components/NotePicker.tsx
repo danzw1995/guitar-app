@@ -25,10 +25,19 @@ export default function NotePicker({ cell, onPick, onClose }: NotePickerProps) {
   // 用 ref 存回调，避免父组件每次渲染都让键盘监听重新订阅。
   const pickRef = useRef(onPick);
   const closeRef = useRef(onClose);
+  const firstNoteRef = useRef<HTMLButtonElement | null>(null);
+
   useEffect(() => {
     pickRef.current = onPick;
     closeRef.current = onClose;
   });
+
+  // 打开时把焦点放进弹层，关闭时还给原来的元素（键盘用户不会「迷路」）。
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    firstNoteRef.current?.focus();
+    return () => previous?.focus?.();
+  }, []);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -76,7 +85,13 @@ export default function NotePicker({ cell, onPick, onClose }: NotePickerProps) {
 
   return (
     <div className="picker-backdrop" onClick={onClose}>
-      <div className="picker" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="picker"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`选择音名：${cell.s + 1} 弦 ${cell.f} 品`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="picker-head">
           <span>
             {cell.s + 1} 弦 · {cell.f} 品
@@ -87,10 +102,12 @@ export default function NotePicker({ cell, onPick, onClose }: NotePickerProps) {
           </button>
         </div>
         <div className="picker-grid">
-          {NOTE_NAMES.map((n) => (
+          {NOTE_NAMES.map((n, i) => (
             <button
               key={n}
+              type="button"
               className={n === activeNote ? "note-btn active" : "note-btn"}
+              ref={i === 0 ? firstNoteRef : undefined}
               onClick={() => onPick(n)}
             >
               {n}

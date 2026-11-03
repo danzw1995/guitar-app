@@ -37,6 +37,8 @@ export interface FretboardProps {
   cellClass?: (s: number, f: number) => string;
   onCellClick?: (s: number, f: number) => void;
   isDisabled?: (s: number, f: number) => boolean;
+  /** 给屏幕阅读器的整格说明，例如「6 弦 3 品 G」。缺省用「n 弦 m 品」。 */
+  cellAriaLabel?: (s: number, f: number) => string;
 }
 
 /**
@@ -56,6 +58,7 @@ export default function Fretboard({
   cellClass,
   onCellClick,
   isDisabled,
+  cellAriaLabel,
 }: FretboardProps) {
   const frets: number[] = [];
   for (let f = fretMin; f <= fretMax; f++) frets.push(f);
@@ -157,6 +160,9 @@ export default function Fretboard({
                     type="button"
                     className={cls}
                     disabled={disabled}
+                    aria-label={
+                      cellAriaLabel ? cellAriaLabel(s, f) : `${s + 1} 弦 ${f} 品`
+                    }
                     style={{ gridColumn: i + 1, gridRow: s + 2 }}
                     onClick={() => onCellClick?.(s, f)}
                   >

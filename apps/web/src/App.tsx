@@ -4,6 +4,7 @@ import Scales from "./pages/Scales";
 import Game from "./pages/Game";
 import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
+import OfflineBanner from "./components/OfflineBanner";
 
 type Tab = "chords" | "scales" | "game" | "stats" | "settings";
 
@@ -20,19 +21,27 @@ export default function App() {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#main">
+        跳到主要内容
+      </a>
+
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark">G</span>
+          <span className="brand-mark" aria-hidden="true">
+            G
+          </span>
           <div>
             <h1>Guitar Lab</h1>
             <p>标准调弦 · 音阶与指板练习</p>
           </div>
         </div>
-        <nav className="tabs">
+        <nav className="tabs" aria-label="主导航">
           {TABS.map((t) => (
             <button
               key={t.id}
+              type="button"
               className={tab === t.id ? "tab active" : "tab"}
+              aria-current={tab === t.id ? "page" : undefined}
               onClick={() => setTab(t.id)}
             >
               {t.label}
@@ -41,7 +50,9 @@ export default function App() {
         </nav>
       </header>
 
-      <main className="app-main">
+      <OfflineBanner />
+
+      <main className="app-main" id="main" tabIndex={-1}>
         {tab === "chords" && <Chords />}
         {tab === "scales" && <Scales />}
         {tab === "game" && <Game />}

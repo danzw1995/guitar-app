@@ -1,0 +1,97 @@
+/**
+ * 可访问性 / 兜底的**静态**检查。
+ *
+ *   node apps/web/scripts/check-a11y.mjs
+ *
+ * 它证明"这些属性和结构还在源码里"，**不证明真实的读屏体验或对比度**——
+ * 那需要人在浏览器 + 读屏软件里过一遍。
+ */
+import { readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const APP = join(dirname(fileURLToPath(import.meta.url)), "..");
+const read = (p) => readFileSync(join(APP, p), "utf8");
+
+let failed = 0;
+const check = (label, fn) => {
+  try {
+    fn();
+    console.log(`✔ ${label}`);
+  } catch (error) {
+    failed++;
+    console.log(`✖ ${label}\n    ${error.message}`);
+  }
+};
+
+const expect = (source, needles, file) => {
+  for (const needle of needles) {
+    if (!source.includes(needle)) throw new Error(`${file} 里缺少 ${needle}`);
+  }
+};
+
+check("index.html：语言、视口、标题", () => {
+  const html = read("index.html");
+  expect(html, ['lang="zh-CN"', 'name="viewport"', "<title>"], "index.html");
+});
+
+check("App：跳转链接 + 主区域 + 导航语义", () => {
+  const src = read("src/App.tsx");
+  expect(
+    src,
+    ['className="skip-link"', 'href="#main"', 'id="main"', 'aria-label="主导航"', "aria-current"],
+    "src/App.tsx",
+  );
+  if (!src.includes("tabIndex={-1}")) throw new Error("主区域应可编程聚焦（tabIndex={-1}）");
+});
+
+check("App：挂了离线提示，main.tsx 挂了错误边界", () => {
+  expect(read("src/App.tsx"), ["<OfflineBanner"], "src/App.tsx");
+  expect(read("src/main.tsx"), ["<ErrorBoundary>"], "src/main.tsx");
+});
+
+check("指板：每格有 aria-label，装饰性 SVG 对读屏隐藏", () => {
+  const src = read("src/components/Fretboard.tsx");
+  expect(src, ["aria-label={", "cellAriaLabel"], "Fretboard.tsx");
+  const svg = src.slice(src.indexOf("<svg"));
+  if (!svg.slice(0, 300).includes('aria-hidden="true"')) {
+    throw new Error("指板 SVG 应 aria-hidden（信息由按钮承载）");
+  }
+});
+
+check("选音器：dialog 语义 + 焦点管理", () => {
+  const src = read("src/components/NotePicker.tsx");
+  expect(
+    src,
+    ['role="dialog"', 'aria-modal="true"', "aria-label=", "firstNoteRef.current?.focus()"],
+    "NotePicker.tsx",
+  );
+  if (!src.includes("previous?.focus?.()")) throw new Error("关闭时应把焦点还给原元素");
+});
+
+check("错误边界与离线条有合适的 ARIA 角色", () => {
+  expect(read("src/components/ErrorBoundary.tsx"), ['role="alert"'], "ErrorBoundary.tsx");
+  expect(
+    read("src/components/OfflineBanner.tsx"),
+    ['role="status"', 'aria-live="polite"'],
+    "OfflineBanner.tsx",
+  );
+});
+
+check("统计页有空状态提示", () => {
+  expect(read("src/pages/Stats.tsx"), ['className="empty-hint"'], "Stats.tsx");
+});
+
+check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {
+  const css = read("src/styles.css");
+  expect(css, [".skip-link:focus-visible", "prefers-reduced-motion"], "styles.css");
+  if (!css.includes("transition-duration: 0.01ms")) {
+    throw new Error("prefers-reduced-motion 里应把 transition 归零");
+  }
+});
+
+if (failed > 0) {
+  console.log(`\n${failed} 项未通过`);
+  process.exit(1);
+}
+console.log("\n静态结构检查通过（真实读屏 / 对比度仍需人工验收）");
