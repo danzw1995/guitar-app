@@ -95,6 +95,13 @@ check("新手引导：dialog 语义、焦点与 Esc 关闭", () => {
   expect(read("src/pages/Settings.tsx"), ["再看一遍新手引导", "resetOnboarding"], "Settings.tsx");
 });
 
+check("乐理：五度圈可键盘操作、练习弹层有 dialog 语义", () => {
+  const theory = read("src/pages/Theory.tsx");
+  expect(theory, ['role="button"', "tabIndex={0}", "aria-label=", "onKeyDown"], "Theory.tsx");
+  const quiz = read("src/components/TheoryQuiz.tsx");
+  expect(quiz, ['role="dialog"', 'aria-modal="true"', 'role="status"'], "TheoryQuiz.tsx");
+});
+
 check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {
   const css = read("src/styles.css");
   expect(css, [".skip-link:focus-visible", "prefers-reduced-motion"], "styles.css");

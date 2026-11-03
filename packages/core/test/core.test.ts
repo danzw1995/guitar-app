@@ -49,6 +49,24 @@ import {
   checkAnswer,
   type AttemptResult,
 } from "../src/index.ts";
+import {
+  CIRCLE,
+  INTERVALS,
+  CHORD_QUALITIES,
+  circleKey,
+  circleQuestion,
+  fifthsDistance,
+  frequencyOf,
+  intervalBetween,
+  intervalOf,
+  intervalQuestion,
+  mulberry32,
+  neighborKeys,
+  spellInterval,
+  stackThirds,
+  thirdQuestion,
+  twelveToneTable,
+} from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
 
 test("standard tuning open strings", () => {
@@ -606,4 +624,124 @@ test("summarizeProgress: 统计口径", () => {
   assert.equal(empty.completed, 0);
   assert.equal(empty.averageStars, 0);
   assert.equal(empty.maxStars, 9);
+});
+
+test("音程表：12 个半音 + 八度，音分与名称一致", () => {
+  assert.equal(INTERVALS.length, 13);
+  for (const info of INTERVALS) {
+    assert.equal(info.cents, info.semitones * 100, `${info.short} 的音分`);
+    assert.ok(info.name.length > 0 && info.short.length > 0);
+  }
+  assert.equal(intervalOf(4).name, "大三度");
+  assert.equal(intervalOf(3).name, "小三度");
+  assert.equal(intervalOf(7).name, "纯五度");
+  assert.equal(intervalOf(6).name, "三全音");
+  assert.equal(intervalOf(0).name, "纯一度");
+  assert.equal(intervalOf(12).name, "纯八度");
+  assert.equal(intervalOf(16).name, "大三度", "超过 12 个半音要折回");
+  assert.equal(intervalOf(-1).name, "大七度", "负数取模也要落在 0–11");
+
+  assert.deepEqual(intervalBetween(0, 4), intervalOf(4));
+  assert.deepEqual(intervalBetween(9, 0), intervalOf(3), "A 到 C 是小三度（上行 3 个半音）");
+});
+
+test("音程拼写：字母步进决定升降号", () => {
+  assert.equal(spellInterval("C", 4), "E", "C 的大三度是 E");
+  assert.equal(spellInterval("C", 3), "Eb", "C 的小三度是 Eb");
+  assert.equal(spellInterval("C", 6), "F#", "C 的三全音写成增四度 F#");
+  assert.equal(spellInterval("F", 6), "B", "F 到 B 是增四度");
+  assert.equal(spellInterval("B", 4), "D#", "B 的大三度是 D#");
+  assert.equal(spellInterval("F#", 3), "A", "F# 的小三度是 A");
+  assert.equal(spellInterval("C", 12), "C", "八度回到自己");
+  assert.equal(spellInterval("Bb", 9), "G", "Bb 的大六度是 G");
+  assert.throws(() => spellInterval("H", 4), /bad note name/);
+});
+
+test("12 平均律：音名、音分、频率比", () => {
+  const table = twelveToneTable(0);
+  assert.equal(table.length, 12);
+  assert.equal(table[0].sharpName, "C");
+  assert.equal(table[0].flatName, "C");
+  assert.equal(table[1].sharpName, "C#");
+  assert.equal(table[1].flatName, "Db", "同一个键位两个名字");
+  assert.equal(table[1].cents, 100);
+  assert.ok(Math.abs(table[1].ratio - 1.059463) < 1e-5, "半音是 2 的 12 次方根");
+  assert.ok(Math.abs(table[7].ratio - 1.498307) < 1e-5, "纯五度约 1.4983");
+
+  const fromG = twelveToneTable(7);
+  assert.equal(fromG[0].sharpName, "G");
+  assert.equal(fromG[5].sharpName, "C", "G 上方 5 个半音是 C");
+  assert.equal(fromG[5].degree, "4");
+});
+
+test("频率与音分", () => {
+  assert.equal(frequencyOf(69), 440, "A4 = 440Hz");
+  assert.ok(Math.abs(frequencyOf(60) - 261.6256) < 1e-3, "中央 C 约 261.63Hz");
+  assert.equal(frequencyOf(81), 880, "高八度翻倍");
+  assert.equal(frequencyOf(69, 432), 432, "可以改基准");
+});
+
+test("三度叠置：和弦就是三度加三度", () => {
+  const major = stackThirds("C", [0, 4, 7]);
+  assert.deepEqual(major.notes, ["C", "E", "G"]);
+  assert.deepEqual(major.steps.map((s) => s.name), ["大三度", "小三度"]);
+  assert.equal(major.text, "大三度 + 小三度");
+
+  const minor = stackThirds("A", [0, 3, 7]);
+  assert.deepEqual(minor.notes, ["A", "C", "E"]);
+  assert.deepEqual(minor.steps.map((s) => s.name), ["小三度", "大三度"]);
+
+  const seventh = stackThirds("C", [0, 4, 7, 11]);
+  assert.deepEqual(seventh.notes, ["C", "E", "G", "B"]);
+  assert.deepEqual(seventh.steps.map((s) => s.name), ["大三度", "小三度", "大三度"]);
+
+  // 拼写要跟字母走：B 的三音是 D#，不是 Eb
+  assert.deepEqual(stackThirds("B", [0, 4, 7]).notes, ["B", "D#", "F#"]);
+
+  // 和 chords.ts 的性质定义对得上
+  for (const quality of Object.values(CHORD_QUALITIES)) {
+    const stack = stackThirds("C", quality.intervals);
+    assert.equal(stack.notes.length, quality.intervals.length);
+  }
+});
+
+test("五度圈：12 个调、调号、相邻调", () => {
+  assert.equal(CIRCLE.length, 12);
+  assert.deepEqual(
+    CIRCLE.map((c) => c.id),
+    ["C", "G", "D", "A", "E", "B", "F#", "Db", "Ab", "Eb", "Bb", "F"],
+  );
+  assert.equal(circleKey("C")!.accidentals, 0);
+  assert.equal(circleKey("G")!.accidentals, 1);
+  assert.equal(circleKey("F")!.accidentals, -1);
+  assert.equal(circleKey("F#")!.accidentals, 6);
+  assert.equal(circleKey("Db")!.accidentals, -5);
+  assert.equal(circleKey("C")!.minorName, "A 小调");
+  assert.equal(circleKey("C")!.scale.join(""), "CDEFGAB");
+  assert.equal(circleKey("H"), null);
+
+  assert.equal(neighborKeys("C")!.up.id, "G");
+  assert.equal(neighborKeys("C")!.down.id, "F");
+  assert.equal(neighborKeys("F")!.up.id, "C");
+  assert.equal(neighborKeys("Db")!.down.id, "F#", "等音位置相邻");
+
+  assert.equal(fifthsDistance("C", "G"), 1);
+  assert.equal(fifthsDistance("C", "F"), 1);
+  assert.equal(fifthsDistance("C", "F#"), 6, "最远是 6 格");
+  assert.equal(fifthsDistance("C", "C"), 0);
+});
+
+test("乐理练习：题目自洽（答案在选项里、有解释、可复现）", () => {
+  const generators = [intervalQuestion, thirdQuestion, circleQuestion];
+  for (const generate of generators) {
+    for (let seed = 1; seed <= 40; seed++) {
+      const question = generate(mulberry32(seed));
+      assert.ok(question.prompt.length > 0, "题目不能为空");
+      assert.ok(question.explain.length > 0, "要有解释");
+      assert.equal(question.choices.length, 4, "四选一");
+      assert.ok(question.choices.includes(question.answer), `答案要在选项里：${question.answer}`);
+      assert.equal(new Set(question.choices).size, 4, "选项不能重复");
+      assert.deepEqual(generate(mulberry32(seed)), question, "同一 seed 必须同题");
+    }
+  }
 });

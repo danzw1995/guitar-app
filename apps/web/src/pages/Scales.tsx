@@ -29,12 +29,17 @@ export default function Scales() {
   const key = KEY_BY_ID.get(keyId)!;
   const scale = SCALE_BY_ID.get(scaleId)!;
 
-  const { byPc, rootName } = useMemo(() => {
+  const { byPc, rootName, formula } = useMemo(() => {
     const names = scaleNames(key, scale);
     const pcs = scalePcs(key, scale);
     const map = new Map<number, string>();
     pcs.forEach((pc, i) => map.set(pc, names[i]));
-    return { byPc: map, rootName: names[0] };
+    // 相邻音之间的半音数 → 「全 / 半」，方便对照大调的「全全半全全全半」
+    const gaps = pcs.map((pc, i) => ((pcs[(i + 1) % pcs.length] - pc) % 12 + 12) % 12);
+    const text = gaps
+      .map((gap) => (gap === 2 ? "全" : gap === 1 ? "半" : `${gap}半音`))
+      .join(" ");
+    return { byPc: map, rootName: names[0], formula: text };
   }, [keyId, scaleId]);
 
   /** 0 品是空弦区，只靠左侧的弦名就够了，不画音点。 */
@@ -91,6 +96,11 @@ export default function Scales() {
         <span><i className="dot scale" /> 音阶音</span>
         {showChromatic && <span><i className="dot muted" /> 调外音</span>}
       </div>
+
+      <p className="scale-formula">
+        音程公式：<b>{formula}</b>
+        <span className="muted">（大调是「全 全 半 全 全 全 半」，为什么这么排见「乐理」页）</span>
+      </p>
 
       <Fretboard
         fretMin={1}

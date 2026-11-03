@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CHORDS, CHORD_BY_NAME, chordInfo, fingeringOf } from "@guitar/core";
+import { CHORDS, CHORD_BY_NAME, chordInfo, fingeringOf, stackThirds } from "@guitar/core";
 import ChordDiagram from "../components/ChordDiagram";
 
 /** 指法数字的含义（1=食指 … 4=小指）。 */
@@ -10,6 +10,7 @@ export default function Chords() {
   const chord = CHORD_BY_NAME.get(selected)!;
   const info = chordInfo(chord);
   const fingering = fingeringOf(chord);
+  const stack = stackThirds(info.rootName, info.quality.intervals);
 
   return (
     <section className="panel">
@@ -57,6 +58,10 @@ export default function Chords() {
           <p className="chord-explain">
             {chord.name} 是{info.quality.name}，由 {info.tones.map((t) => t.name).join(" ")} 组成
             （{info.tones.map((t) => t.degree).join(" ")}）。图上标记的每个音都来自这几个音。
+          </p>
+          <p className="chord-explain">
+            三度叠置：{info.rootName} <b>{stack.text}</b> → {stack.notes.join(" – ")}。
+            <span className="muted">（为什么是三度？见「乐理」页）</span>
           </p>
 
           <p className="hint chord-hint">

@@ -1,17 +1,19 @@
 import { useState } from "react";
 import Chords from "./pages/Chords";
 import Scales from "./pages/Scales";
+import Theory from "./pages/Theory";
 import Game from "./pages/Game";
 import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
 import OfflineBanner from "./components/OfflineBanner";
 import Onboarding from "./components/Onboarding";
 
-type Tab = "chords" | "scales" | "game" | "stats" | "settings";
+type Tab = "chords" | "scales" | "theory" | "game" | "stats" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "chords", label: "和弦" },
   { id: "scales", label: "音阶" },
+  { id: "theory", label: "乐理" },
   { id: "game", label: "音阶游戏" },
   { id: "stats", label: "统计" },
   { id: "settings", label: "设置" },
@@ -56,6 +58,7 @@ export default function App() {
       <main className="app-main" id="main" tabIndex={-1}>
         {tab === "chords" && <Chords />}
         {tab === "scales" && <Scales />}
+        {tab === "theory" && <Theory />}
         {tab === "game" && <Game />}
         {tab === "stats" && <Stats />}
         {tab === "settings" && <Settings />}
