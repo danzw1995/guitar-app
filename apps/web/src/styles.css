@@ -637,6 +637,26 @@ button, select, input { font: inherit; color: inherit; }
   border: 1px solid var(--line);
   background: var(--panel-2);
 }
+/* 页面说明和第一节之间要留出间隔（.panel-head p 的 margin 是 0） */
+.panel-head + .lesson {
+  margin-top: 16px;
+}
+.lesson-sub {
+  margin: 18px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.lesson-sub::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 12px;
+  margin-right: 7px;
+  border-radius: 2px;
+  background: var(--accent);
+  vertical-align: -1px;
+}
 .lesson h3 {
   display: flex;
   align-items: center;
@@ -832,6 +852,45 @@ button, select, input { font: inherit; color: inherit; }
   border-color: var(--accent);
   background: rgba(212, 167, 44, 0.16);
   color: var(--text);
+}
+
+/* 和弦页的「级数」徽章 */
+.chord-degree {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+.degree-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 167, 44, 0.45);
+  background: rgba(212, 167, 44, 0.14);
+}
+.degree-badge b {
+  font-size: 13px;
+  color: var(--accent);
+}
+.degree-badge i {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 11px;
+}
+.degree-badge.off {
+  border-color: var(--line);
+  background: var(--panel-2);
+}
+.degree-badge.off b {
+  color: var(--muted);
+}
+.degree-warn {
+  color: #d1685f;
+  font-size: 11px;
 }
 
 /* 乐理表格（音程表 / 级数表共用） */

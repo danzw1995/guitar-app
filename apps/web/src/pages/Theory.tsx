@@ -5,6 +5,7 @@ import {
   KEY_BY_ID,
   SCALE_BY_ID,
   chordInfo,
+  degreesOfKey,
   fingeringOf,
   intervalQuestion,
   scaleNames,
@@ -18,23 +19,40 @@ import StringStrip from "../components/StringStrip";
 import ChordDiagram from "../components/ChordDiagram";
 import TheoryQuiz from "../components/TheoryQuiz";
 
-/** C 大调的七个音（高亮用）。 */
 const C_MAJOR = scalePcs(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
 const C_MAJOR_NAMES = scaleNames(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
+const A_MINOR = scalePcs(KEY_BY_ID.get("Am")!, SCALE_BY_ID.get("naturalMinor")!);
+const A_MINOR_NAMES = scaleNames(KEY_BY_ID.get("Am")!, SCALE_BY_ID.get("naturalMinor")!);
 
-/** C 大调各级和弦（vii° 是减三和弦，吉他上不常用，标出来但不给指法）。 */
-const DEGREES: { roman: string; chord: string; quality: string; note: string }[] = [
-  { roman: "I", chord: "C", quality: "大三和弦", note: "最常见的主和弦" },
-  { roman: "ii", chord: "Dm", quality: "小三和弦", note: "小写表示小三和弦" },
-  { roman: "iii", chord: "Em", quality: "小三和弦", note: "常代替 I" },
-  { roman: "IV", chord: "F", quality: "大三和弦", note: "下属和弦" },
-  { roman: "V", chord: "G", quality: "大三和弦", note: "属和弦，最想回到 I" },
-  { roman: "vi", chord: "Am", quality: "小三和弦", note: "关系小调的主和弦" },
-  { roman: "vii°", chord: "Bdim", quality: "减三和弦", note: "带 ° 的是减三和弦，很少单独用" },
+/** 同一品（3 品）跨六根弦的实际音，用来展示「+3 级」的规律。 */
+const SAME_FRET = [
+  { string: 6, note: "G", degree: "5" },
+  { string: 5, note: "C", degree: "1" },
+  { string: 4, note: "F", degree: "4" },
+  { string: 3, note: "Bb", degree: "降7" },
+  { string: 2, note: "D", degree: "2" },
+  { string: 1, note: "G", degree: "5" },
+];
+
+/** 相邻弦的空弦音程。 */
+const STRING_GAPS = [
+  { from: "6 弦 E", to: "5 弦 A", interval: "纯四度", frets: 5 },
+  { from: "5 弦 A", to: "4 弦 D", interval: "纯四度", frets: 5 },
+  { from: "4 弦 D", to: "3 弦 G", interval: "纯四度", frets: 5 },
+  { from: "3 弦 G", to: "2 弦 B", interval: "大三度", frets: 4 },
+  { from: "2 弦 B", to: "1 弦 E", interval: "纯四度", frets: 5 },
+];
+
+/** 八度形状。 */
+const OCTAVE_SHAPES = [
+  { rule: "同一根弦 +12 品", example: "5 弦 3 品 C = 5 弦 15 品 C" },
+  { rule: "隔一根弦、多 2 品（低音侧）", example: "6 弦 3 品 G = 4 弦 5 品 G；5 弦 3 品 C = 3 弦 5 品 C" },
+  { rule: "隔一根弦、多 3 品（高音侧）", example: "4 弦 3 品 F = 2 弦 6 品 F；3 弦 5 品 C = 1 弦 8 品 C" },
+  { rule: "跨两根弦、少 3 品", example: "6 弦 3 品 G = 3 弦 0 品 G" },
 ];
 
 /**
- * 乐理入门：一条从「音」走到「和弦级数」的路径。
+ * 乐理入门：一条从「音」走到「和弦级数」，再落到「指板规律」的路径。
  *
  * 每一节都是同一个结构：一句话 → 钢琴上看 → 吉他上看。
  * 钢琴负责解释「为什么」，吉他负责回答「那我怎么按」。
@@ -43,25 +61,25 @@ export default function Theory() {
   const [chordName, setChordName] = useState("C");
   const [quiz, setQuiz] = useState<"interval" | "third" | null>(null);
 
+  const chord = CHORD_BY_NAME.get(chordName);
+  const info = useMemo(() => (chord ? chordInfo(chord) : null), [chord]);
+  const stack = useMemo(
+    () => (info ? stackThirds(info.rootName, info.quality.intervals) : null),
+    [info],
+  );
+  const degrees = useMemo(() => degreesOfKey("C"), []);
+
   const quizConfig: Record<"interval" | "third", { title: string; make: (rng: () => number) => TheoryQuestion }> = {
     interval: { title: "音程练习", make: intervalQuestion },
     third: { title: "三度叠置练习", make: thirdQuestion },
   };
-
-  const chord = CHORD_BY_NAME.get(chordName) ?? CHORD_BY_NAME.get("C")!;
-  const info = useMemo(() => chordInfo(chord), [chord]);
-  const stack = useMemo(
-    () => stackThirds(info.rootName, info.quality.intervals),
-    [info],
-  );
-  const pickedDegree = DEGREES.find((d) => d.chord === chord.name) ?? DEGREES[0];
 
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>乐理入门</h2>
         <p>
-          从「一个音」一路走到「和弦级数」。每节都是：一句话 → 钢琴上看 → 吉他上看。
+          从「一个音」走到「指板规律」。每节都是：一句话 → 钢琴上看 → 吉他上看。
           看不懂名词没关系，先看图。
         </p>
       </div>
@@ -128,20 +146,18 @@ export default function Theory() {
         </p>
       </section>
 
-      {/* ---------- 4. 音阶公式 ---------- */}
+      {/* ---------- 4. 音阶公式（大调 + 小调） ---------- */}
       <section className="lesson">
         <h3>
-          <span className="lesson-no">4</span>音阶公式：全 全 半 全 全 全 半
+          <span className="lesson-no">4</span>音阶公式：大调与小调
         </h3>
         <p className="lesson-lead">
-          大调不是随便挑 7 个音，而是按固定的间距取：<b>全 全 半 全 全 全 半</b>。
+          <b>大调</b>不是随便挑 7 个音，而是按固定的间距取：<b>全 全 半 全 全 全 半</b>。
           从 C 开始取，刚好全在白键上（所以 C 大调没有升降号）；从 G 开始取，就要把 F 升半音。
         </p>
         <div className="lesson-figure">
           <PianoStrip highlight={C_MAJOR} root={0} showSteps />
-          <p className="lesson-cap">
-            {C_MAJOR_NAMES.join(" ")}，间距正好是全全半全全全半
-          </p>
+          <p className="lesson-cap">{C_MAJOR_NAMES.join(" ")}，间距正好是全全半全全全半</p>
         </div>
         <div className="lesson-guitar">
           <StringStrip stringIndex={1} frets={12} highlight={C_MAJOR} root={0} showSteps />
@@ -150,6 +166,21 @@ export default function Theory() {
             把「全全半」翻译成「隔几品」就是这张图。
           </p>
         </div>
+
+        <h4 className="lesson-sub">小调：同一堆音，换个主音</h4>
+        <p className="lesson-lead">
+          自然小调的公式是 <b>全 半 全 全 半 全 全</b>。A 小调用的音和 C 大调<b>完全一样</b>，
+          只是把 A 当成「1」——这叫 <b>关系小调</b>（每个大调的第 6 级，就是它的关系小调主音：
+          C↔Am、G↔Em、D↔Bm）。
+        </p>
+        <div className="lesson-figure">
+          <PianoStrip highlight={A_MINOR} root={9} showSteps />
+          <p className="lesson-cap">{A_MINOR_NAMES.join(" ")}，但主音是 A，所以听起来是另一种情绪</p>
+        </div>
+        <p className="lesson-note">
+          为什么听起来「忧郁」？看第三个音：大调的三音在主音上方 <b>4 个半音</b>（大三度），
+          小调只有 <b>3 个半音</b>（小三度）。就这一个半音的差别，决定了整首歌的色彩。
+        </p>
       </section>
 
       {/* ---------- 5. 音程 ---------- */}
@@ -159,8 +190,7 @@ export default function Theory() {
         </h3>
         <p className="lesson-lead">
           两个音之间的半音数决定了它们「隔多远」，再给它一个名字（三度、五度……）。
-          名字里的「大 / 小 / 纯」是<b>性质</b>：大三度听起来明亮，小三度听起来忧郁——
-          这就是大调和小调的区别来源。
+          名字里的「大 / 小 / 纯」是<b>性质</b>：大三度听起来明亮，小三度听起来忧郁。
         </p>
         <div className="lesson-figure">
           <StringStrip stringIndex={4} frets={12} highlight={[0, 7]} root={0} />
@@ -218,16 +248,19 @@ export default function Theory() {
         <div className="lesson-pair">
           <div>
             <p className="lesson-cap">
-              <b>{chord.name}</b> = {stack.text} → {stack.notes.join(" – ")}
+              <b>{chordName}</b>
+              {stack ? ` = ${stack.text} → ${stack.notes.join(" – ")}` : "（这个和弦不在指法库里）"}
             </p>
-            <ChordDiagram chord={chord} />
-            <p className="lesson-cap">
-              指法 <code>{fingeringOf(chord)}</code>
-            </p>
+            {chord ? <ChordDiagram chord={chord} /> : null}
+            {chord ? (
+              <p className="lesson-cap">
+                指法 <code>{fingeringOf(chord)}</code>
+              </p>
+            ) : null}
           </div>
           <div className="lesson-compare">
             <p>
-              <b>换一个听听区别</b>
+              <b>换一个对比</b>
             </p>
             <p className="muted">
               C 大三：C – E – G（大三度在前）
@@ -235,7 +268,7 @@ export default function Theory() {
               A 小三：A – C – E（小三度在前）
             </p>
             <div className="lesson-buttons">
-              {["C", "Am"].map((name) => (
+              {["C", "Am", "F", "G"].map((name) => (
                 <button
                   key={name}
                   type="button"
@@ -246,9 +279,11 @@ export default function Theory() {
                 </button>
               ))}
             </div>
-            <p className="muted">
-              {info.quality.name}：{info.tones.map((t) => `${t.name}(${t.degree})`).join(" ")}
-            </p>
+            {info ? (
+              <p className="muted">
+                {info.quality.name}：{info.tones.map((t) => `${t.name}(${t.degree})`).join(" ")}
+              </p>
+            ) : null}
           </div>
         </div>
         <p className="lesson-note">
@@ -267,7 +302,7 @@ export default function Theory() {
         <p className="lesson-lead">
           在 C 大调的 7 个音上，每个音都能叠一个三和弦，用罗马数字标位置：
           <b> I ii iii IV V vi vii°</b>。大写 = 大三和弦，小写 = 小三和弦，带 ° = 减三和弦。
-          流行歌里绝大多数进行都是这几个的组合。
+          <b>点一行</b>可以看它的指法。
         </p>
         <div className="lesson-table-wrap">
           <table className="theory-table">
@@ -280,23 +315,142 @@ export default function Theory() {
               </tr>
             </thead>
             <tbody>
-              {DEGREES.map((degree) => (
-                <tr
-                  key={degree.roman}
-                  className={degree.chord === pickedDegree.chord ? "theory-row-on" : ""}
-                >
-                  <td>{degree.roman}</td>
-                  <td>{degree.chord}</td>
-                  <td>{degree.quality}</td>
-                  <td className="muted">{degree.note}</td>
-                </tr>
-              ))}
+              {degrees.map((degree) => {
+                const has = CHORD_BY_NAME.has(degree.root);
+                return (
+                  <tr
+                    key={degree.roman}
+                    className={degree.root === chordName ? "theory-row-on" : ""}
+                    style={has ? { cursor: "pointer" } : undefined}
+                    onClick={has ? () => setChordName(degree.root) : undefined}
+                  >
+                    <td>{degree.roman}</td>
+                    <td>
+                      {degree.root}
+                      {has ? "" : "（未收录指法）"}
+                    </td>
+                    <td>{degree.quality}</td>
+                    <td className="muted">{degree.role}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
         <p className="lesson-note">
           换个调，级数不变、和弦变：G 大调的 I 是 G、IV 是 C、V 是 D。
           这也解释了为什么很多歌「听起来一样」——它们用的是同一套级数进行。
+        </p>
+      </section>
+
+      {/* ---------- 8. 指板规律 ---------- */}
+      <section className="lesson">
+        <h3>
+          <span className="lesson-no">8</span>指板规律：把上面的东西变成「形状」
+        </h3>
+        <p className="lesson-lead">
+          前面学的音程、级数，在吉他上会变成几条固定的<b>形状</b>。记住它们，
+          就不用每次从空弦一个一个数品了。
+        </p>
+
+        <h4 className="lesson-sub">规律一：相邻弦差 5 品（除了 3→2 弦）</h4>
+        <div className="lesson-table-wrap">
+          <table className="theory-table">
+            <thead>
+              <tr>
+                <th>从</th>
+                <th>到</th>
+                <th>音程</th>
+                <th>差几品</th>
+              </tr>
+            </thead>
+            <tbody>
+              {STRING_GAPS.map((gap) => (
+                <tr key={gap.from} className={gap.frets === 4 ? "theory-row-on" : ""}>
+                  <td>{gap.from}</td>
+                  <td>{gap.to}</td>
+                  <td>{gap.interval}</td>
+                  <td>{gap.frets} 品</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="lesson-cap">
+          所以 <b>6 弦 5 品 = 5 弦空弦</b>（都是 A），5 弦 5 品 = 4 弦空弦……
+          只有 <b>3 弦 4 品 = 2 弦空弦</b>——标准调弦为了让和弦好按，把 2 弦调低了半音。
+        </p>
+
+        <h4 className="lesson-sub">规律二：同一品往高音弦走，级数 +3</h4>
+        <div className="lesson-table-wrap">
+          <table className="theory-table">
+            <thead>
+              <tr>
+                <th>弦</th>
+                <th>3 品上的音</th>
+                <th>相对 C 的级数</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SAME_FRET.map((item) => (
+                <tr key={item.string}>
+                  <td>{item.string} 弦</td>
+                  <td>{item.note}</td>
+                  <td>{item.degree}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="lesson-cap">
+          5 弦 3 品是 1（C），4 弦 3 品就是 4（F）；再往上 3 弦 3 品是 降7（Bb）——注意这里只 +2，
+          因为跨过了 3→2 弦的大三度。知道一根弦上的级数，<b>同品换弦就是 +3 级</b>（mod 7）。
+        </p>
+        <div className="lesson-pair">
+          <div>
+            <StringStrip stringIndex={4} frets={7} highlight={[0]} root={0} />
+            <p className="lesson-cap">5 弦：C 在 3 品（1 级）</p>
+          </div>
+          <div>
+            <StringStrip stringIndex={3} frets={7} highlight={[5]} root={0} />
+            <p className="lesson-cap">4 弦：同一品 3 品就是 F（4 级）</p>
+          </div>
+        </div>
+
+        <h4 className="lesson-sub">规律三：八度形状</h4>
+        <div className="lesson-table-wrap">
+          <table className="theory-table">
+            <thead>
+              <tr>
+                <th>形状</th>
+                <th>例子</th>
+              </tr>
+            </thead>
+            <tbody>
+              {OCTAVE_SHAPES.map((shape) => (
+                <tr key={shape.rule}>
+                  <td>{shape.rule}</td>
+                  <td className="muted">{shape.example}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="lesson-pair">
+          <div>
+            <StringStrip stringIndex={5} frets={7} highlight={[7]} root={7} />
+            <p className="lesson-cap">6 弦 3 品 G</p>
+          </div>
+          <div>
+            <StringStrip stringIndex={3} frets={7} highlight={[7]} root={7} />
+            <p className="lesson-cap">4 弦 5 品 G（隔一根弦 +2 品）</p>
+          </div>
+        </div>
+
+        <p className="lesson-note">
+          三条规律 + 空弦音 <b>E A D G B E</b>，就能推任意一个音：先找到最近的空弦或已知音，
+          再用「同弦 + 半音」「同品跨弦 +3 级」「八度 +2/+3」走两步就到了。
+          所谓「前人总结的规律」，CAGED 系统讲的就是这些形状的组合。
         </p>
       </section>
 

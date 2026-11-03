@@ -1,16 +1,29 @@
-import { useState } from "react";
-import { CHORDS, CHORD_BY_NAME, chordInfo, fingeringOf, stackThirds } from "@guitar/core";
+import { useMemo, useState } from "react";
+import {
+  CHORDS,
+  CHORD_BY_NAME,
+  KEYS,
+  chordDegreeInKey,
+  chordInfo,
+  fingeringOf,
+  stackThirds,
+} from "@guitar/core";
 import ChordDiagram from "../components/ChordDiagram";
 
 /** 指法数字的含义（1=食指 … 4=小指）。 */
 const FINGER_LEGEND = "1 食指 · 2 中指 · 3 无名指 · 4 小指";
 
+/** 只有大调才用来算级数（小调的关系大调与它共用一套音）。 */
+const MAJOR_KEYS = KEYS.filter((key) => key.mode === "major");
+
 export default function Chords() {
   const [selected, setSelected] = useState("C");
+  const [keyId, setKeyId] = useState("C");
   const chord = CHORD_BY_NAME.get(selected)!;
   const info = chordInfo(chord);
   const fingering = fingeringOf(chord);
   const stack = stackThirds(info.rootName, info.quality.intervals);
+  const degree = useMemo(() => chordDegreeInKey(keyId, chord.name), [keyId, chord.name]);
 
   return (
     <section className="panel">
@@ -44,6 +57,36 @@ export default function Chords() {
           <p className="chord-quality">
             {info.quality.name} · 根音 {info.rootName}
           </p>
+
+          <div className="chord-degree">
+            <label className="theory-field">
+              在
+              <select value={keyId} onChange={(e) => setKeyId(e.target.value)}>
+                {MAJOR_KEYS.map((key) => (
+                  <option key={key.id} value={key.id}>
+                    {key.name}
+                  </option>
+                ))}
+              </select>
+              里是
+            </label>
+            {degree ? (
+              <span className={degree.matches ? "degree-badge" : "degree-badge off"}>
+                <b>{degree.roman}</b>
+                <i>{degree.role}</i>
+              </span>
+            ) : (
+              <span className="degree-badge off">
+                <b>调外</b>
+                <i>这个调的音阶里没有 {info.rootName}</i>
+              </span>
+            )}
+            {degree && !degree.matches ? (
+              <span className="degree-warn">
+                （该级数通常应是{degree.expectedQuality === "major" ? "大三和弦" : degree.expectedQuality === "minor" ? "小三和弦" : "减三和弦"}）
+              </span>
+            ) : null}
+          </div>
 
           <ChordDiagram chord={chord} />
 

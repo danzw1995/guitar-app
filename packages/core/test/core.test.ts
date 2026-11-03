@@ -66,6 +66,8 @@ import {
   stackThirds,
   thirdQuestion,
   twelveToneTable,
+  chordDegreeInKey,
+  degreesOfKey,
 } from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
 
@@ -744,4 +746,43 @@ test("乐理练习：题目自洽（答案在选项里、有解释、可复现�
       assert.deepEqual(generate(mulberry32(seed)), question, "同一 seed 必须同题");
     }
   }
+});
+
+test("和弦级数：C 大调 I–vii°、大小写与性质对得上", () => {
+  const expected: [string, string][] = [
+    ["C", "I"],
+    ["Dm", "ii"],
+    ["Em", "iii"],
+    ["F", "IV"],
+    ["G", "V"],
+    ["Am", "vi"],
+    ["Bdim", "vii°"],
+  ];
+  for (const [chord, roman] of expected) {
+    const degree = chordDegreeInKey("C", chord);
+    assert.ok(degree, `${chord} 应在 C 大调内`);
+    assert.equal(degree!.roman, roman);
+    assert.equal(degree!.matches, true, `${chord} 的性质应和该级数相符`);
+  }
+
+  // 调外和弦
+  assert.equal(chordDegreeInKey("C", "Bb"), null, "Bb 不在 C 大调内");
+  // 性质不符：C 大调的 ii 应该是小三和弦，D 是大三
+  const wrongQuality = chordDegreeInKey("C", "D");
+  assert.equal(wrongQuality!.roman, "ii");
+  assert.equal(wrongQuality!.matches, false, "D 大三和弦不符合 ii 级的小三性质");
+
+  // 换个调：G 大调
+  assert.equal(chordDegreeInKey("G", "D")!.roman, "V");
+  assert.equal(chordDegreeInKey("G", "F#dim")!.roman, "vii°");
+  assert.equal(chordDegreeInKey("G", "F"), null, "F 自然音不在 G 大调内");
+
+  // 表格：G 大调的七个级数，根音跟着调走（F# 而不是 F）
+  const table = degreesOfKey("G");
+  assert.equal(table.length, 7);
+  assert.deepEqual(
+    table.map((d) => d.roman),
+    ["I", "ii", "iii", "IV", "V", "vi", "vii°"],
+  );
+  assert.equal(table[6].root, "F#dim");
 });
