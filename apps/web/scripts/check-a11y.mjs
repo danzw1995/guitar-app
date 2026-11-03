@@ -98,7 +98,12 @@ check("新手引导：dialog 语义、焦点与 Esc 关闭", () => {
 check("乐理：示意图对读屏有说明、练习弹层有 dialog 语义", () => {
   const piano = read("src/components/PianoStrip.tsx");
   const strip = read("src/components/StringStrip.tsx");
-  for (const [name, src] of [["PianoStrip.tsx", piano], ["StringStrip.tsx", strip]]) {
+  const map = read("src/components/ScaleMap.tsx");
+  for (const [name, src] of [
+    ["PianoStrip.tsx", piano],
+    ["StringStrip.tsx", strip],
+    ["ScaleMap.tsx", map],
+  ]) {
     expect(src, ['role="img"', "aria-label"], name);
   }
   const theory = read("src/pages/Theory.tsx");

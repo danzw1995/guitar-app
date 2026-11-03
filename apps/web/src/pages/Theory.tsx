@@ -16,6 +16,7 @@ import {
 } from "@guitar/core";
 import PianoStrip from "../components/PianoStrip";
 import StringStrip from "../components/StringStrip";
+import ScaleMap from "../components/ScaleMap";
 import ChordDiagram from "../components/ChordDiagram";
 import TheoryQuiz from "../components/TheoryQuiz";
 
@@ -60,6 +61,7 @@ const OCTAVE_SHAPES = [
 export default function Theory() {
   const [chordName, setChordName] = useState("C");
   const [quiz, setQuiz] = useState<"interval" | "third" | null>(null);
+  const [mapNames, setMapNames] = useState(false);
 
   const chord = CHORD_BY_NAME.get(chordName);
   const info = useMemo(() => (chord ? chordInfo(chord) : null), [chord]);
@@ -350,8 +352,36 @@ export default function Theory() {
         </h3>
         <p className="lesson-lead">
           前面学的音程、级数，在吉他上会变成几条固定的<b>形状</b>。记住它们，
-          就不用每次从空弦一个一个数品了。
+          就不用每次从空弦一个一个数品了。下面这一张图里同时藏着三条规律。
         </p>
+
+        <div className="lesson-figure">
+          <ScaleMap showNames={mapNames} showOctaves highlightFret={3} />
+          <div className="lesson-map-bar">
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => setMapNames((v) => !v)}
+            >
+              {mapNames ? "显示级数" : "显示音名"}
+            </button>
+            <span className="lesson-cap">
+              圆点里是<b>级数</b>（1 = 主音 C），金色的是 1；灰线连起来的两个点是<b>同一个音</b>。
+            </span>
+          </div>
+          <ul className="lesson-read">
+            <li>
+              <b>纵向看同一列</b>（同一个品）：级数往上走 <b>+3</b>（1→4→降7→2→5），
+              只有 3→2 弦那格是 <b>+2</b>。
+            </li>
+            <li>
+              <b>横向看同一行</b>（同一根弦）：品距是 <b>2 2 1 2 2 2 1</b>，就是"全全半全全全半"。
+            </li>
+            <li>
+              <b>斜着看灰线</b>（八度）：低音侧 <b>+2 品</b>、高音侧 <b>+3 品</b>、跨两根 <b>−3 品</b>。
+            </li>
+          </ul>
+        </div>
 
         <h4 className="lesson-sub">规律一：相邻弦差 5 品（除了 3→2 弦）</h4>
         <div className="lesson-table-wrap">
@@ -406,16 +436,6 @@ export default function Theory() {
           5 弦 3 品是 1（C），4 弦 3 品就是 4（F）；再往上 3 弦 3 品是 降7（Bb）——注意这里只 +2，
           因为跨过了 3→2 弦的大三度。知道一根弦上的级数，<b>同品换弦就是 +3 级</b>（mod 7）。
         </p>
-        <div className="lesson-pair">
-          <div>
-            <StringStrip stringIndex={4} frets={7} highlight={[0]} root={0} />
-            <p className="lesson-cap">5 弦：C 在 3 品（1 级）</p>
-          </div>
-          <div>
-            <StringStrip stringIndex={3} frets={7} highlight={[5]} root={0} />
-            <p className="lesson-cap">4 弦：同一品 3 品就是 F（4 级）</p>
-          </div>
-        </div>
 
         <h4 className="lesson-sub">规律三：八度形状</h4>
         <div className="lesson-table-wrap">
@@ -436,21 +456,24 @@ export default function Theory() {
             </tbody>
           </table>
         </div>
-        <div className="lesson-pair">
-          <div>
-            <StringStrip stringIndex={5} frets={7} highlight={[7]} root={7} />
-            <p className="lesson-cap">6 弦 3 品 G</p>
-          </div>
-          <div>
-            <StringStrip stringIndex={3} frets={7} highlight={[7]} root={7} />
-            <p className="lesson-cap">4 弦 5 品 G（隔一根弦 +2 品）</p>
-          </div>
-        </div>
+
+        <h4 className="lesson-sub">规律四：同一根弦上，音阶的品距是 2 2 1 2 2 2 1</h4>
+        <p className="lesson-cap">
+          这就是「全全半全全全半」的另一种写法：<b>2 = 全音、1 = 半音</b>。
+          所以只要知道某个音在第几品，后面几个音的位置就能顺着数出来——
+          这也是为什么同一个调的音阶在琴颈上会形成 <b>五个"把位"</b>（每 3 到 4 品一团）。
+        </p>
+
+        <h4 className="lesson-sub">规律五：和弦也是这些形状——CAGED 五把位</h4>
+        <p className="lesson-cap">
+          同一个大三和弦，在琴颈上有 <b>5 种按法</b>，分别叫 <b>C、A、G、E、D</b>（就是五个开放和弦的形状），
+          沿着琴颈往上平移、用横按替换空弦即可。它们之间的位移，就是前面那条「八度 +2 / +3」和
+          「相邻弦差 5 品」决定的。这是前人总结得最完整的一套指板规律。
+        </p>
 
         <p className="lesson-note">
           三条规律 + 空弦音 <b>E A D G B E</b>，就能推任意一个音：先找到最近的空弦或已知音，
           再用「同弦 + 半音」「同品跨弦 +3 级」「八度 +2/+3」走两步就到了。
-          所谓「前人总结的规律」，CAGED 系统讲的就是这些形状的组合。
         </p>
       </section>
 

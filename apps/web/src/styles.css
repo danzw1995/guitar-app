@@ -854,6 +854,85 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--text);
 }
 
+/* 完整音阶指板图（规律总图） */
+.scale-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--text);
+}
+.scale-map-wire {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.2;
+}
+.scale-map-nut {
+  stroke: currentColor;
+  stroke-width: 3;
+  opacity: 0.55;
+}
+.scale-map-string {
+  stroke: currentColor;
+  opacity: 0.45;
+}
+.scale-map-string-name {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.scale-map-gap {
+  fill: var(--muted);
+  font-size: 9px;
+  opacity: 0.8;
+}
+.scale-map-fret {
+  fill: var(--muted);
+  font-size: 9px;
+}
+.scale-map-col {
+  fill: rgba(212, 167, 44, 0.1);
+}
+.scale-map-octave {
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.55;
+}
+.scale-map-dot {
+  fill: #2b5f9e;
+  stroke: #3b82f6;
+  stroke-width: 1;
+}
+.scale-map-dot.root {
+  fill: #d4a72c;
+  stroke: #d4a72c;
+}
+.scale-map-label {
+  fill: #eaf2ff;
+  font-size: 10px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.scale-map-label.root {
+  fill: #0d1117;
+}
+.lesson-map-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.lesson-read {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.lesson-read b {
+  color: var(--text);
+}
+
 /* 和弦页的「级数」徽章 */
 .chord-degree {
   display: flex;
