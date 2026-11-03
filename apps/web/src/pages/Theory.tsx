@@ -367,6 +367,8 @@ export default function Theory() {
             </button>
             <span className="lesson-cap">
               圆点里是<b>级数</b>（1 = 主音 C），金色的是 1；灰线连起来的两个点是<b>同一个音</b>。
+              右侧「相邻弦差」的数字：<b>低音弦往上几品 = 相邻高音弦的空弦</b>
+              （例如 5 弦 5 品 = 4 弦空弦 D）。那个红色的 <b>4 品</b> 是唯一例外——2 弦与 3 弦之间。
             </span>
           </div>
           <ul className="lesson-read">

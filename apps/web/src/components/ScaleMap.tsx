@@ -28,8 +28,18 @@ const CELL = 44;
 const TOP = 20;
 const ROW = 26;
 const STRING_NAMES = ["E", "B", "G", "D", "A", "E"];
-/** 相邻弦空弦差几品（用于右侧标注）。 */
-const GAPS = ["5 品", "5 品", "5 品", "4 品", "5 品"];
+
+/**
+ * 相邻弦之间差几个半音，**从调弦数据算出来**，不手写：
+ * 高音侧那根的空弦比低音侧高多少，低音弦就要往上几品才能等于它。
+ *
+ * 标准调弦下是 [5, 4, 5, 5, 5]——4 在 2 弦与 3 弦之间（G→B 是大三度）。
+ */
+const STRING_GAPS = Array.from({ length: 5 }, (_, row) => {
+  const higher = STANDARD_TUNING.strings[row];
+  const lower = STANDARD_TUNING.strings[row + 1];
+  return higher - lower;
+});
 
 /**
  * 一张完整的音阶指板图，同时把三条规律画出来：
@@ -138,14 +148,22 @@ export default function ScaleMap({
           {name}
         </text>
       ))}
-      {GAPS.map((gap, index) => (
+      {/* 右侧：相邻弦差几品（低音弦往上几品 = 高音弦空弦） */}
+      <text
+        x={LEFT + (frets + 1) * CELL + 8}
+        y={TOP - 8}
+        className="scale-map-gap-title"
+      >
+        相邻弦差
+      </text>
+      {STRING_GAPS.map((gap, index) => (
         <text
           key={`g${index}`}
           x={LEFT + (frets + 1) * CELL + 8}
           y={(y(index) + y(index + 1)) / 2 + 4}
-          className="scale-map-gap"
+          className={gap === 5 ? "scale-map-gap" : "scale-map-gap warn"}
         >
-          {gap}
+          {gap} 品
         </text>
       ))}
 
