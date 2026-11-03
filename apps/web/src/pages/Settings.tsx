@@ -1,5 +1,6 @@
 import { useState } from "react";
 import LabelControls from "../components/LabelControls";
+import Onboarding, { resetOnboarding } from "../components/Onboarding";
 import {
   clearProgress,
   loadSettings,
@@ -11,10 +12,16 @@ import {
 export default function Settings() {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings());
   const [cleared, setCleared] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   function update(next: AppSettings) {
     setSettings(next);
     saveSettings(next);
+  }
+
+  function replayGuide() {
+    resetOnboarding();
+    setShowGuide(true);
   }
 
   function resetAll() {
@@ -46,6 +53,13 @@ export default function Settings() {
         </label>
 
         <div className="settings-row">
+          <span className="muted">三步引导只在第一次打开时出现一次，可以在这里再看。</span>
+          <button className="btn ghost" onClick={replayGuide}>
+            再看一遍新手引导
+          </button>
+        </div>
+
+        <div className="settings-row">
           <span className="muted">清空 40 关进度、每日挑战记录与最快成绩（只影响本机）。</span>
           <button className="btn ghost" onClick={resetAll}>
             重置进度
@@ -54,6 +68,8 @@ export default function Settings() {
 
         {cleared && <p className="hint">已清空。回到「音阶游戏」就是从头开始的进度。</p>}
       </div>
+
+      {showGuide && <Onboarding forced onFinish={() => setShowGuide(false)} />}
     </section>
   );
 }

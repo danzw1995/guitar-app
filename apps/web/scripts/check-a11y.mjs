@@ -82,6 +82,19 @@ check("统计页有空状态提示", () => {
   expect(read("src/pages/Stats.tsx"), ['className="empty-hint"'], "Stats.tsx");
 });
 
+check("新手引导：dialog 语义、焦点与 Esc 关闭", () => {
+  const src = read("src/components/Onboarding.tsx");
+  expect(
+    src,
+    ['role="dialog"', 'aria-modal="true"', "firstButtonRef.current?.focus()", '"Escape"'],
+    "Onboarding.tsx",
+  );
+  if (!src.includes("previous?.focus?.()")) throw new Error("关闭时应把焦点还给原元素");
+  if (!src.includes("guitar.onboarded.v1")) throw new Error("缺少「只看一次」的标记键");
+  expect(read("src/App.tsx"), ["<Onboarding"], "src/App.tsx");
+  expect(read("src/pages/Settings.tsx"), ["再看一遍新手引导", "resetOnboarding"], "Settings.tsx");
+});
+
 check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {
   const css = read("src/styles.css");
   expect(css, [".skip-link:focus-visible", "prefers-reduced-motion"], "styles.css");

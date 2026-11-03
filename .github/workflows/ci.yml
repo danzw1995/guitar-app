@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: tests and static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core (the plugin imports dist)
+        run: pnpm --filter @guitar/core build
+
+      - name: Core tests
+        run: pnpm test
+
+      - name: Typecheck web
+        run: pnpm --filter @guitar/web exec tsc --noEmit
+
+      - name: Style, PWA and accessibility checks
+        run: |
+          node apps/web/scripts/check-styles.mjs
+          node apps/web/scripts/check-pwa.mjs
+          node apps/web/scripts/check-a11y.mjs
+
+      - name: Build web
+        run: pnpm --filter @guitar/web build
+
+  plugin:
+    name: dsh plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core
+        run: pnpm --filter @guitar/core build
+
+      - name: Rebuild the client bundle
+        run: node plugins/dsh-guitar/build.mjs
+
+      - name: Rendering and host tool tests
+        run: |
+          node plugins/dsh-guitar/test/render.mjs
+          node plugins/dsh-guitar/test/host.mjs

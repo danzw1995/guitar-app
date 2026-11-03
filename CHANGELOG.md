@@ -5,6 +5,11 @@
 ## [Unreleased]
 
 ### Added
+- **新手引导**：首次打开弹一次三步说明（选关 → 填一格 → 提交看结果），
+  用 `guitar.onboarded.v1` 记标记；设置页有「再看一遍新手引导」。
+  `role="dialog"`、焦点进入弹层、Esc 可关。
+- **CI**：`.github/workflows/ci.yml`——`check` job 跑 core 构建与 42 个测试、web 类型检查、
+  样式 / PWA / a11y 三套静态断言、web 构建；`plugin` job 重建 DSH 插件 bundle 并跑面板与工具测试。
 - **错误边界**：顶层包一层 `ErrorBoundary`，渲染抛错时显示兜底页（`role="alert"`），
   说明进度保存在本机、可重试或重新加载。
 - **离线提示**：`OfflineBanner`（`role="status"` + `aria-live`），离线时说明「功能与进度都在本机」。

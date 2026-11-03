@@ -151,9 +151,11 @@
   选音器 `dialog` 语义与焦点归还、空状态、`prefers-reduced-motion`
 - ✅ **版本号展示**：页脚 `v{__APP_VERSION__}`（沿用）
 - ✅ `pnpm check:all`：core 测试 + 样式 / PWA / a11y 三套静态断言
-- ⬜ 新手引导（3 步：选调 → 填一格 → 提交）
+- ✅ **新手引导**：首次进入弹一次三步（选关 → 填一格 → 提交看结果），
+  `guitar.onboarded.v1` 记标记；设置页可「再看一遍」
+- ✅ **CI**：`.github/workflows/ci.yml` 两个 job——测试与静态检查（core 构建 + 42 测试 +
+  tsc + 样式/PWA/a11y 三套断言 + web 构建），以及 DSH 插件（重建 bundle + 面板/工具测试）
 - ⬜ 40 关难度复核（真实用户数据）
-- ⬜ CI（GitHub Actions：test + build）
 - ⬜ 性能：首屏 < 1s（本地）
 
 **验收**：新用户 5 分钟内完成第一关；无 P0/P1 bug；文档与 CHANGELOG 完整。

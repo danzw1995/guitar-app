@@ -5,6 +5,7 @@ import Game from "./pages/Game";
 import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
 import OfflineBanner from "./components/OfflineBanner";
+import Onboarding from "./components/Onboarding";
 
 type Tab = "chords" | "scales" | "game" | "stats" | "settings";
 
@@ -61,6 +62,8 @@ export default function App() {
       </main>
 
       <footer className="app-footer">v{__APP_VERSION__} · Web-first · 标准调弦</footer>
+
+      <Onboarding onFinish={() => setTab("game")} />
     </div>
   );
 }
