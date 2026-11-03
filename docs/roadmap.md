@@ -5,11 +5,11 @@
 
 ## 0. 当前状态
 
-- 最新版本：**v0.5.0**
+- 最新版本：**v0.6.0**
 - 可用功能：和弦库、音阶指板、40 关游戏（计时 / 判定 / 结果）、进度与星级、逐关解锁、
   严格拼写、键盘操作、移动端 40px 点按、每日挑战、统计页、推算模式、全局设置、
-  DSH 插件（面板 + 4 个 agent 工具）、**PWA（可安装 / 可离线）**
-- 下一版：**v0.6.0** 的剩余部分（Tauri / Capacitor 壳）
+  DSH 插件（面板 + 4 个 agent 工具）、PWA（可安装 / 可离线，已人工验收）
+- 下一版：**v0.7.0**（Tauri / Capacitor 壳，需先装工具链）
 
 ## 1. 版本路线
 
@@ -104,21 +104,34 @@
 
 ---
 
-### v0.6.0 — 桌面 / 安卓壳
+### v0.6.0 — PWA（已发布）
 
 | 任务 | 状态 | 说明 |
 |---|---|---|
 | PWA | ✅ | `manifest.webmanifest` + `sw.js`（导航网络优先、静态资源 stale-while-revalidate）+ 三个图标（含 maskable）；`pnpm check:pwa` 静态断言 |
-| Tauri（Windows） | ⬜ | 包 `apps/web/dist`，体积小 |
-| Capacitor（Android） | ⬜ | 包同一份产物，处理返回键/安全区 |
-| 存储适配 | ⬜ | localStorage 在 WebView 中保持一致；预留 adapter |
+| 人工验收 | ✅ | 浏览器出现安装入口；Manifest 无报错、图标识别；Service Worker 为 activated；勾 Offline 后刷新仍能打开 |
 
-**验收**：Windows 安装包可离线打开；Android APK 可安装；进度不丢。
-PWA 部分已达成"断网可打开 + 可安装到桌面"，但**真机安装仍需人工点一次**。
+**壳（Tauri / Capacitor）不在本版**：这台机器没有 Rust、没有 Android SDK/Gradle/adb，Java 只有 8
+（Android 需要 17+）。装齐约 5GB，且构建要起子进程，沙箱里未必能跑通。见 v0.7.0。
 
 ---
 
-### v0.7.0 — 声音与节奏（1–2 周）
+### v0.7.0 — 桌面 / 安卓壳（暂缓，视工具链而定）
+
+| 任务 | 说明 |
+|---|---|
+| Tauri（Windows） | 需要 Rust + MSVC 构建工具；包 `apps/web/dist`，体积小 |
+| Capacitor（Android） | 需要 Android Studio/SDK + JDK 17+；处理返回键/安全区 |
+| 存储适配 | localStorage 在 WebView 中保持一致；预留 adapter |
+
+**验收**：Windows 安装包可离线打开；Android APK 可安装；进度不丢。
+
+**前置检查**（2026-11-03）：`cargo` / `rustc` / `gradle` / `adb` 均未安装，`ANDROID_HOME` 未设置，
+`java` 只有 Java 8。开工前先装工具链。
+
+---
+
+### v0.8.0 — 声音与节奏（1–2 周）
 
 | 任务 | 说明 |
 |---|---|

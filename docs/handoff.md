@@ -1,8 +1,8 @@
 # 交接说明（Handoff）
 
 > 给下一个会话 / 新维护者：**先读这份**，再读 `architecture.md` 和 `roadmap.md`。
-> 当前版本：**v0.5.0**（真琴指板、唱名、和弦说明、每日挑战、统计、推算模式、全局设置、复制成绩、
-> 累计时长、**DSH 插件：`Guitar Lab` 整页面板 + 4 个 agent 工具**）。
+> 当前版本：**v0.6.0**（真琴指板、唱名、和弦说明、每日挑战、统计、推算模式、全局设置、复制成绩、
+> 累计时长、DSH 插件：面板 + 4 个 agent 工具、**PWA：可安装 / 可离线**）。
 
 ## 一句话
 
@@ -88,17 +88,19 @@ pnpm demo L01 # 终端打印一关
 
 ## 下一步
 
-1. **v0.6.0**：PWA / Tauri（Windows）/ Capacitor（Android）壳，见 `roadmap.md`。
+1. **v0.7.0**：Tauri / Capacitor 壳——**先装工具链**（这台机器没有 Rust，也没有 Android SDK/Gradle/adb，
+   Java 只有 8），详见 `roadmap.md`。
 2. DSH 插件还能继续补：面板里加推算模式、把「今日一题」做成能判分的小练习（需要插件自己的存储）。
-3. 之后再 v0.7.0 音频、v1.0 稳定。
+3. 之后 v0.8.0 音频、v1.0 稳定。
 
 ## 新会话开场白
 
-> 读 `docs/README.md`、`docs/handoff.md`、`docs/roadmap.md`，当前 v0.5.0，从 v0.6.0 的壳开始。
+> 读 `docs/README.md`、`docs/handoff.md`、`docs/roadmap.md`，当前 v0.6.0，下一步是 v0.7.0 的壳（需先装工具链）。
 
 ## 版本状态
 
 ```
+v0.6.0  PWA：manifest + service worker + 图标；可安装、断网可开（已人工验收）
 v0.5.0  DSH 插件：conversation.view 面板（和弦/音阶/今日）+ 4 个 agent 工具；core 构建产物
 v0.4.1  复制成绩、累计练习时长、游戏页拆组件、结果面板标题
 v0.4.0  真琴指板、唱名、和弦说明、每日挑战、统计、推算模式、全局设置
