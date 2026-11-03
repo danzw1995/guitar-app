@@ -628,73 +628,213 @@ button, select, input { font: inherit; color: inherit; }
   letter-spacing: 0.08em;
 }
 
-/* ---------- 乐理页 ---------- */
+/* ---------- 乐理入门：课程卡片 ---------- */
 
-.theory-block {
-  margin-bottom: 20px;
+.lesson {
+  margin-bottom: 18px;
   padding: 16px;
   border-radius: 12px;
   border: 1px solid var(--line);
   background: var(--panel-2);
 }
-.theory-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
-}
-.theory-head h3 {
-  margin: 0;
-  font-size: 15px;
-}
-.theory-tools {
+.lesson h3 {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  margin: 0 0 8px;
+  font-size: 15px;
 }
-.theory-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  color: var(--muted);
+.lesson-no {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0d1117;
+  background: var(--accent);
 }
-.theory-field select {
+.lesson-lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.75;
+}
+.lesson-lead code {
+  padding: 1px 5px;
+  border-radius: 4px;
   background: var(--panel);
-  color: var(--text);
   border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 3px 7px;
-  min-height: 30px;
   font-size: 12px;
 }
-.theory-lead {
-  margin: 0 0 10px;
+.lesson-figure {
+  margin: 0 0 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  overflow-x: auto;
+}
+.lesson-guitar {
+  margin: 0 0 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  overflow-x: auto;
+}
+.lesson-cap {
+  margin: 6px 0 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
 }
-.theory-result {
-  margin: 0 0 10px;
+.lesson-note {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(212, 167, 44, 0.08);
+  border: 1px solid rgba(212, 167, 44, 0.22);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.lesson-note b {
+  color: var(--text);
+}
+.lesson-table-wrap {
+  overflow-x: auto;
+}
+.lesson-pair {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.lesson-pair > div {
+  flex: 1 1 200px;
+  min-width: 180px;
+}
+.lesson-compare p {
+  margin: 0 0 6px;
   font-size: 13px;
   line-height: 1.7;
 }
-.theory-result b {
-  color: var(--accent);
+.lesson-buttons {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+.lesson-practice {
+  margin-top: 10px;
+}
+.lesson-cta {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 钢琴条：黑白键本身就是「半音 / 全音」的答案 */
+.piano {
+  display: block;
+  height: 150px;
+  max-width: 100%;
+}
+.piano-white {
+  fill: #e8e6e3;
+  stroke: #9aa0a6;
+  stroke-width: 1;
+}
+.piano-white.on {
+  fill: #7fb0ea;
+}
+.piano-white.root {
+  fill: #d4a72c;
+}
+.piano-black {
+  fill: #23282f;
+  stroke: #0d1117;
+  stroke-width: 1;
+}
+.piano-black.on {
+  fill: #3b82f6;
+}
+.piano-black.root {
+  fill: #8a6b12;
+}
+.piano-label {
+  fill: #2b3036;
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.piano-label.black {
+  fill: #e8e6e3;
+}
+.piano-step {
+  fill: var(--muted);
+  font-size: 11px;
   font-weight: 600;
 }
-.theory-good {
-  color: #58a6ff;
+
+/* 单弦条：把 12 个半音翻译成 12 个品 */
+.string-strip {
+  display: block;
+  height: 86px;
+  max-width: 100%;
 }
-.theory-bad {
-  color: #d1685f;
+.string-strip-name {
+  fill: var(--muted);
+  font-size: 11px;
 }
-.theory-scroll {
-  overflow-x: auto;
+.string-strip-line {
+  stroke: currentColor;
+  stroke-width: 2;
+  opacity: 0.5;
 }
+.string-strip-wire {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.22;
+}
+.string-strip-nut {
+  stroke: currentColor;
+  stroke-width: 3;
+  opacity: 0.6;
+}
+.ss-dot {
+  fill: var(--panel-2);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.ss-dot.on {
+  fill: #3b82f6;
+  stroke: #3b82f6;
+}
+.ss-dot.root {
+  fill: #d4a72c;
+  stroke: #d4a72c;
+}
+.ss-label {
+  fill: currentColor;
+  font-size: 9px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.ss-fret {
+  fill: var(--muted);
+  font-size: 9px;
+}
+
+.chip.on {
+  border-color: var(--accent);
+  background: rgba(212, 167, 44, 0.16);
+  color: var(--text);
+}
+
+/* 乐理表格（音程表 / 级数表共用） */
 .theory-table {
   width: 100%;
   border-collapse: collapse;
@@ -715,101 +855,6 @@ button, select, input { font: inherit; color: inherit; }
 .theory-table tr.theory-row-on td {
   background: rgba(212, 167, 44, 0.12);
   color: var(--text);
-}
-.theory-chips {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-.theory-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  font-size: 13px;
-}
-.theory-chip i {
-  font-style: normal;
-  font-size: 11px;
-  color: var(--muted);
-}
-.theory-chip.root {
-  border-color: rgba(212, 167, 44, 0.5);
-  background: rgba(212, 167, 44, 0.12);
-}
-.theory-chip.root i {
-  color: var(--accent);
-}
-.theory-chain {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  margin-bottom: 10px;
-}
-.theory-step {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-}
-.theory-step i {
-  font-style: normal;
-  color: var(--muted);
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  border: 1px dashed var(--line);
-}
-
-/* 五度圈 */
-.circle-wrap {
-  display: flex;
-  gap: 18px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.circle-svg {
-  width: 260px;
-  height: 260px;
-  flex: 0 0 auto;
-  color: var(--text);
-}
-.circle-node {
-  fill: var(--panel);
-  stroke: var(--line);
-}
-.circle-node.active {
-  fill: rgba(212, 167, 44, 0.22);
-  stroke: var(--accent);
-}
-.circle-label {
-  fill: currentColor;
-  font-size: 12px;
-  font-weight: 600;
-  pointer-events: none;
-}
-.circle-center-main {
-  fill: var(--accent);
-  font-size: 22px;
-  font-weight: 700;
-}
-.circle-center-sub {
-  fill: var(--muted);
-  font-size: 11px;
-}
-.circle-detail {
-  flex: 1 1 180px;
-  min-width: 160px;
-  font-size: 13px;
-  line-height: 1.8;
-}
-.circle-detail p {
-  margin: 0;
 }
 
 /* 乐理练习弹层 */

@@ -95,9 +95,14 @@ check("新手引导：dialog 语义、焦点与 Esc 关闭", () => {
   expect(read("src/pages/Settings.tsx"), ["再看一遍新手引导", "resetOnboarding"], "Settings.tsx");
 });
 
-check("乐理：五度圈可键盘操作、练习弹层有 dialog 语义", () => {
+check("乐理：示意图对读屏有说明、练习弹层有 dialog 语义", () => {
+  const piano = read("src/components/PianoStrip.tsx");
+  const strip = read("src/components/StringStrip.tsx");
+  for (const [name, src] of [["PianoStrip.tsx", piano], ["StringStrip.tsx", strip]]) {
+    expect(src, ['role="img"', "aria-label"], name);
+  }
   const theory = read("src/pages/Theory.tsx");
-  expect(theory, ['role="button"', "tabIndex={0}", "aria-label=", "onKeyDown"], "Theory.tsx");
+  expect(theory, ["lesson-lead", "lesson-guitar"], "Theory.tsx");
   const quiz = read("src/components/TheoryQuiz.tsx");
   expect(quiz, ['role="dialog"', 'aria-modal="true"', 'role="status"'], "TheoryQuiz.tsx");
 });
