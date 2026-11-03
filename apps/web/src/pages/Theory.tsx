@@ -489,7 +489,7 @@ export default function Theory() {
       {/* ---------- 9. CAGED ---------- */}
       <section className="lesson">
         <h3>
-          <span className="lesson-no">9</span>CAGED：一个和弦的五种按法
+          <span className="lesson-no">9</span>CAGED：一个和弦的几种按法
         </h3>
         <p className="lesson-lead">
           同一个大三和弦在琴颈上有 <b>5 个位置</b>，来自五个开放和弦的形状：
@@ -514,7 +514,11 @@ export default function Theory() {
         <p className="lesson-note">
           为什么正好五个、为什么位置是 <b>0 / 3 / 5 / 8 / 10</b> 品（以 C 为例）？
           因为它们之间的间距就是前面那些形状：相邻形状的根音在弦上相差 3 品或 2 品，
-          一圈下来正好 12 品回到原样。练熟这五个形状，换把、找和弦、改调都不用重新学。
+          一圈下来正好 12 品回到原样。练熟这几个形状，换把、找和弦、改调都不用重新学。
+        </p>
+        <p className="lesson-note">
+          小和弦只给 <b>E / A / D</b> 三个形状：C 形、G 形的大三音在两根弦上各出现一次，
+          降一个仍然是「大三 + 小三」混着，教材里 Cm、Gm 本来用的就是 A 形 / E 形的横按。
         </p>
       </section>
 

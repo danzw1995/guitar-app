@@ -949,6 +949,12 @@ button, select, input { font: inherit; color: inherit; }
   flex-direction: column;
   gap: 8px;
 }
+.caged-quality {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .caged-strip {
   display: flex;
   gap: 6px;

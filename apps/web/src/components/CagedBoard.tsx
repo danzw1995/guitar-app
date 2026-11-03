@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { SHARP_NAMES, cagedShapes, type CagedShape } from "@guitar/core";
+import { SHARP_NAMES, cagedShapes, type CagedQuality, type CagedShape } from "@guitar/core";
 
 export interface CagedBoardProps {
   /** 根音的音高类（0 = C）。 */
@@ -21,9 +21,10 @@ const STRING_NAMES = ["E", "B", "G", "D", "A", "E"];
  * 点位置条上的标记就切换形状。
  */
 export default function CagedBoard({ rootPc, rootName }: CagedBoardProps) {
-  const shapes = useMemo(() => cagedShapes(rootPc), [rootPc]);
+  const [quality, setQuality] = useState<CagedQuality>("major");
   const [selected, setSelected] = useState<CagedShape["id"]>("C");
 
+  const shapes = useMemo(() => cagedShapes(rootPc, quality), [rootPc, quality]);
   const shape = shapes.find((s) => s.id === selected) ?? shapes[0];
   const maxFret = Math.max(12, ...shapes.map((s) => s.span[1]));
   const width = LEFT + (maxFret + 1) * CELL + 16;
@@ -31,16 +32,35 @@ export default function CagedBoard({ rootPc, rootName }: CagedBoardProps) {
   const x = (fret: number) => LEFT + fret * CELL + CELL / 2;
   const wire = (fret: number) => LEFT + fret * CELL;
   const y = (string: number) => TOP + string * ROW;
-  const root = rootName ?? SHARP_NAMES[rootPc];
+  const base = rootName ?? SHARP_NAMES[rootPc];
+  const chordLabel = `${base}${quality === "minor" ? "m" : ""}`;
 
   return (
     <div className="caged">
+      <div className="caged-quality">
+        {(["major", "minor"] as CagedQuality[]).map((value) => (
+          <button
+            key={value}
+            type="button"
+            className={value === quality ? "chip on" : "chip"}
+            onClick={() => setQuality(value)}
+          >
+            {value === "major" ? "大三和弦" : "小三和弦"}
+          </button>
+        ))}
+        <span className="lesson-cap">
+          {quality === "minor"
+            ? "小和弦只有 E / A / D 三个形状：C 形、G 形的大三音出现两次，降一个还是大三和弦（教材里 Cm、Gm 用的就是 A 形 / E 形的横按）。"
+            : "五个形状：C、A、G、E、D，沿琴颈依次排开。"}
+        </span>
+      </div>
+
       <div className="caged-strip">
         {shapes.map((item) => (
           <button
             key={item.id}
             type="button"
-            className={item.id === selected ? "caged-tab on" : "caged-tab"}
+            className={item.id === shape.id ? "caged-tab on" : "caged-tab"}
             onClick={() => setSelected(item.id)}
           >
             <b>{item.id} 形</b>
@@ -53,7 +73,7 @@ export default function CagedBoard({ rootPc, rootName }: CagedBoardProps) {
         viewBox={`0 0 ${width} ${height}`}
         className="caged-svg"
         role="img"
-        aria-label={`${root} 和弦的 ${shape.name}，覆盖 ${shape.span[0]} 到 ${shape.span[1]} 品`}
+        aria-label={`${chordLabel} 和弦的 ${shape.name}，覆盖 ${shape.span[0]} 到 ${shape.span[1]} 品`}
       >
         {/* 形状覆盖区 */}
         <rect
@@ -100,7 +120,13 @@ export default function CagedBoard({ rootPc, rootName }: CagedBoardProps) {
         {shape.frets.map((fret, s) => {
           if (fret < 0) {
             return (
-              <text key={`x${s}`} x={x(0) - 12} y={y(s) + 4} className="caged-mute">
+              <text
+                key={`x${s}`}
+                x={LEFT - 14}
+                y={y(s) + 4}
+                textAnchor="middle"
+                className="caged-mute"
+              >
                 ×
               </text>
             );

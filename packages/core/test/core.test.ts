@@ -825,3 +825,51 @@ test("CAGED：同一个和弦的五个把位", () => {
     }
   }
 });
+
+test("CAGED：平移量归一化，不会出现负品", () => {
+  // A 和弦的 C 形：根音在 5 弦空弦，C 形的锚点在第 3 品 → 原始算出来是 −3
+  const aMajor = cagedShapes(9);
+  const cShape = aMajor.find((shape) => shape.id === "C")!;
+  assert.equal(cShape.shift, 9, "−3 应该归一化成 9（高八度）");
+  assert.deepEqual(cShape.frets, [-1, 12, 11, 9, 10, 9]);
+
+  for (const rootPc of [0, 2, 5, 7, 9, 11]) {
+    for (const shape of cagedShapes(rootPc)) {
+      assert.ok(shape.shift >= 0 && shape.shift <= 11, "shift 必须在 0–11");
+      for (const fret of shape.frets) {
+        assert.ok(fret >= -1, `不能出现负品：${fret}`);
+      }
+      assert.ok(shape.span[0] >= 0, "覆盖区间不能是负数");
+    }
+  }
+});
+
+test("CAGED 小和弦：E/A/D 三个形状，且都是小三和弦", () => {
+  const cm = cagedShapes(0, "minor");
+  assert.deepEqual(
+    cm.map((shape) => shape.id).sort(),
+    ["A", "D", "E"],
+    "小和弦只用这三个形状",
+  );
+  // Cm 的 A 形就是经典的 x35543
+  assert.deepEqual(cm.find((shape) => shape.id === "A")!.frets, [-1, 3, 5, 5, 4, 3]);
+  // Am 的 A 形是开放的 Am
+  const am = cagedShapes(9, "minor");
+  assert.deepEqual(am.find((shape) => shape.id === "A")!.frets, [-1, 0, 2, 2, 1, 0]);
+
+  // 不变量：每个按到的音都必须是 根 / 小三度 / 纯五度
+  for (const rootPc of [0, 2, 5, 7, 9, 11]) {
+    const allowed = [rootPc, (rootPc + 3) % 12, (rootPc + 7) % 12];
+    for (const shape of cagedShapes(rootPc, "minor")) {
+      for (const fret of shape.frets) assert.ok(fret >= -1, "不能出现负品");
+      shape.frets.forEach((fret, index) => {
+        if (fret < 0) return;
+        const pc = pitchClassAt(STANDARD_TUNING, 5 - index, fret);
+        assert.ok(
+          allowed.includes(pc),
+          `根音 ${rootPc} 的 ${shape.name}：${6 - index} 弦 ${fret} 品不该出现 ${pc}`,
+        );
+      });
+    }
+  }
+});
