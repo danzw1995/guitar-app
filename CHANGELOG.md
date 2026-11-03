@@ -4,9 +4,17 @@
 
 ## [Unreleased]
 
+### Added
+- **PWA**：`manifest.webmanifest`（standalone、theme/background 色、192/512 与 maskable 图标）、
+  `sw.js`（导航网络优先 + 静态资源 stale-while-revalidate，旧缓存随版本清理）、
+  `index.html` 的 manifest/theme-color/apple-touch-icon，生产构建里注册 service worker。
+  图标由 `apps/web/scripts/gen-icons.mjs` 手写 PNG 编码生成，不依赖 sharp/canvas。
+- `pnpm check:pwa`：静态校验 manifest 字段、图标真实尺寸（读 PNG 头）、index.html 引用、
+  sw.js 语法与 `main.tsx` 的注册方式。
+
 ### Planned
 - 面板里加推算模式；今日一题做成能判分的小练习（需要插件自己的存储）
-- Tauri（Windows）/ Capacitor（Android）（v0.6.0）
+- Tauri（Windows）/ Capacitor（Android）（v0.6.0 剩余部分）
 - 节拍器与音频（v0.7.0）
 
 ## [0.5.0] - 2026-11-02

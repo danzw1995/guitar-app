@@ -8,8 +8,8 @@
 - 最新版本：**v0.5.0**
 - 可用功能：和弦库、音阶指板、40 关游戏（计时 / 判定 / 结果）、进度与星级、逐关解锁、
   严格拼写、键盘操作、移动端 40px 点按、每日挑战、统计页、推算模式、全局设置、
-  **DSH 插件（面板 + 4 个 agent 工具）**
-- 下一版：**v0.6.0**（PWA / Tauri / Capacitor 壳）
+  DSH 插件（面板 + 4 个 agent 工具）、**PWA（可安装 / 可离线）**
+- 下一版：**v0.6.0** 的剩余部分（Tauri / Capacitor 壳）
 
 ## 1. 版本路线
 
@@ -104,16 +104,17 @@
 
 ---
 
-### v0.6.0 — 桌面 / 安卓壳（1–2 周）
+### v0.6.0 — 桌面 / 安卓壳
 
-| 任务 | 说明 |
-|---|---|
-| PWA | manifest、service worker、离线缓存 |
-| Tauri（Windows） | 包 `apps/web/dist`，体积小 |
-| Capacitor（Android） | 包同一份产物，处理返回键/安全区 |
-| 存储适配 | localStorage 在 WebView 中保持一致；预留 adapter |
+| 任务 | 状态 | 说明 |
+|---|---|---|
+| PWA | ✅ | `manifest.webmanifest` + `sw.js`（导航网络优先、静态资源 stale-while-revalidate）+ 三个图标（含 maskable）；`pnpm check:pwa` 静态断言 |
+| Tauri（Windows） | ⬜ | 包 `apps/web/dist`，体积小 |
+| Capacitor（Android） | ⬜ | 包同一份产物，处理返回键/安全区 |
+| 存储适配 | ⬜ | localStorage 在 WebView 中保持一致；预留 adapter |
 
 **验收**：Windows 安装包可离线打开；Android APK 可安装；进度不丢。
+PWA 部分已达成"断网可打开 + 可安装到桌面"，但**真机安装仍需人工点一次**。
 
 ---
 

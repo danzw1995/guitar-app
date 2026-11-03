@@ -75,6 +75,11 @@ core 里不出现这些 API。
 ## 5. 平台目标
 
 - **Web / PWA**：主形态，先跑通。
+- **PWA**（v0.6.0 已实现）：`public/manifest.webmanifest` + `public/sw.js`。
+  service worker 刻意保守——**导航请求网络优先**（发新版立刻生效，不会卡在旧版本），
+  静态资源 stale-while-revalidate（Vite 产物带 hash，旧缓存不会顶替新文件）。
+  只在 `import.meta.env.PROD` 注册，避免开发时缓存干扰热更新。图标由
+  `apps/web/scripts/gen-icons.mjs` 手写 PNG 编码生成（不依赖 sharp/canvas）。
 - **Tauri（Windows）**：包 Web 产物，体积小。
 - **Capacitor（Android）**：包 Web 产物。
 - **DSH 插件**（v0.5.0 已实现）：`plugins/dsh-guitar` 是一个 bundle，两条加载路径：

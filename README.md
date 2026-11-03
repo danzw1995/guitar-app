@@ -19,6 +19,7 @@ Web-first 的吉他学习应用：常用和弦、标准调弦音阶指板、40 �
 - **DSH 插件**（`plugins/dsh-guitar`）：在 DeepSeek Harness 里加一个 `Guitar Lab` 整页标签
   （和弦指法图 / 音阶指板 / 今日一题），并把同一份数据暴露成 4 个 agent 工具
   （`guitar_chord` / `guitar_scale` / `guitar_daily` / `guitar_note_at`）。
+- **PWA**：可安装到桌面 / 手机，断网也能打开（图标、manifest、service worker 在 `apps/web/public/`）。
 - **核心引擎**：调号拼写、出题、难度、判定、唱名、和弦构成，纯 TS + 单测。
 
 ## 技术栈

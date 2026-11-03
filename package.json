@@ -9,6 +9,8 @@
     "preview": "pnpm --filter @guitar/web preview",
     "test": "pnpm --filter @guitar/core test",
     "check:styles": "node apps/web/scripts/check-styles.mjs",
+    "check:pwa": "node apps/web/scripts/check-pwa.mjs",
+    "gen:icons": "node apps/web/scripts/gen-icons.mjs",
     "gen:levels": "pnpm --filter @guitar/core gen:levels",
     "demo": "pnpm --filter @guitar/core demo"
   },
