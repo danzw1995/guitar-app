@@ -418,10 +418,10 @@ export default function Game() {
           <label>
             关卡
             <select value={level.id} onChange={(e) => selectLevel(e.target.value)}>
-              {/* 章节从数据里取，别写死 [1,2,3,4]——加章时写死会让后面的关静默消失 */}
+              {/* 章节（含标题）来自 data/levels.json，别在 UI 里写死 */}
               {CHAPTERS.map((ch) => (
-                <optgroup key={ch} label={`第 ${ch} 章`}>
-                  {LEVELS.filter((l) => l.chapter === ch).map((l) => {
+                <optgroup key={ch.id} label={ch.title}>
+                  {LEVELS.filter((l) => l.chapter === ch.id).map((l) => {
                     const idx = LEVELS.findIndex((x) => x.id === l.id);
                     const open = isUnlocked(LEVEL_IDS, idx, progress);
                     const stars = progress[l.id]?.stars ?? 0;

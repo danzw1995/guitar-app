@@ -33,6 +33,8 @@ export interface TheoryLevelDef {
   id: string;
   title: string;
   chapter: number;
+  /** 章节标题，UI 直接渲染，不写死。 */
+  chapterName: string;
   kind: TheoryKind;
   tasks: number;
   seed: number;
@@ -131,6 +133,7 @@ export const THEORY_LEVELS: TheoryLevelDef[] = [
     id: `T0${i + 1}`,
     title: `三和弦 ${i + 1}`,
     chapter: 1,
+    chapterName: "三和弦",
     kind: "triad" as TheoryKind,
     tasks: 4,
     seed: 1100 + i,
@@ -142,6 +145,7 @@ export const THEORY_LEVELS: TheoryLevelDef[] = [
     id: `T0${i + 5}`,
     title: `七和弦 ${i + 1}`,
     chapter: 2,
+    chapterName: "七和弦",
     kind: "seventh" as TheoryKind,
     tasks: 4,
     seed: 2200 + i,
@@ -153,6 +157,7 @@ export const THEORY_LEVELS: TheoryLevelDef[] = [
     id: `T${String(i + 9).padStart(2, "0")}`,
     title: `音程 ${i + 1}`,
     chapter: 3,
+    chapterName: "音程",
     kind: "interval" as TheoryKind,
     tasks: 4,
     seed: 3300 + i,

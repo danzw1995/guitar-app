@@ -5,16 +5,26 @@ import levelsJson from "../../../../packages/core/data/levels.json";
  * 关卡数据沿用现有做法：Vite 直接 import JSON，
  * 不经过 core 的 `levels.ts`（那个只给 Node 脚本/测试用）。
  */
-export const LEVELS = (levelsJson as { levels: LevelDef[] }).levels;
+const data = levelsJson as {
+  chapters?: { id: number; title: string }[];
+  levels: LevelDef[];
+};
+
+export const LEVELS = data.levels;
 
 export const LEVEL_IDS: string[] = LEVELS.map((l) => l.id);
 
 /**
- * 关卡里出现过的章节号（升序）。
+ * 章节列表（id + 标题）来自 `data/levels.json`。
  *
- * 不要在下拉里写死 `[1,2,3,4]`：加了第 5 章之后，写死的列表会让后面 7 关**静默消失**。
+ * 不要再在 UI 里写死 `[1,2,3,4]` 或「第 N 章」：加章时写死会让后面的关**静默消失**，
+ * 或者标题和内容对不上（之前踩过）。
  */
-export const CHAPTERS: number[] = [...new Set(LEVELS.map((l) => l.chapter))].sort((a, b) => a - b);
+export const CHAPTERS: { id: number; title: string }[] =
+  data.chapters ??
+  [...new Set(LEVELS.map((l) => l.chapter))]
+    .sort((a, b) => a - b)
+    .map((id) => ({ id, title: `第 ${id} 章` }));
 
 export const MAX_TOTAL_STARS = LEVELS.length * 3;
 

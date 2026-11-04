@@ -5,6 +5,8 @@ import type { LevelDef } from "../src/types.ts";
 
 interface ChapterSpec {
   chapter: number;
+  /** 章节标题：写进 data/levels.json，UI 直接渲染，不再写死「第 N 章」。 */
+  title: string;
   keys: { id: string; count: number }[];
   scaleId: string;
   fretMin: number;
@@ -17,6 +19,7 @@ interface ChapterSpec {
 const CHAPTERS: ChapterSpec[] = [
   {
     chapter: 1,
+    title: "C 大调 · 1–5 品",
     keys: [{ id: "C", count: 8 }],
     scaleId: "major",
     fretMin: 1,
@@ -27,6 +30,7 @@ const CHAPTERS: ChapterSpec[] = [
   },
   {
     chapter: 2,
+    title: "大调换把 · 1–7 品",
     keys: [
       { id: "G", count: 3 },
       { id: "D", count: 3 },
@@ -42,6 +46,7 @@ const CHAPTERS: ChapterSpec[] = [
   },
   {
     chapter: 3,
+    title: "降号调 · 1–7 品",
     keys: [
       { id: "F", count: 3 },
       { id: "Bb", count: 3 },
@@ -57,6 +62,7 @@ const CHAPTERS: ChapterSpec[] = [
   {
     // 小调入门：先用窄品域（1–5）熟悉小三度、降 6、降 7，给定比例偏高
     chapter: 4,
+    title: "小调入门 · 1–5 品",
     keys: [
       { id: "Am", count: 3 },
       { id: "Em", count: 2 },
@@ -72,6 +78,7 @@ const CHAPTERS: ChapterSpec[] = [
   {
     // 小调进阶：再扩到 9 品（12 品全板留给「推算模式」）
     chapter: 5,
+    title: "小调进阶 · 1–9 品",
     keys: [
       { id: "Am", count: 2 },
       { id: "Em", count: 2 },
@@ -128,8 +135,13 @@ for (const ch of CHAPTERS) {
   }
 }
 
-fs.writeFileSync(new URL("../data/levels.json", import.meta.url), JSON.stringify({ version: 1, levels }, null, 2));
-console.log(`wrote ${levels.length} levels`);
+// 章节标题也写进数据：UI 直接渲染，不再写死「第 N 章」
+const chapters = CHAPTERS.map((ch) => ({ id: ch.chapter, title: ch.title }));
+fs.writeFileSync(
+  new URL("../data/levels.json", import.meta.url),
+  JSON.stringify({ version: 1, chapters, levels }, null, 2),
+);
+console.log(`wrote ${levels.length} levels in ${chapters.length} chapters`);
 for (const l of levels) {
   console.log(`${l.id} ch${l.chapter} ${l.keyId} ${l.fretMin}-${l.fretMax} givens=${l.givens.length}/${l.targetCount} diff=${l.difficulty}`);
 }

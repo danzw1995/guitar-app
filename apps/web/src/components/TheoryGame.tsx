@@ -22,7 +22,11 @@ import Stars from "./Stars";
 import { fmt } from "../lib/format";
 import { loadProgress, saveProgress } from "../lib/storage";
 
-const CHAPTERS = ["三和弦", "七和弦", "音程"];
+const CHAPTERS = (() => {
+  const map = new Map<number, string>();
+  for (const level of THEORY_LEVELS) map.set(level.chapter, level.chapterName);
+  return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([id, title]) => ({ id, title }));
+})();
 
 /**
  * 乐理挑战：12 个固定关卡，每关 4 题。
@@ -110,11 +114,11 @@ export default function TheoryGame() {
         </p>
       </div>
 
-      {CHAPTERS.map((chapter, chapterIndex) => (
-        <div key={chapter} className="theory-chapter">
-          <span className="theory-chapter-name">{chapter}</span>
+      {CHAPTERS.map((chapter) => (
+        <div key={chapter.id} className="theory-chapter">
+          <span className="theory-chapter-name">{chapter.title}</span>
           <div className="theory-levels">
-            {THEORY_LEVELS.filter((level) => level.chapter === chapterIndex + 1).map((level) => {
+            {THEORY_LEVELS.filter((level) => level.chapter === chapter.id).map((level) => {
               const record = progress[level.id];
               return (
                 <button

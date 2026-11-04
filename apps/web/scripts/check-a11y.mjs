@@ -108,8 +108,6 @@ check("乐理：示意图对读屏有说明、练习弹层有 dialog 语义", ()
   }
   const theory = read("src/pages/Theory.tsx");
   expect(theory, ["lesson-lead", "lesson-guitar"], "Theory.tsx");
-  const quiz = read("src/components/TheoryQuiz.tsx");
-  expect(quiz, ['role="dialog"', 'aria-modal="true"', 'role="status"'], "TheoryQuiz.tsx");
   const game = read("src/components/TheoryGame.tsx");
   expect(
     game,

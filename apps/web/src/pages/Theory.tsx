@@ -2,20 +2,20 @@ import { useMemo, useState } from "react";
 import {
   CHORD_BY_NAME,
   CHORD_QUALITIES,
+  CIRCLE,
   INTERVALS,
   KEY_BY_ID,
   SCALE_BY_ID,
   chordInfo,
+  circleKey,
   degreesOfKey,
   fingeringOf,
   intervalOf,
-  intervalQuestion,
+  neighborKeys,
   scaleNames,
   scalePcs,
   stackThirds,
-  thirdQuestion,
   type ChordQuality,
-  type TheoryQuestion,
 } from "@guitar/core";
 import PianoStrip from "../components/PianoStrip";
 import StringStrip from "../components/StringStrip";
@@ -23,7 +23,6 @@ import ScaleMap from "../components/ScaleMap";
 import CagedBoard from "../components/CagedBoard";
 import TheoryGame from "../components/TheoryGame";
 import ChordDiagram from "../components/ChordDiagram";
-import TheoryQuiz from "../components/TheoryQuiz";
 
 const C_MAJOR = scalePcs(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
 const C_MAJOR_NAMES = scaleNames(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
@@ -71,10 +70,18 @@ const SEVENTHS = [
  */
 export default function Theory() {
   const [chordName, setChordName] = useState("C");
-  const [quiz, setQuiz] = useState<"interval" | "third" | null>(null);
   const [mapNames, setMapNames] = useState(false);
   const [cagedChord, setCagedChord] = useState("C");
   const [seventhId, setSeventhId] = useState<ChordQuality>("major7");
+  const [circleId, setCircleId] = useState("C");
+
+  const circle = circleKey(circleId);
+  const circleKeyDef = KEY_BY_ID.get(circleId);
+  const circlePcs = useMemo(
+    () => (circleKeyDef ? scalePcs(circleKeyDef, SCALE_BY_ID.get("major")!) : []),
+    [circleKeyDef],
+  );
+  const circleTonic = circleKeyDef?.tonicPc ?? 0;
 
   const seventhStack = useMemo(
     () => stackThirds("C", CHORD_QUALITIES[seventhId].intervals),
@@ -99,11 +106,6 @@ export default function Theory() {
     [info],
   );
   const degrees = useMemo(() => degreesOfKey("C"), []);
-
-  const quizConfig: Record<"interval" | "third", { title: string; make: (rng: () => number) => TheoryQuestion }> = {
-    interval: { title: "音程练习", make: intervalQuestion },
-    third: { title: "三度叠置练习", make: thirdQuestion },
-  };
 
   return (
     <section className="panel">
@@ -261,9 +263,9 @@ export default function Theory() {
             </tbody>
           </table>
         </div>
-        <button className="btn ghost lesson-practice" type="button" onClick={() => setQuiz("interval")}>
-          练一练：音程
-        </button>
+        <a className="btn ghost lesson-practice" href="#theory-game">
+          去「乐理挑战」练音程（T09–T12）
+        </a>
       </section>
 
       {/* ---------- 6. 和弦 = 三度叠置 ---------- */}
@@ -324,9 +326,9 @@ export default function Theory() {
         <p className="lesson-note">
           全部 16 个和弦的指法在「和弦」页；这一节只讲清楚<b>为什么是这三个音</b>。
         </p>
-        <button className="btn ghost lesson-practice" type="button" onClick={() => setQuiz("third")}>
-          练一练：三度叠置
-        </button>
+        <a className="btn ghost lesson-practice" href="#theory-game">
+          去「乐理挑战」练三和弦（T01–T04）
+        </a>
       </section>
 
       {/* ---------- 7. 和弦级数 ---------- */}
@@ -609,19 +611,77 @@ export default function Theory() {
         </p>
       </section>
 
+      {/* ---------- 11. 五度圈 ---------- */}
+      <section className="lesson">
+        <h3>
+          <span className="lesson-no">11</span>五度圈：调号是从哪来的
+        </h3>
+        <p className="lesson-lead">
+          把 12 个调按「上行纯五度」排成一个圈：<b>C → G → D → A → E → B → F#</b>，
+          再往前用等音写法继续 <b>Db → Ab → Eb → Bb → F</b>，正好一圈 12 个。
+          每走一格，调号就多一个升号（或减一个降号）——这就是「G 大调为什么要升 F」的答案。
+        </p>
+        <div className="lesson-buttons">
+          {CIRCLE.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className={entry.id === circleId ? "chip on" : "chip"}
+              onClick={() => setCircleId(entry.id)}
+            >
+              {entry.id}
+            </button>
+          ))}
+        </div>
+        <div className="lesson-figure">
+          <PianoStrip highlight={circlePcs} root={circleTonic} />
+          <p className="lesson-cap">
+            {circle?.name}：{circle?.accidentalsLabel}
+            {circle ? `，音阶 ${circle.scale.join(" ")}` : ""}
+          </p>
+        </div>
+        <div className="lesson-table-wrap">
+          <table className="theory-table">
+            <thead>
+              <tr>
+                <th>调</th>
+                <th>调号</th>
+                <th>关系小调</th>
+                <th>上行纯五度</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CIRCLE.map((entry) => {
+                const up = neighborKeys(entry.id)?.up;
+                return (
+                  <tr
+                    key={entry.id}
+                    className={entry.id === circleId ? "theory-row-on" : ""}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setCircleId(entry.id)}
+                  >
+                    <td>{entry.id}</td>
+                    <td>{entry.accidentalsLabel}</td>
+                    <td className="muted">{entry.minorName}</td>
+                    <td className="muted">{up ? up.name : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="lesson-note">
+          为什么 G 大调要升 F？大调公式要求第 6 级到第 7 级是<b>全音</b>，
+          从 G 往上数 E 到 F 只有半音，把 F 升成 F# 才凑够全音。五度圈就是
+          「哪些音要升、要升几个」的一张总表：升号调的升序永远是 <b>F C G D A E B</b>。
+        </p>
+      </section>
+
       <TheoryGame />
 
       <p className="lesson-cta">
         想再练练指板？去「和弦」页按一遍，或去「音阶游戏」把音名填出来。
       </p>
-
-      {quiz && (
-        <TheoryQuiz
-          title={quizConfig[quiz].title}
-          make={quizConfig[quiz].make}
-          onClose={() => setQuiz(null)}
-        />
-      )}
     </section>
   );
 }
