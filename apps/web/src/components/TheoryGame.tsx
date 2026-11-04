@@ -178,11 +178,12 @@ export default function TheoryGame() {
             ) : task ? (
               <>
                 <p className="quiz-prompt">{task.prompt}</p>
-                {reveal && !judged && (
-                  <p className="lesson-cap">
-                    需要点亮：{task.pcs.map((pc) => SHARP_NAMES[pc]).join("、")}
-                  </p>
-                )}
+                {/* 这行常驻（关掉提示时留空），否则开关提示会让弹层高度跳一下 */}
+                <p className="theory-need" aria-live="polite">
+                  {reveal && !judged
+                    ? `需要点亮：${task.pcs.map((pc) => SHARP_NAMES[pc]).join("、")}`
+                    : ""}
+                </p>
 
                 <Fretboard
                   fretMin={task.fretMin}

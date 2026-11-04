@@ -1026,6 +1026,15 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+/* 提示行常驻：没有内容时也占住高度，避免开关提示时弹层跳动 */
+.theory-need {
+  min-height: 20px;
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--muted);
+}
+
 /* 答题弹层要比普通弹窗宽：指板 9 品大约 520px，440 会横向滚动 */
 .quiz.theory-player {
   max-width: 760px;
