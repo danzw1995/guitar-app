@@ -69,6 +69,11 @@ import {
   chordDegreeInKey,
   degreesOfKey,
   cagedShapes,
+  THEORY_LEVELS,
+  theoryTasks,
+  theoryTargetCount,
+  judgeTask,
+  theoryAttempt,
 } from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
 
@@ -708,8 +713,7 @@ test("三度叠置：和弦就是三度加三度", () => {
   }
 });
 
-test("七和弦：四个音、三个三度", () => {
-  for (const id of ["major7", "dominant7", "minor7"] as const) {
+test("七和弦：四个音、三个三度", () => {  for (const id of ["major7", "dominant7", "minor7"] as const) {
     const intervals = CHORD_QUALITIES[id].intervals;
     assert.equal(intervals.length, 4, `${id} 应该有 4 个音`);
     const stack = stackThirds("C", intervals);
@@ -888,4 +892,84 @@ test("CAGED 小和弦：E/A/D 三个形状，且都是小三和弦", () => {
       });
     }
   }
+});
+
+test("乐理挑战：12 关、每关 4 道不重复的题", () => {
+  assert.equal(THEORY_LEVELS.length, 12);
+  assert.deepEqual(
+    THEORY_LEVELS.map((level) => level.id),
+    ["T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08", "T09", "T10", "T11", "T12"],
+  );
+
+  for (const level of THEORY_LEVELS) {
+    const tasks = theoryTasks(level);
+    assert.equal(tasks.length, 4, `${level.id} 应有 4 题`);
+    assert.equal(new Set(tasks.map((task) => task.prompt)).size, 4, `${level.id} 的题不能重复`);
+    assert.deepEqual(
+      theoryTasks(level).map((task) => task.prompt),
+      tasks.map((task) => task.prompt),
+      "同关必须可复现",
+    );
+
+    for (const task of tasks) {
+      assert.ok(task.cells.length > 0, `${level.id} 的题必须有点可点`);
+      for (const cell of task.cells) {
+        assert.ok(cell.f >= task.fretMin && cell.f <= task.fretMax, "格子必须在题目范围内");
+        const pc = pitchClassAt(STANDARD_TUNING, cell.s, cell.f);
+        assert.ok(task.pcs.includes(pc), `${level.id}：${cell.s + 1} 弦 ${cell.f} 品的音不属于答案`);
+      }
+      let expectedCount = 0;
+      for (let s = 0; s < 6; s++) {
+        for (let f = task.fretMin; f <= task.fretMax; f++) {
+          if (task.pcs.includes(pitchClassAt(STANDARD_TUNING, s, f))) expectedCount++;
+        }
+      }
+      assert.equal(task.cells.length, expectedCount, "目标格必须铺满整个范围");
+    }
+
+    const answerCount = { triad: 3, seventh: 4, interval: 2 } as const;
+    assert.ok(
+      tasks.every((task) => task.pcs.length === answerCount[level.kind]),
+      `${level.id} 的答案音数不对`,
+    );
+    assert.ok(theoryTargetCount(level) > 0);
+  }
+});
+
+test("乐理挑战：判定与合成 AttemptResult", () => {
+  const level = THEORY_LEVELS[0];
+  const tasks = theoryTasks(level);
+  const first = tasks[0];
+  const all = first.cells.map((cell) => `${cell.s}:${cell.f}`);
+
+  assert.equal(judgeTask(first, all).ok, true, "全点亮就算对");
+  const missingOne = judgeTask(first, all.slice(1));
+  assert.equal(missingOne.ok, false);
+  assert.equal(missingOne.missing.length, 1);
+  assert.equal(missingOne.extra.length, 0);
+
+  const extraOne = judgeTask(first, [...all, "0:1"]);
+  assert.equal(extraOne.ok, false, "多点一格也算错");
+  assert.equal(extraOne.extra.length, 1);
+
+  const perfect = tasks.map((task) => judgeTask(task, task.cells.map((c) => `${c.s}:${c.f}`)));
+  const result = theoryAttempt(perfect);
+  assert.equal(result.total, 4);
+  assert.equal(result.correct, 4);
+  assert.equal(result.wrong, 0);
+  assert.equal(result.empty, 0);
+  assert.equal(result.finished, true);
+  assert.equal(result.accuracy, 1);
+
+  const mixed = [
+    perfect[0],
+    judgeTask(tasks[1], []),
+    judgeTask(tasks[2], [...tasks[2].cells.map((c) => `${c.s}:${c.f}`), "0:1"]),
+    perfect[3],
+  ];
+  const partial = theoryAttempt(mixed);
+  assert.equal(partial.correct, 2);
+  assert.equal(partial.empty, 1, "一格没点算空");
+  assert.equal(partial.wrong, 1, "多点了算错");
+  assert.equal(partial.accuracy, 0.5);
 });

@@ -110,6 +110,12 @@ check("乐理：示意图对读屏有说明、练习弹层有 dialog 语义", ()
   expect(theory, ["lesson-lead", "lesson-guitar"], "Theory.tsx");
   const quiz = read("src/components/TheoryQuiz.tsx");
   expect(quiz, ['role="dialog"', 'aria-modal="true"', 'role="status"'], "TheoryQuiz.tsx");
+  const game = read("src/components/TheoryGame.tsx");
+  expect(
+    game,
+    ['role="dialog"', 'aria-modal="true"', "aria-label=", 'role="status"', "<Fretboard"],
+    "TheoryGame.tsx",
+  );
 });
 
 check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {

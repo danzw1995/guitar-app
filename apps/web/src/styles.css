@@ -943,6 +943,77 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--text);
 }
 
+/* 乐理挑战：关卡网格 + 答题弹层 */
+.theory-game {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.theory-game-head h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.theory-game-head p {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.theory-chapter {
+  margin-bottom: 10px;
+}
+.theory-chapter-name {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.theory-levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: 8px;
+}
+.theory-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 10px 12px;
+  min-height: 88px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.theory-tile:hover {
+  border-color: var(--accent);
+}
+.theory-tile.done {
+  border-color: rgba(212, 167, 44, 0.45);
+  background: rgba(212, 167, 44, 0.08);
+}
+.theory-tile b {
+  font-size: 12px;
+}
+.theory-tile i {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+.theory-tile-time {
+  font-size: 10px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.theory-player {
+  max-width: 760px;
+}
+
 /* CAGED 五把位 */
 .caged {
   display: flex;

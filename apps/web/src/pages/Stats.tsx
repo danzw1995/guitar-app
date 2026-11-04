@@ -3,6 +3,7 @@ import {
   lastNDays,
   streakOf,
   summarizeProgress,
+  THEORY_LEVEL_IDS,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadDaily, loadProgress, type DailyMap } from "../lib/storage";
@@ -16,6 +17,7 @@ export default function Stats() {
   const today = dateKeyOf(new Date());
 
   const summary = summarizeProgress(LEVEL_IDS, progress);
+  const theory = summarizeProgress(THEORY_LEVEL_IDS, progress);
   const streak = streakOf(Object.keys(daily), today);
   const week = lastNDays(today, 7);
 
@@ -87,6 +89,26 @@ export default function Stats() {
         <div className="stat-card">
           <b>★ {dailyStars}</b>
           <span>每日挑战星星合计</span>
+        </div>
+      </div>
+
+      <h3 className="stat-sub">乐理挑战</h3>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <b>
+            {theory.completed}/{theory.total}
+          </b>
+          <span>已通关的乐理关</span>
+        </div>
+        <div className="stat-card">
+          <b>
+            ★ {theory.stars}/{theory.maxStars}
+          </b>
+          <span>乐理星星合计</span>
+        </div>
+        <div className="stat-card">
+          <b>{theory.bestSumMs > 0 ? fmtSpan(theory.bestSumMs) : "—"}</b>
+          <span>最快成绩合计</span>
         </div>
       </div>
 

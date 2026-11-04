@@ -21,6 +21,7 @@ import PianoStrip from "../components/PianoStrip";
 import StringStrip from "../components/StringStrip";
 import ScaleMap from "../components/ScaleMap";
 import CagedBoard from "../components/CagedBoard";
+import TheoryGame from "../components/TheoryGame";
 import ChordDiagram from "../components/ChordDiagram";
 import TheoryQuiz from "../components/TheoryQuiz";
 
@@ -110,9 +111,11 @@ export default function Theory() {
         <h2>乐理入门</h2>
         <p>
           从「一个音」走到「指板规律」。每节都是：一句话 → 钢琴上看 → 吉他上看。
-          看不懂名词没关系，先看图。
+          看不懂名词没关系，先看图——看完可以到下面的「乐理挑战」里动手。
         </p>
       </div>
+
+      <TheoryGame />
 
       {/* ---------- 1. 音 ---------- */}
       <section className="lesson">
