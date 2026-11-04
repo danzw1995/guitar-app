@@ -17,7 +17,7 @@ interface ChapterSpec {
 const CHAPTERS: ChapterSpec[] = [
   {
     chapter: 1,
-    keys: [{ id: "C", count: 10 }],
+    keys: [{ id: "C", count: 8 }],
     scaleId: "major",
     fretMin: 1,
     fretMax: 5,
@@ -43,32 +43,47 @@ const CHAPTERS: ChapterSpec[] = [
   {
     chapter: 3,
     keys: [
-      { id: "F", count: 4 },
+      { id: "F", count: 3 },
       { id: "Bb", count: 3 },
-      { id: "Eb", count: 3 },
+      { id: "Eb", count: 2 },
     ],
     scaleId: "major",
     fretMin: 1,
     fretMax: 7,
     ratioFrom: 0.5,
-    ratioTo: 0.3,
+    ratioTo: 0.32,
     seedBase: 3000,
   },
   {
+    // 小调入门：先用窄品域（1–5）熟悉小三度、降 6、降 7，给定比例偏高
     chapter: 4,
     keys: [
-      { id: "Am", count: 4 },
-      { id: "Em", count: 3 },
+      { id: "Am", count: 3 },
+      { id: "Em", count: 2 },
+      { id: "Dm", count: 2 },
+    ],
+    scaleId: "naturalMinor",
+    fretMin: 1,
+    fretMax: 5,
+    ratioFrom: 0.6,
+    ratioTo: 0.45,
+    seedBase: 4000,
+  },
+  {
+    // 小调进阶：再扩到 9 品（12 品全板留给「推算模式」）
+    chapter: 5,
+    keys: [
+      { id: "Am", count: 2 },
+      { id: "Em", count: 2 },
       { id: "Dm", count: 2 },
       { id: "Bm", count: 1 },
     ],
     scaleId: "naturalMinor",
-    // 不用空弦：空弦在指板上是琴枕左侧的特殊列，混在关卡里既不好看也不好填
     fretMin: 1,
-    fretMax: 12,
-    ratioFrom: 0.4,
-    ratioTo: 0.2,
-    seedBase: 4000,
+    fretMax: 9,
+    ratioFrom: 0.45,
+    ratioTo: 0.25,
+    seedBase: 5000,
   },
 ];
 
