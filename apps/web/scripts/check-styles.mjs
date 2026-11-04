@@ -165,6 +165,17 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 7. 乐理挑战的答题弹层要够宽：7–9 品的指板宽度约 414–522px
+{
+  const player = narrowDecls(".quiz.theory-player");
+  const width = px(player.get("max-width"));
+  expect(
+    ".quiz.theory-player 比普通弹窗宽（≥ 700px，7 品指板不出现横向滚动）",
+    width !== null && width >= 700,
+    `max-width = ${player.get("max-width") ?? "未设置"}`,
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

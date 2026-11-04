@@ -1026,7 +1026,8 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.theory-player {
+/* 答题弹层要比普通弹窗宽：指板 9 品大约 520px，440 会横向滚动 */
+.quiz.theory-player {
   max-width: 760px;
 }
 
