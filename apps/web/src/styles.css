@@ -641,6 +641,22 @@ button, select, input { font: inherit; color: inherit; }
 .panel-head + .lesson {
   margin-top: 16px;
 }
+/* 乐理挑战挪到课程之后；如果哪天又放回顶部，这条保证它不贴着说明文字 */
+.panel-head + .theory-game {
+  margin-top: 16px;
+}
+.lesson + .theory-game {
+  margin-top: 24px;
+}
+.inline-link {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed currentColor;
+  padding: 0 1px;
+}
+.inline-link:hover {
+  border-bottom-style: solid;
+}
 .lesson-sub {
   margin: 18px 0 8px;
   font-size: 14px;

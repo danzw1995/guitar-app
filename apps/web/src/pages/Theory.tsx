@@ -111,11 +111,13 @@ export default function Theory() {
         <h2>乐理入门</h2>
         <p>
           从「一个音」走到「指板规律」。每节都是：一句话 → 钢琴上看 → 吉他上看。
-          看不懂名词没关系，先看图——看完可以到下面的「乐理挑战」里动手。
+          看不懂名词没关系，先看图——读完可以到页面底部的
+          <a className="inline-link" href="#theory-game">
+            「乐理挑战」
+          </a>
+          里动手。
         </p>
       </div>
-
-      <TheoryGame />
 
       {/* ---------- 1. 音 ---------- */}
       <section className="lesson">
@@ -607,8 +609,10 @@ export default function Theory() {
         </p>
       </section>
 
+      <TheoryGame />
+
       <p className="lesson-cta">
-        想练手？去「和弦」页按一遍，或去「音阶游戏」把音名填出来。
+        想再练练指板？去「和弦」页按一遍，或去「音阶游戏」把音名填出来。
       </p>
 
       {quiz && (

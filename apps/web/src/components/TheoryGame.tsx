@@ -102,7 +102,7 @@ export default function TheoryGame() {
   }
 
   return (
-    <div className="theory-game">
+    <div className="theory-game" id="theory-game">
       <div className="theory-game-head">
         <h3>乐理挑战</h3>
         <p className="muted">
@@ -178,6 +178,11 @@ export default function TheoryGame() {
             ) : task ? (
               <>
                 <p className="quiz-prompt">{task.prompt}</p>
+                {reveal && !judged && (
+                  <p className="lesson-cap">
+                    需要点亮：{task.pcs.map((pc) => SHARP_NAMES[pc]).join("、")}
+                  </p>
+                )}
 
                 <Fretboard
                   fretMin={task.fretMin}
