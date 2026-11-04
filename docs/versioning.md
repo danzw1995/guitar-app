@@ -18,8 +18,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `apps/web` | 产品版本 | 跟随根 |
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 
-当前：产品 `0.7.0`，core `0.5.0`（v0.7.0 新增 `intervals` / `circle` / `degrees` / `caged` 四个模块，
-core 从 0.4.0 升到 0.5.0）。
+当前：产品 `0.7.1`，core `0.6.0`（v0.7.1 新增 `theory-game` 模块，core 从 0.5.0 升到 0.6.0）。
 
 ## 一次发版的流程
 
