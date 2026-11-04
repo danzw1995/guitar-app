@@ -959,6 +959,9 @@ button, select, input { font: inherit; color: inherit; }
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  /* 固定高度：切换形状时行数不跳，下面的图不会上下一格 */
+  min-height: 44px;
+  align-items: flex-start;
 }
 .caged-tab {
   display: flex;
@@ -973,6 +976,11 @@ button, select, input { font: inherit; color: inherit; }
   cursor: pointer;
   font: inherit;
   min-height: 38px;
+  /* 「第 9 品」比「第 10 品」窄一个字符：固定宽度 + 等宽数字，按钮才不会互相挤 */
+  min-width: 84px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .caged-tab b {
   font-size: 12px;
@@ -981,6 +989,8 @@ button, select, input { font: inherit; color: inherit; }
   font-style: normal;
   font-size: 10px;
   color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 .caged-tab.on {
   border-color: var(--accent);

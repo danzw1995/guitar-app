@@ -144,6 +144,27 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 6. CAGED 形状按钮：宽度不能随「第 9 品 / 第 10 品」变化，否则切换时会跳
+{
+  const tab = narrowDecls(".caged-tab");
+  const width = px(tab.get("min-width"));
+  expect(
+    ".caged-tab 固定最小宽度（切形状时不因位数变宽而跳动）",
+    width !== null && width >= 70,
+    `min-width = ${tab.get("min-width") ?? "未设置"}`,
+  );
+  expect(
+    ".caged-tab 使用等宽数字（tabular-nums）",
+    tab.get("font-variant-numeric") === "tabular-nums",
+    `font-variant-numeric = ${tab.get("font-variant-numeric") ?? "未设置"}`,
+  );
+  expect(
+    ".caged-tab 不换行（white-space: nowrap）",
+    tab.get("white-space") === "nowrap",
+    `white-space = ${tab.get("white-space") ?? "未设置"}`,
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

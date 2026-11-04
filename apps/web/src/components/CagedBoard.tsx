@@ -24,9 +24,17 @@ export default function CagedBoard({ rootPc, rootName }: CagedBoardProps) {
   const [quality, setQuality] = useState<CagedQuality>("major");
   const [selected, setSelected] = useState<CagedShape["id"]>("C");
 
-  const shapes = useMemo(() => cagedShapes(rootPc, quality), [rootPc, quality]);
+  // 一次算出两种性质的形状：画布宽度取两者的最大值，
+  // 这样切换「大三 / 小三」时 SVG 的宽高不变，页面不会跳一下。
+  const majorShapes = useMemo(() => cagedShapes(rootPc, "major"), [rootPc]);
+  const minorShapes = useMemo(() => cagedShapes(rootPc, "minor"), [rootPc]);
+  const shapes = quality === "minor" ? minorShapes : majorShapes;
   const shape = shapes.find((s) => s.id === selected) ?? shapes[0];
-  const maxFret = Math.max(12, ...shapes.map((s) => s.span[1]));
+  const maxFret = Math.max(
+    12,
+    ...majorShapes.map((s) => s.span[1]),
+    ...minorShapes.map((s) => s.span[1]),
+  );
   const width = LEFT + (maxFret + 1) * CELL + 16;
   const height = TOP + 5 * ROW + 30;
   const x = (fret: number) => LEFT + fret * CELL + CELL / 2;
