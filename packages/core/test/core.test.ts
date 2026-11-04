@@ -708,6 +708,22 @@ test("三度叠置：和弦就是三度加三度", () => {
   }
 });
 
+test("七和弦：四个音、三个三度", () => {
+  for (const id of ["major7", "dominant7", "minor7"] as const) {
+    const intervals = CHORD_QUALITIES[id].intervals;
+    assert.equal(intervals.length, 4, `${id} 应该有 4 个音`);
+    const stack = stackThirds("C", intervals);
+    assert.equal(stack.notes.length, 4);
+    assert.equal(stack.steps.length, 3, "三个三度叠起来");
+    for (const step of stack.steps) {
+      assert.ok([3, 4].includes(step.semitones), `${id} 每一步都必须是三度：${step.name}`);
+    }
+  }
+  assert.deepEqual(stackThirds("C", CHORD_QUALITIES.major7.intervals).notes, ["C", "E", "G", "B"]);
+  assert.deepEqual(stackThirds("C", CHORD_QUALITIES.dominant7.intervals).notes, ["C", "E", "G", "Bb"]);
+  assert.deepEqual(stackThirds("C", CHORD_QUALITIES.minor7.intervals).notes, ["C", "Eb", "G", "Bb"]);
+});
+
 test("五度圈：12 个调、调号、相邻调", () => {
   assert.equal(CIRCLE.length, 12);
   assert.deepEqual(

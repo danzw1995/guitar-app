@@ -1,17 +1,20 @@
 import { useMemo, useState } from "react";
 import {
   CHORD_BY_NAME,
+  CHORD_QUALITIES,
   INTERVALS,
   KEY_BY_ID,
   SCALE_BY_ID,
   chordInfo,
   degreesOfKey,
   fingeringOf,
+  intervalOf,
   intervalQuestion,
   scaleNames,
   scalePcs,
   stackThirds,
   thirdQuestion,
+  type ChordQuality,
   type TheoryQuestion,
 } from "@guitar/core";
 import PianoStrip from "../components/PianoStrip";
@@ -53,8 +56,14 @@ const OCTAVE_SHAPES = [
   { rule: "跨两根弦、少 3 品", example: "6 弦 3 品 G = 3 弦 0 品 G" },
 ];
 
+const SEVENTHS = [
+  { id: "major7" as ChordQuality, label: "大七", suffix: "maj7", mood: "明亮、悬浮，常做色彩和弦" },
+  { id: "dominant7" as ChordQuality, label: "属七", suffix: "7", mood: "最紧张，强烈想解决到主和弦" },
+  { id: "minor7" as ChordQuality, label: "小七", suffix: "m7", mood: "柔和、偏暗，爵士与流行都常用" },
+];
+
 /**
- * 乐理入门：一条从「音」走到「和弦级数」，再落到「指板规律」的路径。
+ * 乐理入门：一条从「音」走到「CAGED」的路径。
  *
  * 每一节都是同一个结构：一句话 → 钢琴上看 → 吉他上看。
  * 钢琴负责解释「为什么」，吉他负责回答「那我怎么按」。
@@ -64,6 +73,17 @@ export default function Theory() {
   const [quiz, setQuiz] = useState<"interval" | "third" | null>(null);
   const [mapNames, setMapNames] = useState(false);
   const [cagedChord, setCagedChord] = useState("C");
+  const [seventhId, setSeventhId] = useState<ChordQuality>("major7");
+
+  const seventhStack = useMemo(
+    () => stackThirds("C", CHORD_QUALITIES[seventhId].intervals),
+    [seventhId],
+  );
+  const seventhPcs = useMemo(
+    () => CHORD_QUALITIES[seventhId].intervals.map((step) => step % 12),
+    [seventhId],
+  );
+  const seventhSuffix = SEVENTHS.find((item) => item.id === seventhId)?.suffix ?? "";
 
   const cagedShape = CHORD_BY_NAME.get(cagedChord);
   const cagedRootPc = useMemo(
@@ -519,6 +539,68 @@ export default function Theory() {
         <p className="lesson-note">
           小和弦只给 <b>E / A / D</b> 三个形状：C 形、G 形的大三音在两根弦上各出现一次，
           降一个仍然是「大三 + 小三」混着，教材里 Cm、Gm 本来用的就是 A 形 / E 形的横按。
+        </p>
+      </section>
+
+      {/* ---------- 10. 七和弦 ---------- */}
+      <section className="lesson">
+        <h3>
+          <span className="lesson-no">10</span>七和弦：再往上叠一个三度
+        </h3>
+        <p className="lesson-lead">
+          三和弦是「根音 + 三音 + 五音」。再往上叠一个三度，就是<b>七音</b>，四个音一起响——这就是七和弦。
+          七音离根音 10 或 11 个半音，它几乎决定了这个和弦的"味道"。
+        </p>
+        <div className="lesson-figure">
+          <PianoStrip highlight={seventhPcs} root={0} />
+          <p className="lesson-cap">
+            C{seventhSuffix} = {seventhStack.notes.join(" – ")}（{seventhStack.text}）
+          </p>
+        </div>
+        <div className="lesson-buttons">
+          {SEVENTHS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={item.id === seventhId ? "chip on" : "chip"}
+              onClick={() => setSeventhId(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <div className="lesson-table-wrap">
+          <table className="theory-table">
+            <thead>
+              <tr>
+                <th>和弦</th>
+                <th>构成音（以 C 为例）</th>
+                <th>七音距根音</th>
+                <th>听起来</th>
+              </tr>
+            </thead>
+            <tbody>
+              {SEVENTHS.map((item) => {
+                const stack = stackThirds("C", CHORD_QUALITIES[item.id].intervals);
+                const top = CHORD_QUALITIES[item.id].intervals[3];
+                return (
+                  <tr key={item.id} className={item.id === seventhId ? "theory-row-on" : ""}>
+                    <td>
+                      C{item.suffix} <span className="muted">{item.label}</span>
+                    </td>
+                    <td>{stack.notes.join(" ")}</td>
+                    <td>{top} 个半音（{intervalOf(top).name}）</td>
+                    <td className="muted">{item.mood}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="lesson-note">
+          为什么叫"七"？因为七音是音阶的第 7 级。**大七**的七音距根音 11 个半音（导音，很想回主音），
+          **属七**是 10 个半音（小七度，最不稳定，所以最想"解决"到别的和弦），
+          **小七**在小三和弦上加 10 个半音，听起来最柔和。流行歌里 Cmaj7、G7、Dm7 就是这么来的。
         </p>
       </section>
 
