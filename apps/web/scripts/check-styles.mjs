@@ -176,6 +176,16 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 8. 关卡下拉的章节必须来自数据：写死 [1,2,3,4] 会让新增章节的关卡静默消失
+{
+  const game = readFileSync(new URL("../src/pages/Game.tsx", import.meta.url), "utf8");
+  expect(
+    "关卡下拉用 CHAPTERS（章节号不写死）",
+    game.includes("{CHAPTERS.map("),
+    "Game.tsx 里没有用 CHAPTERS 遍历章节",
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

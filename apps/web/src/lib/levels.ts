@@ -9,6 +9,13 @@ export const LEVELS = (levelsJson as { levels: LevelDef[] }).levels;
 
 export const LEVEL_IDS: string[] = LEVELS.map((l) => l.id);
 
+/**
+ * 关卡里出现过的章节号（升序）。
+ *
+ * 不要在下拉里写死 `[1,2,3,4]`：加了第 5 章之后，写死的列表会让后面 7 关**静默消失**。
+ */
+export const CHAPTERS: number[] = [...new Set(LEVELS.map((l) => l.chapter))].sort((a, b) => a - b);
+
 export const MAX_TOTAL_STARS = LEVELS.length * 3;
 
 /** 该关的三星达标时间；`LevelDef` 自带 targetCount 和 difficulty，不用重算 puzzle。 */

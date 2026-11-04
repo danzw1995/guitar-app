@@ -24,7 +24,7 @@ import {
   type LevelDef,
   type ProgressMap,
 } from "@guitar/core";
-import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS, parMsOf } from "../lib/levels";
+import { CHAPTERS, LEVELS, LEVEL_IDS, MAX_TOTAL_STARS, parMsOf } from "../lib/levels";
 import {
   loadDaily,
   loadProgress,
@@ -418,7 +418,8 @@ export default function Game() {
           <label>
             关卡
             <select value={level.id} onChange={(e) => selectLevel(e.target.value)}>
-              {[1, 2, 3, 4].map((ch) => (
+              {/* 章节从数据里取，别写死 [1,2,3,4]——加章时写死会让后面的关静默消失 */}
+              {CHAPTERS.map((ch) => (
                 <optgroup key={ch} label={`第 ${ch} 章`}>
                   {LEVELS.filter((l) => l.chapter === ch).map((l) => {
                     const idx = LEVELS.findIndex((x) => x.id === l.id);
