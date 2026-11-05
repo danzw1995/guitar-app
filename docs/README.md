@@ -7,6 +7,7 @@
 | [architecture.md](architecture.md) | 分层、边界、数据流、跨端、技术决策 | 改结构 / 加平台 |
 | [game-rules.md](game-rules.md) | 调弦、拼写、出题、判定、难度、40 关 | 改 core / 改玩法 |
 | [ux.md](ux.md) | 页面、指板方向、颜色、交互、响应式 | 改 UI |
+| [practice.md](practice.md) | 练习计划设计稿：练什么、怎么练、六个阶段、练习页 | 做练习 / 节奏功能 |
 | [roadmap.md](roadmap.md) | v0.3 → v1.0 的任务、验收、风险 | 排期 / 接任务 |
 | [versioning.md](versioning.md) | SemVer、tag、CHANGELOG、提交规范 | 发版 |
 
