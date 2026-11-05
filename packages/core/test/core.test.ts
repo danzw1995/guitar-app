@@ -96,6 +96,8 @@ import {
   buildSession,
   drillById,
   drillsFor,
+  chordTab,
+  scaleRun,
   practiceStats,
   recordBlock,
   stageForCompleted,
@@ -1126,9 +1128,8 @@ test("练习库：每个阶段的每一块都有练习，每条练习都能验�
 
   for (const drill of DRILLS) {
     assert.ok(drill.name.length > 2, `${drill.id} 缺名字`);
-    assert.ok(drill.stages.length > 0, `${drill.id} 必须属于至少一个阶段`);
     assert.ok(
-      drill.stages.every((stage) => stage >= 0 && stage <= 5),
+      Number.isInteger(drill.stage) && drill.stage >= 0 && drill.stage <= 5,
       `${drill.id} 的阶段越界`,
     );
     assert.ok(drill.steps.length >= 2, `${drill.id} 的练法至少两步`);
@@ -1153,6 +1154,88 @@ test("练习库：每个阶段的每一块都有练习，每条练习都能验�
     if (!technique.drillId) continue;
     assert.ok(drillById(technique.drillId), `${technique.name} 指向了不存在的练习`);
   }
+});
+
+test("六线谱：每条练习都有谱子，弦品与拍位都合法", () => {
+  assert.ok(DRILLS.length >= 45, `练习库太小：${DRILLS.length} 条`);
+
+  for (const drill of DRILLS) {
+    const tab = drill.tab;
+    assert.ok(tab.notes.length > 0, `${drill.id} 没有谱子`);
+    assert.ok(tab.bars >= 1, `${drill.id} 的小节数不对`);
+    const limit = tab.bars * tab.beatsPerBar;
+    for (const note of tab.notes) {
+      assert.ok(note.s >= 1 && note.s <= 6, `${drill.id} 的弦号越界：${note.s}`);
+      assert.ok(note.f >= 0 && note.f <= 15, `${drill.id} 的品号越界：${note.f}`);
+      assert.ok(
+        note.beat >= 0 && note.beat < limit,
+        `${drill.id} 的音落在小节外：beat ${note.beat} / ${limit}`,
+      );
+      assert.ok(
+        Number.isInteger(pitchClassAt(STANDARD_TUNING, note.s - 1, note.f)),
+        `${drill.id} 的 ${note.s} 弦 ${note.f} 品算不出音高`,
+      );
+    }
+  }
+
+  // 技巧类练习必须真的标了技法，否则谱子看不出练什么
+  for (const id of ["s3-hammer", "s3-pull", "s3-slide", "s3-trill", "s3-bend"]) {
+    const drill = drillById(id)!;
+    assert.ok(
+      drill.tab.notes.some((note) => note.tech),
+      `${id} 的谱子没有技法标记`,
+    );
+  }
+
+  // 和弦类：同一拍上要有好几根弦
+  const chord = drillById("s1-shape")!;
+  const onBeat = chord.tab.notes.filter((note) => note.beat === 0);
+  assert.ok(onBeat.length >= 4, "和弦谱第一拍应该同时按到多根弦");
+
+  // 阶段之间的差别必须能看出来：每个阶段的谱子范围/时值不完全一样
+  const signatures = STAGES.map((stage) => {
+    const tabs = DRILLS.filter((drill) => drill.stage === stage.id).map(
+      (drill) => `${drill.tab.range ?? ""}|${drill.tab.notes.length}`,
+    );
+    return tabs.join(",");
+  });
+  assert.equal(new Set(signatures).size, 6, "六个阶段的谱子不能长得一模一样");
+});
+
+test("谱子生成器：音阶、和弦、扫弦型都对得上", () => {
+  // C 大调一个八度：5 弦 3 品起，正好 8 个音，最后回到 C
+  const run = scaleRun({ keyId: "C", startString: 5, startFret: 3, fretMax: 3, step: 1 });
+  assert.equal(run.notes.length, 8);
+  assert.deepEqual(
+    { s: run.notes[0].s, f: run.notes[0].f },
+    { s: 5, f: 3 },
+    "从 5 弦 3 品开始",
+  );
+  const last = run.notes[run.notes.length - 1];
+  assert.equal(pitchClassAt(STANDARD_TUNING, last.s - 1, last.f), 0, "最后一个音是 C");
+
+  // C 和弦：x32010，第一拍按到五根弦
+  const cTab = chordTab({ name: "C", step: 1, bars: 1 });
+  const firstBeat = cTab.notes.filter((note) => note.beat === 0);
+  assert.equal(firstBeat.length, 5, "6 弦不弹，剩五根");
+  assert.deepEqual(
+    firstBeat.map((note) => note.f).sort((a, b) => a - b),
+    [0, 0, 1, 2, 3],
+  );
+
+  // 八分扫弦：一小节 8 个拍位
+  const strum = chordTab({
+    name: "Em",
+    step: 0.5,
+    bars: 1,
+    strums: ["D", "U", "D", "U", "D", "U", "D", "U"],
+  });
+  assert.equal(new Set(strum.notes.map((note) => note.beat)).size, 8);
+
+  // 3/4：一小节 3 拍
+  const waltz = chordTab({ name: "C", step: 1, bars: 2, beatsPerBar: 3, strums: ["D", "D", "D"] });
+  assert.equal(waltz.beatsPerBar, 3);
+  assert.equal(new Set(waltz.notes.map((note) => note.beat)).size, 6, "两小节六个拍位");
 });
 
 test("时间分配：加起来必须正好是总时长", () => {
@@ -1196,7 +1279,7 @@ test("每日计划：时长、顺序、可复现与阶段差异", () => {
       // 每块都必须是当前阶段的练习
       for (const block of session.blocks) {
         assert.ok(
-          block.drill.stages.includes(stage),
+          block.drill.stage === stage,
           `${block.drill.id} 不属于 S${stage}`,
         );
         assert.ok(block.minutes >= 1);

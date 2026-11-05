@@ -41,7 +41,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "80 BPM 八分，两个音的响度和间隔都一样",
     stage: 3,
-    drillId: "t-hammer",
+    drillId: "s3-hammer",
   },
   {
     id: "pull",
@@ -57,7 +57,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "80 BPM，击勾往返 2 小节，每个音都清楚",
     stage: 3,
-    drillId: "t-pull",
+    drillId: "s3-pull",
   },
   {
     id: "slide",
@@ -73,7 +73,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "60 BPM 四分，上下滑各 8 次，落点准、不断音",
     stage: 3,
-    drillId: "t-slide",
+    drillId: "s3-slide",
   },
   {
     id: "bend",
@@ -89,7 +89,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "全音推弦的音高和下一个品一致，能被调音器确认",
     stage: 3,
-    drillId: "t-bend",
+    drillId: "s3-bend",
   },
   {
     id: "vibrato",
@@ -105,7 +105,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "一个音揉 8 拍，每拍次数一致，音高不跑",
     stage: 3,
-    drillId: "t-vibrato",
+    drillId: "s5-vibrato",
   },
   {
     id: "left-mute",
@@ -136,7 +136,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "五个把位 1 分钟内找齐，每个都能按响",
     stage: 4,
-    drillId: "t-caged",
+    drillId: "s4-caged",
   },
 
   // —— 右手 ——
@@ -154,7 +154,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "90 BPM 八分连续 1 分钟，音量与间隔均匀",
     stage: 2,
-    drillId: "t-alt",
+    drillId: "s4-alt-speed",
   },
   {
     id: "economy",
@@ -170,7 +170,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "80 BPM 八分，跨弦处不断拍",
     stage: 4,
-    drillId: "t-economy",
+    drillId: "s4-economy",
   },
   {
     id: "arpeggio",
@@ -201,7 +201,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "70 BPM 八分 8 小节，每拍都在",
     stage: 1,
-    drillId: "r-strum8",
+    drillId: "s1-strum",
   },
   {
     id: "palm-mute",
@@ -217,7 +217,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "80 BPM 8 小节，每个音都短而清楚",
     stage: 2,
-    drillId: "r-mute",
+    drillId: "s2-mute",
   },
   {
     id: "pick-angle",
@@ -248,7 +248,7 @@ export const TECHNIQUES: Technique[] = [
     ],
     pass: "60 BPM，跨弦循环 8 遍不错弦",
     stage: 2,
-    drillId: "w-spider",
+    drillId: "s0-crawl-across",
   },
 ];
 
