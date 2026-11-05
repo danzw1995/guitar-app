@@ -17,8 +17,9 @@ SemVer：`MAJOR.MINOR.PATCH`
 | 根 `package.json` | 产品版本 | 与 git tag 一致 |
 | `apps/web` | 产品版本 | 跟随根 |
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
+| `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.7.2`，core `0.7.0`（v0.7.2 给乐理关卡加了 `chapterName`、关卡数据加了 `chapters`，core 从 0.6.0 升到 0.7.0）。
+当前：产品 `0.7.3`，core `0.7.0`，插件 `0.5.1`（v0.7.3 只修了插件 `makeTool` 的 schema 形状，core 无变化）。
 
 ## 一次发版的流程
 
