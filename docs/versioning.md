@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.9.0`，core `0.9.0`，插件 `0.5.1`（v0.9.0 给 core 加了 `practice.ts` / `techniques.ts` 与它们的导出，算 MINOR）。
+当前：产品 `0.10.0`，core `0.10.0`，插件 `0.5.1`（v0.10.0 给 core 加了 `tab.ts`，练习库与 `Drill` 结构也变了，算 MINOR）。
 
 ## 一次发版的流程
 
