@@ -74,7 +74,9 @@ const SEVENTHS = [
 function beatsLabel(beats: number): string {
   if (beats === 0.5) return "半拍";
   if (beats === 0.25) return "1/4 拍";
+  if (beats === 0.75) return "3/4 拍";
   if (Math.abs(beats - 1 / 3) < 1e-9) return "1/3 拍";
+  if (beats === 1.5) return "1.5 拍（一拍半）";
   return `${beats} 拍`;
 }
 
