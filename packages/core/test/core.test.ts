@@ -74,6 +74,19 @@ import {
   theoryTargetCount,
   judgeTask,
   theoryAttempt,
+  METERS,
+  NOTE_VALUES,
+  STRUM_PATTERNS,
+  VALUE_LADDER,
+  beatsOf,
+  bpmToMs,
+  clicksPerBar,
+  countLine,
+  gridSlots,
+  meterOf,
+  noteValueById,
+  stepMs,
+  strumPatternById,
 } from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
 
@@ -973,3 +986,116 @@ test("乐理挑战：判定与合成 AttemptResult", () => {
   assert.equal(partial.wrong, 1, "多点了算错");
   assert.equal(partial.accuracy, 0.5);
 });
+
+test("时值：全音符到十六分的比例，以及附点与三连音", () => {
+  const quarter = noteValueById("quarter")!;
+  assert.equal(quarter.beats, 1);
+
+  // 二倍关系：一整小节能被任何时值整除
+  assert.equal(noteValueById("whole")!.beats, quarter.beats * 4);
+  assert.equal(noteValueById("half")!.beats, quarter.beats * 2);
+  assert.equal(noteValueById("eighth")!.beats, quarter.beats / 2);
+  assert.equal(noteValueById("sixteenth")!.beats, quarter.beats / 4);
+
+  // 附点 = 原时值 × 1.5
+  assert.equal(noteValueById("dottedQuarter")!.beats, 1.5);
+  assert.equal(noteValueById("dottedEighth")!.beats, 0.75);
+
+  // 三个八分三连音正好一拍——这是三连音最难解释的地方
+  assert.ok(Math.abs(noteValueById("tripletEighth")!.beats * 3 - 1) < 1e-9);
+
+  // 填空：一小节 4 拍的各种填法都必须正好是 4
+  assert.equal(beatsOf(["whole"]), 4);
+  assert.equal(beatsOf(["half", "half"]), 4);
+  assert.equal(beatsOf(["quarter", "quarter", "quarter", "quarter"]), 4);
+  assert.equal(beatsOf(Array(8).fill("eighth")), 4);
+  assert.equal(beatsOf(Array(16).fill("sixteenth")), 4);
+  assert.equal(beatsOf(["dottedQuarter", "eighth", "half"]), 4);
+  assert.ok(Math.abs(beatsOf(Array(12).fill("tripletEighth")) - 4) < 1e-9, "12 个三连音 = 4 拍");
+  assert.equal(beatsOf(["half", "quarter"]), 3, "没填满就是 3 拍");
+
+  assert.ok(NOTE_VALUES.length >= 8, "时值表不能只有四分音符");
+  assert.ok(VALUE_LADDER.every((step) => noteValueById(step.id)), "阶梯上的每一项都要有对应时值");
+});
+
+test("拍号：一小节几格、重音在哪、细分多少下", () => {
+  assert.deepEqual(
+    METERS.map((meter) => meter.id),
+    ["4/4", "3/4", "2/4", "6/8"],
+  );
+  assert.equal(meterOf("3/4").perBar, 3);
+  assert.equal(meterOf("6/8").perBar, 6);
+  assert.deepEqual(meterOf("6/8").accents, [0, 3], "6/8 的两个大拍在第 1、第 4 个八分");
+  assert.deepEqual(meterOf("4/4").accents, [0]);
+  assert.equal(meterOf("不存在的拍号").id, "4/4", "认不出来就回到 4/4");
+
+  // 格子数与数拍词
+  assert.equal(clicksPerBar("4/4", 1), 4);
+  assert.equal(clicksPerBar("4/4", 2), 8);
+  assert.equal(clicksPerBar("4/4", 4), 16);
+  assert.equal(clicksPerBar("3/4", 2), 6);
+  assert.equal(clicksPerBar("6/8", 1), 6);
+
+  assert.equal(countLine("4/4", 1), "1 2 3 4");
+  assert.equal(countLine("4/4", 2), "1 & 2 & 3 & 4 &");
+  assert.equal(countLine("4/4", 4), "1 e & a 2 e & a 3 e & a 4 e & a");
+  assert.equal(countLine("4/4", 3), "1 ta ta 2 ta ta 3 ta ta 4 ta ta");
+  assert.equal(countLine("3/4", 2), "1 & 2 & 3 &");
+
+  const slots = gridSlots("6/8", 2);
+  assert.equal(slots.length, 12);
+  assert.deepEqual(
+    slots.filter((slot) => slot.accent).map((slot) => slot.index),
+    [0, 6],
+    "6/8 的强拍在每大拍的第一下",
+  );
+  assert.deepEqual(
+    slots.filter((slot) => slot.onBeat).map((slot) => slot.label),
+    ["1", "2", "3", "4", "5", "6"],
+  );
+});
+
+test("速度：BPM 换算与节拍器间隔", () => {
+  assert.equal(bpmToMs(60), 1000);
+  assert.equal(bpmToMs(120), 500);
+  assert.equal(bpmToMs(90), 60000 / 90);
+  assert.equal(stepMs(120, 2), 250, "120 BPM 的八分音符是 250ms");
+  assert.equal(stepMs(120, 4), 125);
+  assert.ok(Math.abs(stepMs(60, 3) - 1000 / 3) < 1e-9);
+  assert.equal(bpmToMs(0), 60000, "0 或负数按 1 BPM 处理，不能除以 0");
+});
+
+test("扫弦型：箭头落在八分格子上，长度跟着拍号", () => {
+  for (const pattern of STRUM_PATTERNS) {
+    const meter = meterOf(pattern.meterId);
+    assert.equal(
+      pattern.slots.length,
+      meter.perBar * 2,
+      `${pattern.name} 应该按八分音符铺满一小节`,
+    );
+    assert.ok(
+      pattern.slots.every((slot) => slot === "D" || slot === "U" || slot === null),
+      "只能是下扫、上扫或空",
+    );
+    assert.ok(pattern.slots.some((slot) => slot !== null), "不能整小节都不弹");
+    assert.ok(pattern.hint.length > 4, `${pattern.name} 要有练法提示`);
+  }
+
+  const folk = strumPatternById("folk")!;
+  assert.deepEqual(folk.slots, ["D", null, "D", "U", null, "U", "D", "U"]);
+  assert.equal(folk.slots.filter(Boolean).length, 6, "D·DU·UDU 一共六下");
+  assert.equal(
+    folk.slots[0],
+    "D",
+    "每一小节的第一下必须是下扫（不然拍点听不出来）",
+  );
+  for (const pattern of STRUM_PATTERNS) {
+    assert.equal(pattern.slots[0], "D", `${pattern.name} 的第一下要在拍点上`);
+  }
+
+  // 八分全上下：格子和数拍词一一对应
+  const eighth = strumPatternById("eighth-alt")!;
+  assert.deepEqual(eighth.slots, ["D", "U", "D", "U", "D", "U", "D", "U"]);
+  assert.equal(eighth.slots.length, countLine("4/4", 2).split(" ").length);
+});
+

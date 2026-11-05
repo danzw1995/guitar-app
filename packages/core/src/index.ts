@@ -6,6 +6,7 @@ export * from "./daily.ts";
 export * from "./solfege.ts";
 export * from "./chords.ts";
 export * from "./intervals.ts";
+export * from "./rhythm.ts";
 export * from "./circle.ts";
 export * from "./degrees.ts";
 export * from "./caged.ts";
