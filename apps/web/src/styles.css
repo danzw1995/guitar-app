@@ -610,6 +610,20 @@ button, select, input { font: inherit; color: inherit; }
   line-height: 1.6;
 }
 
+.onboard-more {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.onboard-more b {
+  color: var(--text);
+}
+
 .onboard-actions {
   display: flex;
   gap: 10px;

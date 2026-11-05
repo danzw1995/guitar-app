@@ -160,6 +160,7 @@ export default function Fretboard({
                     type="button"
                     className={cls}
                     disabled={disabled}
+                    data-cell={`${s}:${f}`}
                     aria-label={
                       cellAriaLabel ? cellAriaLabel(s, f) : `${s + 1} 弦 ${f} 品`
                     }

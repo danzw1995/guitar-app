@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   SHARP_NAMES,
   STANDARD_TUNING,
@@ -47,6 +47,41 @@ export default function TheoryGame() {
 
   const tasks = useMemo(() => (active ? theoryTasks(active) : []), [active]);
   const task: TheoryTask | undefined = tasks[taskIndex];
+
+  const modalRef = useRef<HTMLDivElement | null>(null);
+
+  // 打开时把焦点放进指板第一格，关闭时还给原来的元素（键盘用户不会"迷路"）
+  useEffect(() => {
+    if (!active) return;
+    const previous = document.activeElement as HTMLElement | null;
+    modalRef.current?.querySelector<HTMLElement>("[data-cell]")?.focus();
+    return () => previous?.focus?.();
+  }, [active]);
+
+  /** 方向键在格子上移动焦点，Esc 关闭。 */
+  function onModalKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      close();
+      return;
+    }
+    const cell = (event.target as HTMLElement).closest<HTMLElement>("[data-cell]");
+    if (!cell || !event.key.startsWith("Arrow")) return;
+    const [s, f] = cell.dataset.cell!.split(":").map(Number);
+    const next =
+      event.key === "ArrowRight"
+        ? [s, f + 1]
+        : event.key === "ArrowLeft"
+          ? [s, f - 1]
+          : event.key === "ArrowUp"
+            ? [s - 1, f]
+            : [s + 1, f];
+    // 走到指板边上时没有下一格：吃掉这次按键，别让页面跟着滚
+    event.preventDefault();
+    modalRef.current
+      ?.querySelector<HTMLElement>(`[data-cell="${next[0]}:${next[1]}"]`)
+      ?.focus();
+  }
 
   function start(level: TheoryLevelDef) {
     setActive(level);
@@ -144,6 +179,8 @@ export default function TheoryGame() {
         <div className="quiz-backdrop" onClick={close}>
           <div
             className="quiz theory-player"
+            ref={modalRef}
+            onKeyDown={onModalKeyDown}
             role="dialog"
             aria-modal="true"
             aria-label={`${active.id} ${active.title}`}

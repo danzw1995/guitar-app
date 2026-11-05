@@ -106,6 +106,12 @@ export default function Onboarding({ onFinish, forced = false }: OnboardingProps
           ))}
         </ol>
 
+        <p className="onboard-more">
+          其他四个页面：<b>乐理</b>（十一节课，从「音」讲到「五度圈与调号」，页面底部还有
+          12 关的<b>乐理挑战</b>）、<b>和弦</b>（16 个指法 + 级数）、<b>统计</b>、<b>设置</b>。
+          游戏页除了主线，还有<b>每日挑战</b>和没有提示的<b>推算模式</b>。
+        </p>
+
         <div className="onboard-actions">
           <button
             type="button"

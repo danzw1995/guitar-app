@@ -50,9 +50,9 @@ check("App：挂了离线提示，main.tsx 挂了错误边界", () => {
   expect(read("src/main.tsx"), ["<ErrorBoundary>"], "src/main.tsx");
 });
 
-check("指板：每格有 aria-label，装饰性 SVG 对读屏隐藏", () => {
+check("指板：每格有 aria-label 和 data-cell，装饰性 SVG 对读屏隐藏", () => {
   const src = read("src/components/Fretboard.tsx");
-  expect(src, ["aria-label={", "cellAriaLabel"], "Fretboard.tsx");
+  expect(src, ["aria-label={", "cellAriaLabel", "data-cell={"], "Fretboard.tsx");
   const svg = src.slice(src.indexOf("<svg"));
   if (!svg.slice(0, 300).includes('aria-hidden="true"')) {
     throw new Error("指板 SVG 应 aria-hidden（信息由按钮承载）");
@@ -111,7 +111,16 @@ check("乐理：示意图对读屏有说明、练习弹层有 dialog 语义", ()
   const game = read("src/components/TheoryGame.tsx");
   expect(
     game,
-    ['role="dialog"', 'aria-modal="true"', "aria-label=", 'role="status"', "<Fretboard"],
+    [
+      'role="dialog"',
+      'aria-modal="true"',
+      "aria-label=",
+      'role="status"',
+      "<Fretboard",
+      '"Escape"',
+      "ArrowRight",
+      "modalRef.current?.querySelector",
+    ],
     "TheoryGame.tsx",
   );
 });
