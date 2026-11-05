@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  BLOCKS,
-  DRILLS,
   FEELS,
   SESSION_MINUTES,
   STAGES,
-  buildSession,
   blockOf,
+  buildSession,
   dateKeyOf,
+  drillsOfStage,
   practiceStats,
   recordBlock,
   stageForCompleted,
@@ -19,6 +18,7 @@ import {
 } from "@guitar/core";
 import { loadPractice, loadProgress, savePractice } from "../lib/storage";
 import Metronome from "../components/Metronome";
+import TabDiagram from "../components/TabDiagram";
 
 /** 秒 → mm:ss。 */
 function clock(totalSeconds: number): string {
@@ -28,10 +28,12 @@ function clock(totalSeconds: number): string {
 }
 
 /**
- * 今日练习：按「有多少时间 + 在哪个阶段」生成一份时间盒计划。
+ * 今日练习：先选阶段，再按「今天有多少时间」生成计划。
  *
- * 为什么不是一张固定的周计划表：练什么取决于今天有多少分钟和卡在哪，
- * 固定表第二天就对不上。阶段固定、内容按日期轮换，才是能坚持的形态。
+ * 三个刻意的设计：
+ * 1. 阶段是**内容的差别**，不是时间配比的差别——每个阶段有自己的品域、时值和技巧；
+ * 2. 每条练习都带六线谱，不用看文字猜"3→5"是什么意思；
+ * 3. 页面下半部分是**这个阶段的全部练习**，计划只是今天从里面挑的几条。
  */
 export default function Practice() {
   const today = dateKeyOf(new Date());
@@ -48,6 +50,8 @@ export default function Practice() {
   const [runningId, setRunningId] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
 
+  const stageDef = stageOf(stage);
+  const library = useMemo(() => drillsOfStage(stage), [stage]);
   const session = useMemo(
     () => buildSession({ minutes, stage, date: today }),
     [minutes, stage, today],
@@ -86,13 +90,12 @@ export default function Practice() {
     setSeconds(0);
   }
 
-  function finish(blockId: string, drillId: string, planned: number) {
+  function finish(drillId: string, planned: number) {
     // 没用计时器也允许打勾：按计划时长记，别惩罚"忘了按开始"的人
     const used = seconds > 0 ? Math.max(1, Math.round(seconds / 60)) : planned;
     commit(recordBlock(log, today, { drill: drillId, minutes: used, stage }));
     setRunningId(null);
     setSeconds(0);
-    void blockId;
   }
 
   return (
@@ -100,12 +103,44 @@ export default function Practice() {
       <div className="panel-head">
         <h2>今日练习</h2>
         <p>
-          先定「今天能练多久」和「在哪个阶段」，生成的计划按时间切好块：热身 → 基本功 → 和弦 →
-          节奏 → 应用（够长再加曲目）。每块都有验收标准——练到标准算完，不是练到时间到。
-          设计说明见 <code>docs/practice.md</code>。
+          六个阶段，从「每个音都干净」到「能完整弹一段」。每个阶段有自己的品域、时值和技巧，
+          每条练习都配六线谱——先看谱，再上手。
         </p>
       </div>
 
+      {/* ---------- 阶段 ---------- */}
+      <ol className="stage-track" aria-label="练习阶段">
+        {STAGES.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              className={item.id === stage ? "stage-btn on" : "stage-btn"}
+              aria-current={item.id === stage ? "step" : undefined}
+              onClick={() => setStage(item.id)}
+            >
+              <span className="stage-no">S{item.id}</span>
+              <span className="stage-name">{item.name}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+
+      <div className="stage-info">
+        <p className="stage-focus">{stageDef.focus}</p>
+        <ul className="stage-new">
+          {stageDef.newSkills.map((skill) => (
+            <li key={skill}>{skill}</li>
+          ))}
+        </ul>
+        <p className="stage-meta">
+          品域 <b>{stageDef.range}</b> · 速度 <b>{stageDef.bpm}</b> BPM · 本阶段 {library.length} 条练习
+          <br />
+          升级门槛：{stageDef.gate}
+        </p>
+      </div>
+
+      {/* ---------- 今天的计划 ---------- */}
+      <h3 className="practice-h3">今天的计划</h3>
       <div className="practice-bar">
         <label className="practice-field">
           <span>今天能练</span>
@@ -122,35 +157,34 @@ export default function Practice() {
           </select>
         </label>
 
-        <label className="practice-field">
-          <span>阶段</span>
-          <select
-            value={stage}
-            aria-label="练习阶段"
-            onChange={(event) => setStage(Number(event.target.value))}
-          >
-            {STAGES.map((item) => (
-              <option key={item.id} value={item.id}>
-                S{item.id} {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
         <label className="practice-field grow">
           <span>今天的唯一目标</span>
           <input
             type="text"
             value={goal}
-            placeholder={stageOf(stage).focus}
+            placeholder={stageDef.focus}
             onChange={(event) => patchDay({ goal: event.target.value })}
           />
         </label>
-      </div>
 
-      <p className="practice-note">
-        {stageOf(stage).focus}。升级门槛：{stageOf(stage).gate}。
-      </p>
+        <label className="practice-field">
+          <span>手感</span>
+          <select
+            value={feel ?? ""}
+            aria-label="今天的手感"
+            onChange={(event) =>
+              patchDay({ feel: (event.target.value || undefined) as Feel | undefined })
+            }
+          >
+            <option value="">还没评</option>
+            {FEELS.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <div className="practice-summary">
         <span>
@@ -160,7 +194,7 @@ export default function Practice() {
           本周 <b>{stats.weekTotal}</b> 分钟
         </span>
         <span>
-          今天已练 <b>{day?.minutes ?? 0}</b> 分钟
+          今天 <b>{day?.minutes ?? 0}</b> 分钟
         </span>
         <span>
           {doneCount}/{session.blocks.length} 块
@@ -198,9 +232,9 @@ export default function Practice() {
                   {index + 1}
                 </span>
                 <div className="pb-title">
-                  <h3>
+                  <h4>
                     {blockOf(block.block).label} · {drill.name}
-                  </h3>
+                  </h4>
                   <p className="pb-meta">
                     {block.minutes} 分钟
                     {drill.bpm ? ` · ${drill.bpm[0]}–${drill.bpm[1]} BPM` : ""}
@@ -221,12 +255,14 @@ export default function Practice() {
                 <button
                   type="button"
                   className={isDone ? "btn" : "btn primary"}
-                  onClick={() => finish(block.block, drill.id, block.minutes)}
+                  onClick={() => finish(drill.id, block.minutes)}
                   disabled={isDone}
                 >
                   {isDone ? "已勾" : "完成"}
                 </button>
               </div>
+
+              <TabDiagram tab={drill.tab} />
 
               <details className="pb-more">
                 <summary>怎么练 · 常见错误 · 验收</summary>
@@ -247,29 +283,43 @@ export default function Practice() {
         })}
       </ol>
 
-      <div className="practice-feel">
-        <span>今天手感：</span>
-        {FEELS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={feel === item.id ? "chip on" : "chip"}
-            aria-pressed={feel === item.id}
-            onClick={() => patchDay({ feel: item.id as Feel })}
-          >
-            {item.label}
-          </button>
+      {/* ---------- 本阶段全部练习 ---------- */}
+      <h3 className="practice-h3">
+        这一阶段的 {library.length} 条练习
+        <span className="practice-h3-hint">计划每天从里面挑几条，剩下的当备选</span>
+      </h3>
+      <div className="drill-grid">
+        {library.map((drill) => (
+          <article key={drill.id} className="drill-card">
+            <header className="drill-head">
+              <h4>{drill.name}</h4>
+              <span className="drill-block">{blockOf(drill.block).label}</span>
+            </header>
+            <TabDiagram tab={drill.tab} />
+            <details className="pb-more">
+              <summary>练法与验收</summary>
+              <ol className="pb-steps">
+                {drill.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <p className="pb-line">
+                <b>常见错误</b>：{drill.mistake}
+              </p>
+              <p className="pb-line">
+                <b>验收</b>：{drill.pass}
+              </p>
+            </details>
+          </article>
         ))}
-        <span className="practice-feel-hint">
-          自评只给自己看——一周后回看「不稳」的那几天，比看练了几分钟有用。
-        </span>
       </div>
 
+      {/* ---------- 技巧库 ---------- */}
       <section className="techniques">
         <h3>技巧库</h3>
         <p className="practice-note">
           14 张卡：左手 7 项、右手 7 项。每张都是「是什么 / 要领 / 常见错误 / 练法 / 验收」，
-          按建议顺序排（S 编号对应上面的阶段）。
+          卡右上角的 S 编号是建议开始练的阶段。
         </p>
         <div className="lesson-buttons">
           {(["left", "right"] as const).map((side) => (
@@ -315,8 +365,7 @@ export default function Practice() {
       </section>
 
       <p className="practice-foot">
-        练习库共 {DRILLS.length} 条、{BLOCKS.length} 个块。练完记得回到「音阶游戏」看看主线进度——
-        练习和关卡是两条线，互相不替代。
+        练习和「音阶游戏」是两条线：这里练手，那里考音。两边都做，进度才完整。
       </p>
     </section>
   );

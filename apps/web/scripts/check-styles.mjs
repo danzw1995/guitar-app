@@ -263,6 +263,51 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 13. 六线谱：宽谱要能横向滚动，品数字号不能太小，弦线必须可见
+{
+  const scroll = narrowDecls(".tab-scroll");
+  const fret = narrowDecls(".tab-fret");
+  const string = narrowDecls(".tab-string");
+  const size = px(fret.get("font-size"));
+  expect(
+    ".tab-scroll 横向滚动（跨把位的谱子会超出屏宽）",
+    scroll.get("overflow-x") === "auto",
+    `overflow-x = ${scroll.get("overflow-x") ?? "未设置"}`,
+  );
+  expect(
+    ".tab-fret 字号 ≥ 12px（品数字要看得清）",
+    size !== null && size >= 12,
+    `font-size = ${fret.get("font-size") ?? "未设置"}`,
+  );
+  expect(
+    ".tab-string 有描边色（弦线不能透明）",
+    (string.get("stroke") ?? "") !== "",
+    `stroke = ${string.get("stroke") ?? "未设置"}`,
+  );
+}
+
+// 14. 阶段条：六个阶段的按钮要够大、能横向滚动
+{
+  const btn = narrowDecls(".stage-btn");
+  const track = narrowDecls(".stage-track");
+  const height = px(btn.get("min-height"));
+  expect(
+    ".stage-btn 最小高度 ≥ 44px",
+    height !== null && height >= 44,
+    `min-height = ${btn.get("min-height") ?? "未设置"}`,
+  );
+  expect(
+    ".stage-track 横向滚动（六个阶段放不下一行）",
+    track.get("overflow-x") === "auto",
+    `overflow-x = ${track.get("overflow-x") ?? "未设置"}`,
+  );
+  expect(
+    ".stage-btn.on 有选中样式",
+    (narrowDecls(".stage-btn.on").get("border-color") ?? "") !== "",
+    "选中态没有视觉区别",
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

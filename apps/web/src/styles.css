@@ -1018,7 +1018,7 @@ button, select, input { font: inherit; color: inherit; }
   flex: 1 1 160px;
   min-width: 140px;
 }
-.pb-title h3 {
+.pb-title h4 {
   margin: 0;
   font-size: 14px;
 }
@@ -1112,6 +1112,186 @@ button, select, input { font: inherit; color: inherit; }
   margin: 14px 0 0;
   color: var(--muted);
   font-size: 12px;
+}
+
+/* 阶段条：六个阶段一眼看全，当前的高亮 */
+.stage-track {
+  display: flex;
+  gap: 6px;
+  list-style: none;
+  margin: 12px 0 10px;
+  padding: 0;
+  overflow-x: auto;
+}
+.stage-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 88px;
+  padding: 8px 10px;
+  min-height: 56px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+}
+.stage-btn.on {
+  border-color: var(--accent);
+  background: rgba(232, 176, 75, 0.12);
+  color: var(--text);
+}
+.stage-no {
+  font-size: 11px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.stage-name {
+  font-size: 13px;
+}
+.stage-info {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  background: var(--panel-2);
+}
+.stage-focus {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.stage-new {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.stage-new li {
+  font-size: 11px;
+  color: var(--text);
+  background: #0d1117;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.stage-meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.stage-meta b {
+  color: var(--text);
+}
+.practice-h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin: 18px 0 6px;
+  font-size: 15px;
+}
+.practice-h3-hint {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* 本阶段的练习卡片 */
+.drill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.drill-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  padding: 10px 12px;
+}
+.drill-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.drill-head h4 {
+  margin: 0;
+  font-size: 13px;
+}
+.drill-block {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* 六线谱 */
+.tab {
+  margin: 8px 0 0;
+}
+.tab-scroll {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.tab-svg {
+  display: block;
+}
+.tab-string {
+  stroke: #3d444d;
+  stroke-width: 1;
+}
+.tab-string-name {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.tab-bar {
+  stroke: #4b535d;
+  stroke-width: 1.5;
+}
+.tab-count {
+  fill: var(--muted);
+  font-size: 10px;
+}
+.tab-fret {
+  fill: var(--text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.tab-fret.bend {
+  fill: var(--accent);
+  font-size: 11px;
+}
+.tab-tech {
+  fill: var(--accent);
+  font-size: 10px;
+}
+.tab-slur {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+.tab-arrow {
+  fill: var(--blue);
+  font-size: 12px;
+}
+.tab-cap {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.tab-range {
+  color: var(--accent);
+  font-size: 11px;
+  white-space: nowrap;
 }
 .practice-metronome {
   margin: 0 0 14px;

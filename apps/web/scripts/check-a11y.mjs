@@ -175,6 +175,15 @@ check("练习页：进度条语义、计时器与按钮状态", () => {
   expect(read("src/lib/storage.ts"), ["guitar.practice.v1", "isValidDateKey"], "storage.ts");
 });
 
+check("六线谱：整张谱对读屏是一句话，练习页真的挂了谱子", () => {
+  const tab = read("src/components/TabDiagram.tsx");
+  expect(tab, ['role="img"', "aria-label={`", "<figcaption", "tab-string"], "TabDiagram.tsx");
+
+  const practice = read("src/pages/Practice.tsx");
+  expect(practice, ["<TabDiagram", "<TabDiagram tab={drill.tab} />"], "Practice.tsx");
+  expect(practice, ['aria-label="练习阶段"', "aria-current"], "Practice.tsx");
+});
+
 check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {
   const css = read("src/styles.css");
   expect(css, [".skip-link:focus-visible", "prefers-reduced-motion"], "styles.css");
