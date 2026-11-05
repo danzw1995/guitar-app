@@ -34,6 +34,16 @@ for (const tool of registered) {
   assert.ok(tool.description.length > 10, `${tool.name} 缺少描述`);
   assert.equal(tool.parameters.type, "object", `${tool.name} 的 parameters 必须是 object 根`);
   assert.ok(tool.parameters.properties, `${tool.name} 缺少 properties`);
+  // `required` 只属于对象层。留在属性 schema 里不是合法 JSON Schema，
+  // 注册阶段查不出来，但上游会拒掉整个请求（一个工具不合格，这轮所有工具都发不出去）。
+  for (const [key, spec] of Object.entries(tool.parameters.properties)) {
+    assert.equal(
+      "required" in spec,
+      false,
+      `${tool.name}.${key} 的属性 schema 里不能有 required`,
+    );
+    assert.ok(spec.type, `${tool.name}.${key} 缺少 type`);
+  }
 }
 
 const scaleTool = registered.find((d) => d.name === "guitar_scale");

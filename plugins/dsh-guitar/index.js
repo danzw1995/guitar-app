@@ -17,17 +17,31 @@ const NS = "guitar-lab";
 
 const textBlocks = (_args, value) => [{ type: "text", text: String(value?.text ?? "") }];
 
-/** 按 `ctx.tools.register` 的契约拼一个工具定义。 */
+/**
+ * 按 `ctx.tools.register` 的契约拼一个工具定义。
+ *
+ * `required` 是**对象层**的关键字，只能是字符串数组。早期版本把它留在了属性
+ * schema 里（`{ type: "string", required: true }`），那不是合法 JSON Schema：
+ * 注册阶段查不出来，但上游会直接以
+ * `Invalid request: tool function parameter schema is invalid` 拒掉整个请求
+ * （一个工具不合格，这一轮所有工具都发不出去）。所以这里必须把它摘出来。
+ */
 export function makeTool({ name, description, parameters, run }) {
+  const properties = {};
+  const required = [];
+  for (const [key, spec] of Object.entries(parameters)) {
+    const { required: isRequired, ...schema } = spec;
+    properties[key] = schema;
+    if (isRequired === true) required.push(key);
+  }
   return {
     name,
     description,
     parameters: {
       type: "object",
-      properties: parameters,
-      required: Object.entries(parameters)
-        .filter(([, spec]) => spec.required === true)
-        .map(([key]) => key),
+      properties,
+      // 没有必填项时就不发空数组，免得再踩校验器的边界
+      ...(required.length > 0 ? { required } : {}),
     },
     output: {
       schema: { type: "object", properties: { text: { type: "string" } } },
