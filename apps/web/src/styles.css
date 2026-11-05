@@ -780,6 +780,134 @@ button, select, input { font: inherit; color: inherit; }
 .lesson-practice {
   margin-top: 10px;
 }
+
+/* 节奏格：一拍一格，重音在左边，扫弦箭头在下面 */
+.rhythm-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: #0d1117;
+  border: 1px solid var(--line);
+  overflow-x: auto;
+}
+.rhythm-slot {
+  flex: 1 1 0;
+  min-width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: var(--panel-2);
+  transition: background 120ms ease, transform 120ms ease;
+}
+.rhythm-slot.on-beat {
+  background: #21262d;
+}
+.rhythm-slot.accent {
+  border-color: rgba(232, 176, 75, 0.45);
+  background: rgba(232, 176, 75, 0.12);
+}
+.rhythm-slot.active {
+  background: rgba(232, 176, 75, 0.35);
+  transform: translateY(-2px);
+}
+.rhythm-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.rhythm-slot.accent .rhythm-label {
+  color: var(--accent);
+  font-weight: 600;
+}
+.rhythm-arrow {
+  font-size: 15px;
+  line-height: 1;
+  min-height: 16px;
+}
+.rhythm-arrow.empty {
+  visibility: hidden;
+}
+
+/* 节拍器 */
+.metronome {
+  margin: 10px 0 4px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.metro-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
+  margin-bottom: 10px;
+}
+.metro-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2b323c;
+  transition: transform 80ms ease, background 80ms ease;
+}
+.metro-dot.sub {
+  width: 8px;
+  height: 8px;
+  opacity: 0.7;
+}
+.metro-dot.accent {
+  background: rgba(232, 176, 75, 0.45);
+}
+.metro-dot.on {
+  background: var(--accent);
+  transform: scale(1.45);
+}
+.metro-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.metro-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.metro-field input[type="range"] {
+  width: 130px;
+  accent-color: var(--accent);
+}
+.metro-bpm {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  min-width: 30px;
+}
+.metro-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.metro-status {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.lesson[id] {
+  scroll-margin-top: 16px;
+}
 .lesson-cta {
   margin: 4px 0 0;
   color: var(--muted);

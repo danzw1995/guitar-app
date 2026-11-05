@@ -5,9 +5,13 @@ import {
   CIRCLE,
   INTERVALS,
   KEY_BY_ID,
+  NOTE_VALUES,
   SCALE_BY_ID,
+  STRUM_PATTERNS,
+  SUBDIVISION_LABEL,
   chordInfo,
   circleKey,
+  countLine,
   degreesOfKey,
   fingeringOf,
   intervalOf,
@@ -15,7 +19,9 @@ import {
   scaleNames,
   scalePcs,
   stackThirds,
+  strumPatternById,
   type ChordQuality,
+  type Subdivision,
 } from "@guitar/core";
 import PianoStrip from "../components/PianoStrip";
 import StringStrip from "../components/StringStrip";
@@ -23,6 +29,8 @@ import ScaleMap from "../components/ScaleMap";
 import CagedBoard from "../components/CagedBoard";
 import TheoryGame from "../components/TheoryGame";
 import ChordDiagram from "../components/ChordDiagram";
+import RhythmStrip from "../components/RhythmStrip";
+import Metronome from "../components/Metronome";
 
 const C_MAJOR = scalePcs(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
 const C_MAJOR_NAMES = scaleNames(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
@@ -62,6 +70,14 @@ const SEVENTHS = [
   { id: "minor7" as ChordQuality, label: "小七", suffix: "m7", mood: "柔和、偏暗，爵士与流行都常用" },
 ];
 
+/** 时值在表格里的说法：半拍、1/4 拍、1/3 拍…… */
+function beatsLabel(beats: number): string {
+  if (beats === 0.5) return "半拍";
+  if (beats === 0.25) return "1/4 拍";
+  if (Math.abs(beats - 1 / 3) < 1e-9) return "1/3 拍";
+  return `${beats} 拍`;
+}
+
 /**
  * 乐理入门：一条从「音」走到「CAGED」的路径。
  *
@@ -74,6 +90,8 @@ export default function Theory() {
   const [cagedChord, setCagedChord] = useState("C");
   const [seventhId, setSeventhId] = useState<ChordQuality>("major7");
   const [circleId, setCircleId] = useState("C");
+  const [subdivision, setSubdivision] = useState<Subdivision>(1);
+  const [strumId, setStrumId] = useState("folk");
 
   const circle = circleKey(circleId);
   const circleKeyDef = KEY_BY_ID.get(circleId);
@@ -106,14 +124,16 @@ export default function Theory() {
     [info],
   );
   const degrees = useMemo(() => degreesOfKey("C"), []);
+  const strum = strumPatternById(strumId) ?? STRUM_PATTERNS[0];
 
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>乐理入门</h2>
         <p>
-          从「一个音」走到「指板规律」。每节都是：一句话 → 钢琴上看 → 吉他上看。
-          看不懂名词没关系，先看图——读完可以到页面底部的
+          从「一个音」走到「节奏」：前十节讲音高与音和音的关系，第 11 节讲调号从哪来，
+          第 12 节讲「一个音要待多久」——音高加时值才是音乐。每节都是：一句话 → 钢琴上看 →
+          吉他上看。看不懂名词没关系，先看图——读完可以到页面底部的
           <a className="inline-link" href="#theory-game">
             「乐理挑战」
           </a>
@@ -140,6 +160,9 @@ export default function Theory() {
             在吉他上：同一根弦每往右一格（一品），音就升高一个半音；数到第 12 品，音名回到起点（高八度）。
           </p>
         </div>
+        <p className="lesson-cap">
+          音有高低，也有长短——长短那套东西叫「时值」，在<a className="inline-link" href="#lesson-12">第 12 节</a>。
+        </p>
       </section>
 
       {/* ---------- 2. 半音 / 全音 ---------- */}
@@ -674,6 +697,139 @@ export default function Theory() {
           为什么 G 大调要升 F？大调公式要求第 6 级到第 7 级是<b>全音</b>，
           从 G 往上数 E 到 F 只有半音，把 F 升成 F# 才凑够全音。五度圈就是
           「哪些音要升、要升几个」的一张总表：升号调的升序永远是 <b>F C G D A E B</b>。
+        </p>
+      </section>
+
+      {/* ---------- 12. 时值 ---------- */}
+      <section className="lesson" id="lesson-12">
+        <h3>
+          <span className="lesson-no">12</span>时值：一个音要待多久
+        </h3>
+        <p className="lesson-lead">
+          前面十一节都在讲「哪个音」，这一节讲「这个音待多久」。同样一个 C，
+          弹四拍是长音，弹半拍是过门——<b>音高决定它是什么音，时值决定它像不像一首歌</b>。
+          4/4 拍里以四分音符为一拍，一小节四拍；所有音符都是在这一小节里「分蛋糕」。
+        </p>
+        <div className="lesson-table-wrap">
+          <table className="theory-table">
+            <thead>
+              <tr>
+                <th>音符</th>
+                <th>占几拍</th>
+                <th>手上怎么动</th>
+              </tr>
+            </thead>
+            <tbody>
+              {NOTE_VALUES.map((value) => (
+                <tr key={value.id}>
+                  <td>{value.label}</td>
+                  <td className="muted">{beatsLabel(value.beats)}</td>
+                  <td className="muted">{value.hint}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h4 className="lesson-sub">一拍里动几下：把时值摊开看</h4>
+        <div className="lesson-buttons">
+          {([1, 2, 3, 4] as Subdivision[]).map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={value === subdivision ? "chip on" : "chip"}
+              onClick={() => setSubdivision(value)}
+            >
+              每拍 {SUBDIVISION_LABEL[value]}
+            </button>
+          ))}
+        </div>
+        <div className="lesson-figure">
+          <RhythmStrip meterId="4/4" subdivision={subdivision} />
+          <p className="lesson-cap">
+            数拍：{countLine("4/4", subdivision)}——嘴里念的数，要和手上落的音对上
+          </p>
+        </div>
+
+        <h4 className="lesson-sub">节拍器：节奏只能跟出来，不能想出来</h4>
+        <p className="lesson-lead">
+          下面这个是现场合成的（没有任何音频文件），所以它能任意变速、任意切分。
+          先只跟着听、跟着数，不弹；稳了再一拍弹一下，最后才加细分。
+        </p>
+        <Metronome />
+
+        <h4 className="lesson-sub">附点与三连音：一拍为什么能变成 1.5 份或 3 份</h4>
+        <p className="lesson-lead">
+          附点 = 原来的时值再加一半，所以附点四分是 1.5 拍；八分三连音是把一拍
+          <b>平均三等分</b>，三个正好一拍。三连音不是「弹快点」，是「三等分」——
+          这两者听起来完全不同。
+        </p>
+        <div className="lesson-figure">
+          <RhythmStrip meterId="4/4" subdivision={3} />
+          <p className="lesson-cap">三连音：{countLine("4/4", 3)}，每拍平均三下</p>
+        </div>
+
+        <h4 className="lesson-sub">拍号：分子是每小节几拍，分母是以什么音符为一拍</h4>
+        <div className="lesson-table-wrap">
+          <table className="theory-table">
+            <thead>
+              <tr>
+                <th>拍号</th>
+                <th>怎么数</th>
+                <th>听感</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>4/4</td>
+                <td className="muted">1 2 3 4（强 弱 次强 弱）</td>
+                <td className="muted">最常用：流行、摇滚、民谣</td>
+              </tr>
+              <tr>
+                <td>3/4</td>
+                <td className="muted">1 2 3（强 弱 弱）</td>
+                <td className="muted">圆舞曲，「嘭 恰 恰」</td>
+              </tr>
+              <tr>
+                <td>2/4</td>
+                <td className="muted">1 2（强 弱）</td>
+                <td className="muted">进行曲，短促有力</td>
+              </tr>
+              <tr>
+                <td>6/8</td>
+                <td className="muted">1 2 3 4 5 6，但听成两个大拍（1 和 4 重）</td>
+                <td className="muted">复拍子，每个大拍三下，像慢速的三连音</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4 className="lesson-sub">落到吉他上：扫弦型 = 时值 + 方向</h4>
+        <p className="lesson-lead">
+          八分音符的一拍是「下上」，真正常用的节奏型会空掉几下一一空拍时手照样挥，
+          只是不碰弦。手不停、弦少响，节奏才不断。
+        </p>
+        <div className="lesson-buttons">
+          {STRUM_PATTERNS.map((pattern) => (
+            <button
+              key={pattern.id}
+              type="button"
+              className={pattern.id === strum.id ? "chip on" : "chip"}
+              onClick={() => setStrumId(pattern.id)}
+            >
+              {pattern.name}
+            </button>
+          ))}
+        </div>
+        <div className="lesson-figure">
+          <RhythmStrip meterId={strum.meterId} subdivision={2} arrows={strum.slots} />
+          <p className="lesson-cap">
+            {strum.name}：{strum.hint}
+          </p>
+        </div>
+        <p className="lesson-note">
+          练节奏最容易犯的错是<b>一卡就加速</b>。把节拍器降到 60，慢到能听见每一拍，
+          稳了再加 5——稳不下来的速度就不是你的速度。
         </p>
       </section>
 

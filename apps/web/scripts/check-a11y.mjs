@@ -125,6 +125,32 @@ check("乐理：示意图对读屏有说明、练习弹层有 dialog 语义", ()
   );
 });
 
+check("节奏：格子对读屏有整小节说明，节拍器的每个控件都有标签", () => {
+  const strip = read("src/components/RhythmStrip.tsx");
+  expect(strip, ['role="img"', "aria-label={`", 'aria-hidden="true"'], "RhythmStrip.tsx");
+
+  const metro = read("src/components/Metronome.tsx");
+  expect(
+    metro,
+    [
+      'role="status"',
+      'aria-label="速度（每分钟拍数）"',
+      'aria-label="拍号"',
+      'aria-label="每拍几下"',
+      'type="range"',
+    ],
+    "Metronome.tsx",
+  );
+  // 拍点是纯装饰：不能让读屏每秒念一次
+  const dots = metro.slice(metro.indexOf('className="metro-dots"'));
+  if (!dots.slice(0, 120).includes('aria-hidden="true"')) {
+    throw new Error("节拍点闪烁属于装饰，应 aria-hidden");
+  }
+  if (!metro.includes("window.clearInterval")) {
+    throw new Error("停止时要清掉排程定时器，否则后台一直在响");
+  }
+});
+
 check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {
   const css = read("src/styles.css");
   expect(css, [".skip-link:focus-visible", "prefers-reduced-motion"], "styles.css");

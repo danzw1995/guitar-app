@@ -186,6 +186,51 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 9. 节奏格：十六分音符一小节 16 格，窄屏必须能横向滚动，格子不能被压成一条线
+{
+  const strip = narrowDecls(".rhythm-strip");
+  const slot = narrowDecls(".rhythm-slot");
+  const minWidth = px(slot.get("min-width"));
+  expect(
+    ".rhythm-strip 横向滚动（16 分音符一小节 16 格，窄屏放不下）",
+    strip.get("overflow-x") === "auto",
+    `overflow-x = ${strip.get("overflow-x") ?? "未设置"}`,
+  );
+  expect(
+    ".rhythm-slot 最小宽度 ≥ 32px（数拍词 + 扫弦箭头要放得下）",
+    minWidth !== null && minWidth >= 32,
+    `min-width = ${slot.get("min-width") ?? "未设置"}`,
+  );
+}
+
+// 10. 节拍器的拍点要看得出来：非零尺寸 + 圆形 + 有「正在响」的状态样式
+{
+  const dot = narrowDecls(".metro-dot");
+  const w = px(dot.get("width"));
+  const on = narrowDecls(".metro-dot.on");
+  expect(
+    ".metro-dot 是可见的圆点（≥ 8px）",
+    w !== null && w >= 8 && dot.get("border-radius") === "50%",
+    `width = ${dot.get("width")}, border-radius = ${dot.get("border-radius")}`,
+  );
+  expect(
+    ".metro-dot.on 有高亮状态（否则节拍器没有视觉反馈）",
+    (on.get("background") ?? "") !== "",
+    `background = ${on.get("background") ?? "未设置"}`,
+  );
+}
+
+// 11. 乐理课时数：12 节（第 12 节是时值）
+{
+  const theory = readFileSync(new URL("../src/pages/Theory.tsx", import.meta.url), "utf8");
+  const lessonNos = [...theory.matchAll(/className="lesson-no">(\d+)</g)].map((m) => Number(m[1]));
+  expect(
+    "乐理页有 12 节课，编号连续",
+    lessonNos.length === 12 && lessonNos.every((n, i) => n === i + 1),
+    `找到的编号：${lessonNos.join(", ") || "无"}`,
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
