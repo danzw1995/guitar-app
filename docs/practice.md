@@ -105,6 +105,8 @@ S5 应用块最大。
 
 ### 5.2 技巧库
 
+> ✅ 已实现（v0.9.0）：`packages/core/src/techniques.ts` + 练习页下半部分。
+
 - 14 张卡（左 7 / 右 7）：击弦、勾弦、滑音、推弦、揉弦、制音（左手）、换把；
   交替拨弦、经济拨弦、分解和弦、扫弦、闷音（右手）、拨片角度、跨弦。
 - 每张卡固定四段：**是什么 / 要领 / 常见错误 / 练法（分 3 步，带 BPM 区间）/ 验收**。
@@ -112,6 +114,8 @@ S5 应用块最大。
   `guitar_technique` 工具）。
 
 ### 5.3 练习计划引擎 + 练习页
+
+> ✅ 已实现（v0.9.0）：`practice.ts`（阶段 / 31 条练习 / `buildSession`）+ `pages/Practice.tsx`。
 
 - `packages/core/src/practice.ts`：`STAGES`、`DRILLS`、`buildSession({ minutes, stage, focus, date })`
   → 一份按时长切好的块列表（每块带 drill、分钟数、验收标准）。
@@ -179,8 +183,8 @@ export interface Session { date: string; minutes: number; stage: number; goal: s
 | 期 | 内容 | 为什么这个顺序 |
 |---|---|---|
 | P1（v0.8.0）✅ | `rhythm.ts` + 节拍器 + 第 12 课时值 | 节奏是四类里唯一"没有音频就没法练"的，先把工具做出来；也把原 v0.9.0 的音频提前一小块 |
-| P2（v0.9.0） | `practice.ts` + 练习页（计划 / 计时 / 打卡 / 自评 / 周报） | 有了节拍器，练习块才有"开始"按钮可接 |
-| P3 | `techniques.ts` + 技巧库页 + 与 drill 互链 | 内容是独立的，晚做不影响 P1/P2 |
+| P2（v0.9.0）✅ | `practice.ts` + 练习页（计划 / 计时 / 打卡 / 自评 / 周报） | 有了节拍器，练习块才有"开始"按钮可接 |
+| P3 ✅ | `techniques.ts` + 技巧库页 + 与 drill 互链 | 内容是独立的，晚做不影响 P1/P2 |
 | P4 | 弱点微练习（§7）、录音回听（`MediaRecorder`） | 依赖尝试数据的存储改造 |
 
 **壳（Tauri / Capacitor）从 v0.8.0 撤下**：工具链装不齐，占着版本号只会让路线图发虚，
