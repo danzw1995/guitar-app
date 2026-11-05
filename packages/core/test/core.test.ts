@@ -87,6 +87,20 @@ import {
   noteValueById,
   stepMs,
   strumPatternById,
+  BLOCKS,
+  DRILLS,
+  SESSION_MINUTES,
+  STAGES,
+  TECHNIQUES,
+  allocateMinutes,
+  buildSession,
+  drillById,
+  drillsFor,
+  practiceStats,
+  recordBlock,
+  stageForCompleted,
+  techniqueById,
+  techniquesOf,
 } from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
 
@@ -1098,4 +1112,186 @@ test("扫弦型：箭头落在八分格子上，长度跟着拍号", () => {
   assert.deepEqual(eighth.slots, ["D", "U", "D", "U", "D", "U", "D", "U"]);
   assert.equal(eighth.slots.length, countLine("4/4", 2).split(" ").length);
 });
+
+test("练习库：每个阶段的每一块都有练习，每条练习都能验收", () => {
+  assert.equal(STAGES.length, 6, "S0–S5");
+  assert.deepEqual(
+    STAGES.map((stage) => stage.id),
+    [0, 1, 2, 3, 4, 5],
+  );
+
+  // id 不重复
+  const ids = DRILLS.map((drill) => drill.id);
+  assert.equal(new Set(ids).size, ids.length, "drill id 不能重复");
+
+  for (const drill of DRILLS) {
+    assert.ok(drill.name.length > 2, `${drill.id} 缺名字`);
+    assert.ok(drill.stages.length > 0, `${drill.id} 必须属于至少一个阶段`);
+    assert.ok(
+      drill.stages.every((stage) => stage >= 0 && stage <= 5),
+      `${drill.id} 的阶段越界`,
+    );
+    assert.ok(drill.steps.length >= 2, `${drill.id} 的练法至少两步`);
+    assert.ok(drill.mistake.length > 4, `${drill.id} 要写常见错误`);
+    assert.ok(drill.pass.length > 4, `${drill.id} 要写验收标准`);
+    if (drill.bpm) assert.ok(drill.bpm[0] <= drill.bpm[1], `${drill.id} 的 BPM 区间反了`);
+  }
+
+  // 每一块（曲目块只给 S4/S5）都必须有可选练习，否则 buildSession 会拿到 undefined
+  for (const stage of STAGES.map((item) => item.id)) {
+    for (const block of BLOCKS) {
+      if (block.id === "song" && stage < 4) continue;
+      assert.ok(
+        drillsFor(stage, block.id).length > 0,
+        `S${stage} 的「${block.label}」没有练习`,
+      );
+    }
+  }
+
+  // 技巧库指向的练习必须存在
+  for (const technique of TECHNIQUES) {
+    if (!technique.drillId) continue;
+    assert.ok(drillById(technique.drillId), `${technique.name} 指向了不存在的练习`);
+  }
+});
+
+test("时间分配：加起来必须正好是总时长", () => {
+  // 最大余数法：不能多给一分钟，也不能少给
+  const weights = [0.12, 0.38, 0.18, 0.15, 0.17];
+  for (const total of SESSION_MINUTES) {
+    const alloc = allocateMinutes(total, weights);
+    assert.equal(
+      alloc.reduce((a, b) => a + b, 0),
+      total,
+      `${total} 分钟分配后不相等`,
+    );
+    assert.ok(alloc.every((value) => value >= 1), "每块至少 1 分钟");
+  }
+
+  // 极端情况也不能崩
+  assert.deepEqual(allocateMinutes(0, weights), [0, 0, 0, 0, 0]);
+  assert.deepEqual(allocateMinutes(10, [0, 0]), [0, 0]);
+  const tiny = allocateMinutes(3, [0.2, 0.2, 0.2, 0.2, 0.2]);
+  assert.equal(tiny.reduce((a, b) => a + b, 0), 3);
+});
+
+test("每日计划：时长、顺序、可复现与阶段差异", () => {
+  const date = "2026-11-05";
+
+  for (const stage of [0, 1, 2, 3, 4, 5]) {
+    for (const minutes of SESSION_MINUTES) {
+      const session = buildSession({ minutes, stage, date });
+      assert.equal(session.minutes, minutes);
+      assert.equal(session.stage, stage);
+      assert.equal(
+        session.blocks.reduce((sum, block) => sum + block.minutes, 0),
+        minutes,
+        `S${stage} / ${minutes} 分钟的块加起来不对`,
+      );
+      // 顺序必须跟 BLOCKS 一致（热身在前，曲目在最后）
+      const order = session.blocks.map((block) =>
+        BLOCKS.findIndex((item) => item.id === block.block),
+      );
+      assert.deepEqual([...order].sort((a, b) => a - b), order, "块顺序乱了");
+      // 每块都必须是当前阶段的练习
+      for (const block of session.blocks) {
+        assert.ok(
+          block.drill.stages.includes(stage),
+          `${block.drill.id} 不属于 S${stage}`,
+        );
+        assert.ok(block.minutes >= 1);
+      }
+      assert.equal(session.goal, STAGES[stage].focus);
+    }
+  }
+
+  // 同一天生成两次，内容一样
+  const a = buildSession({ minutes: 60, stage: 3, date });
+  const b = buildSession({ minutes: 60, stage: 3, date });
+  assert.deepEqual(
+    a.blocks.map((block) => block.drill.id),
+    b.blocks.map((block) => block.drill.id),
+  );
+
+  // 曲目块：短时间不给，S5 的 120 分钟一定给
+  const short = buildSession({ minutes: 60, stage: 5, date });
+  assert.ok(!short.blocks.some((block) => block.block === "song"), "60 分钟不该有曲目块");
+  const long = buildSession({ minutes: 120, stage: 5, date });
+  assert.ok(long.blocks.some((block) => block.block === "song"), "120 分钟应该有曲目块");
+  const lowStage = buildSession({ minutes: 120, stage: 0, date });
+  assert.ok(!lowStage.blocks.some((block) => block.block === "song"), "S0 不排曲目块");
+
+  // 一周之内练习内容会轮换（否则每天一成不变）
+  const week = ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"].map((day) =>
+    buildSession({ minutes: 60, stage: 3, date: day })
+      .blocks.map((block) => block.drill.id)
+      .join(","),
+  );
+  assert.ok(new Set(week).size > 1, "每天的计划不能完全一样");
+});
+
+test("阶段推断：40 关五章映射到 S0–S4", () => {
+  assert.equal(stageForCompleted(0), 0);
+  assert.equal(stageForCompleted(7), 0);
+  assert.equal(stageForCompleted(8), 1, "第二章开始就是和弦阶段");
+  assert.equal(stageForCompleted(17), 1);
+  assert.equal(stageForCompleted(18), 2);
+  assert.equal(stageForCompleted(26), 3);
+  assert.equal(stageForCompleted(33), 4);
+  assert.equal(stageForCompleted(40), 4, "S5 只能手选");
+});
+
+test("练习记录：连续天数、本周分钟数与去重", () => {
+  let log = {};
+  assert.deepEqual(practiceStats(log, "2026-11-05"), {
+    streak: 0,
+    longest: 0,
+    todayMinutes: 0,
+    weekMinutes: [0, 0, 0, 0, 0, 0, 0],
+    weekTotal: 0,
+    totalMinutes: 0,
+    days: 0,
+  });
+
+  log = recordBlock(log, "2026-11-04", { drill: "w-crawl", minutes: 8, stage: 1 });
+  log = recordBlock(log, "2026-11-05", { drill: "w-crawl", minutes: 8, stage: 1 });
+  log = recordBlock(log, "2026-11-05", { drill: "c-two", minutes: 15, stage: 1 });
+  // 同一块记两次只算一次练习，但时间照样累加
+  log = recordBlock(log, "2026-11-05", { drill: "c-two", minutes: 5, stage: 1 });
+
+  assert.deepEqual(log["2026-11-05"].done, ["w-crawl", "c-two"]);
+  assert.equal(log["2026-11-05"].minutes, 28);
+
+  const stats = practiceStats(log, "2026-11-05");
+  assert.equal(stats.streak, 2);
+  assert.equal(stats.todayMinutes, 28);
+  assert.equal(stats.weekTotal, 36);
+  assert.equal(stats.days, 2);
+  assert.deepEqual(stats.weekMinutes, [0, 0, 0, 0, 0, 8, 28]);
+
+  // 昨天没练、前天练了 → 连续天数断掉
+  const gap = recordBlock({}, "2026-11-03", { drill: "w-crawl", minutes: 5, stage: 0 });
+  assert.equal(practiceStats(gap, "2026-11-05").streak, 0);
+});
+
+test("技巧库：左右手各 7 张，每张都有练法与验收", () => {
+  assert.equal(TECHNIQUES.length, 14);
+  assert.equal(techniquesOf("left").length, 7);
+  assert.equal(techniquesOf("right").length, 7);
+  assert.equal(new Set(TECHNIQUES.map((item) => item.id)).size, 14, "id 不能重复");
+
+  for (const technique of TECHNIQUES) {
+    assert.ok(technique.summary.length > 10, `${technique.name} 缺少说明`);
+    assert.ok(technique.keys.length >= 2, `${technique.name} 的要领太少`);
+    assert.ok(technique.how.length >= 2, `${technique.name} 的练法太少`);
+    assert.ok(technique.mistake.length > 4, `${technique.name} 缺少常见错误`);
+    assert.ok(technique.pass.length > 4, `${technique.name} 缺少验收`);
+    assert.ok(technique.stage >= 0 && technique.stage <= 5, `${technique.name} 阶段越界`);
+  }
+
+  assert.equal(techniqueById("hammer")?.hand, "left");
+  assert.equal(techniqueById("palm-mute")?.hand, "right");
+  assert.equal(techniqueById("不存在"), undefined);
+});
+
 
