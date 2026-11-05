@@ -434,6 +434,11 @@ button, select, input { font: inherit; color: inherit; }
   .stars-lg { font-size: 22px; }
   .toolbar select { max-width: 100%; }
   .toolbar { gap: 10px; }
+  /* 七个 Tab 在窄屏放不下：允许换行，别横向溢出 */
+  .tabs { flex-wrap: wrap; border-radius: 14px; }
+  .tab { padding: 8px 12px; }
+  /* 练习块在窄屏上把标题换到下一行，按钮和计时留在同一行 */
+  .pb-title { flex-basis: 100%; }
   /*
    * iOS Safari 在聚焦字号 < 16px 的表单控件时会自动放大页面，
    * 且不会自动缩回。这里统一到 16px（桌面端不受影响）。
@@ -907,6 +912,253 @@ button, select, input { font: inherit; color: inherit; }
 }
 .lesson[id] {
   scroll-margin-top: 16px;
+}
+
+/* ---------- 练习页 ---------- */
+.practice-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin: 14px 0 8px;
+}
+.practice-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.practice-field.grow {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+.practice-field select,
+.practice-field input {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: var(--text);
+  min-height: 40px; /* 点按目标 ≥ 40px */
+}
+.practice-note {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.practice-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.practice-summary b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.practice-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #0d1117;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.practice-progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 200ms ease;
+}
+.practice-list {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.practice-block {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  padding: 10px 12px;
+}
+.practice-block.done {
+  border-color: rgba(63, 185, 80, 0.35);
+  background: rgba(63, 185, 80, 0.06);
+}
+.practice-block.running {
+  border-color: rgba(232, 176, 75, 0.5);
+}
+.pb-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pb-index {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #0d1117;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.pb-title {
+  flex: 1 1 160px;
+  min-width: 140px;
+}
+.pb-title h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.pb-meta {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.pb-timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  min-width: 48px;
+  text-align: right;
+}
+.pb-more {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.pb-more summary {
+  cursor: pointer;
+  color: var(--blue);
+}
+.pb-steps {
+  margin: 6px 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+.pb-line {
+  margin: 6px 0 0;
+  line-height: 1.7;
+}
+.pb-line b {
+  color: var(--text);
+}
+.practice-feel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+.practice-feel-hint {
+  font-size: 12px;
+}
+.techniques {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.techniques h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+.technique-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.technique {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.technique summary {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+}
+.technique-stage {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tech-summary {
+  margin: 8px 0;
+  line-height: 1.7;
+}
+.tech-keys {
+  margin: 0 0 6px;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+.practice-foot {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.practice-metronome {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.practice-metronome summary {
+  cursor: pointer;
+  color: var(--blue);
+  margin-bottom: 6px;
+}
+
+/* 统计页：最近 7 天练了多少分钟（柱状） */
+.practice-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 4px 0 18px;
+}
+.practice-day {
+  position: relative;
+  height: 72px;
+  border-radius: 8px;
+  background: #0d1117;
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+}
+.practice-day-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 2px;
+  background: rgba(232, 176, 75, 0.32);
+}
+.practice-day-label {
+  position: relative;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.practice-day.done .practice-day-label {
+  color: var(--text);
 }
 .lesson-cta {
   margin: 4px 0 0;

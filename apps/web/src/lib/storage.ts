@@ -1,7 +1,9 @@
 import {
   fromLegacyBest,
+  isValidDateKey,
   parseProgress,
   type LevelProgress,
+  type PracticeLog,
   type ProgressMap,
   type SolfegeStyle,
   type SolfegeSystem,
@@ -12,6 +14,8 @@ export const PROGRESS_KEY = "guitar.progress.v1";
 export const SETTINGS_KEY = "guitar.settings.v1";
 /** 每日挑战记录：日期 -> 进度（复用同一套星级规则）。 */
 export const DAILY_KEY = "guitar.daily.v1";
+/** 练习记录：日期 -> 当天练了什么。 */
+export const PRACTICE_KEY = "guitar.practice.v1";
 /** v0.2.x 只存每关最佳时间，迁移时读一次。 */
 const LEGACY_BEST_PREFIX = "guitar.best.";
 
@@ -109,6 +113,45 @@ export function clearProgress(): void {
   } catch {
     // 忽略：清不掉时 refresh 后旧值会回来，但不影响当前会话。
   }
+}
+
+/**
+ * 练习记录。坏数据整个键丢掉而不是让页面崩——
+ * 练习历史比进度更容易被手改，宽容一点更安全。
+ */
+export function loadPractice(): PracticeLog {
+  const raw = readJson(PRACTICE_KEY);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+
+  const log: PracticeLog = {};
+  for (const [date, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isValidDateKey(date)) continue;
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const day = value as Record<string, unknown>;
+    const minutes = Number(day.minutes);
+    if (!Number.isFinite(minutes) || minutes < 0) continue;
+
+    const stage = Number(day.stage);
+    const bpmMax = Number(day.bpmMax);
+    log[date] = {
+      minutes: Math.round(minutes),
+      stage: Number.isInteger(stage) && stage >= 0 && stage <= 5 ? stage : 0,
+      done: Array.isArray(day.done)
+        ? day.done.filter((id): id is string => typeof id === "string")
+        : [],
+      feel:
+        day.feel === "steady" || day.feel === "ok" || day.feel === "shaky"
+          ? day.feel
+          : undefined,
+      goal: typeof day.goal === "string" ? day.goal : undefined,
+      bpmMax: Number.isFinite(bpmMax) && bpmMax > 0 ? bpmMax : undefined,
+    };
+  }
+  return log;
+}
+
+export function savePractice(log: PracticeLog): void {
+  writeJson(PRACTICE_KEY, log);
 }
 
 export function loadSettings(): Settings {

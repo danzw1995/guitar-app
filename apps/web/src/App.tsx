@@ -3,14 +3,16 @@ import Chords from "./pages/Chords";
 import Scales from "./pages/Scales";
 import Theory from "./pages/Theory";
 import Game from "./pages/Game";
+import Practice from "./pages/Practice";
 import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
 import OfflineBanner from "./components/OfflineBanner";
 import Onboarding from "./components/Onboarding";
 
-type Tab = "chords" | "scales" | "theory" | "game" | "stats" | "settings";
+type Tab = "chords" | "scales" | "theory" | "game" | "practice" | "stats" | "settings";
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: "practice", label: "练习" },
   { id: "chords", label: "和弦" },
   { id: "scales", label: "音阶" },
   { id: "theory", label: "乐理" },
@@ -60,6 +62,7 @@ export default function App() {
         {tab === "scales" && <Scales />}
         {tab === "theory" && <Theory />}
         {tab === "game" && <Game />}
+        {tab === "practice" && <Practice />}
         {tab === "stats" && <Stats />}
         {tab === "settings" && <Settings />}
       </main>

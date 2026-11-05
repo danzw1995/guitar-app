@@ -151,6 +151,30 @@ check("节奏：格子对读屏有整小节说明，节拍器的每个控件都�
   }
 });
 
+check("练习页：进度条语义、计时器与按钮状态", () => {
+  const src = read("src/pages/Practice.tsx");
+  expect(
+    src,
+    [
+      'role="progressbar"',
+      "aria-valuenow={doneCount}",
+      "aria-valuemax={session.blocks.length}",
+      'aria-label="今天能练多少分钟"',
+      'aria-label="练习阶段"',
+      'role="timer"',
+      "aria-pressed={running}",
+      "<details",
+      "<summary>",
+    ],
+    "Practice.tsx",
+  );
+  // 计时器每秒变化：不能设成礼貌播报，否则读屏会被刷屏
+  if (!src.includes('aria-live="off"')) {
+    throw new Error("计时器不应 aria-live 播报");
+  }
+  expect(read("src/lib/storage.ts"), ["guitar.practice.v1", "isValidDateKey"], "storage.ts");
+});
+
 check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {
   const css = read("src/styles.css");
   expect(css, [".skip-link:focus-visible", "prefers-reduced-motion"], "styles.css");

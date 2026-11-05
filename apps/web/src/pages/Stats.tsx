@@ -1,12 +1,13 @@
 import {
   dateKeyOf,
   lastNDays,
+  practiceStats,
   streakOf,
   summarizeProgress,
   THEORY_LEVEL_IDS,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
-import { loadDaily, loadProgress, type DailyMap } from "../lib/storage";
+import { loadDaily, loadPractice, loadProgress, type DailyMap } from "../lib/storage";
 import { fmt, fmtSpan } from "../lib/format";
 import Stars from "../components/Stars";
 
@@ -14,6 +15,7 @@ import Stars from "../components/Stars";
 export default function Stats() {
   const progress = loadProgress();
   const daily = loadDaily() as DailyMap;
+  const practice = practiceStats(loadPractice(), dateKeyOf(new Date()));
   const today = dateKeyOf(new Date());
 
   const summary = summarizeProgress(LEVEL_IDS, progress);
@@ -123,6 +125,41 @@ export default function Stats() {
             </div>
           );
         })}
+      </div>
+
+      <h3 className="stat-sub">练习（练习页的打卡）</h3>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <b>{practice.streak} 天</b>
+          <span>连续练习{practice.todayMinutes > 0 ? " · 今天已练" : " · 今天还没练"}</span>
+        </div>
+        <div className="stat-card">
+          <b>{practice.longest} 天</b>
+          <span>历史最长连续</span>
+        </div>
+        <div className="stat-card">
+          <b>{practice.weekTotal} 分钟</b>
+          <span>最近 7 天</span>
+        </div>
+        <div className="stat-card">
+          <b>{practice.totalMinutes} 分钟</b>
+          <span>累计练习</span>
+        </div>
+        <div className="stat-card">
+          <b>{practice.days}</b>
+          <span>练过的天数</span>
+        </div>
+      </div>
+      <div className="practice-week">
+        {practice.weekMinutes.map((minutes, index) => (
+          <div key={index} className={minutes > 0 ? "practice-day done" : "practice-day"}>
+            <span
+              className="practice-day-bar"
+              style={{ height: `${Math.min(100, (minutes / 120) * 100)}%` }}
+            />
+            <span className="practice-day-label">{minutes > 0 ? `${minutes}` : "—"}</span>
+          </div>
+        ))}
       </div>
 
       <h3 className="stat-sub">最近战绩</h3>

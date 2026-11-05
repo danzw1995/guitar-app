@@ -231,6 +231,38 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 12. 练习页：窄屏下七个 Tab 要能换行，计时器和控件不能被压扁
+{
+  const tabs = narrowDecls(".tabs");
+  expect(
+    ".tabs 窄屏换行（七个 Tab 一行放不下）",
+    tabs.get("flex-wrap") === "wrap",
+    `flex-wrap = ${tabs.get("flex-wrap") ?? "未设置"}`,
+  );
+
+  const field = narrowDecls(".practice-field select");
+  const minHeight = px(field.get("min-height"));
+  expect(
+    ".practice-field select 最小高度 ≥ 40px",
+    minHeight !== null && minHeight >= 40,
+    `min-height = ${field.get("min-height") ?? "未设置"}`,
+  );
+
+  const timer = narrowDecls(".pb-timer");
+  expect(
+    ".pb-timer 用等宽数字（计时跳秒时不左右抖）",
+    timer.get("font-variant-numeric") === "tabular-nums",
+    `font-variant-numeric = ${timer.get("font-variant-numeric") ?? "未设置"}`,
+  );
+
+  const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+  expect(
+    "练习页挂进了导航（TABS + 渲染）",
+    app.includes('{ id: "practice"') && app.includes("<Practice />"),
+    "App.tsx 里没找到 practice 标签或页面",
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
