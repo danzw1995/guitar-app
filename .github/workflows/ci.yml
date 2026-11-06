@@ -38,11 +38,12 @@ jobs:
       - name: Typecheck web
         run: pnpm --filter @guitar/web exec tsc --noEmit
 
-      - name: Style, PWA and accessibility checks
+      - name: Style, PWA, accessibility and tab checks
         run: |
           node apps/web/scripts/check-styles.mjs
           node apps/web/scripts/check-pwa.mjs
           node apps/web/scripts/check-a11y.mjs
+          node apps/web/scripts/check-tab.ts
 
       - name: Build web
         run: pnpm --filter @guitar/web build

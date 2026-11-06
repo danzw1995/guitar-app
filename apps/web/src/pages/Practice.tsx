@@ -264,20 +264,22 @@ export default function Practice() {
 
               <TabDiagram tab={drill.tab} />
 
-              <details className="pb-more">
-                <summary>怎么练 · 常见错误 · 验收</summary>
-                <ol className="pb-steps">
-                  {drill.steps.map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
-                <p className="pb-line">
-                  <b>常见错误</b>：{drill.mistake}
-                </p>
+              <div className="pb-side">
                 <p className="pb-line">
                   <b>验收</b>：{drill.pass}
                 </p>
-              </details>
+                <details className="pb-more">
+                  <summary>怎么练 · 常见错误</summary>
+                  <ol className="pb-steps">
+                    {drill.steps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                  <p className="pb-line">
+                    <b>常见错误</b>：{drill.mistake}
+                  </p>
+                </details>
+              </div>
             </li>
           );
         })}

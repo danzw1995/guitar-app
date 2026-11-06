@@ -177,7 +177,14 @@ check("练习页：进度条语义、计时器与按钮状态", () => {
 
 check("六线谱：整张谱对读屏是一句话，练习页真的挂了谱子", () => {
   const tab = read("src/components/TabDiagram.tsx");
-  expect(tab, ['role="img"', "aria-label={`", "<figcaption", "tab-string"], "TabDiagram.tsx");
+  expect(
+    tab,
+    ['role="img"', "aria-label={scene.ariaLabel}", "<figcaption", "layoutTab"],
+    "TabDiagram.tsx",
+  );
+
+  const layout = read("src/lib/tab-layout.ts");
+  expect(layout, ["ariaLabel", "六线谱", "tab-string"], "tab-layout.ts");
 
   const practice = read("src/pages/Practice.tsx");
   expect(practice, ["<TabDiagram", "<TabDiagram tab={drill.tab} />"], "Practice.tsx");

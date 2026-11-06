@@ -988,6 +988,32 @@ button, select, input { font: inherit; color: inherit; }
   background: var(--panel-2);
   padding: 10px 12px;
 }
+/* 计划卡：谱子占左边，练法在右边，宽屏不浪费一半空白 */
+.practice-list .practice-block {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(240px, 1fr);
+  gap: 8px 18px;
+  align-items: start;
+}
+.practice-list .practice-block .pb-head {
+  grid-column: 1 / -1;
+}
+.practice-list .practice-block .pb-more {
+  margin-top: 0;
+}
+.pb-side {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+@media (max-width: 720px) {
+  .practice-list .practice-block {
+    display: block;
+  }
+  .practice-list .practice-block .pb-more {
+    margin-top: 8px;
+  }
+}
 .practice-block.done {
   border-color: rgba(63, 185, 80, 0.35);
   background: rgba(63, 185, 80, 0.06);
@@ -1205,7 +1231,7 @@ button, select, input { font: inherit; color: inherit; }
 /* 本阶段的练习卡片 */
 .drill-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -1232,8 +1258,13 @@ button, select, input { font: inherit; color: inherit; }
 }
 
 /* 六线谱 */
+/* 六线谱：外面套一层更暗的「谱面」，和卡片区分开 */
 .tab {
   margin: 8px 0 0;
+  padding: 6px 10px 4px;
+  border-radius: 8px;
+  background: #0d1117;
+  border: 1px solid var(--line);
 }
 .tab-scroll {
   overflow-x: auto;
@@ -1262,6 +1293,11 @@ button, select, input { font: inherit; color: inherit; }
   fill: var(--text);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+  /* 用背景色把弦线「断开」，数字才像压在线上 */
+  paint-order: stroke;
+  stroke: #0d1117;
+  stroke-width: 4;
+  stroke-linejoin: round;
 }
 .tab-fret.bend {
   fill: var(--accent);
@@ -1270,6 +1306,9 @@ button, select, input { font: inherit; color: inherit; }
 .tab-tech {
   fill: var(--accent);
   font-size: 10px;
+  paint-order: stroke;
+  stroke: #0d1117;
+  stroke-width: 3;
 }
 .tab-slur {
   fill: none;
