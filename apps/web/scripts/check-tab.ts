@@ -8,7 +8,20 @@
  *   node apps/web/scripts/check-tab.ts
  */
 import { DRILLS } from "../../../packages/core/src/practice.ts";
+import {
+  RHYTHM_DRILLS,
+  SONG_SNIPPETS,
+  STRUM_LIBRARY,
+} from "../../../packages/core/src/rhythm-drills.ts";
 import { layoutTab } from "../src/lib/tab-layout.ts";
+
+/** 三处内容（综合练习、节奏专项、扫弦型、风格片段）用同一套排版检查。 */
+const ALL: { id: string; tab: Parameters<typeof layoutTab>[0] }[] = [
+  ...DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab })),
+  ...RHYTHM_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab })),
+  ...STRUM_LIBRARY.map((item) => ({ id: item.id, tab: item.tab })),
+  ...SONG_SNIPPETS.map((item) => ({ id: item.id, tab: item.tab })),
+];
 
 let failed = 0;
 const check = (label: string, fn: () => void) => {
@@ -22,7 +35,7 @@ const check = (label: string, fn: () => void) => {
 };
 
 check("每条练习都能排出非空谱面", () => {
-  for (const drill of DRILLS) {
+  for (const drill of ALL) {
     const scene = layoutTab(drill.tab);
     if (scene.width < 120) throw new Error(`${drill.id} 太窄：${scene.width}`);
     if (scene.els.length < 12) throw new Error(`${drill.id} 元素太少：${scene.els.length}`);
@@ -31,7 +44,7 @@ check("每条练习都能排出非空谱面", () => {
 });
 
 check("品数字不会叠在一起（同一行最小间距 ≥ 13px）", () => {
-  for (const drill of DRILLS) {
+  for (const drill of ALL) {
     const scene = layoutTab(drill.tab);
     const frets = scene.els.filter((el) => el.t === "text" && el.cls === "tab-fret");
     for (let i = 0; i < frets.length; i++) {
@@ -49,7 +62,7 @@ check("品数字不会叠在一起（同一行最小间距 ≥ 13px）", () => {
 });
 
 check("所有元素都在画布内", () => {
-  for (const drill of DRILLS) {
+  for (const drill of ALL) {
     const scene = layoutTab(drill.tab);
     for (const el of scene.els) {
       if (el.t === "text" && (el.x < 0 || el.x > scene.width || el.y < 0 || el.y > scene.height)) {
@@ -60,7 +73,7 @@ check("所有元素都在画布内", () => {
 });
 
 check("弦线止于最后一根小节线，右端不留毛边", () => {
-  for (const drill of DRILLS) {
+  for (const drill of ALL) {
     const scene = layoutTab(drill.tab);
     const lines = scene.els.filter((el) => el.t === "line" && el.cls === "tab-string");
     const bars = scene.els.filter((el) => el.t === "line" && el.cls === "tab-bar");
@@ -76,7 +89,7 @@ check("弦线止于最后一根小节线，右端不留毛边", () => {
 });
 
 check("第一个音不会贴着起始小节线", () => {
-  for (const drill of DRILLS) {
+  for (const drill of ALL) {
     const scene = layoutTab(drill.tab);
     const first = scene.els.find((el) => el.t === "text" && el.cls === "tab-fret");
     const bars = scene.els.filter((el) => el.t === "line" && el.cls === "tab-bar");

@@ -347,6 +347,28 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 17. 节奏专项：难度标签与数拍词
+{
+  const badge = narrowDecls(".level-badge");
+  expect(
+    ".level-badge 不折行（难度标签）",
+    badge.get("white-space") === "nowrap",
+    `white-space = ${badge.get("white-space") ?? "未设置"}`,
+  );
+  const count = narrowDecls(".rhythm-count b");
+  expect(
+    ".rhythm-count b 用等宽字体（数拍词要对齐）",
+    (count.get("font-family") ?? "").includes("monospace"),
+    `font-family = ${count.get("font-family") ?? "未设置"}`,
+  );
+  const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+  expect(
+    "节奏页挂进了导航",
+    app.includes('{ id: "rhythm"') && app.includes("<Rhythm />"),
+    "App.tsx 里没有 rhythm 标签或页面",
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

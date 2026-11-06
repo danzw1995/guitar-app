@@ -191,6 +191,16 @@ check("六线谱：整张谱对读屏是一句话，练习页真的挂了谱子"
   expect(practice, ['aria-label="练习阶段"', "aria-current"], "Practice.tsx");
 });
 
+check("节奏专项：难度筛选按钮有状态、谱子与数拍词可读", () => {
+  const src = read("src/pages/Rhythm.tsx");
+  expect(
+    src,
+    ["aria-pressed={level", "<TabDiagram", "<details", "<summary>", "LEVEL_LABEL"],
+    "Rhythm.tsx",
+  );
+  expect(read("src/App.tsx"), ['{ id: "rhythm"', "<Rhythm />"], "App.tsx");
+});
+
 check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {
   const css = read("src/styles.css");
   expect(css, [".skip-link:focus-visible", "prefers-reduced-motion"], "styles.css");
