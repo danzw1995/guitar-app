@@ -47,8 +47,8 @@ const MIN_BEAT = 48;
 /** 同一根弦上两个音的最小中心距。 */
 const GAP = 26;
 const BAR_OFFSET = 10;
-/** 符干长度。 */
-const STEM = 14;
+/** 弦线到符梁线的距离（符梁画在弦线下方）。 */
+const RHYTHM_GAP = 20;
 /** 两行谱之间的距离。 */
 const SYSTEM_GAP = 18;
 /** 一行最多多宽——超过就换行，不横滚。 */
@@ -65,7 +65,7 @@ export function layoutTab(tab: Tab): TabScene {
   const barsPerSystem = Math.max(1, beatsInSystem / beatsPerBar);
   const systemCount = Math.ceil(bars / barsPerSystem);
 
-  const systemHeight = TOP + 5 * STRING_GAP + 34;
+  const systemHeight = TOP + 5 * STRING_GAP + RHYTHM_GAP + 34;
   const xIn = (offset: number) => LEFT + PAD + offset * beatWidth;
   const yIn = (s: number, base: number) => base + TOP + (s - 1) * STRING_GAP;
 
@@ -128,21 +128,21 @@ export function layoutTab(tab: Tab): TabScene {
     // 这一行里的音
     const local = notes.filter((note) => note.beat >= firstBeat && note.beat < lastBeat);
     const onsets = groupOnsets(local);
+    const beamY = yIn(6, base) + RHYTHM_GAP;
 
     for (const onset of onsets) {
       const nx = xIn(onset.beat - firstBeat);
       const note = onset.note;
 
-      // 时值：从**这个音自己**往上拉符干
-      const anchor = Math.min(...onset.strings);
-      const stemTop = yIn(anchor, base) - STEM;
+      // 时值：符干**朝下**从音上拉出来（吉他谱的习惯），统一落到下面那条符梁线上
+      const top = Math.min(...onset.strings);
       if (note.dur < 2) {
         els.push({
           t: "line",
           x1: nx,
-          y1: stemTop,
+          y1: yIn(top, base) + 2,
           x2: nx,
-          y2: yIn(anchor, base) - 2,
+          y2: beamY,
           cls: "tab-stem",
         });
       }
@@ -152,7 +152,7 @@ export function layoutTab(tab: Tab): TabScene {
           els.push({
             t: "text",
             x: nx,
-            y: yIn(6, base) + 18,
+            y: yIn(6, base) + RHYTHM_GAP + 22,
             text: item.arrow === "D" ? "↓" : "↑",
             cls: "tab-arrow",
             anchor: "middle",
@@ -199,21 +199,21 @@ export function layoutTab(tab: Tab): TabScene {
       }
     }
 
-    // 符梁与符尾：同一拍内的八分/十六分连起来
+    // 符梁与符尾：同一拍内的八分/十六分连起来（符梁在弦线下方）
     for (const group of beamGroups(onsets, beatsPerBar)) {
       if (group.length < 2) {
         const only = group[0];
         if (only.note.dur < 1) {
-          const top = yIn(Math.min(...only.strings), base) - STEM;
+          const x = xIn(only.beat - firstBeat);
           els.push({
             t: "path",
-            d: `M ${xIn(only.beat - firstBeat)} ${top} q 7 1 6 8`,
+            d: `M ${x} ${beamY} q 7 -1 6 -8`,
             cls: "tab-flag",
           });
           if (only.note.dur <= 0.3) {
             els.push({
               t: "path",
-              d: `M ${xIn(only.beat - firstBeat)} ${top + 4} q 7 1 6 8`,
+              d: `M ${x} ${beamY - 4} q 7 -1 6 -8`,
               cls: "tab-flag",
             });
           }
@@ -221,13 +221,12 @@ export function layoutTab(tab: Tab): TabScene {
         continue;
       }
       const xs = group.map((onset) => xIn(onset.beat - firstBeat));
-      const tops = group.map((onset) => yIn(Math.min(...onset.strings), base) - STEM);
       els.push({
         t: "line",
         x1: xs[0],
-        y1: tops[0],
+        y1: beamY,
         x2: xs[xs.length - 1],
-        y2: tops[tops.length - 1],
+        y2: beamY,
         cls: "tab-beam",
       });
       const shortest = Math.min(...group.map((onset) => onset.note.dur));
@@ -235,9 +234,9 @@ export function layoutTab(tab: Tab): TabScene {
         els.push({
           t: "line",
           x1: xs[0],
-          y1: tops[0] - 4,
+          y1: beamY + 4,
           x2: xs[xs.length - 1],
-          y2: tops[tops.length - 1] - 4,
+          y2: beamY + 4,
           cls: "tab-beam",
         });
       }
@@ -245,7 +244,7 @@ export function layoutTab(tab: Tab): TabScene {
         els.push({
           t: "text",
           x: (xs[0] + xs[xs.length - 1]) / 2,
-          y: tops[0] + 14,
+          y: beamY + 14,
           text: "3",
           cls: "tab-count",
           anchor: "middle",
