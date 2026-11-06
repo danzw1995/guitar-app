@@ -308,6 +308,45 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 15. 顶部导航：七个 Tab 必须能换行，按钮不折字
+{
+  const tabs = narrowDecls(".tabs");
+  const tab = narrowDecls(".tab");
+  expect(
+    ".tabs 允许换行（七个 Tab 一行放不下时不要溢出）",
+    tabs.get("flex-wrap") === "wrap",
+    `flex-wrap = ${tabs.get("flex-wrap") ?? "未设置"}`,
+  );
+  expect(
+    ".tab 不折字（white-space: nowrap）",
+    tab.get("white-space") === "nowrap",
+    `white-space = ${tab.get("white-space") ?? "未设置"}`,
+  );
+}
+
+// 16. 节奏轨：符干、符梁、符头都要有颜色，不能不可见
+{
+  const stem = narrowDecls(".tab-stem");
+  const beam = narrowDecls(".tab-beam");
+  const head = narrowDecls(".tab-notehead");
+  const line = narrowDecls(".tab-rhythm-line");
+  expect(
+    ".tab-stem / .tab-beam 有描边色",
+    (stem.get("stroke") ?? "") !== "" && (beam.get("stroke") ?? "") !== "",
+    "符干或符梁没有描边色",
+  );
+  expect(
+    ".tab-notehead 有填充色",
+    (head.get("fill") ?? "") !== "",
+    `fill = ${head.get("fill") ?? "未设置"}`,
+  );
+  expect(
+    ".tab-rhythm-line 存在（时值轨的横线）",
+    (line.get("stroke") ?? "") !== "",
+    `stroke = ${line.get("stroke") ?? "未设置"}`,
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

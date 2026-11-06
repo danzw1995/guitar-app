@@ -43,6 +43,9 @@ export default function TabDiagram({ tab }: TabDiagramProps) {
             if (el.t === "path") {
               return <path key={index} d={el.d} className={el.cls} />;
             }
+            if (el.t === "circle") {
+              return <circle key={index} cx={el.cx} cy={el.cy} r={el.r} className={el.cls} />;
+            }
             return (
               <text
                 key={index}

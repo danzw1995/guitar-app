@@ -108,6 +108,61 @@ check("十六分音符的间距比四分音符大（看得出快慢）", () => {
   }
 });
 
+check("有节奏轨：符头、符干、符梁对得上时值", () => {
+  const quarter = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [
+      { s: 5, f: 3, beat: 0, dur: 1 },
+      { s: 5, f: 3, beat: 1, dur: 1 },
+    ],
+  });
+  const count = (scene: typeof quarter, cls: string) =>
+    scene.els.filter((el) => el.cls === cls).length;
+  if (count(quarter, "tab-rhythm-line") !== 1) throw new Error("缺少节奏轨横线");
+  if (count(quarter, "tab-notehead") !== 2) throw new Error("四分音符应有 2 个符头");
+  if (count(quarter, "tab-beam") !== 0) throw new Error("四分音符不该有符梁");
+
+  const eighths = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [
+      { s: 5, f: 3, beat: 0, dur: 0.5 },
+      { s: 5, f: 5, beat: 0.5, dur: 0.5 },
+      { s: 5, f: 3, beat: 1, dur: 0.5 },
+      { s: 5, f: 5, beat: 1.5, dur: 0.5 },
+    ],
+  });
+  if (count(eighths, "tab-beam") < 2) throw new Error("八分音符应该两两连符梁");
+
+  const sixteenths = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: Array.from({ length: 4 }, (_, i) => ({ s: 6, f: i, beat: i / 4, dur: 0.25 })),
+  });
+  if (count(sixteenths, "tab-beam") < 2) throw new Error("十六分音符应该有两条符梁");
+
+  // 单个八分（不在任何符梁组里）要有符尾，否则和四分音符长得一样
+  const lone = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [
+      { s: 5, f: 3, beat: 0, dur: 0.5 },
+      { s: 5, f: 5, beat: 2, dur: 1 },
+    ],
+  });
+  if (count(lone, "tab-flag") < 1) throw new Error("独立的八分音符缺少符尾");
+
+  // 二分音符：空心符头，不带符干
+  const half = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [{ s: 3, f: 7, beat: 0, dur: 2 }],
+  });
+  if (count(half, "tab-notehead open") !== 1) throw new Error("二分音符应是空心符头");
+  if (count(half, "tab-stem") !== 0) throw new Error("二分音符不该有符干");
+});
+
 if (failed > 0) {
   console.log(`\n${failed} 项未通过`);
   process.exit(1);
