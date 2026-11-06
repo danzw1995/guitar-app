@@ -1,7 +1,7 @@
 # 交接说明（Handoff）
 
 > 给下一个会话 / 新维护者：**先读这份**，再读 `architecture.md` 和 `roadmap.md`。
-> 当前版本：**v0.10.1**（真琴指板、唱名、和弦说明、每日挑战、统计、推算模式、全局设置、复制成绩、
+> 当前版本：**v0.11.0**（真琴指板、唱名、和弦说明、每日挑战、统计、推算模式、全局设置、复制成绩、
 > 累计时长、DSH 插件：面板 + 4 个 agent 工具、PWA：可安装 / 可离线、
 > **乐理入门十二节课：音 / 半音 / 12 平均律 / 大小调 / 音程 / 三度叠置 / 级数 / 指板规律 / CAGED /
 > 七和弦 / 五度圈 / 时值（含节奏格与节拍器）**、**乐理挑战 12 关（指板点亮答案，键盘可玩）**、
@@ -89,6 +89,23 @@ pnpm demo L01 # 终端打印一关
 4. **v1 游戏只填调内音**，不做全半音；判定默认宽松，严格拼写作为开关。
 5. 发版：SemVer + annotated tag + CHANGELOG，见 `versioning.md`。
 
+## 怎么"看"谱面（重要）
+
+沙箱里跑不了 `vite build`，但**本机有 Chrome**，可以用无头模式把组件真渲染成 PNG 再自己看。
+这几轮排版问题都是这么发现的（数字浮在线下、线穿字、小节线压住第 1 拍）。
+
+```powershell
+# 1) 写一个临时脚本，把 layoutTab 的结果拼成 HTML（<link> 真实 styles.css）
+node .tmp-preview/preview.ts
+# 2) 无头 Chrome 截图（需要 danger-full-access：Chrome 用命名管道，沙箱默认拒绝）
+& "C:\Program Files\Google\Chrome\Application\chrome.exe" --headless=new --disable-gpu `
+  --no-sandbox --hide-scrollbars --force-device-scale-factor=2 --window-size=900,780 `
+  --screenshot=".tmp-preview/shot.png" "file:///F:/program/workspace/guitar-app/.tmp-preview/preview.html"
+# 3) 用 read_image 看这张图
+```
+
+注意：`.tmp-preview/` 是临时目录，看完就删（不要提交）。
+
 ## 下一步
 
 1. **真机验收**：iOS / Android 各点一遍——七个 Tab 换行、练习页计时与打卡、节拍器在手机上够不够响。
@@ -106,6 +123,7 @@ pnpm demo L01 # 终端打印一关
 ## 版本状态
 
 ```
+v0.11.0 时值轨（符头/符干/符梁/符尾）、击勾滑字母改夹在数字中间、推弦 7↗9、导航换行
 v0.10.1 六线谱重排（居中/断线/小节偏移/严格上行）+ 排版静态检查
 v0.10.0 六线谱（tab.ts + TabDiagram）；练习库重写为 51 条、每条只属于一个阶段；阶段条与阶段说明
 v0.9.0  练习页（按分钟数生成计划）+ 技巧库 14 张卡 + 练习记录与统计；导航 7 个 Tab
