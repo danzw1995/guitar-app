@@ -66,9 +66,13 @@ function make(notes: TabNote[], opts: Partial<Tab> = {}): Tab {
   };
 }
 
+/** 直接给音符与拍位（节奏专项里手写各种时值用）。 */
+export function tabOf(notes: TabNote[], opts: Partial<Tab> = {}): Tab {
+  return make(notes, opts);
+}
+
 /** 一串音按等间隔排开（八分、十六分都靠它）。 */
-export function sequence(
-  positions: { s: number; f: number; tech?: Tech; bend?: number }[],
+export function sequence(  positions: { s: number; f: number; tech?: Tech; bend?: number }[],
   opts: { step?: number; start?: number; dur?: number } & Partial<Tab> = {},
 ): Tab {
   const step = opts.step ?? 0.5;

@@ -103,6 +103,9 @@ import {
   stageForCompleted,
   techniqueById,
   techniquesOf,
+  RHYTHM_DRILLS,
+  STRUM_LIBRARY,
+  SONG_SNIPPETS,
 } from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
 
@@ -1398,6 +1401,70 @@ test("技巧库：左右手各 7 张，每张都有练法与验收", () => {
   assert.equal(techniqueById("hammer")?.hand, "left");
   assert.equal(techniqueById("palm-mute")?.hand, "right");
   assert.equal(techniqueById("不存在"), undefined);
+});
+
+test("节奏专项：时值练习覆盖三连音、十六分与切换", () => {
+  assert.ok(RHYTHM_DRILLS.length >= 8, `时值练习太少：${RHYTHM_DRILLS.length}`);
+  assert.equal(
+    new Set(RHYTHM_DRILLS.map((drill) => drill.id)).size,
+    RHYTHM_DRILLS.length,
+    "id 不能重复",
+  );
+
+  for (const drill of RHYTHM_DRILLS) {
+    assert.ok(drill.level >= 1 && drill.level <= 5, `${drill.name} 难度越界`);
+    assert.ok(drill.bpm[0] < drill.bpm[1], `${drill.name} 的 BPM 区间不对`);
+    assert.ok(drill.count.length > 2, `${drill.name} 缺少数拍词`);
+    assert.ok(drill.tips.length >= 1, `${drill.name} 缺少练法`);
+    assert.ok(drill.pass.length > 4, `${drill.name} 缺少验收`);
+    assert.ok(drill.tab.notes.length > 0, `${drill.name} 没有谱子`);
+  }
+
+  // 三连音必须是一拍三等分
+  const triplet = RHYTHM_DRILLS.find((drill) => drill.id === "rt-triplet")!;
+  const gaps = triplet.tab.notes.slice(1).map((note, i) => note.beat - triplet.tab.notes[i].beat);
+  for (const gap of gaps) {
+    assert.ok(Math.abs(gap - 1 / 3) < 1e-6, `三连音间隔不是 1/3 拍：${gap}`);
+  }
+
+  // 十六分练习正好 16 个音，时值 1/4
+  const sixteenth = RHYTHM_DRILLS.find((drill) => drill.id === "rt-sixteenth")!;
+  assert.equal(sixteenth.tab.notes.length, 16);
+  assert.ok(sixteenth.tab.notes.every((note) => Math.abs(note.dur - 0.25) < 1e-9));
+
+  // 混合练习里至少出现三种时值
+  const mixed = RHYTHM_DRILLS.find((drill) => drill.id === "rt-mixed")!;
+  const durs = new Set(mixed.tab.notes.map((note) => Math.round(note.dur * 1000)));
+  assert.ok(durs.size >= 3, `混合练习只有 ${durs.size} 种时值`);
+});
+
+test("节奏专项：扫弦型与风格片段都有谱子", () => {
+  assert.ok(STRUM_LIBRARY.length >= 10, `扫弦型太少：${STRUM_LIBRARY.length}`);
+  for (const pattern of STRUM_LIBRARY) {
+    assert.ok(pattern.level >= 1 && pattern.level <= 5, `${pattern.name} 难度越界`);
+    assert.ok(pattern.count.length > 2, `${pattern.name} 缺少数拍词`);
+    assert.ok(pattern.tip.length > 4, `${pattern.name} 缺少提示`);
+    // 一维格子（不下分小节）长度必须正好填满一小节
+    const perBar = Math.round((pattern.beatsPerBar ?? 4) / pattern.step);
+    assert.equal(
+      pattern.slots.length,
+      perBar,
+      `${pattern.name} 的格子数 ${pattern.slots.length} 和一小节 ${perBar} 对不上`,
+    );
+    assert.ok(pattern.tab.notes.length > 0, `${pattern.name} 没有谱子`);
+    assert.ok(
+      pattern.tab.notes.some((note) => note.arrow),
+      `${pattern.name} 的谱子没有箭头`,
+    );
+  }
+
+  assert.ok(SONG_SNIPPETS.length >= 5, `风格片段太少：${SONG_SNIPPETS.length}`);
+  for (const snippet of SONG_SNIPPETS) {
+    assert.ok(snippet.chords.length > 0, `${snippet.name} 没写和弦`);
+    assert.ok(snippet.tip.length > 4, `${snippet.name} 缺少提示`);
+    assert.ok(snippet.tab.notes.length > 0, `${snippet.name} 没有谱子`);
+    assert.ok(snippet.bpm[0] < snippet.bpm[1]);
+  }
 });
 
 

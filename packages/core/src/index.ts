@@ -13,4 +13,5 @@ export * from "./degrees.ts";
 export * from "./caged.ts";
 export * from "./theory-game.ts";
 export * from "./practice.ts";
+export * from "./rhythm-drills.ts";
 export * from "./techniques.ts";
