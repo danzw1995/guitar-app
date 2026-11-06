@@ -150,14 +150,17 @@ export function scaleRun(opts: {
   const startMidi = midiOf(startString, startFret);
 
   const positions: { s: number; f: number }[] = [];
+  let lastMidi = -Infinity;
   let done = false;
   for (let s = startString; s >= 1 && !done; s--) {
     const firstFret = s === startString ? startFret : 0;
     for (let f = firstFret; f <= fretMax; f++) {
       const midi = midiOf(s, f);
-      if (midi < startMidi) continue;
+      // 音阶跑动必须**严格上行**：换弦后的空弦可能和上一个音同高，不能重复
+      if (midi <= lastMidi) continue;
       if (!pcs.includes(((midi % 12) + 12) % 12)) continue;
       positions.push({ s, f });
+      lastMidi = midi;
       if (midi > startMidi && ((midi % 12) + 12) % 12 === tonic) {
         done = true;
         break;

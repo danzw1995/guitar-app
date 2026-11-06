@@ -856,7 +856,7 @@ export const DRILLS: Drill[] = [
     ],
     mistake: "前两下清楚，后两下糊。把十六分拆成两组练。",
     pass: "100 BPM 十六分 2 分钟，间隔均匀",
-    tab: chromaticTab({ s: 5, from: 5, step: 0.25, bars: 2 }),
+    tab: chromaticTab({ s: 5, from: 5, step: 0.25, bars: 1 }),
   },
   {
     id: "s4-cross16",

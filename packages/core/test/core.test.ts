@@ -1238,6 +1238,29 @@ test("谱子生成器：音阶、和弦、扫弦型都对得上", () => {
   assert.equal(new Set(waltz.notes.map((note) => note.beat)).size, 6, "两小节六个拍位");
 });
 
+test("音阶谱必须严格上行：不能因为换弦空弦重复或回头", () => {
+  const am = scaleRun({
+    keyId: "Am",
+    scaleId: "minorPentatonic",
+    startString: 6,
+    startFret: 5,
+    fretMax: 8,
+    step: 0.5,
+  });
+  const mids = am.notes.map((note) => STANDARD_TUNING.strings[note.s - 1] + note.f);
+  assert.equal(mids.length, 6, "五声音阶一个八度是 6 个音（5 个音 + 回到主音）");
+  for (let i = 1; i < mids.length; i++) {
+    assert.ok(mids[i] > mids[i - 1], `第 ${i + 1} 个音比前一个低：${mids.join(",")}`);
+  }
+  assert.equal(mids[0] % 12, 9, "第一个音是 A");
+  assert.equal(mids[mids.length - 1] % 12, 9, "最后一个音回到 A");
+
+  const c = scaleRun({ keyId: "C", startString: 5, startFret: 3, fretMax: 3, step: 1 });
+  const cMids = c.notes.map((note) => STANDARD_TUNING.strings[note.s - 1] + note.f);
+  assert.equal(cMids.length, 8);
+  for (let i = 1; i < cMids.length; i++) assert.ok(cMids[i] > cMids[i - 1]);
+});
+
 test("时间分配：加起来必须正好是总时长", () => {
   // 最大余数法：不能多给一分钟，也不能少给
   const weights = [0.12, 0.38, 0.18, 0.15, 0.17];
