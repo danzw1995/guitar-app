@@ -72,18 +72,29 @@ check("所有元素都在画布内", () => {
   }
 });
 
-check("弦线止于最后一根小节线，右端不留毛边", () => {
+check("弦线止于小节线，右端不留毛边（多行谱逐行检查）", () => {
   for (const drill of ALL) {
     const scene = layoutTab(drill.tab);
     const lines = scene.els.filter((el) => el.t === "line" && el.cls === "tab-string");
     const bars = scene.els.filter((el) => el.t === "line" && el.cls === "tab-bar");
-    if (lines.length !== 6) throw new Error(`${drill.id}: 应该有 6 条弦线，实际 ${lines.length}`);
-    const lastBar = Math.max(...bars.map((bar) => (bar as { x1: number }).x1));
+    if (lines.length % 6 !== 0) {
+      throw new Error(`${drill.id}: 弦线数量 ${lines.length} 不是 6 的倍数`);
+    }
+    const barXs = new Set(bars.map((bar) => Math.round((bar as { x1: number }).x1)));
     for (const line of lines) {
       const x2 = (line as { x2: number }).x2;
-      if (Math.abs(x2 - lastBar) > 0.5) {
-        throw new Error(`${drill.id}: 弦线画到 ${x2}，最后一根小节线在 ${lastBar}`);
+      if (!barXs.has(Math.round(x2))) {
+        throw new Error(`${drill.id}: 弦线画到 ${x2}，那里没有小节线`);
       }
+    }
+  }
+});
+
+check("换行而不是横向滚动：一行不超过 480px", () => {
+  for (const drill of ALL) {
+    const scene = layoutTab(drill.tab);
+    if (scene.width > 480) {
+      throw new Error(`${drill.id}: 谱面宽 ${scene.width}，应该换行而不是横滚`);
     }
   }
 });
@@ -121,7 +132,10 @@ check("十六分音符的间距比四分音符大（看得出快慢）", () => {
   }
 });
 
-check("有节奏轨：符头、符干、符梁对得上时值", () => {
+check("时值画在音自己身上：符干、符梁、符尾对得上", () => {
+  const count = (scene: ReturnType<typeof layoutTab>, cls: string) =>
+    scene.els.filter((el) => el.cls === cls).length;
+
   const quarter = layoutTab({
     beatsPerBar: 4,
     bars: 1,
@@ -130,11 +144,11 @@ check("有节奏轨：符头、符干、符梁对得上时值", () => {
       { s: 5, f: 3, beat: 1, dur: 1 },
     ],
   });
-  const count = (scene: typeof quarter, cls: string) =>
-    scene.els.filter((el) => el.cls === cls).length;
-  if (count(quarter, "tab-rhythm-line") !== 1) throw new Error("缺少节奏轨横线");
-  if (count(quarter, "tab-notehead") !== 2) throw new Error("四分音符应有 2 个符头");
+  if (count(quarter, "tab-stem") !== 2) throw new Error("四分音符应有 2 根符干");
   if (count(quarter, "tab-beam") !== 0) throw new Error("四分音符不该有符梁");
+  if (count(quarter, "tab-rhythm-line") !== 0) {
+    throw new Error("不应该再有单独的「节奏轨」（会被看成第七根弦）");
+  }
 
   const eighths = layoutTab({
     beatsPerBar: 4,
@@ -166,14 +180,25 @@ check("有节奏轨：符头、符干、符梁对得上时值", () => {
   });
   if (count(lone, "tab-flag") < 1) throw new Error("独立的八分音符缺少符尾");
 
-  // 二分音符：空心符头，不带符干
+  // 二分音符：不画符干（时值靠说明和排版）
   const half = layoutTab({
     beatsPerBar: 4,
     bars: 1,
     notes: [{ s: 3, f: 7, beat: 0, dur: 2 }],
   });
-  if (count(half, "tab-notehead open") !== 1) throw new Error("二分音符应是空心符头");
   if (count(half, "tab-stem") !== 0) throw new Error("二分音符不该有符干");
+});
+
+check("长谱换行：多行谱的弦线在每一行都重新开始", () => {
+  const long = layoutTab({
+    beatsPerBar: 4,
+    bars: 8,
+    notes: Array.from({ length: 32 }, (_, i) => ({ s: 5, f: 3, beat: i / 2, dur: 0.5 })),
+  });
+  const lines = long.els.filter((el) => el.t === "line" && el.cls === "tab-string");
+  if (lines.length <= 6) throw new Error("8 小节的谱应该折成多行");
+  const bars = long.els.filter((el) => el.t === "line" && el.cls === "tab-bar");
+  if (bars.length <= 9) throw new Error("每行都要有自己的小节线");
 });
 
 if (failed > 0) {

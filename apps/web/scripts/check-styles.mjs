@@ -263,16 +263,24 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
-// 13. 六线谱：宽谱要能横向滚动，品数字号不能太小，弦线必须可见
+// 13. 六线谱：桌面端不横滑（靠换行），只有手机才允许
 {
   const scroll = narrowDecls(".tab-scroll");
+  const wide = rules.find(
+    (rule) => !rule.media && selectorsOf(rule).includes(".tab-scroll"),
+  );
   const fret = narrowDecls(".tab-fret");
   const string = narrowDecls(".tab-string");
   const size = px(fret.get("font-size"));
   expect(
-    ".tab-scroll 横向滚动（跨把位的谱子会超出屏宽）",
+    ".tab-scroll 桌面端不滚动（放开滚动条）",
+    (wide?.decls.get("overflow") ?? "") === "visible",
+    `overflow = ${wide?.decls.get("overflow") ?? "未设置"}`,
+  );
+  expect(
+    ".tab-scroll 手机端才允许横滑",
     scroll.get("overflow-x") === "auto",
-    `overflow-x = ${scroll.get("overflow-x") ?? "未设置"}`,
+    `窄屏 overflow-x = ${scroll.get("overflow-x") ?? "未设置"}`,
   );
   expect(
     ".tab-fret 字号 ≥ 12px（品数字要看得清）",
@@ -324,26 +332,27 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
-// 16. 节奏轨：符干、符梁、符头都要有颜色，不能不可见
+// 16. 时值：符干、符梁、符尾都要有颜色，不能不可见
 {
   const stem = narrowDecls(".tab-stem");
   const beam = narrowDecls(".tab-beam");
-  const head = narrowDecls(".tab-notehead");
-  const line = narrowDecls(".tab-rhythm-line");
+  const flag = narrowDecls(".tab-flag");
   expect(
     ".tab-stem / .tab-beam 有描边色",
     (stem.get("stroke") ?? "") !== "" && (beam.get("stroke") ?? "") !== "",
     "符干或符梁没有描边色",
   );
   expect(
-    ".tab-notehead 有填充色",
-    (head.get("fill") ?? "") !== "",
-    `fill = ${head.get("fill") ?? "未设置"}`,
+    ".tab-flag 有描边色（独立八分音符的符尾）",
+    (flag.get("stroke") ?? "") !== "",
+    `stroke = ${flag.get("stroke") ?? "未设置"}`,
   );
   expect(
-    ".tab-rhythm-line 存在（时值轨的横线）",
-    (line.get("stroke") ?? "") !== "",
-    `stroke = ${line.get("stroke") ?? "未设置"}`,
+    "谱面不再有单独的节奏轨横线",
+    !readFileSync(new URL("../src/styles.css", import.meta.url), "utf8").includes(
+      ".tab-rhythm-line",
+    ),
+    "styles.css 里还留着 .tab-rhythm-line",
   );
 }
 
