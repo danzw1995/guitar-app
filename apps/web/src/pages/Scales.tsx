@@ -17,6 +17,7 @@ import {
 import Fretboard from "../components/Fretboard";
 import { cellLabel, octaveShiftFor } from "../lib/labels";
 import { loadSettings, type Settings } from "../lib/storage";
+import { useTone } from "../hooks/useTone";
 
 export default function Scales() {
   const [keyId, setKeyId] = useState("C");
@@ -25,6 +26,7 @@ export default function Scales() {
   const [settings] = useState<Settings>(() => loadSettings());
   /** 打开后把调外音也画出来（暗一点），这样 C 大调里也能看到 升1 / 降3 这类唱名。 */
   const [showChromatic, setShowChromatic] = useState(false);
+  const { play } = useTone();
 
   const key = KEY_BY_ID.get(keyId)!;
   const scale = SCALE_BY_ID.get(scaleId)!;
@@ -86,6 +88,18 @@ export default function Scales() {
           />
           显示调外音（带升降）
         </label>
+        <button
+          type="button"
+          className="btn"
+          aria-label="试听这个音阶（上行一个八度）"
+          onClick={() => {
+            const pcs = scalePcs(key, scale);
+            const start = 48 + key.tonicPc; // C3 附近
+            play([...pcs.map((pc) => start + ((pc - key.tonicPc + 12) % 12)), start + 12]);
+          }}
+        >
+          试听
+        </button>
         <span className="muted" style={{ fontSize: 12 }}>
           音名 / 唱名的显示方式在「设置」里改
         </span>

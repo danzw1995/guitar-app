@@ -223,6 +223,18 @@ check("跟练：面板有名字、速度有标签、计时不刷屏", () => {
   expect(read("src/pages/Rhythm.tsx"), ["<FollowAlong", "recordBlock"], "Rhythm.tsx");
 });
 
+check("试听：按钮有明确名字，只有用户点才出声", () => {
+  const tone = read("src/hooks/useTone.ts");
+  expect(tone, ["AudioContext", "frequencyOf", "export function useTone"], "useTone.ts");
+  if (tone.includes("componentDidMount")) throw new Error("试听不应在挂载时自动播放");
+
+  const chords = read("src/pages/Chords.tsx");
+  expect(chords, ["useTone", 'aria-label={`试听', "strum(chord.frets)"], "Chords.tsx");
+
+  const scales = read("src/pages/Scales.tsx");
+  expect(scales, ["useTone", 'aria-label="试听这个音阶', "play("], "Scales.tsx");
+});
+
 check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {
   const css = read("src/styles.css");
   expect(css, [".skip-link:focus-visible", "prefers-reduced-motion"], "styles.css");

@@ -9,6 +9,7 @@ import {
   stackThirds,
 } from "@guitar/core";
 import ChordDiagram from "../components/ChordDiagram";
+import { useTone } from "../hooks/useTone";
 
 /** 指法数字的含义（1=食指 … 4=小指）。 */
 const FINGER_LEGEND = "1 食指 · 2 中指 · 3 无名指 · 4 小指";
@@ -24,6 +25,7 @@ export default function Chords() {
   const fingering = fingeringOf(chord);
   const stack = stackThirds(info.rootName, info.quality.intervals);
   const degree = useMemo(() => chordDegreeInKey(keyId, chord.name), [keyId, chord.name]);
+  const { strum } = useTone();
 
   return (
     <section className="panel">
@@ -53,6 +55,14 @@ export default function Chords() {
           <div className="chord-detail-head">
             <h3>{chord.name}</h3>
             <code>{fingering}</code>
+            <button
+              type="button"
+              className="btn"
+              aria-label={`试听 ${chord.name} 和弦`}
+              onClick={() => strum(chord.frets)}
+            >
+              试听
+            </button>
           </div>
           <p className="chord-quality">
             {info.quality.name} · 根音 {info.rootName}

@@ -1,0 +1,98 @@
+import { useEffect, useRef } from "react";
+import { STANDARD_TUNING, frequencyOf, midiAt } from "@guitar/core";
+
+/**
+ * 试听：用 Web Audio 现场合成"拨弦"，不需要任何音频文件。
+ *
+ * 音色刻意做得简单：三角波 + 一个八度泛音，短促的起音 + 指数衰减。
+ * 目的不是好听，是**能听出区别**——大三还是小三、有没有七音。
+ */
+export function useTone() {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const voices = useRef<OscillatorNode[]>([]);
+
+  function ensure(): AudioContext | null {
+    const Ctor =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return null;
+    const ctx = ctxRef.current ?? new Ctor();
+    ctxRef.current = ctx;
+    if (ctx.state === "suspended") void ctx.resume();
+    return ctx;
+  }
+
+  /** 一声拨弦：`at` 是 AudioContext 时间轴上的绝对时间。 */
+  function pluck(ctx: AudioContext, at: number, midi: number, dur = 1.2, level = 0.13) {
+    if (at < ctx.currentTime) at = ctx.currentTime;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(level, at + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    gain.connect(ctx.destination);
+
+    const body = ctx.createOscillator();
+    body.type = "triangle";
+    body.frequency.value = frequencyOf(midi);
+
+    const shimmer = ctx.createOscillator();
+    shimmer.type = "sine";
+    shimmer.frequency.value = frequencyOf(midi) * 2;
+
+    const shimmerGain = ctx.createGain();
+    shimmerGain.gain.value = 0.25;
+
+    body.connect(gain);
+    shimmer.connect(shimmerGain);
+    shimmerGain.connect(gain);
+
+    const stop = at + dur + 0.05;
+    body.start(at);
+    shimmer.start(at);
+    body.stop(stop);
+    shimmer.stop(stop);
+    voices.current.push(body, shimmer);
+  }
+
+  /** 全部停掉（换和弦、离开页面时）。 */
+  function stop() {
+    for (const osc of voices.current) {
+      try {
+        osc.stop();
+      } catch {
+        // 已经停过就算了
+      }
+    }
+    voices.current = [];
+  }
+
+  /** 扫弦：从低音弦往高音弦依次拨，`-1` 表示不弹的那根弦。 */
+  function strum(frets: number[], step = 0.04) {
+    const ctx = ensure();
+    if (!ctx) return;
+    stop();
+    const start = ctx.currentTime + 0.04;
+    const played = frets
+      .map((fret, index) => ({ fret, index }))
+      .filter((item) => item.fret >= 0);
+    played.forEach((item, order) => {
+      // frets[0] 是 6 弦 → STANDARD_TUNING 的下标 5
+      const midi = midiAt(STANDARD_TUNING, 5 - item.index, item.fret);
+      pluck(ctx, start + order * step, midi, 1.4);
+    });
+  }
+
+  /** 音阶 / 一串音：按顺序拨。 */
+  function play(midis: number[], step = 0.24) {
+    const ctx = ensure();
+    if (!ctx) return;
+    stop();
+    const start = ctx.currentTime + 0.05;
+    midis.forEach((midi, index) => pluck(ctx, start + index * step, midi, 1));
+  }
+
+  useEffect(() => stop, []);
+
+  return { strum, play, stop };
+}

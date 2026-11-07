@@ -257,9 +257,10 @@ button, select, input { font: inherit; color: inherit; }
 .chord-tile-name { font-weight: 700; font-size: 15px; }
 .chord-tile-tag { font-size: 11px; color: var(--muted); }
 .chord-detail { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--panel-2); text-align: center; }
-.chord-detail-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+.chord-detail-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .chord-detail-head h3 { margin: 0; font-size: 22px; }
 .chord-detail-head code { color: var(--accent); font-size: 13px; }
+.chord-detail-head .btn { margin-left: auto; }
 .chord-svg { width: 100%; max-width: 230px; height: auto; }
 .chord-fretnum { fill: var(--muted); font-size: 12px; }
 .chord-finger { fill: #1a1205; font-size: 11px; font-weight: 700; }
