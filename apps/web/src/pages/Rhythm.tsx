@@ -151,7 +151,7 @@ export default function Rhythm() {
                 type="button"
                 className="btn"
                 aria-label={`试听 ${drill.name}（含节拍器）`}
-                onClick={() => playTab(drill.tab, drill.bpm[0], { click: true })}
+                onClick={() => playTab(drill.tab, drill.bpm[0])}
               >
                 试听
               </button>
@@ -207,7 +207,7 @@ export default function Rhythm() {
                 type="button"
                 className="btn"
                 aria-label={`试听 ${pattern.name}（含节拍器）`}
-                onClick={() => playTab(pattern.tab, 70, { click: true })}
+                onClick={() => playTab(pattern.tab, 70)}
               >
                 试听
               </button>
@@ -256,7 +256,7 @@ export default function Rhythm() {
                 type="button"
                 className="btn"
                 aria-label={`试听 ${snippet.name}（含节拍器）`}
-                onClick={() => playTab(snippet.tab, snippet.bpm[0], { click: true })}
+                onClick={() => playTab(snippet.tab, snippet.bpm[0])}
               >
                 试听
               </button>

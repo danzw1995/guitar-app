@@ -138,8 +138,9 @@ export function useTone() {
   }
 
   /**
-   * 试听一条谱子：按 `tabEvents` 算出的时间弹，同一时刻的音错开 12ms（听起来是扫弦）。
-   * `click` 打开时同时打拍子——节奏要对着拍听才有意义。
+   * 试听一条谱子：按 `tabEvents` 算出的时间轴把音符弹出来，同一时刻的音错开 12ms
+   * （听起来是扫弦）。**不叠节拍器**——试听要听的是这条节奏本身，
+   * 要跟拍就用跟练模式。需要时可以把 `click` 打开，给一小节预备拍。
    */
   function playTab(tab: Tab, bpm: number, opts: { click?: boolean } = {}) {
     const ctx = ensure();
