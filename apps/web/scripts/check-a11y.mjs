@@ -146,8 +146,13 @@ check("节奏：格子对读屏有整小节说明，节拍器的每个控件都�
   if (!dots.slice(0, 120).includes('aria-hidden="true"')) {
     throw new Error("节拍点闪烁属于装饰，应 aria-hidden");
   }
-  if (!metro.includes("window.clearInterval")) {
+  // 排程逻辑在 hook 里：停止时必须清掉定时器，否则后台一直在响
+  const hook = read("src/hooks/useMetronome.ts");
+  if (!hook.includes("window.clearInterval")) {
     throw new Error("停止时要清掉排程定时器，否则后台一直在响");
+  }
+  if (!hook.includes("useEffect(() => stop, [])")) {
+    throw new Error("卸载时要停掉节拍器（useEffect 清理）");
   }
 });
 
@@ -199,6 +204,23 @@ check("节奏专项：难度筛选按钮有状态、谱子与数拍词可读", (
     "Rhythm.tsx",
   );
   expect(read("src/App.tsx"), ['{ id: "rhythm"', "<Rhythm />"], "App.tsx");
+});
+
+check("跟练：面板有名字、速度有标签、计时不刷屏", () => {
+  const src = read("src/components/FollowAlong.tsx");
+  expect(
+    src,
+    [
+      'aria-label={`跟练：',
+      'aria-label="跟练速度（每分钟拍数）"',
+      'role="timer"',
+      'aria-live="off"',
+      "useMetronome",
+    ],
+    "FollowAlong.tsx",
+  );
+  expect(read("src/hooks/useMetronome.ts"), ["start", "stop", "AudioContext"], "useMetronome.ts");
+  expect(read("src/pages/Rhythm.tsx"), ["<FollowAlong", "recordBlock"], "Rhythm.tsx");
 });
 
 check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () => {

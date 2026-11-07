@@ -16,6 +16,8 @@ export const SETTINGS_KEY = "guitar.settings.v1";
 export const DAILY_KEY = "guitar.daily.v1";
 /** 练习记录：日期 -> 当天练了什么。 */
 export const PRACTICE_KEY = "guitar.practice.v1";
+/** 跟练记录：练习 id -> 最高速度与次数。 */
+export const RHYTHM_KEY = "guitar.rhythm.v1";
 /** v0.2.x 只存每关最佳时间，迁移时读一次。 */
 const LEGACY_BEST_PREFIX = "guitar.best.";
 
@@ -152,6 +154,41 @@ export function loadPractice(): PracticeLog {
 
 export function savePractice(log: PracticeLog): void {
   writeJson(PRACTICE_KEY, log);
+}
+
+/** 跟练成绩：这条练习最快练到多少 BPM、练过几次。 */
+export interface RhythmRecord {
+  bestBpm: number;
+  sessions: number;
+  minutes: number;
+  /** 最后一次练的日期（`YYYY-MM-DD`）。 */
+  lastAt: string;
+}
+
+export type RhythmRecords = Record<string, RhythmRecord>;
+
+export function loadRhythm(): RhythmRecords {
+  const raw = readJson(RHYTHM_KEY);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+
+  const records: RhythmRecords = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const item = value as Record<string, unknown>;
+    const bestBpm = Number(item.bestBpm);
+    if (!Number.isFinite(bestBpm) || bestBpm <= 0) continue;
+    records[id] = {
+      bestBpm: Math.round(bestBpm),
+      sessions: Number.isFinite(Number(item.sessions)) ? Number(item.sessions) : 1,
+      minutes: Number.isFinite(Number(item.minutes)) ? Math.max(0, Number(item.minutes)) : 0,
+      lastAt: typeof item.lastAt === "string" ? item.lastAt : "",
+    };
+  }
+  return records;
+}
+
+export function saveRhythm(records: RhythmRecords): void {
+  writeJson(RHYTHM_KEY, records);
 }
 
 export function loadSettings(): Settings {

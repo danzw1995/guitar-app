@@ -1190,6 +1190,98 @@ button, select, input { font: inherit; color: inherit; }
   font-variant-numeric: tabular-nums;
 }
 
+/* 跟练面板 */
+.follow {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 176, 75, 0.5);
+  background: rgba(232, 176, 75, 0.06);
+}
+.follow-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.follow-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.follow-head p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.follow-main {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 10px 0 4px;
+}
+.follow-tempo {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.follow-tempo b {
+  font-size: 30px;
+  line-height: 1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.follow-tempo span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.follow-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.follow-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.follow-field input[type="range"] {
+  width: 130px;
+  accent-color: var(--accent);
+}
+.follow-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.follow-clock {
+  font-size: 15px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.follow-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.drill-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.best-badge {
+  font-size: 11px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
 /* 阶段条：六个阶段一眼看全，当前的高亮 */
 .stage-track {
   display: flex;

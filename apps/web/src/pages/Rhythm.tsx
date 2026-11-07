@@ -4,10 +4,22 @@ import {
   RHYTHM_DRILLS,
   SONG_SNIPPETS,
   STRUM_LIBRARY,
+  dateKeyOf,
+  recordBlock,
+  stageForCompleted,
   type Level,
 } from "@guitar/core";
 import Metronome from "../components/Metronome";
 import TabDiagram from "../components/TabDiagram";
+import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
+import {
+  loadPractice,
+  loadProgress,
+  loadRhythm,
+  savePractice,
+  saveRhythm,
+  type RhythmRecords,
+} from "../lib/storage";
 
 const LEVELS: Level[] = [1, 2, 3, 4, 5];
 
@@ -18,9 +30,13 @@ const LEVELS: Level[] = [1, 2, 3, 4, 5];
  * 1. 时值练习——单音上练节奏，不受左手干扰；
  * 2. 扫弦节奏型——手上真正的伴奏动作，带数拍词；
  * 3. 风格片段——连着和弦弹，接近真实曲子的样子。
+ *
+ * 每条都能「跟练」：节拍器起速、每 4 小节 +5，练完记下当前速度。
  */
 export default function Rhythm() {
   const [level, setLevel] = useState<Level | 0>(0);
+  const [target, setTarget] = useState<FollowTarget | null>(null);
+  const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
 
   const drills = useMemo(
     () => RHYTHM_DRILLS.filter((drill) => level === 0 || drill.level === level),
@@ -31,13 +47,45 @@ export default function Rhythm() {
     [level],
   );
 
+  /** 记成绩：跟练记录（最高速度）+ 当天练习时长（让连续天数也涨）。 */
+  function record(result: { bpm: number; minutes: number }) {
+    if (!target) return;
+    const today = dateKeyOf(new Date());
+    const previous = records[target.id];
+    const next: RhythmRecords = {
+      ...records,
+      [target.id]: {
+        bestBpm: Math.max(previous?.bestBpm ?? 0, result.bpm),
+        sessions: (previous?.sessions ?? 0) + 1,
+        minutes: (previous?.minutes ?? 0) + result.minutes,
+        lastAt: today,
+      },
+    };
+    setRecords(next);
+    saveRhythm(next);
+
+    const progress = loadProgress();
+    const completed = Object.values(progress).filter((item) => item.completed).length;
+    const log = loadPractice();
+    savePractice(
+      recordBlock(log, today, {
+        drill: `rhythm:${target.id}`,
+        minutes: result.minutes,
+        stage: stageForCompleted(completed),
+      }),
+    );
+  }
+
+  const best = (id: string) => records[id]?.bestBpm;
+
   return (
     <section className="panel">
       <div className="panel-head">
         <h2>节奏专项</h2>
         <p>
           时值不稳、三连音发虚、八分十六分切换乱——这些都能单独练。
-          每条都带六线谱和数拍词：先跟着念，再跟着节拍器弹。
+          每条都带六线谱和数拍词：先跟着念，再点「跟练」让节拍器一段一段往上加。
+
         </p>
       </div>
 
@@ -63,6 +111,15 @@ export default function Rhythm() {
         ))}
       </div>
 
+      {target && (
+        <FollowAlong
+          target={target}
+          best={best(target.id)}
+          onFinish={record}
+          onClose={() => setTarget(null)}
+        />
+      )}
+
       <details className="practice-metronome" open>
         <summary>节拍器（先开起来，再看谱）</summary>
         <Metronome />
@@ -70,7 +127,7 @@ export default function Rhythm() {
 
       <h3 className="practice-h3">
         时值练习
-        <span className="practice-h3-hint">先跟着数拍词念，再上琴</span>
+        <span className="practice-h3-hint">先跟着数拍词念，再点「跟练」一段一段加</span>
       </h3>
       <div className="drill-grid">
         {drills.map((drill) => (
@@ -87,6 +144,21 @@ export default function Rhythm() {
               </span>
             </p>
             <TabDiagram tab={drill.tab} />
+            <div className="drill-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setTarget(drill);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                跟练
+              </button>
+              {best(drill.id) !== undefined && (
+                <span className="best-badge">最高 {best(drill.id)} BPM</span>
+              )}
+            </div>
             <details className="pb-more">
               <summary>怎么练 · 验收</summary>
               <ol className="pb-steps">
@@ -120,6 +192,21 @@ export default function Rhythm() {
               <span className="rhythm-bpm">{pattern.chord} 和弦</span>
             </p>
             <TabDiagram tab={pattern.tab} />
+            <div className="drill-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setTarget({ ...pattern, bpm: [60, 90] as [number, number] });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                跟练
+              </button>
+              {best(pattern.id) !== undefined && (
+                <span className="best-badge">最高 {best(pattern.id)} BPM</span>
+              )}
+            </div>
             <p className="pb-line">{pattern.tip}</p>
           </article>
         ))}
@@ -146,6 +233,21 @@ export default function Rhythm() {
               </span>
             </p>
             <TabDiagram tab={snippet.tab} />
+            <div className="drill-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setTarget(snippet);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                跟练
+              </button>
+              {best(snippet.id) !== undefined && (
+                <span className="best-badge">最高 {best(snippet.id)} BPM</span>
+              )}
+            </div>
             <p className="pb-line">{snippet.tip}</p>
           </article>
         ))}
