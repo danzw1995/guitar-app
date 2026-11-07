@@ -223,13 +223,20 @@ check("跟练：面板有名字、速度有标签、计时不刷屏", () => {
   expect(read("src/pages/Rhythm.tsx"), ["<FollowAlong", "recordBlock"], "Rhythm.tsx");
 });
 
-check("试听：按钮有明确名字，只有用户点才出声", () => {
+check("试听：扫弦与分解各有按钮，只有用户点才出声", () => {
   const tone = read("src/hooks/useTone.ts");
-  expect(tone, ["AudioContext", "frequencyOf", "export function useTone"], "useTone.ts");
+  expect(tone, ["AudioContext", "frequencyOf", "export function useTone", "playStrings"], "useTone.ts");
   if (tone.includes("componentDidMount")) throw new Error("试听不应在挂载时自动播放");
 
   const chords = read("src/pages/Chords.tsx");
-  expect(chords, ["useTone", 'aria-label={`试听', "strum(chord.frets)"], "Chords.tsx");
+  expect(
+    chords,
+    ["useTone", "的扫弦", "的分解和弦", "strum(chord.frets", "arpeggio(chord.frets"],
+    "Chords.tsx",
+  );
+  // 试听时要能看出弹的是哪几根弦
+  expect(chords, ["active={lit}", "onNote: light"], "Chords.tsx");
+  expect(read("src/components/ChordDiagram.tsx"), ["chord-string", "active"], "ChordDiagram.tsx");
 
   const scales = read("src/pages/Scales.tsx");
   expect(scales, ["useTone", 'aria-label="试听这个音阶', "play("], "Scales.tsx");

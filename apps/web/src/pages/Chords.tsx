@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CHORDS,
   CHORD_BY_NAME,
@@ -9,7 +9,7 @@ import {
   stackThirds,
 } from "@guitar/core";
 import ChordDiagram from "../components/ChordDiagram";
-import { useTone } from "../hooks/useTone";
+import { arpeggioPattern, useTone } from "../hooks/useTone";
 
 /** 指法数字的含义（1=食指 … 4=小指）。 */
 const FINGER_LEGEND = "1 食指 · 2 中指 · 3 无名指 · 4 小指";
@@ -25,7 +25,25 @@ export default function Chords() {
   const fingering = fingeringOf(chord);
   const stack = stackThirds(info.rootName, info.quality.intervals);
   const degree = useMemo(() => chordDegreeInKey(keyId, chord.name), [keyId, chord.name]);
-  const { strum } = useTone();
+  const { strum, arpeggio } = useTone();
+  /** 试听时正在响的弦（1–6），在指法图上点亮。 */
+  const [lit, setLit] = useState<number[]>([]);
+  const flashes = useRef<number[]>([]);
+
+  function light(stringNumber: number) {
+    setLit((prev) => (prev.includes(stringNumber) ? prev : [...prev, stringNumber]));
+    const id = window.setTimeout(() => {
+      setLit((prev) => prev.filter((item) => item !== stringNumber));
+    }, 260);
+    flashes.current.push(id);
+  }
+
+  useEffect(
+    () => () => {
+      for (const id of flashes.current) window.clearTimeout(id);
+    },
+    [],
+  );
 
   return (
     <section className="panel">
@@ -55,14 +73,32 @@ export default function Chords() {
           <div className="chord-detail-head">
             <h3>{chord.name}</h3>
             <code>{fingering}</code>
-            <button
-              type="button"
-              className="btn"
-              aria-label={`试听 ${chord.name} 和弦`}
-              onClick={() => strum(chord.frets)}
-            >
-              试听
-            </button>
+            <div className="chord-audition">
+              <button
+                type="button"
+                className="btn"
+                aria-label={`试听 ${chord.name} 的扫弦`}
+                onClick={() =>
+                  strum(chord.frets, {
+                    onNote: light,
+                  })
+                }
+              >
+                扫弦
+              </button>
+              <button
+                type="button"
+                className="btn"
+                aria-label={`试听 ${chord.name} 的分解和弦`}
+                onClick={() =>
+                  arpeggio(chord.frets, arpeggioPattern(chord.frets), {
+                    onNote: light,
+                  })
+                }
+              >
+                分解
+              </button>
+            </div>
           </div>
           <p className="chord-quality">
             {info.quality.name} · 根音 {info.rootName}
@@ -98,7 +134,7 @@ export default function Chords() {
             ) : null}
           </div>
 
-          <ChordDiagram chord={chord} />
+          <ChordDiagram chord={chord} active={lit} />
 
           <div className="chord-tones">
             {info.tones.map((tone) => (

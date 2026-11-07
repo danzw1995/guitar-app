@@ -378,6 +378,23 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 18. 试听：点亮的弦要看得出，两个按钮横排
+{
+  const on = narrowDecls(".chord-string.on");
+  const audition = narrowDecls(".chord-audition");
+  const width = Number(String(on.get("stroke-width") ?? "").replace("px", ""));
+  expect(
+    ".chord-string.on 有高亮（试听时点亮正在响的弦）",
+    (on.get("stroke") ?? "") !== "" && Number.isFinite(width) && width >= 2,
+    `stroke = ${on.get("stroke") ?? "未设置"}, stroke-width = ${on.get("stroke-width") ?? "未设置"}`,
+  );
+  expect(
+    ".chord-audition 是横排按钮组",
+    audition.get("display") === "flex",
+    `display = ${audition.get("display") ?? "未设置"}`,
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

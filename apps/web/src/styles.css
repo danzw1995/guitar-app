@@ -260,7 +260,12 @@ button, select, input { font: inherit; color: inherit; }
 .chord-detail-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .chord-detail-head h3 { margin: 0; font-size: 22px; }
 .chord-detail-head code { color: var(--accent); font-size: 13px; }
-.chord-detail-head .btn { margin-left: auto; }
+.chord-audition { display: flex; gap: 6px; margin-left: auto; }
+.chord-detail-head .btn { margin-left: 0; }
+
+/* 试听时点亮正在响的弦 */
+.chord-string { stroke: #7d8590; stroke-width: 1; transition: stroke 80ms ease, stroke-width 80ms ease; }
+.chord-string.on { stroke: var(--accent); stroke-width: 3; }
 .chord-svg { width: 100%; max-width: 230px; height: auto; }
 .chord-fretnum { fill: var(--muted); font-size: 12px; }
 .chord-finger { fill: #1a1205; font-size: 11px; font-weight: 700; }

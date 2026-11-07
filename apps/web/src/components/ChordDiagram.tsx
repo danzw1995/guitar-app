@@ -11,12 +11,19 @@ const FRETS = 5;
 /** 从左到右：6 弦（低音 E）到 1 弦（高音 E），统一大写。 */
 const STRING_NAMES = ["E", "A", "D", "G", "B", "E"];
 
-export default function ChordDiagram({ chord }: { chord: ChordShape }) {
+export interface ChordDiagramProps {
+  chord: ChordShape;
+  /** 正在响的弦（1–6），用来在试听时点亮。 */
+  active?: number[];
+}
+
+export default function ChordDiagram({ chord, active = [] }: ChordDiagramProps) {
   const positive = chord.frets.filter((f) => f > 0);
   const maxFret = positive.length ? Math.max(...positive) : 1;
   const minFret = positive.length ? Math.min(...positive) : 1;
   const base = maxFret > FRETS ? minFret : 1;
   const nut = base === 1;
+  const lit = new Set(active.map((stringNumber) => 6 - stringNumber));
 
   const stringX = (i: number) => LEFT + i * GAP_X;
   const fretY = (f: number) => TOP + (f - base + 0.5) * GAP_Y;
@@ -41,7 +48,14 @@ export default function ChordDiagram({ chord }: { chord: ChordShape }) {
       )}
 
       {[0, 1, 2, 3, 4, 5].map((i) => (
-        <line key={`s${i}`} x1={stringX(i)} y1={TOP} x2={stringX(i)} y2={TOP + FRETS * GAP_Y} stroke="#7d8590" strokeWidth={1} />
+        <line
+          key={`s${i}`}
+          x1={stringX(i)}
+          y1={TOP}
+          x2={stringX(i)}
+          y2={TOP + FRETS * GAP_Y}
+          className={lit.has(i) ? "chord-string on" : "chord-string"}
+        />
       ))}
       {Array.from({ length: FRETS + 1 }).map((_, k) => (
         <line key={`f${k}`} x1={stringX(0)} y1={TOP + k * GAP_Y} x2={stringX(5)} y2={TOP + k * GAP_Y} stroke="#30363d" strokeWidth={1} />
