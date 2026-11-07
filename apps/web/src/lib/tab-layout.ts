@@ -311,21 +311,16 @@ function previousOnString(notes: TabNote[], note: TabNote): TabNote | null {
   return best;
 }
 
-/** 同一根弦上最近的两个音隔几拍——用来决定一拍的宽度。 */
+/** 相邻两个**起音**之间最近的间隔（拍）——决定一拍的宽度。
+ *  只看时间、不看弦：跨弦的音也挨在同一行上，挤了一样看不清。 */
 function closestGap(notes: TabNote[]): number {
-  const byString = new Map<number, number[]>();
-  for (const note of notes) {
-    const list = byString.get(note.s) ?? [];
-    list.push(note.beat);
-    byString.set(note.s, list);
-  }
+  const beats = [...new Set(notes.map((note) => Math.round(note.beat * 1000) / 1000))].sort(
+    (a, b) => a - b,
+  );
   let min = 1;
-  for (const beats of byString.values()) {
-    beats.sort((a, b) => a - b);
-    for (let i = 1; i < beats.length; i++) {
-      const gap = beats[i] - beats[i - 1];
-      if (gap > 0 && gap < min) min = gap;
-    }
+  for (let i = 1; i < beats.length; i++) {
+    const gap = beats[i] - beats[i - 1];
+    if (gap > 0 && gap < min) min = gap;
   }
   return Math.max(min, 1 / 8);
 }

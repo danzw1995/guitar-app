@@ -31,7 +31,7 @@ export function useTone() {
   }
 
   /** 一声拨弦：`at` 是 AudioContext 时间轴上的绝对时间。 */
-  function pluck(ctx: AudioContext, at: number, midi: number, dur = 1.2, level = 0.13) {
+  function pluck(ctx: AudioContext, at: number, midi: number, dur = 1.2, level = 0.2) {
     if (at < ctx.currentTime) at = ctx.currentTime;
 
     const gain = ctx.createGain();
@@ -128,7 +128,7 @@ export function useTone() {
     osc.type = "square";
     osc.frequency.value = accent ? 1500 : 1000;
     gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.linearRampToValueAtTime(accent ? 0.22 : 0.12, at + 0.002);
+    gain.gain.linearRampToValueAtTime(accent ? 0.12 : 0.07, at + 0.002);
     gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
     osc.connect(gain);
     gain.connect(ctx.destination);

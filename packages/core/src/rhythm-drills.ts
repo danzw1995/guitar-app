@@ -33,14 +33,28 @@ export interface RhythmDrill {
   tab: Tab;
 }
 
-/** 在 5 弦 3 品上按 [拍位, 时值] 摆音，专门练时值。 */
+/**
+ * 时值练习的**音高循环**：C – E – G（5 弦 3 品 / 4 弦 2 品 / 3 弦 0 品）。
+ *
+ * 为什么不是一个音反复弹：那样听起来就是节拍器，耳朵分不清"音符在动"还是"拍子在动"。
+ * 用三个音循环，节奏型本身就能听出旋律感，也顺带练了跨弦。
+ */
+const CYCLE = [
+  { s: 5, f: 3 },
+  { s: 4, f: 2 },
+  { s: 3, f: 0 },
+];
+
+/** 按 [拍位, 时值] 摆音，音高按 C–E–G 循环。 */
 function rhythm(
-  fret: number,
   beats: [number, number][],
-  opts: { s?: number; bars?: number; beatsPerBar?: number } = {},
+  opts: { bars?: number; beatsPerBar?: number } = {},
 ): Tab {
   return tabOf(
-    beats.map(([beat, dur]) => n(opts.s ?? 5, fret, beat, dur)),
+    beats.map(([beat, dur], index) => {
+      const position = CYCLE[index % CYCLE.length];
+      return n(position.s, position.f, beat, dur);
+    }),
     { bars: opts.bars ?? 1, beatsPerBar: opts.beatsPerBar ?? 4 },
   );
 }
@@ -60,7 +74,6 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
     ],
     pass: "60 BPM 连弹 4 遍，两小节之间不卡",
     tab: rhythm(
-      3,
       [
         [0, 1], [1, 1], [2, 1], [3, 1],
         [4, 0.5], [4.5, 0.5], [5, 0.5], [5.5, 0.5], [6, 0.5], [6.5, 0.5], [7, 0.5], [7.5, 0.5],
@@ -81,7 +94,6 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
     ],
     pass: "80 BPM 一小节 16 下，均匀不错位",
     tab: rhythm(
-      3,
       Array.from({ length: 16 }, (_, i) => [i / 4, 0.25] as [number, number]),
     ),
   },
@@ -98,7 +110,6 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
     ],
     pass: "70 BPM 两小节一轮，切换处不断拍",
     tab: rhythm(
-      3,
       [
         [0, 0.5], [0.5, 0.5], [1, 0.5], [1.5, 0.5], [2, 0.5], [2.5, 0.5], [3, 0.5], [3.5, 0.5],
         ...Array.from({ length: 16 }, (_, i) => [4 + i / 4, 0.25] as [number, number]),
@@ -119,7 +130,6 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
     ],
     pass: "60 BPM 一小节 12 个音，三下均匀",
     tab: rhythm(
-      3,
       Array.from({ length: 12 }, (_, i) => [(i * 1) / 3, 1 / 3] as [number, number]),
     ),
   },
@@ -136,7 +146,6 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
     ],
     pass: "60 BPM 交替 4 轮，两种感觉分得清",
     tab: rhythm(
-      3,
       [
         [0, 1 / 3], [1 / 3, 1 / 3], [2 / 3, 1 / 3],
         [1, 1 / 3], [4 / 3, 1 / 3], [5 / 3, 1 / 3],
@@ -159,7 +168,7 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
       "先念「长—短」，短的那个音不要提前",
     ],
     pass: "70 BPM 一小节 8 下，长短比例稳定",
-    tab: rhythm(3, [
+    tab: rhythm([
       [0, 0.75], [0.75, 0.25],
       [1, 0.75], [1.75, 0.25],
       [2, 0.75], [2.75, 0.25],
@@ -178,7 +187,7 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
       "先空手拍腿：拍点不拍、半拍拍",
     ],
     pass: "60 BPM 8 小节，脚和手的错位稳住",
-    tab: rhythm(3, [
+    tab: rhythm([
       [0.5, 0.5],
       [1, 0.5],
       [2.5, 0.5],
@@ -198,7 +207,7 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
       "数出声，把空拍也数出来",
     ],
     pass: "70 BPM 8 小节，空拍处手不停、拍不掉",
-    tab: rhythm(3, [
+    tab: rhythm([
       [0, 0.5], [0.5, 0.5], [2, 0.5], [2.5, 0.5], [3, 0.5],
     ]),
   },
@@ -215,7 +224,6 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
     ],
     pass: "80 BPM 一小节 6 下，重音在 1 和 4",
     tab: rhythm(
-      3,
       [
         [0, 0.5], [0.5, 0.5], [1, 0.5],
         [1.5, 0.5], [2, 0.5], [2.5, 0.5],
@@ -235,7 +243,7 @@ export const RHYTHM_DRILLS: RhythmDrill[] = [
       "脚的拍点不能变，变的只是手上动的次数",
     ],
     pass: "60 BPM 两小节一轮，三种时值都不塌",
-    tab: rhythm(3, [
+    tab: rhythm([
       [0, 0.5], [0.5, 0.5], [1, 0.25], [1.25, 0.25], [1.5, 0.25], [1.75, 0.25], [2, 1 / 3], [2 + 1 / 3, 1 / 3], [2 + 2 / 3, 1 / 3], [3, 0.5], [3.5, 0.5],
     ]),
   },
