@@ -1,6 +1,6 @@
 {
   "name": "@guitar/core",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -8,7 +8,7 @@
     "./dist": "./dist/index.js"
   },
   "scripts": {
-    "test": "node test/core.test.ts",
+    "test": "node scripts/run-tests.mjs",
     "build": "tsc -p tsconfig.build.json",
     "gen:levels": "node scripts/gen-levels.ts",
     "demo": "node scripts/demo.ts"

@@ -13,12 +13,14 @@ import {
   SONG_SNIPPETS,
   STRUM_LIBRARY,
 } from "../../../packages/core/src/rhythm-drills.ts";
+import { READING_DRILLS } from "../../../packages/core/src/reading-drills.ts";
 import { layoutTab } from "../src/lib/tab-layout.ts";
 
-/** 三处内容（综合练习、节奏专项、扫弦型、风格片段）用同一套排版检查。 */
+/** 五处内容（综合练习、节奏专项、朗读练习、扫弦型、风格片段）用同一套排版检查。 */
 const ALL: { id: string; tab: Parameters<typeof layoutTab>[0] }[] = [
   ...DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab })),
   ...RHYTHM_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab })),
+  ...READING_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab })),
   ...STRUM_LIBRARY.map((item) => ({ id: item.id, tab: item.tab })),
   ...SONG_SNIPPETS.map((item) => ({ id: item.id, tab: item.tab })),
 ];
@@ -77,8 +79,10 @@ check("弦线止于小节线，右端不留毛边（多行谱逐行检查）", (
     const scene = layoutTab(drill.tab);
     const lines = scene.els.filter((el) => el.t === "line" && el.cls === "tab-string");
     const bars = scene.els.filter((el) => el.t === "line" && el.cls === "tab-bar");
-    if (lines.length % 6 !== 0) {
-      throw new Error(`${drill.id}: 弦线数量 ${lines.length} 不是 6 的倍数`);
+    // 朗读谱每行只有一条线，六线谱每行六条
+    const perSystem = drill.tab.display === "rhythm" ? 1 : 6;
+    if (lines.length % perSystem !== 0) {
+      throw new Error(`${drill.id}: 弦线数量 ${lines.length} 不是 ${perSystem} 的倍数`);
     }
     const barXs = new Set(bars.map((bar) => Math.round((bar as { x1: number }).x1)));
     for (const line of lines) {

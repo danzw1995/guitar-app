@@ -1480,6 +1480,11 @@ button, select, input { font: inherit; color: inherit; }
   fill: var(--accent);
   font-size: 11px;
 }
+/* 朗读谱的 X：比品数大一点，念的时候好认 */
+.tab-fret.rhythm {
+  font-size: 17px;
+  font-weight: 700;
+}
 .tab-tech {
   fill: var(--accent);
   font-size: 10px;

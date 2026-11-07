@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import {
   LEVEL_LABEL,
+  READING_DRILLS,
+  READING_SOURCE,
   RHYTHM_DRILLS,
   SONG_SNIPPETS,
   STRUM_LIBRARY,
@@ -42,6 +44,10 @@ export default function Rhythm() {
 
   const drills = useMemo(
     () => RHYTHM_DRILLS.filter((drill) => level === 0 || drill.level === level),
+    [level],
+  );
+  const reading = useMemo(
+    () => READING_DRILLS.filter((drill) => level === 0 || drill.level === level),
     [level],
   );
   const patterns = useMemo(
@@ -126,6 +132,69 @@ export default function Rhythm() {
         <summary>节拍器（先开起来，再看谱）</summary>
         <Metronome />
       </details>
+
+      <h3 className="practice-h3">
+        跟读练习
+        <span className="practice-h3-hint">
+          整理自《节奏与节拍》{READING_SOURCE}：先念会，再上琴
+        </span>
+      </h3>
+      <div className="drill-grid">
+        {reading.map((drill) => (
+          <article key={drill.id} className="drill-card">
+            <header className="drill-head">
+              <h4>
+                练习 {drill.no} · {drill.name}
+              </h4>
+              <span className={`level-badge lv${drill.level}`}>{LEVEL_LABEL[drill.level]}</span>
+            </header>
+            <p className="rhythm-count">
+              拍号：<b>{drill.meter}</b>
+              <span className="rhythm-bpm">
+                {drill.bpm[0]}–{drill.bpm[1]} BPM
+              </span>
+            </p>
+            <p className="rhythm-count">
+              念：<b>{drill.count}</b>
+            </p>
+            <TabDiagram tab={drill.tab} />
+            <div className="drill-actions">
+              <button
+                type="button"
+                className="btn"
+                aria-label={`试听 ${drill.name}`}
+                onClick={() => playTab(drill.tab, drill.bpm[0])}
+              >
+                试听
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setTarget(drill);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                跟练
+              </button>
+              {best(drill.id) !== undefined && (
+                <span className="best-badge">最高 {best(drill.id)} BPM</span>
+              )}
+            </div>
+            <details className="pb-more">
+              <summary>怎么练 · 验收</summary>
+              <ol className="pb-steps">
+                {drill.tips.map((tip) => (
+                  <li key={tip}>{tip}</li>
+                ))}
+              </ol>
+              <p className="pb-line">
+                <b>验收</b>：{drill.pass}
+              </p>
+            </details>
+          </article>
+        ))}
+      </div>
 
       <h3 className="practice-h3">
         时值练习

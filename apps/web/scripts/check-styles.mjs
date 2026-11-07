@@ -395,6 +395,17 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 19. 朗读谱：X 要比品数更醒目
+{
+  const x = narrowDecls(".tab-fret.rhythm");
+  const size = Number(String(x.get("font-size") ?? "").replace("px", ""));
+  expect(
+    ".tab-fret.rhythm 字号 ≥ 15px（朗读时一眼认出 X）",
+    Number.isFinite(size) && size >= 15,
+    `font-size = ${x.get("font-size") ?? "未设置"}`,
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

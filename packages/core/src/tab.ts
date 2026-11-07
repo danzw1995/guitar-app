@@ -40,6 +40,11 @@ export interface Tab {
   range?: string;
   /** 谱子下面的一句话。 */
   caption?: string;
+  /**
+   * `rhythm` = 只有一条节奏线、音符画成 X（朗读练习用），不标弦号也不写品数。
+   * 不填就是普通六线谱。
+   */
+  display?: "tab" | "rhythm";
 }
 
 /** 试听用的一个音：什么时候响、响多久。 */
@@ -92,6 +97,7 @@ function make(notes: TabNote[], opts: Partial<Tab> = {}): Tab {
     bpm: opts.bpm,
     range: opts.range,
     caption: opts.caption,
+    display: opts.display,
   };
 }
 

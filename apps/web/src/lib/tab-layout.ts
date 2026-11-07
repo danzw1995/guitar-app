@@ -57,6 +57,9 @@ const MAX_SYSTEM_WIDTH = 460;
 /** 六线谱场景。 */
 export function layoutTab(tab: Tab): TabScene {
   const { notes, beatsPerBar, bars } = tab;
+  /** 朗读练习只有一条节奏线（画 X），不是六线谱。 */
+  const rhythmStyle = tab.display === "rhythm";
+  const lineCount = rhythmStyle ? 1 : 6;
   const beatWidth = Math.max(MIN_BEAT, GAP / closestGap(notes));
   const beatsInSystem = Math.max(
     beatsPerBar,
@@ -65,9 +68,11 @@ export function layoutTab(tab: Tab): TabScene {
   const barsPerSystem = Math.max(1, beatsInSystem / beatsPerBar);
   const systemCount = Math.ceil(bars / barsPerSystem);
 
-  const systemHeight = TOP + 5 * STRING_GAP + RHYTHM_GAP + 34;
+  const systemHeight =
+    TOP + (lineCount - 1) * STRING_GAP + RHYTHM_GAP + (rhythmStyle ? 22 : 34);
   const xIn = (offset: number) => LEFT + PAD + offset * beatWidth;
-  const yIn = (s: number, base: number) => base + TOP + (s - 1) * STRING_GAP;
+  const yIn = (s: number, base: number) =>
+    base + TOP + (rhythmStyle ? 0 : (s - 1) * STRING_GAP);
 
   const els: TabEl[] = [];
   let width = 0;
@@ -82,8 +87,8 @@ export function layoutTab(tab: Tab): TabScene {
     const staffEnd = xIn(lastBeat - firstBeat) - BAR_OFFSET;
     width = Math.max(width, staffEnd + 12);
 
-    // 弦线与弦号
-    for (let s = 1; s <= 6; s++) {
+    // 弦线与弦号（朗读谱只有一条线，也不用标弦号）
+    for (let s = 1; s <= lineCount; s++) {
       els.push({
         t: "line",
         x1: staffStart,
@@ -92,14 +97,16 @@ export function layoutTab(tab: Tab): TabScene {
         y2: yIn(s, base),
         cls: "tab-string",
       });
-      els.push({
-        t: "text",
-        x: LEFT - 7,
-        y: yIn(s, base),
-        text: STRING_LABELS[s - 1],
-        cls: "tab-string-name",
-        anchor: "end",
-      });
+      if (!rhythmStyle) {
+        els.push({
+          t: "text",
+          x: LEFT - 7,
+          y: yIn(s, base),
+          text: STRING_LABELS[s - 1],
+          cls: "tab-string-name",
+          anchor: "end",
+        });
+      }
     }
 
     // 小节线 + 小节号
@@ -110,7 +117,7 @@ export function layoutTab(tab: Tab): TabScene {
         x1: bx,
         y1: yIn(1, base),
         x2: bx,
-        y2: yIn(6, base),
+        y2: yIn(lineCount, base),
         cls: "tab-bar",
       });
       if (bar < barCount) {
@@ -159,8 +166,9 @@ export function layoutTab(tab: Tab): TabScene {
           });
         }
 
-        const label =
-          item.tech === "b" && item.bend
+        const label = rhythmStyle
+          ? "X"
+          : item.tech === "b" && item.bend
             ? `${item.f}↗${item.f + item.bend}`
             : item.tech === "v"
               ? `${item.f}~`
@@ -170,7 +178,7 @@ export function layoutTab(tab: Tab): TabScene {
           x: nx,
           y: yIn(item.s, base),
           text: label,
-          cls: "tab-fret",
+          cls: rhythmStyle ? "tab-fret rhythm" : "tab-fret",
           anchor: "middle",
         });
 

@@ -105,6 +105,7 @@ import {
   techniqueById,
   techniquesOf,
   RHYTHM_DRILLS,
+  READING_DRILLS,
   STRUM_LIBRARY,
   SONG_SNIPPETS,
 } from "../src/index.ts";
@@ -1297,6 +1298,37 @@ test("谱子能摊成试听时间轴：拍位换秒、同拍低音弦在前", ()
   assert.deepEqual(chord.map((event) => event.string), [6, 3, 1], "同一拍按低音弦先排");
   assert.ok(chord.every((event) => event.at === 0));
   assert.ok(chord.every((event) => event.dur >= 0.12));
+});
+
+test("跟读练习：来自视频板书，单线 X，拍位合法", () => {
+  assert.ok(READING_DRILLS.length >= 16, `跟读练习太少：${READING_DRILLS.length}`);
+  assert.equal(
+    new Set(READING_DRILLS.map((drill) => drill.id)).size,
+    READING_DRILLS.length,
+    "id 不能重复",
+  );
+
+  for (const drill of READING_DRILLS) {
+    assert.equal(drill.tab.display, "rhythm", `${drill.name} 应该用单线 X`);
+    assert.ok(drill.tab.notes.length > 0, `${drill.name} 没有音`);
+    assert.ok(drill.count.length > 1, `${drill.name} 缺少数拍词`);
+    assert.ok(drill.level >= 1 && drill.level <= 5);
+    const limit = drill.tab.bars * drill.tab.beatsPerBar;
+    for (const note of drill.tab.notes) {
+      assert.ok(note.beat >= 0 && note.beat < limit, `${drill.name} 有音跑出小节`);
+      assert.ok(note.dur > 0);
+    }
+    // 6/8 在模型里是 3 个四分音符一拍（6 个八分）
+    if (drill.meter === "6/8") assert.equal(drill.tab.beatsPerBar, 3);
+  }
+
+  const dotted = READING_DRILLS.find((drill) => drill.id === "rd-09")!;
+  assert.ok(Math.abs(dotted.tab.notes[0].dur - 0.75) < 1e-9, "附点应该是 3/4 拍");
+
+  const triplets = READING_DRILLS.find((drill) => drill.id === "rd-14")!;
+  assert.equal(triplets.tab.notes.length, 24, "两小节 × 每拍三下");
+  const gap = triplets.tab.notes[1].beat - triplets.tab.notes[0].beat;
+  assert.ok(Math.abs(gap - 1 / 3) < 1e-9, "三连音的间隔是 1/3 拍");
 });
 
 test("时间分配：加起来必须正好是总时长", () => {
