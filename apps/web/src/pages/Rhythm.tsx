@@ -12,6 +12,7 @@ import {
 import Metronome from "../components/Metronome";
 import TabDiagram from "../components/TabDiagram";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
+import { useTone } from "../hooks/useTone";
 import {
   loadPractice,
   loadProgress,
@@ -37,6 +38,7 @@ export default function Rhythm() {
   const [level, setLevel] = useState<Level | 0>(0);
   const [target, setTarget] = useState<FollowTarget | null>(null);
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
+  const { playTab } = useTone();
 
   const drills = useMemo(
     () => RHYTHM_DRILLS.filter((drill) => level === 0 || drill.level === level),
@@ -148,6 +150,14 @@ export default function Rhythm() {
               <button
                 type="button"
                 className="btn"
+                aria-label={`试听 ${drill.name}（含节拍器）`}
+                onClick={() => playTab(drill.tab, drill.bpm[0], { click: true })}
+              >
+                试听
+              </button>
+              <button
+                type="button"
+                className="btn"
                 onClick={() => {
                   setTarget(drill);
                   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -196,6 +206,14 @@ export default function Rhythm() {
               <button
                 type="button"
                 className="btn"
+                aria-label={`试听 ${pattern.name}（含节拍器）`}
+                onClick={() => playTab(pattern.tab, 70, { click: true })}
+              >
+                试听
+              </button>
+              <button
+                type="button"
+                className="btn"
                 onClick={() => {
                   setTarget({ ...pattern, bpm: [60, 90] as [number, number] });
                   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -234,6 +252,14 @@ export default function Rhythm() {
             </p>
             <TabDiagram tab={snippet.tab} />
             <div className="drill-actions">
+              <button
+                type="button"
+                className="btn"
+                aria-label={`试听 ${snippet.name}（含节拍器）`}
+                onClick={() => playTab(snippet.tab, snippet.bpm[0], { click: true })}
+              >
+                试听
+              </button>
               <button
                 type="button"
                 className="btn"

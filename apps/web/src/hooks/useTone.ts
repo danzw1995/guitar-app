@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { STANDARD_TUNING, frequencyOf, midiAt } from "@guitar/core";
+import { STANDARD_TUNING, frequencyOf, midiAt, tabEvents, type Tab } from "@guitar/core";
 
 export interface PlayOptions {
   /** 相邻两个音之间隔多久（秒）。 */
@@ -121,9 +121,53 @@ export function useTone() {
     midis.forEach((midi, index) => pluck(ctx, start + index * step, midi, 1));
   }
 
+  /** 一声节拍器的"哒"（试听谱子时用来定拍）。 */
+  function tick(ctx: AudioContext, at: number, accent: boolean) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.value = accent ? 1500 : 1000;
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.linearRampToValueAtTime(accent ? 0.22 : 0.12, at + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(at);
+    osc.stop(at + 0.06);
+    voices.current.push(osc);
+  }
+
+  /**
+   * 试听一条谱子：按 `tabEvents` 算出的时间弹，同一时刻的音错开 12ms（听起来是扫弦）。
+   * `click` 打开时同时打拍子——节奏要对着拍听才有意义。
+   */
+  function playTab(tab: Tab, bpm: number, opts: { click?: boolean } = {}) {
+    const ctx = ensure();
+    if (!ctx) return;
+    stop();
+    const start = ctx.currentTime + 0.08;
+    const secondsPerBeat = 60 / Math.max(20, bpm);
+
+    const seen = new Map<number, number>();
+    for (const event of tabEvents(tab, bpm)) {
+      const key = Math.round(event.at * 1000);
+      const order = seen.get(key) ?? 0;
+      seen.set(key, order + 1);
+      const at = start + event.at + order * 0.012;
+      pluck(ctx, at, event.midi, Math.max(0.45, Math.min(1.8, event.dur)));
+    }
+
+    if (opts.click) {
+      const beats = tab.bars * tab.beatsPerBar;
+      for (let beat = 0; beat < beats; beat++) {
+        tick(ctx, start + beat * secondsPerBeat, beat % tab.beatsPerBar === 0);
+      }
+    }
+  }
+
   useEffect(() => stop, []);
 
-  return { strum, arpeggio, play, stop };
+  return { strum, arpeggio, play, playTab, stop };
 }
 
 /** 分解和弦的弦序：低音弦 + 3-2-3-1-3-2-3（最常用的 53231323）。 */

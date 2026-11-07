@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.15.0`，core `0.11.0`，插件 `0.5.1`（v0.15.0 加了分解和弦试听与琴弦高亮，只动 Web）。
+当前：产品 `0.16.0`，core `0.12.0`，插件 `0.5.1`（v0.16.0 给 core 加了 `tabEvents`，算 MINOR）。
 
 ## 一次发版的流程
 

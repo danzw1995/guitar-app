@@ -42,6 +42,35 @@ export interface Tab {
   caption?: string;
 }
 
+/** 试听用的一个音：什么时候响、响多久。 */
+export interface TabEvent {
+  midi: number;
+  /** 弦号 1–6（同一个时间点按低音弦先响排序）。 */
+  string: number;
+  /** 相对开始的秒数。 */
+  at: number;
+  /** 响多久（秒）。 */
+  dur: number;
+}
+
+/**
+ * 把谱子摊成「第几秒弹哪个音」，给试听用。
+ *
+ * 同一拍上的多个音（和弦、扫弦）`at` 相同，按**低音弦在前**排好——
+ * 播放时再按这个顺序错开几毫秒，听起来就是一次扫弦。
+ */
+export function tabEvents(tab: Tab, bpm = 80): TabEvent[] {
+  const secondsPerBeat = 60 / Math.max(20, bpm);
+  return tab.notes
+    .map((note) => ({
+      midi: STANDARD_TUNING.strings[note.s - 1] + note.f,
+      string: note.s,
+      at: note.beat * secondsPerBeat,
+      dur: Math.max(0.12, note.dur * secondsPerBeat),
+    }))
+    .sort((a, b) => a.at - b.at || b.string - a.string);
+}
+
 /** 建一个音：少写重复字段。 */
 export function n(
   s: number,

@@ -98,6 +98,7 @@ import {
   drillsFor,
   chordTab,
   scaleRun,
+  tabEvents,
   practiceStats,
   recordBlock,
   stageForCompleted,
@@ -1262,6 +1263,40 @@ test("音阶谱必须严格上行：不能因为换弦空弦重复或回头", ()
   const cMids = c.notes.map((note) => STANDARD_TUNING.strings[note.s - 1] + note.f);
   assert.equal(cMids.length, 8);
   for (let i = 1; i < cMids.length; i++) assert.ok(cMids[i] > cMids[i - 1]);
+});
+
+test("谱子能摊成试听时间轴：拍位换秒、同拍低音弦在前", () => {
+  const single = tabEvents(
+    {
+      beatsPerBar: 4,
+      bars: 1,
+      notes: [
+        { s: 5, f: 3, beat: 0, dur: 1 },
+        { s: 4, f: 0, beat: 2, dur: 1 },
+      ],
+    },
+    60,
+  );
+  assert.equal(single.length, 2);
+  assert.equal(single[0].at, 0);
+  assert.equal(single[1].at, 2, "60 BPM 下第 3 拍就是第 2 秒");
+  assert.equal(single[0].midi, 48, "5 弦 3 品是 C3");
+
+  const chord = tabEvents(
+    {
+      beatsPerBar: 4,
+      bars: 1,
+      notes: [
+        { s: 1, f: 0, beat: 0, dur: 0.5 },
+        { s: 6, f: 3, beat: 0, dur: 0.5 },
+        { s: 3, f: 0, beat: 0, dur: 0.5 },
+      ],
+    },
+    60,
+  );
+  assert.deepEqual(chord.map((event) => event.string), [6, 3, 1], "同一拍按低音弦先排");
+  assert.ok(chord.every((event) => event.at === 0));
+  assert.ok(chord.every((event) => event.dur >= 0.12));
 });
 
 test("时间分配：加起来必须正好是总时长", () => {

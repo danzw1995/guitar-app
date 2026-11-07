@@ -200,7 +200,15 @@ check("节奏专项：难度筛选按钮有状态、谱子与数拍词可读", (
   const src = read("src/pages/Rhythm.tsx");
   expect(
     src,
-    ["aria-pressed={level", "<TabDiagram", "<details", "<summary>", "LEVEL_LABEL"],
+    [
+      "aria-pressed={level",
+      "<TabDiagram",
+      "<details",
+      "<summary>",
+      "LEVEL_LABEL",
+      "aria-label={`试听 ${drill.name}",
+      "playTab(drill.tab",
+    ],
     "Rhythm.tsx",
   );
   expect(read("src/App.tsx"), ['{ id: "rhythm"', "<Rhythm />"], "App.tsx");
