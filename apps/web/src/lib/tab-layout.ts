@@ -164,6 +164,17 @@ export function layoutTab(tab: Tab): TabScene {
             cls: "tab-arrow",
             anchor: "middle",
           });
+          // 右手切音：箭头上面一个点，和视频板书一致
+          if (item.muted) {
+            els.push({
+              t: "text",
+              x: nx,
+              y: yIn(6, base) + RHYTHM_GAP + 8,
+              text: "·",
+              cls: "tab-mute",
+              anchor: "middle",
+            });
+          }
         }
 
         const label = rhythmStyle

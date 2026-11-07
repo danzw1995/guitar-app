@@ -107,6 +107,7 @@ import {
   RHYTHM_DRILLS,
   READING_DRILLS,
   STRUM_LIBRARY,
+  STRUM_DRILLS,
   SONG_SNIPPETS,
 } from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
@@ -1329,6 +1330,56 @@ test("跟读练习：来自视频板书，单线 X，拍位合法", () => {
   assert.equal(triplets.tab.notes.length, 24, "两小节 × 每拍三下");
   const gap = triplets.tab.notes[1].beat - triplets.tab.notes[0].beat;
   assert.ok(Math.abs(gap - 1 / 3) < 1e-9, "三连音的间隔是 1/3 拍");
+});
+
+test("扫弦练习：24 条，格子数与拍号一致，切音位置合法", () => {
+  assert.equal(STRUM_DRILLS.length, 24, `扫弦练习应该是 24 条：${STRUM_DRILLS.length}`);
+  assert.equal(
+    new Set(STRUM_DRILLS.map((drill) => drill.no)).size,
+    24,
+    "练习编号不能重复",
+  );
+  assert.equal(
+    new Set(STRUM_DRILLS.map((drill) => drill.id)).size,
+    STRUM_DRILLS.length,
+    "id 不能重复",
+  );
+
+  for (const drill of STRUM_DRILLS) {
+    assert.ok(drill.count.length > 1, `${drill.name} 缺少数拍词`);
+    assert.ok(drill.level >= 1 && drill.level <= 5);
+    assert.ok(drill.mutes.length > 0 || drill.no !== 1, "练习 1 应该有切音");
+    for (const index of drill.mutes) {
+      assert.ok(index >= 0 && index < drill.slots.length, `${drill.name} 切音位置越界`);
+      assert.ok(drill.slots[index], `${drill.name} 切音必须落在扫弦格上`);
+    }
+    // 6/8 以八分音符为一拍：一小节 6 格、每格一拍
+    const perBar = drill.meter === "6/8" ? 6 : drill.beatsPerBar * 2;
+    assert.equal(drill.slots.length, perBar, `${drill.name} 格子数应该等于一小节的格数`);
+    assert.ok(drill.slots.some(Boolean), `${drill.name} 一个扫都没有`);
+
+    const limit = drill.tab.bars * drill.tab.beatsPerBar;
+    const onsets = new Set<number>();
+    for (const note of drill.tab.notes) {
+      assert.ok(note.beat >= 0 && note.beat < limit, `${drill.name} 有音跑出小节`);
+      assert.ok(note.dur > 0);
+      assert.ok(note.arrow === "D" || note.arrow === "U", `${drill.name} 弦上没有箭头`);
+      onsets.add(note.beat);
+    }
+    const strums = drill.slots.filter(Boolean).length * drill.tab.bars;
+    assert.equal(onsets.size, strums, `${drill.name} 扫的次数对不上格子`);
+  }
+
+  // 6/8 那条：每格一拍，节拍器正好一下一格
+  const six = STRUM_DRILLS.find((drill) => drill.no === 14)!;
+  assert.equal(six.meter, "6/8");
+  assert.equal(six.beatsPerBar, 6);
+  assert.equal(six.bpm, 80);
+
+  // 2/4 那条：一小节 4 个八分
+  const two = STRUM_DRILLS.find((drill) => drill.no === 1)!;
+  assert.equal(two.beatsPerBar, 2);
+  assert.equal(two.slots.length, 4);
 });
 
 test("时间分配：加起来必须正好是总时长", () => {

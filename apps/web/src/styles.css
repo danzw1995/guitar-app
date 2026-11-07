@@ -1501,6 +1501,12 @@ button, select, input { font: inherit; color: inherit; }
   fill: var(--blue);
   font-size: 12px;
 }
+/* 切音点：箭头上面那一个小点 */
+.tab-mute {
+  fill: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+}
 .tab-cap {
   display: flex;
   align-items: baseline;

@@ -29,6 +29,8 @@ export interface TabNote {
   bend?: number;
   /** 扫弦方向（画在谱子下方）。 */
   arrow?: "D" | "U";
+  /** 右手切音：箭头上面加一个点（视频板书就是这么标的）。 */
+  muted?: boolean;
 }
 
 export interface Tab {
@@ -222,6 +224,8 @@ export function chordTab(opts: {
    * 一维 = 每小节都一样；元素是数组 = 一小节一行（前后对比用）。
    */
   strums?: (("D" | "U" | null) | ("D" | "U" | null)[])[];
+  /** 哪几格是右手切音（0 起，按一小节内的格子算）。 */
+  mutes?: number[];
   bars?: number;
   step?: number;
   beatsPerBar?: number;
@@ -246,9 +250,10 @@ export function chordTab(opts: {
       const arrow = pattern[i % pattern.length];
       if (!arrow) continue;
       const beat = bar * beatsPerBar + i * step;
+      const muted = opts.mutes?.includes(i) ?? false;
       frets.forEach((fret, index) => {
         if (fret < 0) return;
-        notes.push(n(6 - index, fret, beat, step, { arrow }));
+        notes.push(n(6 - index, fret, beat, step, { arrow, muted }));
       });
     }
   }

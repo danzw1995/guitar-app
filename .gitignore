@@ -5,3 +5,6 @@ dist/
 .DS_Store
 Thumbs.db
 apps/web/dist/
+*.tsbuildinfo
+.tmp/
+.tmp-preview/

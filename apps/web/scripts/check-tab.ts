@@ -14,13 +14,15 @@ import {
   STRUM_LIBRARY,
 } from "../../../packages/core/src/rhythm-drills.ts";
 import { READING_DRILLS } from "../../../packages/core/src/reading-drills.ts";
+import { STRUM_DRILLS } from "../../../packages/core/src/strum-drills.ts";
 import { layoutTab } from "../src/lib/tab-layout.ts";
 
-/** 五处内容（综合练习、节奏专项、朗读练习、扫弦型、风格片段）用同一套排版检查。 */
+/** 五处内容（综合练习、节奏专项、朗读练习、扫弦练习、风格片段）用同一套排版检查。 */
 const ALL: { id: string; tab: Parameters<typeof layoutTab>[0] }[] = [
   ...DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab })),
   ...RHYTHM_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab })),
   ...READING_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab })),
+  ...STRUM_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab })),
   ...STRUM_LIBRARY.map((item) => ({ id: item.id, tab: item.tab })),
   ...SONG_SNIPPETS.map((item) => ({ id: item.id, tab: item.tab })),
 ];

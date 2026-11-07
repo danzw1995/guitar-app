@@ -406,6 +406,17 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 20. 切音点：箭头上面那一点要看得出
+{
+  const mute = narrowDecls(".tab-mute");
+  const size = Number(String(mute.get("font-size") ?? "").replace("px", ""));
+  expect(
+    ".tab-mute 有颜色且字号 ≥ 12px（切音点）",
+    (mute.get("fill") ?? "") !== "" && Number.isFinite(size) && size >= 12,
+    `fill = ${mute.get("fill") ?? "未设置"}, font-size = ${mute.get("font-size") ?? "未设置"}`,
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

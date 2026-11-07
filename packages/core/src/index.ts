@@ -15,4 +15,5 @@ export * from "./theory-game.ts";
 export * from "./practice.ts";
 export * from "./rhythm-drills.ts";
 export * from "./reading-drills.ts";
+export * from "./strum-drills.ts";
 export * from "./techniques.ts";

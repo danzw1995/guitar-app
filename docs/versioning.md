@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.17.0`，core `0.13.0`，插件 `0.5.1`（v0.17.0 给 core 加了 `reading-drills` 与 `Tab.display`，算 MINOR）。
+当前：产品 `0.18.0`，core `0.14.0`，插件 `0.5.1`（v0.18.0 给 core 加了 `strum-drills` 与 `TabNote.muted`，算 MINOR）。
 
 ## 一次发版的流程
 

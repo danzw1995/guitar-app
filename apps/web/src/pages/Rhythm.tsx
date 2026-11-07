@@ -5,6 +5,7 @@ import {
   READING_SOURCE,
   RHYTHM_DRILLS,
   SONG_SNIPPETS,
+  STRUM_DRILLS,
   STRUM_LIBRARY,
   dateKeyOf,
   recordBlock,
@@ -52,6 +53,10 @@ export default function Rhythm() {
   );
   const patterns = useMemo(
     () => STRUM_LIBRARY.filter((item) => level === 0 || item.level === level),
+    [level],
+  );
+  const strums = useMemo(
+    () => STRUM_DRILLS.filter((drill) => level === 0 || drill.level === level),
     [level],
   );
 
@@ -249,6 +254,67 @@ export default function Rhythm() {
                 <b>验收</b>：{drill.pass}
               </p>
             </details>
+          </article>
+        ))}
+      </div>
+
+      <h3 className="practice-h3">
+        扫弦练习
+        <span className="practice-h3-hint">
+          整理自《节奏与节拍》{READING_SOURCE} 的 24 条扫弦；圆点是右手切音
+        </span>
+      </h3>
+      <p className="rhythm-focus">
+        板书把方向画在六线谱上（1 弦在最上面），所以谱面上的上箭头是「下扫」——这里已经按
+        下 / 上 换算好了。板书里有几条是十六分（一拍两下以上），统一按八分格整理，先练稳骨架。
+      </p>
+      <div className="drill-grid">
+        {strums.map((drill) => (
+          <article key={drill.id} className="drill-card">
+            <header className="drill-head">
+              <h4>
+                练习 {drill.no} · {drill.name}
+              </h4>
+              <span className={`level-badge lv${drill.level}`}>{LEVEL_LABEL[drill.level]}</span>
+            </header>
+            <p className="rhythm-count">
+              拍号：<b>{drill.meter}</b>
+              <span className="rhythm-bpm">
+                {drill.bpm ? `${drill.bpm} BPM` : "—"}
+                {drill.mutes.length > 0 ? ` · 切音 ${drill.mutes.length} 处` : ""}
+              </span>
+            </p>
+            <p className="rhythm-count">
+              念：<b>{drill.count}</b>
+            </p>
+            <TabDiagram tab={drill.tab} />
+            <div className="drill-actions">
+              <button
+                type="button"
+                className="btn"
+                aria-label={`试听 练习 ${drill.no}`}
+                onClick={() => playTab(drill.tab, drill.bpm ?? 70)}
+              >
+                试听
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setTarget({ id: drill.id, name: `练习 ${drill.no}`, bpm: [drill.bpm ?? 70, 110], tab: drill.tab });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                跟练
+              </button>
+              {best(drill.id) !== undefined && (
+                <span className="best-badge">最高 {best(drill.id)} BPM</span>
+              )}
+            </div>
+            {drill.tip && <p className="pb-line">{drill.tip}</p>}
+            {drill.inferred && (
+              <p className="pb-line">板书没拍到这一帧，这条是按老师在逐字稿里的口诀整理的。</p>
+            )}
           </article>
         ))}
       </div>
