@@ -248,6 +248,16 @@ export async function renderPng(tex, opts = {}) {
   renderer.error.on((error) => problems.push(error));
 
   renderer.renderScore(score, [0]);
+  if (process.env.TAB_SCORE_DEBUG) {
+    console.error("parts", JSON.stringify(parts.map((p) => ({ x: p.x, y: p.y, w: p.width, h: p.height, tw: p.totalWidth, th: p.totalHeight }))));
+    for (const system of renderer.boundsLookup?.staffSystems ?? []) {
+      console.error("system", JSON.stringify(system.visualBounds));
+      for (const mb of system.bars ?? []) {
+        console.error(" master", JSON.stringify(mb.visualBounds));
+        for (const bar of mb.bars ?? []) console.error("  bar", JSON.stringify(bar.visualBounds));
+      }
+    }
+  }
 
   if (problems.length > 0) {
     throw problems[0];

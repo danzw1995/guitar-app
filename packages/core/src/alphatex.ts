@@ -120,6 +120,7 @@ export function onsetsOf(notes: TabNote[]): Onset[] {
 }
 
 function noteText(note: TabNote, mute: "dead" | "plain"): string {
+  if (note.ghost) return `x.${note.s}`;
   if (mute === "dead" && note.muted) return `x.${note.s}`;
   return `${note.f}.${note.s}`;
 }
