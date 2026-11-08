@@ -49,6 +49,8 @@ const GAP = 26;
 const BAR_OFFSET = 10;
 /** 弦线到符梁线的距离（符梁画在弦线下方）。 */
 const RHYTHM_GAP = 20;
+/** 一级符梁和二级符梁之间的间距（够宽才看得出「八分 / 十六分」的区别）。 */
+const BEAM_GAP = 7;
 /** 两行谱之间的距离。 */
 const SYSTEM_GAP = 18;
 /** 一行最多多宽——超过就换行，不横滚。 */
@@ -141,15 +143,18 @@ export function layoutTab(tab: Tab): TabScene {
       const nx = xIn(onset.beat - firstBeat);
       const note = onset.note;
 
-      // 时值：符干**朝下**从音上拉出来（吉他谱的习惯），统一落到下面那条符梁线上
+      // 时值：符干**朝下**从音上拉出来（吉他谱的习惯），落到自己那层符梁上——
+      // 十六分的符干要比八分的长一截，否则第二条符梁会浮在符干外面，看着像两条平行的线。
       const top = Math.min(...onset.strings);
       if (note.dur < 2) {
+        const stemEnd =
+          note.dur < 1 ? beamY + BEAM_GAP * (beamLevel(note.dur) - 1) : beamY;
         els.push({
           t: "line",
           x1: nx,
           y1: yIn(top, base) + 2,
           x2: nx,
-          y2: beamY,
+          y2: stemEnd,
           cls: "tab-stem",
         });
       }
@@ -240,6 +245,8 @@ export function layoutTab(tab: Tab): TabScene {
         continue;
       }
       const xs = group.map((onset) => xIn(onset.beat - firstBeat));
+      const levels = group.map((onset) => beamLevel(onset.note.dur));
+      // 主符梁：整组连起来
       els.push({
         t: "line",
         x1: xs[0],
@@ -248,17 +255,35 @@ export function layoutTab(tab: Tab): TabScene {
         y2: beamY,
         cls: "tab-beam",
       });
-      const shortest = Math.min(...group.map((onset) => onset.note.dur));
-      if (shortest <= 0.3) {
-        els.push({
-          t: "line",
-          x1: xs[0],
-          y1: beamY + 4,
-          x2: xs[xs.length - 1],
-          y2: beamY + 4,
-          cls: "tab-beam",
-        });
+      // 次级符梁：只盖住真的更短的那些音，这样「前八后十六」里
+      // 前面那个八分不会跟着被画成十六分
+      for (let level = 2; level <= 3; level++) {
+        let start = -1;
+        for (let i = 0; i <= levels.length; i++) {
+          const on = i < levels.length && levels[i] >= level;
+          if (on && start < 0) start = i;
+          if (!on && start >= 0) {
+            const end = i - 1;
+            const y = beamY + BEAM_GAP * (level - 1);
+            if (end > start) {
+              els.push({ t: "line", x1: xs[start], y1: y, x2: xs[end], y2: y, cls: "tab-beam" });
+            } else {
+              // 孤立的一个十六分：画一小段「规定长度的」符梁，别连到邻居身上
+              const stub = Math.min(14, Math.max(8, (xs[end + 1] ?? xs[end] + 24) - xs[end] - 4));
+              els.push({
+                t: "line",
+                x1: xs[start],
+                y1: y,
+                x2: xs[start] + stub,
+                y2: y,
+                cls: "tab-beam",
+              });
+            }
+            start = -1;
+          }
+        }
       }
+      const shortest = Math.min(...group.map((onset) => onset.note.dur));
       if (shortest > 0.3 && shortest < 0.4) {
         els.push({
           t: "text",
@@ -318,6 +343,13 @@ function beamGroups(onsets: Onset[], beatsPerBar: number): Onset[][] {
   }
   void beatsPerBar;
   return [...groups.values()];
+}
+
+/** 符梁层数：八分 1 层，十六分 2 层，三十二分 3 层。 */
+function beamLevel(dur: number): number {
+  if (dur <= 0.2) return 3;
+  if (dur <= 0.35) return 2;
+  return 1;
 }
 
 /** 同一根弦上、这个音之前最近的那个音。 */

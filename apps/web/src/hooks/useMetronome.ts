@@ -79,7 +79,7 @@ export function useMetronome({
     osc.type = offBeat ? "sine" : "square";
     osc.frequency.value = accent ? 1568 : offBeat ? 660 : 1046;
     gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.linearRampToValueAtTime(accent ? 0.4 : offBeat ? 0.12 : 0.22, when + 0.002);
+    gain.gain.linearRampToValueAtTime(accent ? 0.3 : offBeat ? 0.1 : 0.17, when + 0.002);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
     osc.connect(gain);
     gain.connect(ctx.destination);

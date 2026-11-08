@@ -175,6 +175,28 @@ check("时值画在音自己身上：符干、符梁、符尾对得上", () => {
   });
   if (count(sixteenths, "tab-beam") < 2) throw new Error("十六分音符应该有两条符梁");
 
+  // 前八后十六：第二条符梁只该盖住后两个十六分，不能从八分那儿开始——
+  // 否则「前八后十六」看起来和「四个十六分」一模一样，练习就没意义了。
+  const dotted = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [
+      { s: 5, f: 3, beat: 0, dur: 0.5 },
+      { s: 5, f: 3, beat: 0.5, dur: 0.25 },
+      { s: 5, f: 3, beat: 0.75, dur: 0.25 },
+    ],
+  });
+  const beamLines = dotted.els.filter((el) => el.cls === "tab-beam" && el.t === "line");
+  if (beamLines.length < 2) throw new Error("前八后十六应该有主、次两条符梁");
+  const xs = dotted.els.filter((el) => el.cls === "tab-fret").map((el) => el.x);
+  const ys = [...new Set(beamLines.map((el) => el.y1))].sort((a, b) => a - b);
+  const secondary = beamLines.filter((el) => el.y1 === ys[ys.length - 1]);
+  for (const beam of secondary) {
+    if (beam.x1 < xs[1] - 0.5) {
+      throw new Error("次级符梁从八分那儿就开始了，八分和十六分会看起来一样");
+    }
+  }
+
   // 单个八分（不在任何符梁组里）要有符尾，否则和四分音符长得一样
   const lone = layoutTab({
     beatsPerBar: 4,

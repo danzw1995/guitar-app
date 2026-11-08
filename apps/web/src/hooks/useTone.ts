@@ -16,6 +16,7 @@ export interface PlayOptions {
  */
 export function useTone() {
   const ctxRef = useRef<AudioContext | null>(null);
+  const masterRef = useRef<GainNode | null>(null);
   const voices = useRef<OscillatorNode[]>([]);
   const timers = useRef<number[]>([]);
 
@@ -26,19 +27,34 @@ export function useTone() {
     if (!Ctor) return null;
     const ctx = ctxRef.current ?? new Ctor();
     ctxRef.current = ctx;
+    if (!masterRef.current) {
+      // 扫弦是一下子 5–6 个音同时响，直接怼到 destination 会爆音；
+      // 中间挂一个压缩器，既压住峰值又把整体响度提上来（不然比节拍器还小）。
+      const master = ctx.createGain();
+      master.gain.value = 1.15;
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -18;
+      comp.knee.value = 12;
+      comp.ratio.value = 3;
+      comp.attack.value = 0.004;
+      comp.release.value = 0.18;
+      master.connect(comp);
+      comp.connect(ctx.destination);
+      masterRef.current = master;
+    }
     if (ctx.state === "suspended") void ctx.resume();
     return ctx;
   }
 
   /** 一声拨弦：`at` 是 AudioContext 时间轴上的绝对时间。 */
-  function pluck(ctx: AudioContext, at: number, midi: number, dur = 1.2, level = 0.2) {
+  function pluck(ctx: AudioContext, at: number, midi: number, dur = 1.2, level = 0.3) {
     if (at < ctx.currentTime) at = ctx.currentTime;
 
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, at);
     gain.gain.exponentialRampToValueAtTime(level, at + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-    gain.connect(ctx.destination);
+    gain.connect(masterRef.current ?? ctx.destination);
 
     const body = ctx.createOscillator();
     body.type = "triangle";
@@ -131,7 +147,7 @@ export function useTone() {
     gain.gain.linearRampToValueAtTime(accent ? 0.12 : 0.07, at + 0.002);
     gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(masterRef.current ?? ctx.destination);
     osc.start(at);
     osc.stop(at + 0.06);
     voices.current.push(osc);
@@ -155,7 +171,9 @@ export function useTone() {
       const order = seen.get(key) ?? 0;
       seen.set(key, order + 1);
       const at = start + event.at + order * 0.012;
-      pluck(ctx, at, event.midi, Math.max(0.45, Math.min(1.8, event.dur)));
+      // 衰减跟着时值走：十六分不该响得跟二分一样长，否则节奏糊成一团
+      const decay = Math.max(0.32, Math.min(1.6, event.dur * 1.8));
+      pluck(ctx, at, event.midi, decay, 0.32);
     }
 
     if (opts.click) {
