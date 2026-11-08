@@ -266,6 +266,57 @@ export function chordTab(opts: {
   });
 }
 
+/** 扫弦的一下：落在哪一拍、多长、朝哪个方向。 */
+export interface StrumHit {
+  /** 起拍（0 起，单位一拍）；一小节内的位置。 */
+  at: number;
+  /** 时值（拍）；不填就按「到下一个音的距离」算。 */
+  dur?: number;
+  dir: "D" | "U";
+  /** 右手切音（闷掉）。 */
+  muted?: boolean;
+}
+
+/**
+ * 按节奏型扫一个和弦。
+ *
+ * 和 `chordTab` 的区别：`chordTab` 是等距的格子（一拍两下就处处两下），
+ * 这里是**每个音自己带位置和时值**——「前八后十六」「附点」「十六分四连」都能写，
+ * 谱子上因此能看出真正的快慢，而不是被压成一样的格子。
+ */
+export function strumTab(opts: {
+  name: string;
+  beatsPerBar: number;
+  bars?: number;
+  hits: StrumHit[];
+  caption?: string;
+}): Tab {
+  const frets = shapeFrets(CHORD_BY_NAME.get(opts.name));
+  const beatsPerBar = opts.beatsPerBar;
+  const bars = opts.bars ?? 1;
+  const hits = [...opts.hits].sort((a, b) => a.at - b.at);
+  const notes: TabNote[] = [];
+
+  for (let bar = 0; bar < bars; bar++) {
+    hits.forEach((hit, index) => {
+      const next = hits[index + 1];
+      const dur = hit.dur ?? (next ? next.at - hit.at : beatsPerBar - hit.at);
+      const beat = bar * beatsPerBar + hit.at;
+      frets.forEach((fret, stringIndex) => {
+        if (fret < 0) return;
+        notes.push(n(6 - stringIndex, fret, beat, dur, { arrow: hit.dir, muted: hit.muted }));
+      });
+    });
+  }
+
+  return make(notes, {
+    bars,
+    beatsPerBar,
+    range: `${opts.name} 和弦`,
+    caption: opts.caption ?? "箭头是手的方向，空拍时手照样挥",
+  });
+}
+
 /** 一串和弦：每个和弦占 beatsEach 拍。 */
 export function progressionTab(opts: {
   names: string[];

@@ -1332,7 +1332,7 @@ test("跟读练习：来自视频板书，单线 X，拍位合法", () => {
   assert.ok(Math.abs(gap - 1 / 3) < 1e-9, "三连音的间隔是 1/3 拍");
 });
 
-test("扫弦练习：24 条，格子数与拍号一致，切音位置合法", () => {
+test("扫弦练习：24 条，十六分保留原样，时值对得上", () => {
   assert.equal(STRUM_DRILLS.length, 24, `扫弦练习应该是 24 条：${STRUM_DRILLS.length}`);
   assert.equal(
     new Set(STRUM_DRILLS.map((drill) => drill.no)).size,
@@ -1347,39 +1347,60 @@ test("扫弦练习：24 条，格子数与拍号一致，切音位置合法", ()
 
   for (const drill of STRUM_DRILLS) {
     assert.ok(drill.count.length > 1, `${drill.name} 缺少数拍词`);
+    assert.ok(drill.figure.length > 3, `${drill.name} 缺少音型说明`);
     assert.ok(drill.level >= 1 && drill.level <= 5);
-    assert.ok(drill.mutes.length > 0 || drill.no !== 1, "练习 1 应该有切音");
-    for (const index of drill.mutes) {
-      assert.ok(index >= 0 && index < drill.slots.length, `${drill.name} 切音位置越界`);
-      assert.ok(drill.slots[index], `${drill.name} 切音必须落在扫弦格上`);
+    // 一小节的音数：每小节的第一拍都该落在 0
+    const onsets = [
+      ...new Set(
+        drill.tab.notes
+          .filter((note) => note.beat < drill.tab.beatsPerBar)
+          .map((note) => Math.round(note.beat * 1000) / 1000),
+      ),
+    ].sort((a, b) => a - b);
+    assert.ok(onsets.length > 0, `${drill.name} 一个扫都没有`);
+    assert.equal(onsets[0], 0, `${drill.name} 第一下不在小节头`);
+    const limit = drill.tab.beatsPerBar;
+    for (const beat of onsets) {
+      assert.ok(beat >= 0 && beat < limit, `${drill.name} 有音跑出小节`);
     }
-    // 6/8 以八分音符为一拍：一小节 6 格、每格一拍
-    const perBar = drill.meter === "6/8" ? 6 : drill.beatsPerBar * 2;
-    assert.equal(drill.slots.length, perBar, `${drill.name} 格子数应该等于一小节的格数`);
-    assert.ok(drill.slots.some(Boolean), `${drill.name} 一个扫都没有`);
-
-    const limit = drill.tab.bars * drill.tab.beatsPerBar;
-    const onsets = new Set<number>();
     for (const note of drill.tab.notes) {
-      assert.ok(note.beat >= 0 && note.beat < limit, `${drill.name} 有音跑出小节`);
-      assert.ok(note.dur > 0);
+      assert.ok(note.dur > 0, `${drill.name} 有时值为 0 的音`);
       assert.ok(note.arrow === "D" || note.arrow === "U", `${drill.name} 弦上没有箭头`);
-      onsets.add(note.beat);
     }
-    const strums = drill.slots.filter(Boolean).length * drill.tab.bars;
-    assert.equal(onsets.size, strums, `${drill.name} 扫的次数对不上格子`);
+    // 十六分不能被抹成八分：音型里只要写了十六分，谱上就得有 0.25 拍的音
+    const hasSixteenthInFigure = /十六|后十六|后八/.test(drill.figure);
+    if (hasSixteenthInFigure) {
+      assert.ok(
+        drill.tab.notes.some((note) => Math.abs(note.dur - 0.25) < 1e-9),
+        `${drill.name}（${drill.figure}）在谱上找不到十六分音符`,
+      );
+    }
   }
 
-  // 6/8 那条：每格一拍，节拍器正好一下一格
-  const six = STRUM_DRILLS.find((drill) => drill.no === 14)!;
-  assert.equal(six.meter, "6/8");
-  assert.equal(six.beatsPerBar, 6);
-  assert.equal(six.bpm, 80);
+  // 练习 6：前八后十六 —— 第 2 拍是 下(八分) 下(十六分) 上(十六分)
+  const six = STRUM_DRILLS.find((drill) => drill.no === 6)!;
+  const beat2 = six.tab.notes
+    .filter((note) => note.beat >= 1 && note.beat < 2 && note.s === 1)
+    .map((note) => [note.beat, note.dur, note.arrow]);
+  assert.deepEqual(beat2, [
+    [1, 0.5, "D"],
+    [1.5, 0.25, "D"],
+    [1.75, 0.25, "U"],
+  ]);
 
-  // 2/4 那条：一小节 4 个八分
+  // 6/8 那条：一小节 6 拍（一拍一个八分），速度 80
+  const sixEight = STRUM_DRILLS.find((drill) => drill.no === 14)!;
+  assert.equal(sixEight.meter, "6/8");
+  assert.equal(sixEight.beatsPerBar, 6);
+  assert.equal(sixEight.bpm, 80);
+  assert.equal(sixEight.tab.beatsPerBar, 6);
+
+  // 2/4 那条：一小节 4 个八分，切音落在第 3 格
   const two = STRUM_DRILLS.find((drill) => drill.no === 1)!;
   assert.equal(two.beatsPerBar, 2);
-  assert.equal(two.slots.length, 4);
+  const muted = two.tab.notes.filter((note) => note.muted && note.beat < 2);
+  assert.ok(muted.length > 0, "练习 1 的切音丢了");
+  assert.equal(muted[0].beat, 1, "切音应该在第 2 拍下扫上");
 });
 
 test("时间分配：加起来必须正好是总时长", () => {
