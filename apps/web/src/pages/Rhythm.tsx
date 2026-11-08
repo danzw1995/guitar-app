@@ -164,7 +164,7 @@ export default function Rhythm() {
               念：<b>{drill.count}</b>
               <span className="rhythm-bpm">写在 {readingPitch(drill)} 上</span>
             </p>
-            <TabScore tab={drill.tab} bpm={drill.bpm[0]} />
+            <TabScore id={drill.id} tab={drill.tab} />
             <div className="drill-actions">
               <button
                 type="button"
@@ -221,7 +221,7 @@ export default function Rhythm() {
                 {drill.bpm[0]}–{drill.bpm[1]} BPM
               </span>
             </p>
-            <TabScore tab={drill.tab} bpm={drill.bpm[0]} />
+            <TabScore id={drill.id} tab={drill.tab} />
             <div className="drill-actions">
               <button
                 type="button"
@@ -297,7 +297,7 @@ export default function Rhythm() {
               <p className="rhythm-count">
                 念：<b>{drill.count}</b>
               </p>
-              <TabScore tab={drill.tab} bpm={drill.bpm ?? 70} />
+              <TabScore id={drill.id} tab={drill.tab} />
               <div className="drill-actions">
                 <button
                   type="button"
@@ -349,7 +349,7 @@ export default function Rhythm() {
               数：<b>{pattern.count}</b>
               <span className="rhythm-bpm">{pattern.chord} 和弦</span>
             </p>
-            <TabScore tab={pattern.tab} bpm={70} />
+            <TabScore id={pattern.id} tab={pattern.tab} />
             <div className="drill-actions">
               <button
                 type="button"
@@ -398,7 +398,7 @@ export default function Rhythm() {
                 {snippet.bpm[0]}–{snippet.bpm[1]} BPM
               </span>
             </p>
-            <TabScore tab={snippet.tab} bpm={snippet.bpm[0]} />
+            <TabScore id={snippet.id} tab={snippet.tab} />
             <div className="drill-actions">
               <button
                 type="button"

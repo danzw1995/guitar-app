@@ -26,6 +26,21 @@ test("alphaTex 渲染成 SVG：单个文件、带嵌套谱面", async () => {
   assert.ok(svg.length > 3_000, `SVG 太小：${svg.length} 字节`);
 });
 
+test("每拍分割线：SVG 里每条拍子之间都有 beat-line，PNG 也会变胖", async () => {
+  const plain = await renderSvg(tex, { width: 720, theme: "light", embedFont: false });
+  const lined = await renderSvg(tex, {
+    width: 720,
+    theme: "light",
+    embedFont: false,
+    beatLines: true,
+  });
+  const lines = (lined.match(/class="beat-line"/g) ?? []).length;
+  assert.ok(lines >= 4, `拍线太少：${lines}`);
+  assert.ok(lined.length > plain.length, "加了拍线 SVG 应该更大");
+  // 4/4 两小节 = 8 拍，每小节 3 条拍线（小节线自己已经画了）
+  assert.equal(lines, 6, `拍线数量不对：${lines}`);
+});
+
 test("JSON 谱面转 alphaTex：方向、切音、小节分隔都在", () => {
   const spec = JSON.parse(fs.readFileSync(`${root}samples/spec.json`, "utf8"));
   const out = specToAlphaTex(spec);

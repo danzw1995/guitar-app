@@ -191,12 +191,14 @@ check("六线谱：整张谱对读屏是一句话，练习页真的挂了谱子"
   const layout = read("src/lib/tab-layout.ts");
   expect(layout, ["ariaLabel", "六线谱", "tab-string"], "tab-layout.ts");
 
-  // 节奏页的谱换成了 alphaTab 画的，SVG 里只有字形没有语义，
-  // 说明话得由外层容器给：role="img" + aria-label。
-  const score = read("src/components/AlphaTabScore.tsx");
-  expect(score, ['role={label ? "img" : undefined}', "aria-label={label}"], "AlphaTabScore.tsx");
+  // 节奏页的谱是一张预渲染的 PNG（`public/scores/`），图片没有语义，
+  // 说明话由 alt 给——alt 又来自 layoutTab 生成的那句话。
   const tabScore = read("src/components/TabScore.tsx");
-  expect(tabScore, ["layoutTab(tab).ariaLabel", "label={label}"], "TabScore.tsx");
+  expect(
+    tabScore,
+    ["layoutTab(tab).ariaLabel", "alt={label}", "scores/${id}.png"],
+    "TabScore.tsx",
+  );
 
   const practice = read("src/pages/Practice.tsx");
   expect(practice, ["<TabDiagram", "<TabDiagram tab={drill.tab} />"], "Practice.tsx");

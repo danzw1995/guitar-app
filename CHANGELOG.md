@@ -9,6 +9,24 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.21.0] - 2026-11-08
+
+### Changed
+- **谱面改成预渲染的静态图片**：新增独立工具 `@danzw/tab-score`（`tools/tab-score`，MIT），
+  用 alphaTab + alphaSkia 在 Node 里把 alphaTex 渲染成 PNG/SVG，不需要浏览器、不需要 DOM。
+  `apps/web/scripts/gen-scores.ts`（`pnpm --filter @guitar/web run gen:scores`）把 68 条谱一次性
+  生成到 `apps/web/public/scores/`，页面里只剩一个 `<img>`。
+- 前端不再打包 alphaTab（约 300KB gzip），也不用养渲染实例：进视口即出图、没有「渲染中」的等待。
+  每拍分割线改由工具画进图里（`--beat-lines`），读谱时照样能对着数拍子。
+- `apps/web/src/components/TabScore.tsx` 变成 `<img src="scores/<id>.png" alt={layoutTab(tab).ariaLabel} loading="lazy">`；
+  删除 `AlphaTabScore.tsx` 与 `lib/alpha-render.ts`。
+
+### Added
+- `tools/tab-score`：命令行（`tab-score song.tex -o song.png`、`--format svg`、`--theme`、`--width`、
+  `--scale`、`--pixel-ratio`、`--beat-lines`、`--json`）+ 可 import 的库（`renderPng` / `renderSvg` / `specToAlphaTex`），
+  支持 alphaTex 与 JSON 两种输入，4 条冒烟测试。已单独提交（`3a20762`）。
+- `apps/web/scripts/gen-scores.ts` 与 `gen:scores` 脚本。
+
 ## [0.20.1] - 2026-11-08
 
 ### Changed

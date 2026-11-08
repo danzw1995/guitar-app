@@ -37,6 +37,8 @@ tab-score song.tex --json            # 只看转换出来的 alphaTex，不渲�
 | `--pixel-ratio` | `2` | 输出像素倍率，2 就是 2 倍图 |
 | `--no-title` | 关 | 不画标题 |
 | `--title-size` | `20` | 标题字号（alphaTab 默认 32，压在卡片上太抢） |
+| `--beat-lines` | 关 | 每拍之间画一条细虚线，读谱时数拍子用 |
+| `--beat-line-color` | `#6e7681` | 拍线的颜色 |
 | `--no-embed-font` | 关 | SVG 不内嵌字体：430KB → 30KB，但单独打开会缺音符符号 |
 
 ## 输入格式

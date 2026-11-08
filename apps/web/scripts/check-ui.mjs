@@ -131,17 +131,13 @@ try {
     firstText,
   );
 
-  // 谱是懒渲染的（进视口才画），这里只数占位框；真的画出来没有，滚完整页再验。
+  // 谱是懒加载的图片（进视口才请求），这里先数占位，滚完整页再验有没有真的加载出来。
   const boxes = js(
-    "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('.alpha-score').length : -1; })()",
+    "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('.tab-score').length : -1; })()",
   );
   log(boxes === "24", `每条扫弦练习都有一个谱位（读到 ${boxes} 个）`);
 
-  // 3b) 谱是 alphaTab 排队渲染的（进视口才画），所以滚完整页再数一遍：
-  //     68 张都得有 svg，而且每拍之间要有分割线。
-  // 3b) 谱是 alphaTab 排队渲染的（进视口才画），所以慢慢滚完整页再数一遍：
-  //     68 张都得有 svg，而且每拍之间要有分割线。
-  //     一次 scrollTo 到底只会触发最后视口那几张，必须一步步滚。
+  // 3b) 谱图是 `loading="lazy"`，一步步滚完整页，再看每张卡的图有没有加载出来。
   let scrolled = 0;
   for (let step = 0; step < 60; step++) {
     const info = js(
@@ -158,25 +154,24 @@ try {
   }
   const countScores = () => {
     const raw = js(
-      "(() => { const cards = [...document.querySelectorAll('.drill-card')]; const bad = cards.filter((c) => !c.querySelector('.alpha-score svg')).length; return JSON.stringify({ cards: cards.length, bad, beats: document.querySelectorAll('.tab-beat-line').length }); })()",
+      "(() => { const cards = [...document.querySelectorAll('.drill-card')]; const bad = cards.filter((c) => { const img = c.querySelector('.tab-score'); return !img || !img.complete || img.naturalWidth === 0; }).length; return JSON.stringify({ cards: cards.length, bad }); })()",
     );
     try {
       return JSON.parse(JSON.parse(raw));
     } catch {
-      return { cards: 0, bad: -1, beats: 0 };
+      return { cards: 0, bad: -1 };
     }
   };
   let counts = countScores();
-  for (let tick = 0; tick < 30 && counts.bad !== 0; tick++) {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+  for (let tick = 0; tick < 20 && counts.bad !== 0; tick++) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
     counts = countScores();
   }
   log(
     counts.bad === 0,
-    `滚完整页后 ${counts.cards} 张卡都画出了谱（空白 ${counts.bad} 张）`,
+    `滚完整页后 ${counts.cards} 张卡都加载了谱图（没加载出来的 ${counts.bad} 张）`,
     `页面高度 ${scrolled}`,
   );
-  log(counts.beats > 0, `谱面每拍之间有分割线（读到 ${counts.beats} 条）`);
 
   // 4) 跟练：点开 → 面板出现，带着这条练习的起始速度
   const clicked = js(

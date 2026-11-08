@@ -25,6 +25,8 @@ const USAGE = `用法: tab-score <输入文件> [选项]
   --pixel-ratio <倍数>  输出像素倍率（默认 2）
   --no-title            不画标题
   --title-size <像素>   标题字号（默认 20）
+  --beat-lines          每拍之间画一条细虚线（读谱数拍子用）
+  --beat-line-color <颜色>  拍线颜色（默认 #6e7681）
   --no-embed-font       SVG 里不内嵌 Bravura 字体（文件从 430KB 降到 30KB，
                         单独打开会缺音符符号；页面里已经加载过字体时才用）
   --json                只打印转换后的 alphaTex，不渲染
@@ -62,6 +64,12 @@ function parseArgs(argv) {
         break;
       case "--title-size":
         args.titleSize = Number(argv[++i]);
+        break;
+      case "--beat-lines":
+        args.beatLines = true;
+        break;
+      case "--beat-line-color":
+        args.beatLineColor = argv[++i];
         break;
       case "--json":
         args.onlyTex = true;
@@ -124,6 +132,8 @@ async function main() {
     title: args.title !== false,
     titleSize: Number.isFinite(args.titleSize) ? args.titleSize : 20,
     embedFont: args.embedFont !== false,
+    beatLines: args.beatLines === true,
+    beatLineColor: args.beatLineColor ?? "#6e7681",
   };
 
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });

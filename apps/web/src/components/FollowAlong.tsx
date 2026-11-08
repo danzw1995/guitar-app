@@ -127,7 +127,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
         </div>
       </div>
 
-      <TabScore tab={target.tab} bpm={bpm} />
+      <TabScore id={target.id} tab={target.tab} />
 
       <p className="follow-hint">
         先跟着节拍器把这一遍弹稳；稳不住就按「停止」，把速度退回去再练。

@@ -5,10 +5,29 @@
 // 官方的 Node.js 指南：https://alphatab.net/docs/guides/nodejs
 import fs from "node:fs";
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import * as alphaTab from "@coderline/alphatab";
 import * as alphaSkia from "@coderline/alphaskia";
+
+const require = createRequire(import.meta.url);
+
+/**
+ * alphaSkia 的原生二进制按平台分包，默认只在自己的 node_modules 附近找。
+ * pnpm 的嵌套安装（比如被别的 workspace 包引用）会让它找不到，这里把已知位置补进去。
+ */
+function addPlatformSearchPaths() {
+  if (typeof alphaSkia.addSearchPaths !== "function") return;
+  for (const platform of ["windows", "linux", "macos"]) {
+    try {
+      const pkg = require.resolve(`@coderline/alphaskia-${platform}/package.json`);
+      alphaSkia.addSearchPaths(path.join(path.dirname(pkg), "lib"));
+    } catch {
+      // 这个平台没装，跳过
+    }
+  }
+}
 
 /** 主题：深色和浅色两套，颜色名与 alphaTab 的 resources 一一对应。 */
 export const THEMES = {
@@ -43,6 +62,7 @@ let skiaReady = false;
 /** 把 Bravura 交给 alphaSkia。只做一次，重复调用无害。 */
 export function initSkia(fontPath) {
   if (skiaReady) return;
+  addPlatformSearchPaths();
   // 字体跟着 alphaTab 包走，不另外拷贝：dist/font/Bravura.otf
   const resolvedFont =
     fontPath ??
@@ -66,8 +86,16 @@ function applyColor(color, hex) {
   color.updateRgba();
 }
 
-function makeSettings({ scale = 1, pixelRatio = 2, theme = "dark", titleSize = 20 } = {}) {
-  const colors = THEMES[theme] ?? THEMES.dark;
+function makeSettings({
+  scale = 1,
+  pixelRatio = 2,
+  theme = "dark",
+  titleSize = 20,
+  transparent = false,
+} = {}) {
+  const base = THEMES[theme] ?? THEMES.dark;
+  // transparent：不铺底色，PNG 留透明，方便贴在任意背景上（页面上就是这种情况）
+  const colors = transparent ? { ...base, background: null } : base;
   const settings = new alphaTab.Settings();
   settings.core.engine = "skia";
   settings.core.logLevel = "error";
@@ -124,6 +152,58 @@ export function parseTex(tex, opts = {}) {
   const score = alphaTab.importer.ScoreLoader.loadAlphaTex(tex, settings);
   prepareScore(score, settings, opts);
   return { score, settings };
+}
+
+/**
+ * 每一拍之间那条细竖线（读谱时数拍子用）。
+ *
+ * alphaTab 自己不画，但它算好了每一拍的 `boundsLookup`。
+ * 注意 `beats` 是「同一时刻的一组音」，不是「拍」：一串八分音符会给出 8 个 beat，
+ * 所以要先按拍号把一小节切成 num 拍（用 playbackStart 的 tick 数算），
+ * 再取「这一拍之前的最后一个音」和「这一拍上的第一个音」的中点当线的位置——
+ * 直接画在音上会划过品数。
+ *
+ * 返回的是逻辑像素坐标，调用方按自己的缩放去画。
+ */
+function beatLines(renderer, color = "#6e7681", alpha = 0.55) {
+  const lines = [];
+  for (const system of renderer.boundsLookup?.staffSystems ?? []) {
+    for (const masterBarBounds of system.bars ?? []) {
+      for (const barBounds of masterBarBounds.bars ?? []) {
+        const beats = (barBounds.beats ?? [])
+          .filter((beat) => beat.beat)
+          .sort((a, b) => a.beat.playbackStart - b.beat.playbackStart);
+        if (beats.length < 2) continue;
+        const master = beats[0].beat.voice?.bar?.masterBar;
+        if (!master) continue;
+        const barTicks = master.calculateDuration();
+        const perBar = master.timeSignatureNumerator;
+        if (!(barTicks > 0) || !(perBar > 1)) continue;
+        const ticksPerBeat = barTicks / perBar;
+        const barStart = beats[0].beat.playbackStart;
+        const y1 = barBounds.visualBounds.y;
+        const y2 = y1 + barBounds.visualBounds.h;
+        for (let k = 1; k < perBar; k += 1) {
+          const target = barStart + k * ticksPerBeat;
+          const nextIndex = beats.findIndex((beat) => beat.beat.playbackStart >= target);
+          if (nextIndex <= 0) continue;
+          const prev = beats[nextIndex - 1].visualBounds;
+          const next = beats[nextIndex].visualBounds;
+          lines.push({ x: (prev.x + prev.w + next.x) / 2, y1, y2, color, alpha });
+        }
+      }
+    }
+  }
+  return lines;
+}
+
+function hexToRgba(hex, alpha = 1) {
+  return {
+    r: parseInt(hex.slice(1, 3), 16),
+    g: parseInt(hex.slice(3, 5), 16),
+    b: parseInt(hex.slice(5, 7), 16),
+    a: Math.round(Math.max(0, Math.min(1, alpha)) * 255),
+  };
 }
 
 /**
@@ -198,6 +278,27 @@ export async function renderPng(tex, opts = {}) {
       part.height * dpi,
     );
   }
+  // 每拍之间的分割线：alphaTab 不画，按 boundsLookup 补，和网页里数拍子对齐用。
+  if (opts.beatLines) {
+    const color = opts.beatLineColor ?? "#6e7681";
+    const { r, g, b, a } = hexToRgba(color, opts.beatLineAlpha ?? 0.55);
+    canvas.color = alphaSkia.AlphaSkiaCanvas.rgbaToColor(r, g, b, a);
+    // 图会被浏览器缩到卡片宽度（约 520 CSS px），1 物理像素的线缩完就看不见了，
+    // 按 dpi 放大到 1.4 逻辑像素。
+    canvas.lineWidth = Math.max(1, Math.round(1.4 * dpi));
+    for (const line of beatLines(renderer, color)) {
+      const x = line.x * dpi;
+      const top = line.y1 * dpi;
+      const bottom = line.y2 * dpi;
+      // alphaSkia 没有虚线，按 2 实 5 空自己切段
+      for (let y = top; y < bottom; y += 7 * dpi) {
+        canvas.beginPath();
+        canvas.moveTo(x, y);
+        canvas.lineTo(x, Math.min(y + 2 * dpi, bottom));
+        canvas.stroke();
+      }
+    }
+  }
   const image = canvas.endRender();
   if (!image) {
     throw new Error("alphaSkia 合成图片失败");
@@ -258,7 +359,15 @@ export async function renderSvg(tex, opts = {}) {
   );
 
   const fontCss = opts.embedFont === false ? "" : fontFaceCss(opts.fontPath);
-  const style = `${fontCss}${colors.background ? `svg{background:${colors.background}}` : ""}.at{font-family:alphaTab}`;
+  const style = `${fontCss}${colors.background ? `svg{background:${colors.background}}` : ""}.at{font-family:alphaTab}.beat-line{stroke:#6e7681;stroke-opacity:.55;stroke-width:1;stroke-dasharray:2 5}`;
+  const lines = opts.beatLines
+    ? beatLines(renderer, opts.beatLineColor ?? "#6e7681")
+        .map(
+          (line) =>
+            `<line class="beat-line" x1="${line.x}" y1="${line.y1}" x2="${line.x}" y2="${line.y2}"/>`,
+        )
+        .join("")
+    : "";
   const body = parts
     .map((part) => {
       if (!part.markup) return "";
@@ -276,7 +385,7 @@ export async function renderSvg(tex, opts = {}) {
     })
     .join("\n");
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${total.width}" height="${total.height}" viewBox="0 0 ${total.width} ${total.height}"><style>${style}</style>${body}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${total.width}" height="${total.height}" viewBox="0 0 ${total.width} ${total.height}"><style>${style}</style>${body}${lines}</svg>`;
 }
 
 let fontCssCache = null;
