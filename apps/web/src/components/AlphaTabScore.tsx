@@ -88,9 +88,15 @@ export default function AlphaTabScore({ tex, scale = 1.15, label, className }: P
       className={`alpha-score ${className ?? ""}`}
       role={label ? "img" : undefined}
       aria-label={label}
-      // 渲染结果是 alphaTab 自己的 SVG 标记，只有这一处需要注入。
-      dangerouslySetInnerHTML={markup ? { __html: markup } : undefined}
       data-failed={failed ? "1" : undefined}
-    />
+      data-loading={markup || failed ? undefined : "1"}
+    >
+      {markup ? (
+        // 渲染结果是 alphaTab 自己的 SVG 标记，只有这一处需要注入。
+        <div dangerouslySetInnerHTML={{ __html: markup }} />
+      ) : (
+        <span className="alpha-score-note">{failed ? "这条谱面没画出来" : "谱面渲染中…"}</span>
+      )}
+    </div>
   );
 }

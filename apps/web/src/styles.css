@@ -1519,6 +1519,17 @@ button, select, input { font: inherit; color: inherit; }
 .alpha-score .at-surface {
   position: relative;
 }
+/* 谱面是排队画的，进视口后要等一下；先给一行字，别留一块空白。 */
+.alpha-score[data-loading="1"] {
+  display: flex;
+  align-items: center;
+  min-height: 72px;
+}
+.alpha-score-note {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
 .tab-fret {
   fill: var(--text);
   font-size: 13px;

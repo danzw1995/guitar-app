@@ -103,6 +103,10 @@ function ensureEngine(scale: number): Engine {
     api.settings.notation.elements.set(element, false);
   }
 
+  // 六线谱下方的节奏符梁默认离谱面 25（差不多一条弦距），压到 14 更紧凑，
+  // 符干也不至于拖得太长——卡片里一块谱就 200 多像素高。
+  api.settings.notation.rhythmHeight = 14;
+
   // 六线谱优先：默认 profile + staff 开关（用 `StaveProfile.Tab` 会没有符干）。
   api.scoreLoaded.on((score) => {
     for (const track of score.tracks) {
