@@ -153,6 +153,21 @@ agent-browser diff screenshot --baseline old.png # 视觉回归
 
 注意 PowerShell 里 `@e8` 要加引号（否则会被当成 splatting）。
 
+## 内容可信度：转录板书时用这两个工具
+
+从视频板书转录节奏型时，最容易犯的错是「看着对、其实不对」——v0.18 把十几条十六分压成了
+八分，v0.19.1 之前符梁画得让八分和十六分一个样，都是这么来的。两个便宜的保险：
+
+1. **对照图**：`pnpm run compare:boards`（需要 `pnpm dev` 在跑）会把「视频板书截图」和
+   「我们渲染出来的谱」左右拼成一张 `.tmp/boards.png`，24 条一次看完。
+   默认去 `C:\Users\wangzhidan\Documents\deepseek-harness\default-workspace\guitar`
+   找 slides，可以 `GUITAR_VIDEO_DIR=D:\... ` 指别处；找不到就只拼我们自己的谱。
+   **转录完先看这张图，再提交。**
+2. **节奏指纹**：`packages/core/test/fixtures/rhythm-fingerprints.json` 存了每条练习的
+   `[拍位, 时值, 方向]` 序列，`pnpm test` 会逐条比对。数据一改，测试就会打印
+   「第 6 条原来 [...] 现在 [...]」；确认是有意改的，跑 `pnpm run gen:fingerprints` 更新基线，
+   然后 review 那行 diff。**改了数据却不更新基线，测试会拦下来。**
+
 ## 新会话开场白
 
 > 读 `docs/README.md`、`docs/handoff.md`、`docs/roadmap.md`，当前 v0.10.1，乐理（12 节课 + 挑战游戏）、节奏/节拍器、练习页（51 条练习带六线谱）都已完成，下一步是 v1.0 的真机验收与首屏实测。

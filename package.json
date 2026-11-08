@@ -1,7 +1,7 @@
 {
   "name": "guitar-app",
   "private": true,
-  "version": "0.19.2",
+  "version": "0.19.3",
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm --filter @guitar/web dev",
@@ -16,6 +16,8 @@
     "check:all": "pnpm test && node apps/web/scripts/check-styles.mjs && node apps/web/scripts/check-pwa.mjs && node apps/web/scripts/check-a11y.mjs && node apps/web/scripts/check-tab.ts",
     "gen:icons": "node apps/web/scripts/gen-icons.mjs",
     "gen:levels": "pnpm --filter @guitar/core gen:levels",
+    "gen:fingerprints": "node packages/core/scripts/gen-fingerprints.mjs",
+    "compare:boards": "node apps/web/scripts/compare-boards.mjs",
     "demo": "pnpm --filter @guitar/core demo"
   },
   "devDependencies": {

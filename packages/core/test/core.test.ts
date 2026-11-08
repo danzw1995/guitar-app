@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   CHORDS,
   CHORD_BY_NAME,
@@ -1401,6 +1404,58 @@ test("扫弦练习：24 条，十六分保留原样，时值对得上", () => {
   const muted = two.tab.notes.filter((note) => note.muted && note.beat < 2);
   assert.ok(muted.length > 0, "练习 1 的切音丢了");
   assert.equal(muted[0].beat, 1, "切音应该在第 2 拍下扫上");
+});
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const FINGERPRINTS = JSON.parse(
+  readFileSync(join(HERE, "fixtures", "rhythm-fingerprints.json"), "utf8"),
+) as Record<string, Record<string, { bars: number; beatsPerBar: number; onsets: unknown }>>;
+
+/** 一个谱子的节奏指纹：`[拍位, 时值, 方向]`，同一拍只记一次。 */
+function fingerprint(tab: { notes: { beat: number; dur: number; arrow?: "D" | "U" }[] }) {
+  const first = new Map<number, { beat: number; dur: number; arrow?: "D" | "U" }>();
+  for (const note of tab.notes) {
+    const key = Math.round(note.beat * 1000) / 1000;
+    if (!first.has(key)) first.set(key, note);
+  }
+  return [...first.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([beat, note]) => [beat, Math.round(note.dur * 1000) / 1000, note.arrow ?? null]);
+}
+
+test("节奏指纹：练习的起音序列没有被意外改动", () => {
+  const groups = [
+    ["strum", STRUM_DRILLS],
+    ["reading", READING_DRILLS],
+    ["rhythm", RHYTHM_DRILLS],
+  ] as const;
+  const problems: string[] = [];
+
+  for (const [group, drills] of groups) {
+    for (const drill of drills) {
+      const want = FINGERPRINTS[group]?.[drill.id];
+      const got = {
+        bars: drill.tab.bars,
+        beatsPerBar: drill.tab.beatsPerBar,
+        onsets: fingerprint(drill.tab),
+      };
+      if (!want) {
+        problems.push(`${group}/${drill.id}：基线里没有这条（新增了练习？跑 pnpm run gen:fingerprints）`);
+        continue;
+      }
+      if (JSON.stringify(want) !== JSON.stringify(got)) {
+        problems.push(
+          `${group}/${drill.id}（${drill.name}）节奏变了：\n      原来 ${JSON.stringify(want.onsets)}\n      现在 ${JSON.stringify(got.onsets)}`,
+        );
+      }
+    }
+  }
+
+  assert.deepEqual(
+    problems,
+    [],
+    `这些练习的节奏指纹和基线对不上（确认是有意改的，就跑 pnpm run gen:fingerprints）：\n  ${problems.join("\n  ")}`,
+  );
 });
 
 test("时间分配：加起来必须正好是总时长", () => {

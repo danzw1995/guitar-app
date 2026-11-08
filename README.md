@@ -80,6 +80,7 @@ pnpm run check:all     # 测试 + 样式 + PWA + 无障碍 + 六线谱排版
 ```powershell
 npm i -g agent-browser; agent-browser install   # 一次性
 pnpm run check:ui                               # 默认连 127.0.0.1:5173，也可以传地址
+pnpm run compare:boards                         # 板书截图 vs 我们渲染的谱，逐条对照
 ```
 
 > 需要 pnpm 9+：`npm install -g pnpm`。新增 JSON 必须无 BOM（见 CONTRIBUTING）。
