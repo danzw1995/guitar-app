@@ -433,6 +433,21 @@ for (const selector of ["select", "input", "textarea"]) {
     (rest.get("fill") ?? "") !== "" && (rest.get("stroke") ?? "") !== "",
     `fill = ${rest.get("fill") ?? "未设置"}, stroke = ${rest.get("stroke") ?? "未设置"}`,
   );
+
+  // 三连音的「3」和括号：太小就看不见，等于没标
+  const tuplet = narrowDecls(".tab-tuplet");
+  const tupletSize = Number(String(tuplet.get("font-size") ?? "").replace("px", ""));
+  expect(
+    ".tab-tuplet 有颜色且不小于 12px（三连音的数字）",
+    (tuplet.get("fill") ?? "") !== "" && Number.isFinite(tupletSize) && tupletSize >= 12,
+    `fill = ${tuplet.get("fill") ?? "未设置"}, font-size = ${tuplet.get("font-size") ?? "未设置"}`,
+  );
+  const bracket = narrowDecls(".tab-tuplet-bracket");
+  expect(
+    ".tab-tuplet-bracket 有描边（四分三连音的括号）",
+    (bracket.get("stroke") ?? "") !== "",
+    `stroke = ${bracket.get("stroke") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

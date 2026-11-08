@@ -238,13 +238,76 @@ check("时值画在音自己身上：符干、符梁、符尾对得上", () => {
   });
   if (count(lone, "tab-flag") < 1) throw new Error("独立的八分音符缺少符尾");
 
-  // 二分音符：不画符干（时值靠说明和排版）
+  // 休止符要按标准形状分档：四分是折线，二分是坐在线上的块，全休止是挂在线上方的块
+  const restOf = (notes: { s: number; f: number; beat: number; dur: number }[]) =>
+    layoutTab({ beatsPerBar: 4, bars: 1, notes }).els.filter((el) => el.cls === "tab-rest");
+  const quarterRest = restOf([
+    { s: 5, f: 3, beat: 0, dur: 1 },
+    { s: 5, f: 3, beat: 2, dur: 1 },
+  ]);
+  if (!quarterRest.some((el) => el.t === "path")) {
+    throw new Error("一拍休止应该是折线的四分休止符，不该画成方块");
+  }
+  const halfRest = restOf([
+    { s: 5, f: 3, beat: 0, dur: 1 },
+    { s: 5, f: 3, beat: 3, dur: 1 },
+  ]);
+  if (!halfRest.some((el) => el.t === "rect")) throw new Error("两拍休止应该是二分休止符（方块）");
+  const wholeRest = restOf([{ s: 5, f: 3, beat: 0, dur: 1 }]);
+  if (!wholeRest.some((el) => el.t === "rect")) throw new Error("整小节休止应该是全休止符");
+
+  // 三连音：0.333 的拍位会算出 0.001 的空档，那不是休止；另外要让「3」出现在符梁下面
+  const tripletScene = layoutTab(READING_DRILLS.find((drill) => drill.id === "rd-14")!.tab);
+  if (tripletScene.els.some((el) => el.cls === "tab-rest")) {
+    throw new Error("三连音里没有空拍，不该冒出休止符（多半是拍位取整的误差）");
+  }
+  if (
+    !tripletScene.els.some((el) => el.cls === "tab-tuplet" && el.t === "text" && el.text === "3")
+  ) {
+    throw new Error("三连音缺少「3」的标记");
+  }
+
+  // 八分三连音：一条符梁（不能因为 0.333 拍被当成十六分而画成两条）
+  const eighthTrip = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [0, 1 / 3, 2 / 3].map((beat) => ({ s: 5, f: 3, beat, dur: 1 / 3 })),
+  });
+  const eighthBeams = eighthTrip.els.filter((el) => el.cls === "tab-beam");
+  if (eighthBeams.length !== 1) {
+    throw new Error(`八分三连音应该只有一条符梁，实际 ${eighthBeams.length} 条（被当成十六分了）`);
+  }
+
+  // 四分三连音：不连梁，用括号标「3」
+  const quarterTrip = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [0, 2 / 3, 4 / 3].map((beat) => ({ s: 5, f: 3, beat, dur: 2 / 3 })),
+  });
+  if (quarterTrip.els.some((el) => el.cls === "tab-beam")) {
+    throw new Error("四分音符不连梁，四分三连音不该出现符梁");
+  }
+  if (!quarterTrip.els.some((el) => el.cls === "tab-tuplet-bracket")) {
+    throw new Error("四分三连音缺少连音括号");
+  }
+
+  // 全音符：没有符干（二分音符有，符干长度固定）
+  const whole = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [{ s: 3, f: 7, beat: 0, dur: 4 }],
+  });
+  if (count(whole, "tab-stem") !== 0) throw new Error("全音符不该有符干");
   const half = layoutTab({
     beatsPerBar: 4,
     bars: 1,
     notes: [{ s: 3, f: 7, beat: 0, dur: 2 }],
   });
-  if (count(half, "tab-stem") !== 0) throw new Error("二分音符不该有符干");
+  const halfStem = half.els.find((el) => el.cls === "tab-stem");
+  if (!halfStem) throw new Error("二分音符应该有符干");
+  if (halfStem.t === "line" && halfStem.y2 - halfStem.y1 < 20) {
+    throw new Error("符干太短了，标准记法里符干是一个固定长度");
+  }
 });
 
 check("长谱换行：多行谱的弦线在每一行都重新开始", () => {

@@ -1467,7 +1467,7 @@ button, select, input { font: inherit; color: inherit; }
 .tab-rest {
   fill: #8b949e;
   stroke: #8b949e;
-  stroke-width: 1.6;
+  stroke-width: 1.8;
   stroke-linecap: round;
 }
 .tab-flag {
@@ -1479,6 +1479,16 @@ button, select, input { font: inherit; color: inherit; }
 .tab-count {
   fill: var(--muted);
   font-size: 10px;
+}
+.tab-tuplet {
+  fill: #b9c2cc;
+  font-size: 12px;
+  font-weight: 600;
+}
+.tab-tuplet-bracket {
+  stroke: #8b949e;
+  stroke-width: 1.2;
+  stroke-linecap: round;
 }
 .tab-fret {
   fill: var(--text);
