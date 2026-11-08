@@ -3,6 +3,7 @@ import {
   LEVEL_LABEL,
   READING_DRILLS,
   READING_SOURCE,
+  readingPitch,
   RHYTHM_DRILLS,
   SONG_SNIPPETS,
   STRUM_DRILLS,
@@ -161,6 +162,7 @@ export default function Rhythm() {
             </p>
             <p className="rhythm-count">
               念：<b>{drill.count}</b>
+              <span className="rhythm-bpm">写在 {readingPitch(drill)} 上</span>
             </p>
             <TabDiagram tab={drill.tab} />
             <div className="drill-actions">

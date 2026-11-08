@@ -81,7 +81,7 @@ check("弦线止于小节线，右端不留毛边（多行谱逐行检查）", (
     const scene = layoutTab(drill.tab);
     const lines = scene.els.filter((el) => el.t === "line" && el.cls === "tab-string");
     const bars = scene.els.filter((el) => el.t === "line" && el.cls === "tab-bar");
-    // 朗读谱每行只有一条线，六线谱每行六条
+    // 六线谱每行六条（`display: "rhythm"` 的单线记法仍然支持，只是现在没有内容用它）
     const perSystem = drill.tab.display === "rhythm" ? 1 : 6;
     if (lines.length % perSystem !== 0) {
       throw new Error(`${drill.id}: 弦线数量 ${lines.length} 不是 ${perSystem} 的倍数`);
@@ -208,7 +208,7 @@ check("时值画在音自己身上：符干、符梁、符尾对得上", () => {
   // 休止：空出来的地方要画休止符，否则看着像漏了音
   const restDrill = READING_DRILLS.find((drill) => drill.id === "rd-08")!;
   const restScene = layoutTab(restDrill.tab);
-  const restEls = restScene.els.filter((el) => el.cls === "tab-rest");
+  const restEls = restScene.els.filter((el) => el.cls.startsWith("tab-rest"));
   if (restEls.length === 0) throw new Error("八分+休止那条没有画出休止符");
   if (!restScene.ariaLabel.includes("休止")) {
     throw new Error("读屏描述里没有提休止");
@@ -225,7 +225,7 @@ check("时值画在音自己身上：符干、符梁、符尾对得上", () => {
 
   // 全是音符的谱子不该冒出休止符
   const solid = READING_DRILLS.find((drill) => drill.id === "rd-03")!;
-  if (layoutTab(solid.tab).els.some((el) => el.cls === "tab-rest")) {
+  if (layoutTab(solid.tab).els.some((el) => el.cls.startsWith("tab-rest"))) {
     throw new Error("没有空拍的练习却画了休止符");
   }
   const lone = layoutTab({
@@ -240,7 +240,7 @@ check("时值画在音自己身上：符干、符梁、符尾对得上", () => {
 
   // 休止符要按标准形状分档：四分是折线，二分是坐在线上的块，全休止是挂在线上方的块
   const restOf = (notes: { s: number; f: number; beat: number; dur: number }[]) =>
-    layoutTab({ beatsPerBar: 4, bars: 1, notes }).els.filter((el) => el.cls === "tab-rest");
+    layoutTab({ beatsPerBar: 4, bars: 1, notes }).els.filter((el) => el.cls.startsWith("tab-rest"));
   const quarterRest = restOf([
     { s: 5, f: 3, beat: 0, dur: 1 },
     { s: 5, f: 3, beat: 2, dur: 1 },
@@ -258,7 +258,7 @@ check("时值画在音自己身上：符干、符梁、符尾对得上", () => {
 
   // 三连音：0.333 的拍位会算出 0.001 的空档，那不是休止；另外要让「3」出现在符梁下面
   const tripletScene = layoutTab(READING_DRILLS.find((drill) => drill.id === "rd-14")!.tab);
-  if (tripletScene.els.some((el) => el.cls === "tab-rest")) {
+  if (tripletScene.els.some((el) => el.cls.startsWith("tab-rest"))) {
     throw new Error("三连音里没有空拍，不该冒出休止符（多半是拍位取整的误差）");
   }
   if (
@@ -308,6 +308,110 @@ check("时值画在音自己身上：符干、符梁、符尾对得上", () => {
   if (halfStem.t === "line" && halfStem.y2 - halfStem.y1 < 20) {
     throw new Error("符干太短了，标准记法里符干是一个固定长度");
   }
+});
+
+check("每拍之间有一条分割线（数拍子能对齐）", () => {
+  const quarters = layoutTab({
+    beatsPerBar: 4,
+    bars: 2,
+    notes: Array.from({ length: 8 }, (_, i) => ({ s: 5, f: 3, beat: i, dur: 1 })),
+  });
+  const beatLines = quarters.els.filter((el) => el.t === "line" && el.cls === "tab-beat-line");
+  const barLines = quarters.els.filter((el) => el.t === "line" && el.cls === "tab-bar");
+  if (beatLines.length !== 6) {
+    throw new Error(`两小节 4/4 应该有 6 条拍线（每小节 3 条），实际 ${beatLines.length}`);
+  }
+  const barXs = barLines.map((el) => (el as { x1: number }).x1);
+  for (const line of beatLines) {
+    const x = (line as { x1: number }).x1;
+    if (barXs.some((barX) => Math.abs(barX - x) < 5)) {
+      throw new Error(`拍线画在 ${x}，和小节线叠在一起了`);
+    }
+    if (x <= Math.min(...barXs) || x >= Math.max(...barXs)) {
+      throw new Error(`拍线画到 ${x}，跑到小节外面去了`);
+    }
+  }
+  for (const drill of READING_DRILLS) {
+    if (drill.tab.beatsPerBar > 1 && !layoutTab(drill.tab).els.some((el) => el.cls === "tab-beat-line")) {
+      throw new Error(`${drill.id}: 一拍以上的谱没有拍线`);
+    }
+  }
+});
+
+check("三连音括号的钩子朝上（对着音，不是倒挂）", () => {
+  const quarterTrip = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [0, 2 / 3, 4 / 3].map((beat) => ({ s: 5, f: 3, beat, dur: 2 / 3 })),
+  });
+  const hooks = quarterTrip.els.filter(
+    (el) => el.t === "line" && el.cls === "tab-tuplet-bracket" && Math.abs(el.x1 - el.x2) < 0.01,
+  );
+  if (hooks.length !== 2) throw new Error(`括号应该有两头钩子，实际 ${hooks.length}`);
+  for (const hook of hooks) {
+    if (hook.t !== "line") continue;
+    if (hook.y2 >= hook.y1) throw new Error("括号的钩子朝下了，应该朝上对着音");
+  }
+});
+
+check("附点八分 + 十六分：两个音一组时符梁闭合，两根符干一样长（照板书）", () => {
+  const scene = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [
+      { s: 5, f: 3, beat: 0, dur: 0.75 },
+      { s: 5, f: 3, beat: 0.75, dur: 0.25 },
+    ],
+  });
+  const stems = scene.els.filter((el) => el.t === "line" && el.cls === "tab-stem") as {
+    x1: number;
+    y2: number;
+  }[];
+  const beams = scene.els.filter((el) => el.t === "line" && el.cls === "tab-beam") as {
+    x1: number;
+    x2: number;
+    y1: number;
+  }[];
+  if (stems.length !== 2) throw new Error(`应该有两根符干，实际 ${stems.length}`);
+  const [first, second] = stems.sort((a, b) => a.x1 - b.x1);
+  const ys = [...new Set(beams.map((beam) => beam.y1))].sort((a, b) => a - b);
+  const secondary = beams.filter((beam) => beam.y1 === ys[ys.length - 1]);
+  if (secondary.length === 0) throw new Error("附点八分 + 十六分应该有第二条梁");
+  for (const beam of secondary) {
+    if (Math.abs(beam.x1 - first.x1) > 0.5 || Math.abs(beam.x2 - second.x1) > 0.5) {
+      throw new Error("第二条梁没有把两个音连起来（板书上两音一组是闭合的）");
+    }
+  }
+  // 两音一组：附点八分的符干也要伸到第二条梁上，否则第二条梁会挂着个自由端
+  if (Math.abs(first.y2 - second.y2) > 0.5) throw new Error("两个符干不一样长，第二条梁没有闭合");
+});
+
+check("前八后十六：第二条梁只盖后两个十六分，前面那个八分不伸长", () => {
+  const scene = layoutTab({
+    beatsPerBar: 4,
+    bars: 1,
+    notes: [
+      { s: 5, f: 3, beat: 0, dur: 0.5 },
+      { s: 5, f: 3, beat: 0.5, dur: 0.25 },
+      { s: 5, f: 3, beat: 0.75, dur: 0.25 },
+    ],
+  });
+  const stems = scene.els.filter((el) => el.t === "line" && el.cls === "tab-stem") as {
+    x1: number;
+    y2: number;
+  }[];
+  const beams = scene.els.filter((el) => el.t === "line" && el.cls === "tab-beam") as {
+    x1: number;
+    x2: number;
+    y1: number;
+  }[];
+  const [first, , third] = stems.sort((a, b) => a.x1 - b.x1);
+  const ys = [...new Set(beams.map((beam) => beam.y1))].sort((a, b) => a - b);
+  const secondary = beams.filter((beam) => beam.y1 === ys[ys.length - 1]);
+  if (secondary.length !== 1) throw new Error(`前八后十六应该只有一条次级梁，实际 ${secondary.length}`);
+  if (secondary[0].x1 <= first.x1 + 4) throw new Error("次级梁从八分那儿就开始了，八分和十六分会看起来一样");
+  if (Math.abs(secondary[0].x2 - third.x1) > 0.5) throw new Error("次级梁没有连到最后一个十六分");
+  if (first.y2 >= third.y2 - 1) throw new Error("八分的符干不该伸到第二条梁上");
 });
 
 check("长谱换行：多行谱的弦线在每一行都重新开始", () => {

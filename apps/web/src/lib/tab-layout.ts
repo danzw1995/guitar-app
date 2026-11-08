@@ -11,6 +11,7 @@
  *   符梁画在符干末端（连梁的一组取组里最靠下的音再往下拉），不另画「节奏轨」；
  * - 六线谱里符干画在品数**右边**，不压在数字上；
  * - 附点一个起音一个，休止符按标准形状分档（全/二分/四分/八分/十六分）；
+ * - 每拍之间有一条细的分割线（不是小节线），数拍子时能看出自己在第几拍；
  * - 拍子长到一行放不下时**换行**（分「行」排），不做横向滚动；
  * - 数字直接压在线上的位置，靠描边（和背景同色的粗描边）把弦线「断开」。
  */
@@ -141,6 +142,22 @@ export function layoutTab(tab: Tab): TabScene {
       }
     }
 
+    // 每拍之间的分割线：念「1234」的时候能一眼看到自己在第几拍。
+    // 画在拍点上，音符正好压在上面——数字带描边，会把线「断开」，不会糊成一团。
+    for (let bar = 0; bar < barCount; bar++) {
+      for (let beat = 1; beat < beatsPerBar; beat++) {
+        const bx = xIn(bar * beatsPerBar + beat);
+        els.push({
+          t: "line",
+          x1: bx,
+          y1: yIn(1, base),
+          x2: bx,
+          y2: yIn(lineCount, base),
+          cls: "tab-beat-line",
+        });
+      }
+    }
+
     // 这一行里的音
     const local = notes.filter((note) => note.beat >= firstBeat && note.beat < lastBeat);
     const onsets = groupOnsets(local);
@@ -164,11 +181,29 @@ export function layoutTab(tab: Tab): TabScene {
       }
     }
     const stemEndOf = (onset: Onset) => stemEnds.get(onset) ?? yIn(lineCount, base) + STEM_LEN;
+    /**
+     * 符干要伸到第几层梁。两个音一组（附点八分 + 十六分这种）照板书把符梁闭合：
+     * 两个音的符干都拉到最下面那条梁上。三音以上（前八后十六）仍然一层一层来，
+     * 否则前面那个八分会被画成十六分——那正是之前「八分十六分看不出区别」的原因。
+     */
+    const beamLevelOf = new Map<Onset, number>();
+    for (const group of groups) {
+      const own = group.map((onset) => beamLevel(onset.note.dur));
+      const closed = group.length === 2 ? Math.max(...own) : 0;
+      group.forEach((onset, index) => beamLevelOf.set(onset, closed || own[index]));
+    }
+    const levelOf = (onset: Onset) => beamLevelOf.get(onset) ?? beamLevel(onset.note.dur);
     const maxStemEnd = Math.max(yIn(lineCount, base) + STEM_LEN, ...onsets.map(stemEndOf));
     /** 扫弦箭头画在所有符干下面。 */
     const arrowY = maxStemEnd + 18;
-    /** 休止符：节奏谱画在那条线上，六线谱画在谱面中间。 */
-    const restY = rhythmStyle ? yIn(1, base) : base + TOP + 2.5 * STRING_GAP;
+    /** 休止符：节奏谱画在那条线上，六线谱画在谱面中间；整条谱只用到一根弦时就画在那根弦上，
+     *  否则休止符会孤零零飘在谱面中间，离音很远。 */
+    const usedStrings = new Set(notes.map((note) => note.s));
+    const restY = rhythmStyle
+      ? yIn(1, base)
+      : usedStrings.size === 1
+        ? yIn([...usedStrings][0], base)
+        : base + TOP + 2.5 * STRING_GAP;
     /** 符干不压在品数上：六线谱里符干画在数字右边（常见的吉他谱都是这么排的）。 */
     const stemXOf = (onset: Onset) => {
       const x = xIn(onset.beat - firstBeat);
@@ -186,7 +221,7 @@ export function layoutTab(tab: Tab): TabScene {
       const top = Math.min(...onset.strings);
       if (written(note.dur) < 4) {
         const stemEnd =
-          stemEndOf(onset) + (beamed.has(onset) && written(note.dur) < 1 ? BEAM_GAP * (beamLevel(note.dur) - 1) : 0);
+          stemEndOf(onset) + (beamed.has(onset) && written(note.dur) < 1 ? BEAM_GAP * (levelOf(onset) - 1) : 0);
         els.push({
           t: "line",
           x1: stemXOf(onset),
@@ -237,16 +272,16 @@ export function layoutTab(tab: Tab): TabScene {
           anchor: "middle",
         });
 
-        // 附点：时值是基准的 1.5 倍就在音右边点一下。一个起音只点一个——
-        // 和弦扫弦时每根弦都点一个会变成一串竖排的点。
+        // 附点：时值是基准的 1.5 倍就在音右边点一个圆点。一个起音只点一个——
+        // 和弦扫弦时每根弦都点一个会变成一串竖排的点。用圆点而不是「·」字符：
+        // 17px 的数字旁边，字符点只有两三个像素，看谱时等于没有。
         if (item === onset.notes[0] && isDotted(note.dur)) {
           els.push({
-            t: "text",
-            x: rhythmStyle ? nx + 9 : stemXOf(onset) + 7,
-            y: yIn(top, base) + 1,
-            text: "·",
+            t: "circle",
+            cx: rhythmStyle ? nx + 9 : stemXOf(onset) + 7,
+            cy: yIn(top, base) + 4,
+            r: 2.6,
             cls: "tab-dot",
-            anchor: "middle",
           });
         }
 
@@ -328,7 +363,7 @@ export function layoutTab(tab: Tab): TabScene {
         continue;
       }
       const xs = group.map(stemXOf);
-      const levels = group.map((onset) => beamLevel(onset.note.dur));
+      const levels = group.map((onset) => levelOf(onset));
       const beamY = stemEndOf(group[0]);
       // 主符梁：整组连起来
       els.push({
@@ -352,13 +387,26 @@ export function layoutTab(tab: Tab): TabScene {
             if (end > start) {
               els.push({ t: "line", x1: xs[start], y1: y, x2: xs[end], y2: y, cls: "tab-beam" });
             } else {
-              // 孤立的一个十六分：次级符梁往旁边那个符干上接——附点八分后面跟十六分时，
-              // 标准画法就是一条从十六分拉回前面符干的短梁，不是悬在中间的小横线
-              const toLeft = xs[start - 1];
-              const toRight = xs[start + 1];
-              const x1 = toLeft !== undefined ? toLeft : xs[start] - 11;
-              const x2 = toRight !== undefined ? toRight : toLeft !== undefined ? xs[start] : xs[start] + 11;
-              els.push({ t: "line", x1, y1: y, x2, y2: y, cls: "tab-beam" });
+              // 孤零零一个十六分（附点八分后面跟的那个）：第二条梁从它的符干朝旁边
+              // 伸一小段就停，**不能搭到旁边那个八分的符干上**——搭上了，那个八分
+              // 就跟着变成两条梁，看起来就是十六分了，附点也就白画了。
+              // 反过来如果让八分的符干伸下来「闭合」，同样会把八分画成十六分。
+              const stem = xs[start];
+              const left = xs[start - 1];
+              const right = xs[start + 1];
+              const reach = Math.max(
+                5,
+                Math.min(
+                  11,
+                  Math.min(left !== undefined ? stem - left : Infinity, right !== undefined ? right - stem : Infinity) -
+                    6,
+                ),
+              );
+              if (left !== undefined) {
+                els.push({ t: "line", x1: stem - reach, y1: y, x2: stem, y2: y, cls: "tab-beam" });
+              } else {
+                els.push({ t: "line", x1: stem, y1: y, x2: stem + reach, y2: y, cls: "tab-beam" });
+              }
             }
             start = -1;
           }
@@ -383,9 +431,11 @@ export function layoutTab(tab: Tab): TabScene {
         });
       } else {
         const top = Math.max(...tuplet.map(stemEndOf)) + 6;
+        // 括号两头的钩子朝**上**（对着音），不是朝下——朝下就成了「倒挂」，
+        // 看着像从下面挂上去的东西，而不是给上面三个音画的括号
         els.push({ t: "line", x1, y1: top, x2, y2: top, cls: "tab-tuplet-bracket" });
-        els.push({ t: "line", x1, y1: top, x2: x1, y2: top + 5, cls: "tab-tuplet-bracket" });
-        els.push({ t: "line", x1: x2, y1: top, x2, y2: top + 5, cls: "tab-tuplet-bracket" });
+        els.push({ t: "line", x1, y1: top, x2: x1, y2: top - 5, cls: "tab-tuplet-bracket" });
+        els.push({ t: "line", x1: x2, y1: top, x2, y2: top - 5, cls: "tab-tuplet-bracket" });
         els.push({ t: "text", x: (x1 + x2) / 2, y: top + 15, text: "3", cls: "tab-tuplet", anchor: "middle" });
       }
     }
@@ -520,31 +570,31 @@ function restParts(dur: number): { len: number; dotted: boolean }[] {
 function drawRest(els: TabEl[], x: number, y: number, len: number, dotted: boolean) {
   if (len >= 4) {
     // 全休止：挂在线上方（线下面那一小块）
-    els.push({ t: "rect", x: x - 6.5, y: y + 1, width: 13, height: 5, cls: "tab-rest" });
+    els.push({ t: "rect", x: x - 8, y: y + 1, width: 16, height: 6, cls: "tab-rest" });
   } else if (len >= 2) {
     // 二分休止：坐在线上
-    els.push({ t: "rect", x: x - 6.5, y: y - 6, width: 13, height: 5, cls: "tab-rest" });
+    els.push({ t: "rect", x: x - 8, y: y - 7.5, width: 16, height: 6, cls: "tab-rest" });
   } else if (len >= 1) {
-    // 四分休止：一条折线（上下两个尖）
+    // 四分休止：一条折线。四个折角比两个折角更像 𝄽——只有两个折角时看着就是个「<」
     els.push({
       t: "path",
-      d: `M ${x - 4.2} ${y - 9.5} L ${x + 3.2} ${y - 2.6} L ${x - 4} ${y + 2.8} L ${x + 3.6} ${y + 9.5}`,
-      cls: "tab-rest",
+      d: `M ${x + 2.8} ${y - 12} L ${x - 3.6} ${y - 4.4} L ${x + 2.2} ${y - 0.6} L ${x - 3.8} ${y + 4.6} L ${x + 2.4} ${y + 12}`,
+      cls: "tab-rest-line",
     });
   } else {
     // 八分休止：左上一点 + 一撇；十六分再加一个点
-    els.push({ t: "circle", cx: x - 2.8, cy: y - 6.2, r: 2.2, cls: "tab-rest" });
+    els.push({ t: "circle", cx: x - 3.5, cy: y - 7.8, r: 2.8, cls: "tab-rest" });
     els.push({
       t: "path",
-      d: `M ${x - 0.9} ${y - 6.2} q 5.4 4.6 1 10.2 q -1.6 2.2 1.3 4`,
-      cls: "tab-rest",
+      d: `M ${x - 1.1} ${y - 7.8} q 6.8 5.8 1.2 12.8 q -2 2.8 1.6 5`,
+      cls: "tab-rest-line",
     });
     if (len < 0.4) {
-      els.push({ t: "circle", cx: x - 1.6, cy: y + 1.8, r: 2.2, cls: "tab-rest" });
+      els.push({ t: "circle", cx: x - 2, cy: y + 2.3, r: 2.8, cls: "tab-rest" });
     }
   }
   if (dotted) {
-    els.push({ t: "text", x: x + 8, y, text: "·", cls: "tab-dot", anchor: "middle" });
+    els.push({ t: "circle", cx: x + 10, cy: y, r: 2.4, cls: "tab-dot" });
   }
 }
 

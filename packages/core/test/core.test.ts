@@ -1304,7 +1304,7 @@ test("谱子能摊成试听时间轴：拍位换秒、同拍低音弦在前", ()
   assert.ok(chord.every((event) => event.dur >= 0.12));
 });
 
-test("跟读练习：来自视频板书，单线 X，拍位合法", () => {
+test("跟读练习：来自视频板书，写在六线谱的一根弦上，拍位合法", () => {
   assert.ok(READING_DRILLS.length >= 16, `跟读练习太少：${READING_DRILLS.length}`);
   assert.equal(
     new Set(READING_DRILLS.map((drill) => drill.id)).size,
@@ -1313,7 +1313,16 @@ test("跟读练习：来自视频板书，单线 X，拍位合法", () => {
   );
 
   for (const drill of READING_DRILLS) {
-    assert.equal(drill.tab.display, "rhythm", `${drill.name} 应该用单线 X`);
+    // 跟读谱现在按六线谱画：整条练习写在同一根弦的同一个品位上（节奏练的是拍子）
+    assert.notEqual(drill.tab.display, "rhythm", `${drill.name} 不该再是单线 X`);
+    const strings = new Set(drill.tab.notes.map((note) => note.s));
+    const frets = new Set(drill.tab.notes.map((note) => note.f));
+    assert.equal(strings.size, 1, `${drill.name} 应该只写在一根弦上`);
+    assert.equal(frets.size, 1, `${drill.name} 应该只写在一个品位上`);
+    const onlyString = [...strings][0];
+    const onlyFret = [...frets][0];
+    assert.ok(onlyString >= 1 && onlyString <= 6, `${drill.name} 弦号越界`);
+    assert.ok(onlyFret >= 0 && onlyFret <= 24, `${drill.name} 品数越界`);
     assert.ok(drill.tab.notes.length > 0, `${drill.name} 没有音`);
     assert.ok(drill.count.length > 1, `${drill.name} 缺少数拍词`);
     assert.ok(drill.level >= 1 && drill.level <= 5);

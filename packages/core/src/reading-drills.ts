@@ -2,8 +2,11 @@
  * 跟读练习（整理自「酷音小伟《节奏与节拍》」BV1DA411b7nb 的板书）。
  *
  * 这批练习的重点**不是上琴**，而是老师反复强调的那套方法：
- * **嘴念变化的节奏型，脚/手打固定的拍子**。所以谱面用一条节奏线 + X，
- * 和视频板书一致，而不是六线谱。
+ * **嘴念变化的节奏型，脚/手打固定的拍子**。
+ *
+ * 视频板书用的是一行 X，那是简谱的写法。这里按六线谱的规矩画：每个音落在
+ * 某根弦的一个品位上（节奏练的是拍子，不是音高），时值照常画符干、符梁，
+ * 每拍之间还有一条分割线——这样和别的练习是同一套谱面，念的时候也能数拍。
  *
  * 版权：节奏型与练习方法是通用知识，可以转录；这里只保留编号与出处，
  * 不复用视频里的任何截图或音频。
@@ -25,7 +28,7 @@ export interface ReadingDrill {
   bpm: [number, number];
   tips: string[];
   pass: string;
-  /** 一条节奏线 + X。 */
+  /** 六线谱：所有音写在同一根弦的一个品位上。 */
   tab: Tab;
 }
 
@@ -42,24 +45,17 @@ function bar(pattern: [number, number][], beats: number, bars: number): [number,
   return full;
 }
 
-/** 朗读谱：单线 + X。 */
-function line(
-  beats: [number, number][],
-  opts: { beatsPerBar: number; bars: number },
-): Tab {
+/** 跟读谱：先按拍位排好音，具体落在哪根弦的哪一品由下面的 `PITCHES` 统一贴。 */
+function line(beats: [number, number][], opts: { beatsPerBar: number; bars: number }): Tab {
   return tabOf(
     beats.map(([beat, dur]) => n(6, 0, beat, dur)),
-    {
-      beatsPerBar: opts.beatsPerBar,
-      bars: opts.bars,
-      display: "rhythm",
-    },
+    { beatsPerBar: opts.beatsPerBar, bars: opts.bars },
   );
 }
 
 const SOURCE = "BV1DA411b7nb";
 
-export const READING_DRILLS: ReadingDrill[] = [
+const RAW: ReadingDrill[] = [
   {
     id: "rd-01",
     no: 1,
@@ -331,6 +327,38 @@ export const READING_DRILLS: ReadingDrill[] = [
     ),
   },
 ];
+
+/**
+ * 每个练习写在哪个音上：节奏练的是拍子，不是音高，所以整条练习就一个音。
+ * 轮着换位置（弦号 + 品位），十六张谱子才不会长得一模一样。
+ */
+const PITCHES: { s: number; f: number; name: string }[] = [
+  { s: 5, f: 3, name: "C" },
+  { s: 4, f: 2, name: "E" },
+  { s: 3, f: 0, name: "G" },
+  { s: 2, f: 1, name: "高音 C" },
+  { s: 4, f: 0, name: "D" },
+  { s: 3, f: 2, name: "A" },
+  { s: 2, f: 0, name: "B" },
+  { s: 6, f: 0, name: "低音 E" },
+];
+
+export const READING_DRILLS: ReadingDrill[] = RAW.map((drill, index) => {
+  const pitch = PITCHES[index % PITCHES.length];
+  return {
+    ...drill,
+    tab: {
+      ...drill.tab,
+      notes: drill.tab.notes.map((note) => ({ ...note, s: pitch.s, f: pitch.f })),
+    },
+  };
+});
+
+/** 这条练习写在哪个音上（卡片上标注用）。 */
+export function readingPitch(drill: ReadingDrill): string {
+  const index = READING_DRILLS.indexOf(drill);
+  return PITCHES[Math.max(0, index) % PITCHES.length].name;
+}
 
 /** 出处标注（卡片上显示）。 */
 export const READING_SOURCE = SOURCE;

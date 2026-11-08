@@ -433,6 +433,13 @@ for (const selector of ["select", "input", "textarea"]) {
     (rest.get("fill") ?? "") !== "" && (rest.get("stroke") ?? "") !== "",
     `fill = ${rest.get("fill") ?? "未设置"}, stroke = ${rest.get("stroke") ?? "未设置"}`,
   );
+  // 折线画的休止符（四分、八分）不能填充，填了就是一块实心波浪
+  const restLine = narrowDecls(".tab-rest-line");
+  expect(
+    ".tab-rest-line 只描边不填充（四分/八分休止符的折线）",
+    restLine.get("fill") === "none" && (restLine.get("stroke") ?? "") !== "",
+    `fill = ${restLine.get("fill") ?? "未设置"}, stroke = ${restLine.get("stroke") ?? "未设置"}`,
+  );
 
   // 三连音的「3」和括号：太小就看不见，等于没标
   const tuplet = narrowDecls(".tab-tuplet");
@@ -447,6 +454,14 @@ for (const selector of ["select", "input", "textarea"]) {
     ".tab-tuplet-bracket 有描边（四分三连音的括号）",
     (bracket.get("stroke") ?? "") !== "",
     `stroke = ${bracket.get("stroke") ?? "未设置"}`,
+  );
+
+  // 每拍之间的分割线：要是虚线、要比小节线淡，不然整张谱会像表格
+  const beatLine = narrowDecls(".tab-beat-line");
+  expect(
+    ".tab-beat-line 有描边而且是虚线（拍与拍的分割线）",
+    (beatLine.get("stroke") ?? "") !== "" && (beatLine.get("stroke-dasharray") ?? "") !== "",
+    `stroke = ${beatLine.get("stroke") ?? "未设置"}, dasharray = ${beatLine.get("stroke-dasharray") ?? "未设置"}`,
   );
 }
 

@@ -1439,6 +1439,12 @@ button, select, input { font: inherit; color: inherit; }
   stroke: #4b535d;
   stroke-width: 1.5;
 }
+/* 拍与拍之间的分割线：比小节线淡，不抢音符 */
+.tab-beat-line {
+  stroke: #333b44;
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+}
 /* 时值：从音自己身上拉出来的符干、符梁、符尾 */
 .tab-stem {
   stroke: #8b949e;
@@ -1469,6 +1475,14 @@ button, select, input { font: inherit; color: inherit; }
   stroke: #8b949e;
   stroke-width: 1.8;
   stroke-linecap: round;
+}
+/* 休止符里用折线画的那几种（四分、八分的撇）：只能描边，填充会变成一块实心波浪 */
+.tab-rest-line {
+  fill: none;
+  stroke: #8b949e;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .tab-flag {
   fill: none;
