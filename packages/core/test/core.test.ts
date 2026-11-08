@@ -112,6 +112,9 @@ import {
   STRUM_LIBRARY,
   STRUM_DRILLS,
   SONG_SNIPPETS,
+  tabToAlphaTex,
+  tabOf,
+  n,
 } from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
 
@@ -1668,6 +1671,154 @@ test("节奏专项：扫弦型与风格片段都有谱子", () => {
     assert.ok(snippet.tab.notes.length > 0, `${snippet.name} 没有谱子`);
     assert.ok(snippet.bpm[0] < snippet.bpm[1]);
   }
+});
+
+/** 按空格切音，但括号（和弦）和花括号（属性）里的空格不算。 */
+function alphaTokens(bar: string): string[] {
+  const tokens: string[] = [];
+  let current = "";
+  let depth = 0;
+  for (const ch of bar) {
+    if (ch === "(" || ch === "{") depth += 1;
+    if (ch === ")" || ch === "}") depth -= 1;
+    if (/\s/.test(ch) && depth === 0) {
+      if (current) tokens.push(current);
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  if (current) tokens.push(current);
+  // 拍属性写成 `(...).8 {bd}`，属性那一段和时值之间隔着空格，要并回前一个音。
+  const merged: string[] = [];
+  for (const token of tokens) {
+    if (token.startsWith("{") && merged.length > 0) merged[merged.length - 1] += ` ${token}`;
+    else merged.push(token);
+  }
+  return merged;
+}
+
+/** alphaTex 一小节里所有音加起来等于几个四分音符（三连音按 2/3 折算）。 */
+function alphaBarQuarters(bar: string): number {
+  const tokens = alphaTokens(bar);
+  const read = (token: string) => {
+    const match = /\.(\d+)(?:\s*\{([^}]*)\})?$/.exec(token);
+    if (!match) throw new Error(`看不懂的音符：${token}`);
+    const props = (match[2] ?? "").split(/\s+/).filter(Boolean);
+    const quarters = (4 / Number(match[1])) * (props.includes("d") ? 1.5 : 1);
+    return { quarters, props };
+  };
+  let total = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    const current = read(tokens[i]);
+    if (current.props.includes("tu")) {
+      // `{tu 3}` 写在组头，后面两个音是组员：三个音按记谱时值写，实际只占 2/3 的时间。
+      let written = current.quarters;
+      let next = i + 1;
+      while (next < tokens.length && next <= i + 2) {
+        written += read(tokens[next]).quarters;
+        next += 1;
+      }
+      total += written * (2 / 3);
+      i = next - 1;
+    } else {
+      total += current.quarters;
+    }
+  }
+  return total;
+}
+
+test("alphaTex：每条谱的每一小节都被填满", () => {
+  const tabs: { name: string; beatsPerBar: number; bars: number; tab: Parameters<typeof tabToAlphaTex>[0] }[] = [
+    ...STRUM_DRILLS.map((drill) => ({
+      name: `扫弦练习 ${drill.no}`,
+      beatsPerBar: drill.tab.beatsPerBar,
+      bars: drill.tab.bars,
+      tab: drill.tab,
+    })),
+    ...READING_DRILLS.map((drill) => ({
+      name: drill.name,
+      beatsPerBar: drill.tab.beatsPerBar,
+      bars: drill.tab.bars,
+      tab: drill.tab,
+    })),
+    ...RHYTHM_DRILLS.map((drill) => ({
+      name: drill.name,
+      beatsPerBar: drill.tab.beatsPerBar,
+      bars: drill.tab.bars,
+      tab: drill.tab,
+    })),
+    ...STRUM_LIBRARY.map((pattern) => ({
+      name: pattern.name,
+      beatsPerBar: pattern.tab.beatsPerBar,
+      bars: pattern.tab.bars,
+      tab: pattern.tab,
+    })),
+    ...SONG_SNIPPETS.map((snippet) => ({
+      name: snippet.name,
+      beatsPerBar: snippet.tab.beatsPerBar,
+      bars: snippet.tab.bars,
+      tab: snippet.tab,
+    })),
+  ];
+
+  for (const item of tabs) {
+    const tex = tabToAlphaTex(item.tab, { bpm: 70 });
+    const body = tex.split("\n").filter((line) => !line.startsWith("\\")).join(" ");
+    const bars = body.split("|").map((bar) => bar.trim()).filter(Boolean);
+    assert.equal(bars.length, item.bars, `${item.name} 的小节数不对`);
+    // alphaTab 的硬约束：小节时值凑不齐就整张空白，所以这里必须一分不差。
+    const perBeat = item.beatsPerBar === 6 ? 0.5 : 1;
+    const expected = item.beatsPerBar * perBeat;
+    for (const [index, bar] of bars.entries()) {
+      const got = alphaBarQuarters(bar);
+      assert.ok(
+        Math.abs(got - expected) < 1e-6,
+        `${item.name} 第 ${index + 1} 小节是 ${got} 个四分音符，应该是 ${expected}`,
+      );
+    }
+  }
+});
+
+test("alphaTex：附点、切音、三连音都按 alphaTab 的语法写", () => {
+  // 附点八分 + 十六分：附点写 `{d}`，和扫弦方向挤进同一个花括号
+  const dotted = tabOf([
+    n(5, 3, 0, 0.75, { arrow: "D" }),
+    n(5, 3, 0.75, 0.25, { arrow: "U" }),
+    n(5, 3, 1, 1),
+    n(5, 3, 2, 1),
+    n(5, 3, 3, 1),
+  ]);
+  const dottedTex = tabToAlphaTex(dotted);
+  assert.ok(dottedTex.includes("{bd d}"), `附点+下扫没合成一个花括号：${dottedTex}`);
+  assert.ok(dottedTex.includes("{bu}"), `上扫没写出来：${dottedTex}`);
+  assert.ok(!dottedTex.includes(".8."), "不要再写尾点形式 `.8.`，它后面跟花括号会解析失败");
+  assert.ok(!/\{\w+\}\s+\{/.test(dottedTex), "一拍不能带两个花括号");
+
+  // 切音：音头画成 ×
+  const muted = tabOf([n(5, 3, 0, 1, { muted: true }), n(4, 2, 1, 1), n(3, 0, 2, 1), n(2, 1, 3, 1)]);
+  assert.ok(tabToAlphaTex(muted).includes("x.5"), "切音没有写成死音音头");
+
+  // 三连音：一组三个音，只在组头写一次 `{tu 3}`
+  const triplets = tabOf([
+    n(3, 0, 0, 1 / 3),
+    n(3, 0, 1 / 3, 1 / 3),
+    n(3, 0, 2 / 3, 1 / 3),
+    n(3, 0, 1, 1),
+    n(3, 0, 2, 1),
+    n(3, 0, 3, 1),
+  ]);
+  const tripletTex = tabToAlphaTex(triplets);
+  assert.equal(tripletTex.match(/\{tu 3\}/g)?.length, 1, `三连音标记数量不对：${tripletTex}`);
+  // 记谱时值：1/3 拍写成八分（`.8`）
+  assert.ok(tripletTex.includes(".8 {tu 3}"), `三连音组头没写记谱时值：${tripletTex}`);
+
+  // 6/8 的拍号分母写 8，一拍按八分算
+  const sixEight = tabOf([n(5, 3, 0, 1), n(5, 3, 1, 1), n(5, 3, 2, 1), n(5, 3, 3, 1), n(5, 3, 4, 1), n(5, 3, 5, 1)], {
+    beatsPerBar: 6,
+  });
+  const sixTex = tabToAlphaTex(sixEight);
+  assert.ok(sixTex.includes("\\ts (6 8)"), `6/8 拍号写错了：${sixTex}`);
 });
 
 

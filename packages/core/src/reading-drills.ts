@@ -202,7 +202,7 @@ const RAW: ReadingDrill[] = [
     bpm: [65, 80],
     tips: ["后半拍那个音会延续到下一拍的开头，所以听起来像「抢」", "脚只管踩拍，别跟着音走"],
     pass: "65 BPM，拖过去的那一下不断",
-    tab: line(bar([[0, 0.5], [0.5, 0.75]], 4, 2), { beatsPerBar: 4, bars: 2 }),
+    tab: line(bar([[0, 0.25], [0.25, 0.75]], 4, 2), { beatsPerBar: 4, bars: 2 }),
   },
   {
     id: "rd-12",

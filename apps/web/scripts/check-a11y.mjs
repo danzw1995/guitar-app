@@ -191,6 +191,13 @@ check("六线谱：整张谱对读屏是一句话，练习页真的挂了谱子"
   const layout = read("src/lib/tab-layout.ts");
   expect(layout, ["ariaLabel", "六线谱", "tab-string"], "tab-layout.ts");
 
+  // 节奏页的谱换成了 alphaTab 画的，SVG 里只有字形没有语义，
+  // 说明话得由外层容器给：role="img" + aria-label。
+  const score = read("src/components/AlphaTabScore.tsx");
+  expect(score, ['role={label ? "img" : undefined}', "aria-label={label}"], "AlphaTabScore.tsx");
+  const tabScore = read("src/components/TabScore.tsx");
+  expect(tabScore, ["layoutTab(tab).ariaLabel", "label={label}"], "TabScore.tsx");
+
   const practice = read("src/pages/Practice.tsx");
   expect(practice, ["<TabDiagram", "<TabDiagram tab={drill.tab} />"], "Practice.tsx");
   expect(practice, ['aria-label="练习阶段"', "aria-current"], "Practice.tsx");
@@ -202,7 +209,7 @@ check("节奏专项：难度筛选按钮有状态、谱子与数拍词可读", (
     src,
     [
       "aria-pressed={level",
-      "<TabDiagram",
+      "<TabScore",
       "<details",
       "<summary>",
       "LEVEL_LABEL",

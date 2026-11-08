@@ -8,6 +8,7 @@ export * from "./chords.ts";
 export * from "./intervals.ts";
 export * from "./rhythm.ts";
 export * from "./tab.ts";
+export * from "./alphatex.ts";
 export * from "./circle.ts";
 export * from "./degrees.ts";
 export * from "./caged.ts";

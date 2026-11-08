@@ -14,7 +14,7 @@ import {
   type Level,
 } from "@guitar/core";
 import Metronome from "../components/Metronome";
-import TabDiagram from "../components/TabDiagram";
+import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
 import { useTone } from "../hooks/useTone";
 import {
@@ -164,7 +164,7 @@ export default function Rhythm() {
               念：<b>{drill.count}</b>
               <span className="rhythm-bpm">写在 {readingPitch(drill)} 上</span>
             </p>
-            <TabDiagram tab={drill.tab} />
+            <TabScore tab={drill.tab} bpm={drill.bpm[0]} />
             <div className="drill-actions">
               <button
                 type="button"
@@ -221,7 +221,7 @@ export default function Rhythm() {
                 {drill.bpm[0]}–{drill.bpm[1]} BPM
               </span>
             </p>
-            <TabDiagram tab={drill.tab} />
+            <TabScore tab={drill.tab} bpm={drill.bpm[0]} />
             <div className="drill-actions">
               <button
                 type="button"
@@ -297,7 +297,7 @@ export default function Rhythm() {
               <p className="rhythm-count">
                 念：<b>{drill.count}</b>
               </p>
-              <TabDiagram tab={drill.tab} />
+              <TabScore tab={drill.tab} bpm={drill.bpm ?? 70} />
               <div className="drill-actions">
                 <button
                   type="button"
@@ -349,7 +349,7 @@ export default function Rhythm() {
               数：<b>{pattern.count}</b>
               <span className="rhythm-bpm">{pattern.chord} 和弦</span>
             </p>
-            <TabDiagram tab={pattern.tab} />
+            <TabScore tab={pattern.tab} bpm={70} />
             <div className="drill-actions">
               <button
                 type="button"
@@ -398,7 +398,7 @@ export default function Rhythm() {
                 {snippet.bpm[0]}–{snippet.bpm[1]} BPM
               </span>
             </p>
-            <TabDiagram tab={snippet.tab} />
+            <TabScore tab={snippet.tab} bpm={snippet.bpm[0]} />
             <div className="drill-actions">
               <button
                 type="button"

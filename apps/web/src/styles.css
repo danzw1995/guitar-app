@@ -1504,6 +1504,21 @@ button, select, input { font: inherit; color: inherit; }
   stroke-width: 1.2;
   stroke-linecap: round;
 }
+/* alphaTab 渲染的六线谱（`AlphaTabScore`）：它自己往容器里塞 svg，这里只兜尺寸。 */
+.alpha-score {
+  margin: 4px 0 2px;
+  min-height: 64px;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.alpha-score svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.alpha-score .at-surface {
+  position: relative;
+}
 .tab-fret {
   fill: var(--text);
   font-size: 13px;

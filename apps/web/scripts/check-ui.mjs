@@ -11,6 +11,10 @@
  *
  * 没装 agent-browser 或页面没起来时，只提示一句然后跳过（不挡 CI）。
  * 换浏览器入口：环境变量 AGENT_BROWSER_BIN。
+ *
+ * Windows 上如果经由 `pnpm run check:ui` 起，agent-browser 可能报
+ * 「Socket directory '...\.agent-browser' is not writable」——是沙箱不让孩子进程写用户目录，
+ * 直接用 `node apps/web/scripts/check-ui.mjs <url>` 跑就正常。
  */
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -127,10 +131,52 @@ try {
     firstText,
   );
 
-  const svgs = js(
-    "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('svg').length : -1; })()",
+  // 谱是懒渲染的（进视口才画），这里只数占位框；真的画出来没有，滚完整页再验。
+  const boxes = js(
+    "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('.alpha-score').length : -1; })()",
   );
-  log(svgs === "24", `每条扫弦练习都挂了谱（读到 ${svgs} 张）`);
+  log(boxes === "24", `每条扫弦练习都有一个谱位（读到 ${boxes} 个）`);
+
+  // 3b) 谱是 alphaTab 排队渲染的（进视口才画），所以滚完整页再数一遍：
+  //     68 张都得有 svg，而且每拍之间要有分割线。
+  // 3b) 谱是 alphaTab 排队渲染的（进视口才画），所以慢慢滚完整页再数一遍：
+  //     68 张都得有 svg，而且每拍之间要有分割线。
+  //     一次 scrollTo 到底只会触发最后视口那几张，必须一步步滚。
+  let scrolled = 0;
+  for (let step = 0; step < 60; step++) {
+    const info = js(
+      "(() => { const max = document.documentElement.scrollHeight - window.innerHeight; window.scrollBy(0, 360); return JSON.stringify({ y: Math.round(window.scrollY), max }); })()",
+    );
+    try {
+      const at = JSON.parse(JSON.parse(info));
+      scrolled = at.y;
+      if (at.y >= at.max - 10) break;
+    } catch {
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 450));
+  }
+  const countScores = () => {
+    const raw = js(
+      "(() => { const cards = [...document.querySelectorAll('.drill-card')]; const bad = cards.filter((c) => !c.querySelector('.alpha-score svg')).length; return JSON.stringify({ cards: cards.length, bad, beats: document.querySelectorAll('.tab-beat-line').length }); })()",
+    );
+    try {
+      return JSON.parse(JSON.parse(raw));
+    } catch {
+      return { cards: 0, bad: -1, beats: 0 };
+    }
+  };
+  let counts = countScores();
+  for (let tick = 0; tick < 30 && counts.bad !== 0; tick++) {
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    counts = countScores();
+  }
+  log(
+    counts.bad === 0,
+    `滚完整页后 ${counts.cards} 张卡都画出了谱（空白 ${counts.bad} 张）`,
+    `页面高度 ${scrolled}`,
+  );
+  log(counts.beats > 0, `谱面每拍之间有分割线（读到 ${counts.beats} 条）`);
 
   // 4) 跟练：点开 → 面板出现，带着这条练习的起始速度
   const clicked = js(
