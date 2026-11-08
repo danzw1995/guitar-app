@@ -60,3 +60,25 @@ test("JSON 切音：mute=dead 时音头写成 x", () => {
   const out = specToAlphaTex(spec);
   assert.ok(out.includes("x.5"), `没有死音音头：${out}`);
 });
+
+test("engraving：TAB 谱号调小会改变画面，写错参数会报错", async () => {
+  // 注意：谱号只影响字形大小，不影响画布高度（系统高度由六条弦线定死），
+  // 所以这里比的是像素内容，不是尺寸。
+  const big = await renderPng(tex, { width: 720, theme: "dark", pixelRatio: 1 });
+  const small = await renderPng(tex, {
+    width: 720,
+    theme: "dark",
+    pixelRatio: 1,
+    engraving: { musicFontSize: 24 },
+  });
+  assert.equal(small.width, big.width, "谱号不该改变画布宽度");
+  assert.notEqual(
+    Buffer.compare(small.data, big.data),
+    0,
+    "调整谱号大小后图像应该不一样",
+  );
+  await assert.rejects(
+    () => renderPng(tex, { engraving: { noSuchMetric: 1 } }),
+    /未知的 engraving 参数/,
+  );
+});

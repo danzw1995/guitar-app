@@ -20,13 +20,16 @@ const USAGE = `用法: tab-score <输入文件> [选项]
   -o, --out <文件>       输出文件（默认与输入同名，扩展名换成 .png）
   --format <png|svg>    输出格式（默认 png）
   --theme <dark|light>  配色（默认 dark）
-  --width <像素>        版面宽度，逻辑像素（默认 900）
+  --width <像素>        版面宽度，逻辑像素（默认 720）
   --scale <倍数>        版面缩放（默认 1）
   --pixel-ratio <倍数>  输出像素倍率（默认 2）
   --no-title            不画标题
   --title-size <像素>   标题字号（默认 20）
   --beat-lines          每拍之间画一条细虚线（读谱数拍子用）
   --beat-line-color <颜色>  拍线颜色（默认 #6e7681）
+  --clef-size <数值>    TAB 谱号大小（默认 36；缩到卡片里时 28 更合适）
+  --beam-thickness <数值>   符梁粗细（默认 4.5）
+  --stem-thickness <数值>   符干粗细（默认 1.08）
   --no-embed-font       SVG 里不内嵌 Bravura 字体（文件从 430KB 降到 30KB，
                         单独打开会缺音符符号；页面里已经加载过字体时才用）
   --json                只打印转换后的 alphaTex，不渲染
@@ -70,6 +73,15 @@ function parseArgs(argv) {
         break;
       case "--beat-line-color":
         args.beatLineColor = argv[++i];
+        break;
+      case "--clef-size":
+        args.clefSize = Number(argv[++i]);
+        break;
+      case "--beam-thickness":
+        args.beamThickness = Number(argv[++i]);
+        break;
+      case "--stem-thickness":
+        args.stemThickness = Number(argv[++i]);
         break;
       case "--json":
         args.onlyTex = true;
@@ -134,6 +146,15 @@ async function main() {
     embedFont: args.embedFont !== false,
     beatLines: args.beatLines === true,
     beatLineColor: args.beatLineColor ?? "#6e7681",
+    engraving: {
+      musicFontSize: Number.isFinite(args.clefSize) ? args.clefSize : undefined,
+      beamThickness: Number.isFinite(args.beamThickness)
+        ? args.beamThickness
+        : undefined,
+      stemThickness: Number.isFinite(args.stemThickness)
+        ? args.stemThickness
+        : undefined,
+    },
   };
 
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });

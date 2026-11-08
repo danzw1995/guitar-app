@@ -92,6 +92,7 @@ function makeSettings({
   theme = "dark",
   titleSize = 20,
   transparent = false,
+  engraving = {},
 } = {}) {
   const base = THEMES[theme] ?? THEMES.dark;
   // transparent：不铺底色，PNG 留透明，方便贴在任意背景上（页面上就是这种情况）
@@ -102,6 +103,15 @@ function makeSettings({
   settings.display.scale = scale;
   settings.display.layoutMode = alphaTab.LayoutMode.Page;
   const resources = settings.display.resources;
+  // 六线谱的比例尺：符梁/符干的粗细、谱号（就是那个大大的 TAB）的大小都在这儿。
+  // 默认值是给整页五线谱用的，缩到卡片宽度时会显得笨重。
+  for (const [key, value] of Object.entries(engraving)) {
+    if (value === undefined || value === null) continue;
+    if (!(key in resources.engravingSettings)) {
+      throw new Error(`未知的 engraving 参数：${key}`);
+    }
+    resources.engravingSettings[key] = value;
+  }
   applyColor(resources.staffLineColor, colors.staffLineColor);
   applyColor(resources.barSeparatorColor, colors.barSeparatorColor);
   applyColor(resources.mainGlyphColor, colors.mainGlyphColor);

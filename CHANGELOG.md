@@ -9,6 +9,19 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.21.1] - 2026-11-08
+
+### Changed
+- **谱面观感调细**：排版宽度 600 → 720（缩到卡片里字不跟着变小、留白更多），
+  并按卡片尺寸调了 alphaTab 的比例尺：TAB 谱号 36 → 32、符梁 4.5 → 2.8、符干 1.08 → 0.8。
+  之前符梁和谱号是按整页五线谱的默认值画的，缩到 480px 宽就糊成一块。
+- `@danzw/tab-score` 0.3.0：新增 `engraving` 选项（`musicFontSize` / `beamThickness` / `stemThickness` …），
+  命令行对应 `--clef-size`、`--beam-thickness`、`--stem-thickness`。
+
+### Fixed
+- **重新生成谱面后页面仍显示旧图**：`scores/<id>.png` 文件名不变，浏览器会一直用缓存。
+  现在 `gen:scores` 会把图片内容指纹写进 `src/lib/scores-version.ts`，`TabScore` 用 `?v=<指纹>` 取图。
+
 ## [0.21.0] - 2026-11-08
 
 ### Changed
