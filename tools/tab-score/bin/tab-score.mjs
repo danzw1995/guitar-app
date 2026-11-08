@@ -30,6 +30,7 @@ const USAGE = `用法: tab-score <输入文件> [选项]
   --clef-size <数值>    TAB 谱号大小（默认 36；缩到卡片里时 28 更合适）
   --beam-thickness <数值>   符梁粗细（默认 4.5）
   --stem-thickness <数值>   符干粗细（默认 1.08）
+  --padding <像素>      四周留白（默认 6；底部是它的两倍，免得最下一行的品数贴边）
   --no-embed-font       SVG 里不内嵌 Bravura 字体（文件从 430KB 降到 30KB，
                         单独打开会缺音符符号；页面里已经加载过字体时才用）
   --json                只打印转换后的 alphaTex，不渲染
@@ -82,6 +83,9 @@ function parseArgs(argv) {
         break;
       case "--stem-thickness":
         args.stemThickness = Number(argv[++i]);
+        break;
+      case "--padding":
+        args.padding = Number(argv[++i]);
         break;
       case "--json":
         args.onlyTex = true;
@@ -144,6 +148,7 @@ async function main() {
     title: args.title !== false,
     titleSize: Number.isFinite(args.titleSize) ? args.titleSize : 20,
     embedFont: args.embedFont !== false,
+    padding: Number.isFinite(args.padding) ? args.padding : 6,
     beatLines: args.beatLines === true,
     beatLineColor: args.beatLineColor ?? "#6e7681",
     engraving: {

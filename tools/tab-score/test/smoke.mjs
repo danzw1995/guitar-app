@@ -61,6 +61,19 @@ test("JSON 切音：mute=dead 时音头写成 x", () => {
   assert.ok(out.includes("x.5"), `没有死音音头：${out}`);
 });
 
+test("留白：默认给四周留 6，底部留 12，最下一行的品数不会贴边", async () => {
+  const tight = await renderPng(tex, { width: 720, theme: "dark", pixelRatio: 1, padding: 0 });
+  const padded = await renderPng(tex, { width: 720, theme: "dark", pixelRatio: 1 });
+  assert.equal(padded.width - tight.width, 12, "左右各留 6");
+  assert.equal(padded.height - tight.height, 18, "上留 6、下留 12");
+  assert.equal(
+    (await renderPng(tex, { width: 720, theme: "dark", pixelRatio: 1, padding: 4 })).height -
+      tight.height,
+    12,
+    "上下留白应该跟着 padding 走",
+  );
+});
+
 test("engraving：TAB 谱号调小会改变画面，写错参数会报错", async () => {
   // 注意：谱号只影响字形大小，不影响画布高度（系统高度由六条弦线定死），
   // 所以这里比的是像素内容，不是尺寸。

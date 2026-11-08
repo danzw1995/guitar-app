@@ -269,6 +269,11 @@ export async function renderPng(tex, opts = {}) {
   // alphaTab 给的 totalWidth/totalHeight 是「还没画完」时的高度，不可靠；
   // 每块图的像素尺寸已经按 highDpiFactor 放大过，坐标还是逻辑像素，所以要乘回去。
   const dpi = opts.pixelRatio ?? 2;
+  // 谱面自己的高度只到「谱线 + 符梁」为止，第 6 弦上贴着底边的品数会被压到画布最外一行，
+  // 在浏览器里缩到卡片宽度后看着就像被切掉一半（第 6 弦的 0 尤其明显）。
+  // 所以四周留一圈白，底部给多一点。
+  const pad = opts.padding ?? 6;
+  const padBottom = opts.paddingBottom ?? pad * 2;
   const total = parts.reduce(
     (acc, part) => ({
       width: Math.max(acc.width, part.x + part.width),
@@ -276,9 +281,11 @@ export async function renderPng(tex, opts = {}) {
     }),
     { width: 0, height: 0 },
   );
+  const outWidth = total.width + pad * 2;
+  const outHeight = total.height + pad + padBottom;
 
   const canvas = new alphaSkia.AlphaSkiaCanvas();
-  canvas.beginRender(total.width * dpi, total.height * dpi, 1);
+  canvas.beginRender(outWidth * dpi, outHeight * dpi, 1);
   if (colors.background) {
     canvas.color = alphaSkia.AlphaSkiaCanvas.rgbaToColor(
       parseInt(colors.background.slice(1, 3), 16),
@@ -286,14 +293,14 @@ export async function renderPng(tex, opts = {}) {
       parseInt(colors.background.slice(5, 7), 16),
       255,
     );
-    canvas.fillRect(0, 0, total.width * dpi, total.height * dpi);
+    canvas.fillRect(0, 0, outWidth * dpi, outHeight * dpi);
   }
   for (const part of parts) {
     if (!part.image) continue;
     canvas.drawImage(
       part.image,
-      part.x * dpi,
-      part.y * dpi,
+      (part.x + pad) * dpi,
+      (part.y + pad) * dpi,
       part.width * dpi,
       part.height * dpi,
     );
@@ -307,9 +314,9 @@ export async function renderPng(tex, opts = {}) {
     // 按 dpi 放大到 1.4 逻辑像素。
     canvas.lineWidth = Math.max(1, Math.round(1.4 * dpi));
     for (const line of beatLines(renderer, color)) {
-      const x = line.x * dpi;
-      const top = line.y1 * dpi;
-      const bottom = line.y2 * dpi;
+      const x = (line.x + pad) * dpi;
+      const top = (line.y1 + pad) * dpi;
+      const bottom = (line.y2 + pad) * dpi;
       // alphaSkia 没有虚线，按 2 实 5 空自己切段
       for (let y = top; y < bottom; y += 7 * dpi) {
         canvas.beginPath();
@@ -378,13 +385,18 @@ export async function renderSvg(tex, opts = {}) {
     { width: 0, height: 0 },
   );
 
+  const pad = opts.padding ?? 6;
+  const padBottom = opts.paddingBottom ?? pad * 2;
+  const outWidth = total.width + pad * 2;
+  const outHeight = total.height + pad + padBottom;
+
   const fontCss = opts.embedFont === false ? "" : fontFaceCss(opts.fontPath);
   const style = `${fontCss}${colors.background ? `svg{background:${colors.background}}` : ""}.at{font-family:alphaTab}.beat-line{stroke:#6e7681;stroke-opacity:.55;stroke-width:1;stroke-dasharray:2 5}`;
   const lines = opts.beatLines
     ? beatLines(renderer, opts.beatLineColor ?? "#6e7681")
         .map(
           (line) =>
-            `<line class="beat-line" x1="${line.x}" y1="${line.y1}" x2="${line.x}" y2="${line.y2}"/>`,
+            `<line class="beat-line" x1="${(line.x + pad).toFixed(2)}" y1="${(line.y1 + pad).toFixed(2)}" x2="${(line.x + pad).toFixed(2)}" y2="${(line.y2 + pad).toFixed(2)}"/>`,
         )
         .join("")
     : "";
@@ -405,7 +417,7 @@ export async function renderSvg(tex, opts = {}) {
     })
     .join("\n");
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${total.width}" height="${total.height}" viewBox="0 0 ${total.width} ${total.height}"><style>${style}</style>${body}${lines}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${outWidth}" height="${outHeight}" viewBox="0 0 ${outWidth} ${outHeight}"><style>${style}</style><g transform="translate(${pad},${pad})">${body}</g>${lines}</svg>`;
 }
 
 let fontCssCache = null;

@@ -42,6 +42,7 @@ tab-score song.tex --json            # 只看转换出来的 alphaTex，不渲�
 | `--clef-size` | `36` | TAB 谱号大小；缩到卡片里用 `32` 左右 |
 | `--beam-thickness` | `4.5` | 符梁粗细；`2.8` 左右看起来不糊 |
 | `--stem-thickness` | `1.08` | 符干粗细 |
+| `--padding` | `6` | 四周留白（逻辑像素），底部是它的两倍；`0` 会让最下一行的品数贴边 |
 | `--no-embed-font` | 关 | SVG 不内嵌字体：430KB → 30KB，但单独打开会缺音符符号 |
 
 ## 输入格式
