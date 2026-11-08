@@ -417,6 +417,24 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 21. 附点与休止：都要看得出是"另一个东西"，不能和音符一个样
+{
+  const dot = narrowDecls(".tab-dot");
+  const dotSize = Number(String(dot.get("font-size") ?? "").replace("px", ""));
+  expect(
+    ".tab-dot 有颜色且比音符大（附点）",
+    (dot.get("fill") ?? "") !== "" && Number.isFinite(dotSize) && dotSize >= 14,
+    `fill = ${dot.get("fill") ?? "未设置"}, font-size = ${dot.get("font-size") ?? "未设置"}`,
+  );
+
+  const rest = narrowDecls(".tab-rest");
+  expect(
+    ".tab-rest 有填充也有描边（休止符）",
+    (rest.get("fill") ?? "") !== "" && (rest.get("stroke") ?? "") !== "",
+    `fill = ${rest.get("fill") ?? "未设置"}, stroke = ${rest.get("stroke") ?? "未设置"}`,
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

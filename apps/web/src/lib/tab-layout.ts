@@ -26,7 +26,8 @@ export type TabEl =
       anchor: "start" | "middle" | "end";
     }
   | { t: "path"; d: string; cls: string }
-  | { t: "circle"; cx: number; cy: number; r: number; cls: string };
+  | { t: "circle"; cx: number; cy: number; r: number; cls: string }
+  | { t: "rect"; x: number; y: number; width: number; height: number; cls: string };
 
 export interface TabScene {
   width: number;
@@ -78,6 +79,7 @@ export function layoutTab(tab: Tab): TabScene {
 
   const els: TabEl[] = [];
   let width = 0;
+  let restCount = 0;
 
   for (let system = 0; system < systemCount; system++) {
     const base = system * systemHeight;
@@ -198,6 +200,18 @@ export function layoutTab(tab: Tab): TabScene {
           anchor: "middle",
         });
 
+        // 附点：时值是「基准时值的 1.5 倍」就在音符右边点一下（四分附点 = 1.5 拍、八分附点 = 0.75 拍……）
+        if (isDotted(item.dur)) {
+          els.push({
+            t: "text",
+            x: nx + (rhythmStyle ? 8 : 9),
+            y: yIn(item.s, base) + 1,
+            text: "·",
+            cls: "tab-dot",
+            anchor: "middle",
+          });
+        }
+
         if (item.tech === "h" || item.tech === "p" || item.tech === "s") {
           const previous = previousOnString(local, item);
           if (previous) {
@@ -219,6 +233,37 @@ export function layoutTab(tab: Tab): TabScene {
               });
             }
           }
+        }
+      }
+    }
+
+    // 休止符：节奏谱里音符之间的空档要画出来，不然「整拍休止」看着就像忘了填
+    if (rhythmStyle) {
+      const rests: { beat: number; dur: number }[] = [];
+      for (let bar = 0; bar < barCount; bar++) {
+        const barStart = (firstBar + bar) * beatsPerBar;
+        const barEnd = barStart + beatsPerBar;
+        const inBar = onsets.filter((onset) => onset.beat >= barStart - 1e-6 && onset.beat < barEnd - 1e-6);
+        let cursor = barStart;
+        for (const onset of inBar) {
+          if (onset.beat - cursor > 1e-6) {
+            rests.push({ beat: cursor, dur: onset.beat - cursor });
+          }
+          cursor = Math.max(cursor, onset.beat + onset.note.dur);
+        }
+        if (barEnd - cursor > 1e-6) rests.push({ beat: cursor, dur: barEnd - cursor });
+      }
+      for (const rest of rests) {
+        restCount++;
+        const rx = xIn(rest.beat - firstBeat + rest.dur / 2);
+        const ry = yIn(1, base);
+        if (rest.dur >= 1) {
+          // 整拍或更长的休止：横躺在节奏线上的小方块
+          els.push({ t: "rect", x: rx - 7, y: ry - 3, width: 14, height: 6, cls: "tab-rest" });
+        } else {
+          // 半拍以内的休止：小圆点 + 一撇，和常见的八分休止一个意思
+          els.push({ t: "circle", cx: rx - 1, cy: ry + 1, r: 2.6, cls: "tab-rest" });
+          els.push({ t: "path", d: `M ${rx + 1.4} ${ry - 1.4} q -3 -6 4 -10`, cls: "tab-rest" });
         }
       }
     }
@@ -302,8 +347,8 @@ export function layoutTab(tab: Tab): TabScene {
     height: systemCount * systemHeight,
     els,
     ariaLabel: `六线谱${tab.range ? `（${tab.range}）` : ""}，${bars} 小节，共 ${notes.length} 个音${
-      tab.caption ? `。${tab.caption}` : ""
-    }`,
+      restCount > 0 ? `、${restCount} 处休止` : ""
+    }${tab.caption ? `。${tab.caption}` : ""}`,
   };
 }
 
@@ -350,6 +395,12 @@ function beamLevel(dur: number): number {
   if (dur <= 0.2) return 3;
   if (dur <= 0.35) return 2;
   return 1;
+}
+
+/** 附点：时值正好是基准时值的 1.5 倍（0.375 / 0.75 / 1.5 / 3 拍）。 */
+function isDotted(dur: number): boolean {
+  const tolerance = 1e-6;
+  return [0.25, 0.5, 1, 2].some((base) => Math.abs(dur - base * 1.5) < tolerance);
 }
 
 /** 同一根弦上、这个音之前最近的那个音。 */

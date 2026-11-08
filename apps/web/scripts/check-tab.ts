@@ -197,7 +197,37 @@ check("时值画在音自己身上：符干、符梁、符尾对得上", () => {
     }
   }
 
-  // 单个八分（不在任何符梁组里）要有符尾，否则和四分音符长得一样
+  // 附点：旋律里写了附点，谱上就得有那个点，否则「长—短」看不出来
+  const dotDrill = READING_DRILLS.find((drill) => drill.id === "rd-09")!;
+  const dotScene = layoutTab(dotDrill.tab);
+  const dots = dotScene.els.filter((el) => el.cls === "tab-dot");
+  if (dots.length !== 8) {
+    throw new Error(`附点节奏型应该有 8 个附点（两小节 × 4 拍），读到 ${dots.length}`);
+  }
+
+  // 休止：空出来的地方要画休止符，否则看着像漏了音
+  const restDrill = READING_DRILLS.find((drill) => drill.id === "rd-08")!;
+  const restScene = layoutTab(restDrill.tab);
+  const restEls = restScene.els.filter((el) => el.cls === "tab-rest");
+  if (restEls.length === 0) throw new Error("八分+休止那条没有画出休止符");
+  if (!restScene.ariaLabel.includes("休止")) {
+    throw new Error("读屏描述里没有提休止");
+  }
+  // 休止要落在空出来的那半拍上：第 3 拍前半（beat 2.0–2.5）
+  const fretXs = restScene.els
+    .filter((el) => el.cls.startsWith("tab-fret"))
+    .map((el) => el.x);
+  const restBoxes = restEls
+    .map((el) => (el.t === "rect" ? [el.x, el.x + el.width] : el.t === "circle" ? [el.cx, el.cx] : null))
+    .filter((box): box is number[] => box !== null);
+  const emptyHalf = restBoxes.some(([a, b]) => a > Math.min(...fretXs) && b < Math.max(...fretXs));
+  if (!emptyHalf) throw new Error("休止符没落在音符之间的空档上");
+
+  // 全是音符的谱子不该冒出休止符
+  const solid = READING_DRILLS.find((drill) => drill.id === "rd-03")!;
+  if (layoutTab(solid.tab).els.some((el) => el.cls === "tab-rest")) {
+    throw new Error("没有空拍的练习却画了休止符");
+  }
   const lone = layoutTab({
     beatsPerBar: 4,
     bars: 1,

@@ -1451,9 +1451,23 @@ button, select, input { font: inherit; color: inherit; }
   fill: none;
   stroke: #8b949e;
   stroke-width: 1.3;
-}.tab-beam {
+}
+.tab-beam {
   stroke: #8b949e;
   stroke-width: 2;
+  stroke-linecap: round;
+}
+/* 附点：画在音符右边，靠字号和颜色和音符区分开 */
+.tab-dot {
+  fill: #e3b341;
+  font-size: 15px;
+  font-weight: 700;
+}
+/* 休止符：和音符一样显眼，不然「空拍」看着像漏画了 */
+.tab-rest {
+  fill: #8b949e;
+  stroke: #8b949e;
+  stroke-width: 1.6;
   stroke-linecap: round;
 }
 .tab-flag {
