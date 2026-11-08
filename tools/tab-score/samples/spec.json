@@ -1,0 +1,29 @@
+{
+  "title": "示例：八分扫弦（JSON 输入）",
+  "tempo": 80,
+  "timeSignature": [4, 4],
+  "bars": [
+    {
+      "hits": [
+        { "at": 0, "dur": 0.5, "dir": "D", "notes": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 2 }, { "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 0.5, "dur": 0.5, "dir": "U", "notes": [{ "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 1, "dur": 0.5, "dir": "D", "notes": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 2 }, { "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 1.5, "dur": 0.5, "dir": "U", "notes": [{ "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 2, "dur": 0.5, "dir": "D", "notes": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 2 }, { "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 2.5, "dur": 0.5, "dir": "U", "notes": [{ "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 3, "dur": 0.5, "dir": "D", "notes": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 2 }, { "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 3.5, "dur": 0.5, "dir": "U", "notes": [{ "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] }
+      ]
+    },
+    {
+      "hits": [
+        { "at": 0, "dur": 1, "dir": "D", "notes": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 2 }, { "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 1, "dur": 0.5, "dir": "U", "notes": [{ "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 1.5, "dur": 0.5, "dir": "D", "notes": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 2 }, { "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 2, "dur": 0.25, "dir": "D", "notes": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 2 }, { "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 2.25, "dur": 0.25, "dir": "U", "notes": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 2 }, { "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] },
+        { "at": 2.5, "dur": 1.5, "dir": "D", "notes": [{ "string": 5, "fret": 3 }, { "string": 4, "fret": 2 }, { "string": 3, "fret": 0 }, { "string": 2, "fret": 1 }, { "string": 1, "fret": 0 }] }
+      ]
+    }
+  ]
+}

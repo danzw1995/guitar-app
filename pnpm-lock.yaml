@@ -52,6 +52,25 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  tools/tab-score:
+    dependencies:
+      '@coderline/alphaskia':
+        specifier: ^3.5.147
+        version: 3.5.147
+      '@coderline/alphatab':
+        specifier: ^1.9.0
+        version: 1.9.0(@coderline/alphatab-vite@1.9.0(vite@5.4.21))
+    optionalDependencies:
+      '@coderline/alphaskia-linux':
+        specifier: ^3.5.147
+        version: 3.5.147
+      '@coderline/alphaskia-macos':
+        specifier: ^3.5.147
+        version: 3.5.147
+      '@coderline/alphaskia-windows':
+        specifier: ^3.5.147
+        version: 3.5.147
+
 packages:
 
   '@babel/code-frame@7.29.7':
@@ -136,6 +155,22 @@ packages:
   '@babel/types@7.29.11':
     resolution: {integrity: sha512-WCsemW40Cpc6gouC1SrY6PBaZ+oLRlEVY9XBvZBI7il/HyUrb2nJ505wE1MHEFyDZNnrWDEuy4jL50WVHfTTSQ==}
     engines: {node: '>=6.9.0'}
+
+  '@coderline/alphaskia-linux@3.5.147':
+    resolution: {integrity: sha512-6PoaTdAedZDsfH8JbVEH1PkxeSgQ2hNRWY5cz32QgzknOC7uXBjBD2PP3zAr3bfFj58E+mwo5R9flQtVvYv5Pg==}
+    engines: {node: '>=18.0.0'}
+
+  '@coderline/alphaskia-macos@3.5.147':
+    resolution: {integrity: sha512-J4GQ9JZmfMnu302ouGBgvBV50AAcGwIvRSYN3awiwMh96aC+0VQZjNISxnohtUzmrotupK22L+pYVUI6YijBGA==}
+    engines: {node: '>=18.0.0'}
+
+  '@coderline/alphaskia-windows@3.5.147':
+    resolution: {integrity: sha512-T8G4oE2bacNuI1mDoR6l7pXpbrR4ww2tdPlshrm/8En//Y4kY0EbDRP3Vd9qr3E8HP1Zy8peMXoE0e7Rt3c4Mg==}
+    engines: {node: '>=18.0.0'}
+
+  '@coderline/alphaskia@3.5.147':
+    resolution: {integrity: sha512-9RDWV6cralGAvKFU/aozCPAverWcBTQJHpUh6Y7gBlggEwsVjorIp3tuzVCDfV+SqkSMsJtZOiJ9R2CdJKJIVw==}
+    engines: {node: '>=18.0.0'}
 
   '@coderline/alphatab-vite@1.9.0':
     resolution: {integrity: sha512-6tgtoD14rk72yfeAtAwACNJsRQAF/Y13PU8yLPO9ggNlV/MYcY8L9pPfPqVDaR3dV3MDgmQ6s3oOaGXMobVglw==}
@@ -445,7 +480,6 @@ packages:
 
   '@rollup/rollup-win32-x64-msvc@4.67.2':
     resolution: {integrity: sha512-DeuVFilvaGtoS9TFIbTIQ0Kt4CBqP3xnjJ8SFqWWbXlFbrpmCdivEW7Rm38trRA8rZzQQ8lhs73nEetWotJpTg==}
-    cpu: [x64]
     os: [win32]
 
   '@types/babel__core@7.20.5':
@@ -758,6 +792,21 @@ snapshots:
     dependencies:
       '@babel/helper-string-parser': 7.29.11
       '@babel/helper-validator-identifier': 7.29.7
+
+  '@coderline/alphaskia-linux@3.5.147':
+    optional: true
+
+  '@coderline/alphaskia-macos@3.5.147':
+    optional: true
+
+  '@coderline/alphaskia-windows@3.5.147':
+    optional: true
+
+  '@coderline/alphaskia@3.5.147':
+    optionalDependencies:
+      '@coderline/alphaskia-linux': 3.5.147
+      '@coderline/alphaskia-macos': 3.5.147
+      '@coderline/alphaskia-windows': 3.5.147
 
   '@coderline/alphatab-vite@1.9.0(vite@5.4.21)':
     dependencies:

@@ -1,0 +1,43 @@
+{
+  "name": "@danzw/tab-score",
+  "version": "0.1.0",
+  "description": "把吉他六线谱（alphaTex 或 JSON）渲染成图片：一个不依赖浏览器的命令行工具和库。",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "tab-score": "./bin/tab-score.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "samples",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "render": "node bin/tab-score.mjs samples/demo.tex -o samples/demo.png",
+    "test": "node --test test/smoke.mjs"
+  },
+  "dependencies": {
+    "@coderline/alphaskia": "^3.5.147",
+    "@coderline/alphatab": "^1.9.0"
+  },
+  "optionalDependencies": {
+    "@coderline/alphaskia-linux": "^3.5.147",
+    "@coderline/alphaskia-macos": "^3.5.147",
+    "@coderline/alphaskia-windows": "^3.5.147"
+  },
+  "keywords": [
+    "guitar",
+    "tab",
+    "tablature",
+    "alphatex",
+    "sheet-music"
+  ]
+}
