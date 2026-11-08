@@ -9,6 +9,21 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.19.2] - 2026-11-08
+
+### Added
+- **`pnpm run check:ui`：浏览器冒烟检查**。用 agent-browser 开一个真 Chrome，
+  真的点按钮：关掉新手引导 → 切「节奏」页 → 数卡片（68 张，其中扫弦 24 条且都挂了谱）
+  → 点开「跟练」看面板是不是带着 80 BPM → 点「收起」→ 点「试听」→ 抓页面报错。
+  没装 agent-browser 或 dev server 没起来时只提示并跳过，不挡 CI。
+- `docs/handoff.md` 新增「在浏览器里验收」一节：常用 agent-browser 命令
+  （snapshot / 点 @ref / 元素级截图 / 手机视口 / diff 视觉回归）。
+
+### Fixed
+- **dev server 偶尔自己崩掉**（`EBUSY: resource busy or locked`）：有些工具用
+  「临时目录 + 原子重命名」保存文件，Vite 去 watch 那个一闪而过的目录就会挂。
+  `vite.config.ts` 现在忽略 `**/.*.tmpdir/**` 这类中转目录。
+
 ## [0.19.1] - 2026-11-08
 
 ### Fixed

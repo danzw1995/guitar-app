@@ -65,8 +65,21 @@ CONTRIBUTING.md   开发与发版约定
 pnpm install
 pnpm dev          # http://127.0.0.1:5173
 pnpm build        # 产物在 apps/web/dist
-pnpm test         # 核心测试（42 个）
+pnpm test         # 核心测试
 pnpm demo L01     # 终端打印一关
+```
+
+静态检查（不需要浏览器）：
+
+```powershell
+pnpm run check:all     # 测试 + 样式 + PWA + 无障碍 + 六线谱排版
+```
+
+浏览器冒烟检查（真的开 Chrome 点按钮，需要先 `pnpm dev`）：
+
+```powershell
+npm i -g agent-browser; agent-browser install   # 一次性
+pnpm run check:ui                               # 默认连 127.0.0.1:5173，也可以传地址
 ```
 
 > 需要 pnpm 9+：`npm install -g pnpm`。新增 JSON 必须无 BOM（见 CONTRIBUTING）。

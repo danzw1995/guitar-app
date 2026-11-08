@@ -124,6 +124,35 @@ node .tmp-preview/preview.ts
    现有 `Tab` 表达不了"每拍换弦序"，要先加一种「伴奏型」数据类型（和弦 + 每拍的弦序计划）再做，
    不要硬塞进 `chordTab`。板块④ 的扫弦 24 条已在 v0.18.0 全部导入。
 
+## 在浏览器里验收（agent-browser）
+
+静态检查证明不了"页面上真的能点"。`pnpm run check:ui` 会用
+[agent-browser](https://www.npmjs.com/package/agent-browser) 开一个真 Chrome，跑一遍：
+
+```powershell
+pnpm dev                            # 一个终端
+pnpm run check:ui                   # 另一个终端（默认连 5173，也可以传地址）
+```
+
+它会断言：新手引导能关、8 个 Tab 能切、节奏页 68 张卡、扫弦练习 24 条且都有谱、
+「跟练」面板带着 80 BPM 出现、「收起」后面板消失、试听不报错。没装 agent-browser
+或页面没起来时**只提示并跳过**（不挡 CI）。
+
+平时手工核对也用它，比写临时预览页省事：
+
+```powershell
+agent-browser open http://127.0.0.1:5173
+agent-browser snapshot -i                       # 带 @eN 的可交互元素树
+agent-browser click "@e8"                       # 点「节奏」
+agent-browser screenshot home.png --full        # 整页
+agent-browser screenshot ".drill-card" card.png # 只截一张卡
+agent-browser set viewport 390 844              # 手机宽度看排版
+agent-browser console / errors                  # 抓控制台
+agent-browser diff screenshot --baseline old.png # 视觉回归
+```
+
+注意 PowerShell 里 `@e8` 要加引号（否则会被当成 splatting）。
+
 ## 新会话开场白
 
 > 读 `docs/README.md`、`docs/handoff.md`、`docs/roadmap.md`，当前 v0.10.1，乐理（12 节课 + 挑战游戏）、节奏/节拍器、练习页（51 条练习带六线谱）都已完成，下一步是 v1.0 的真机验收与首屏实测。
