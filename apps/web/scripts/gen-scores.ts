@@ -58,10 +58,18 @@ for (const item of items) {
     theme: "dark",
     transparent: true,
     title: false,
+    // 品数字号 + 弦距：默认 14/13 时字几乎顶到上下两条弦，读起来挤；
+    // 15/18 的比例（≈0.85）和纸质六线谱接近。
+    tabFontSize: 15,
+    // 谱面裁掉空白后，窄一些的谱（两小节 2/4）会被卡片拉大，
+    // 补到 420 逻辑像素，68 张图在页面里的字号就基本一致了。
+    minWidth: 420,
     engraving: {
-      musicFontSize: 32, // TAB 谱号（默认 36，缩到卡片里太大）
-      beamThickness: 2.8, // 符梁（八分/十六分下面那几条横线，默认 4.5 太粗）
+      musicFontSize: 26, // TAB 谱号（默认 36，缩到卡片里太大）
+      beamThickness: 2.6, // 符梁（八分/十六分下面那几条横线，默认 4.5 太粗）
       stemThickness: 0.8, // 符干（默认 1.08）
+      tabLineSpacing: 18, // 六条弦的间距（默认 13）
+      preNoteEffectPadding: 6, // 扫弦箭头已经挪到谱面下方，不用再留大缝
     },
     // 每拍之间那条细虚线：卡片上要能对着数拍子
     beatLines: true,

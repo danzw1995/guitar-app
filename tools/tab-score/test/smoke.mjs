@@ -14,8 +14,8 @@ test("alphaTex 渲染成 PNG：有内容、尺寸是 2 倍图", async () => {
   const png = await renderPng(tex, { width: 720, theme: "dark" });
   assert.ok(png.data.length > 5_000, `PNG 太小：${png.data.length} 字节`);
   assert.equal(png.width % 2, 0, "pixelRatio 2 时宽度应为偶数");
-  assert.ok(png.width >= 1400, `宽度不对：${png.width}`);
-  assert.ok(png.height >= 200, `高度不对：${png.height}`);
+  assert.ok(png.width >= 600, `宽度不对：${png.width}`);
+  assert.ok(png.height >= 150, `高度不对：${png.height}`);
 });
 
 test("alphaTex 渲染成 SVG：单个文件、带嵌套谱面", async () => {
@@ -61,17 +61,20 @@ test("JSON 切音：mute=dead 时音头写成 x", () => {
   assert.ok(out.includes("x.5"), `没有死音音头：${out}`);
 });
 
-test("留白：默认给四周留 6，底部留 12，最下一行的品数不会贴边", async () => {
+test("留白：四周各留 padding，底部再多留给扫弦箭头", async () => {
   const tight = await renderPng(tex, { width: 720, theme: "dark", pixelRatio: 1, padding: 0 });
   const padded = await renderPng(tex, { width: 720, theme: "dark", pixelRatio: 1 });
+  // 左右各 pad（默认 6）⇒ 宽度差 12
   assert.equal(padded.width - tight.width, 12, "左右各留 6");
-  assert.equal(padded.height - tight.height, 18, "上留 6、下留 12");
-  assert.equal(
-    (await renderPng(tex, { width: 720, theme: "dark", pixelRatio: 1, padding: 4 })).height -
-      tight.height,
-    12,
-    "上下留白应该跟着 padding 走",
-  );
+  // 高度：上 pad(6) + 底 pad(6)+箭头区(18)，减去 tight 自己也有的箭头区 18 ⇒ 12
+  assert.equal(padded.height - tight.height, 12, "上留 6、底部比无箭头时多 6");
+  const again = await renderPng(tex, {
+    width: 720,
+    theme: "dark",
+    pixelRatio: 1,
+    padding: 4,
+  });
+  assert.equal(again.width - tight.width, 8, "左右各留 padding");
 });
 
 test("engraving：TAB 谱号调小会改变画面，写错参数会报错", async () => {

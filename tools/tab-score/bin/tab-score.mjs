@@ -30,6 +30,9 @@ const USAGE = `用法: tab-score <输入文件> [选项]
   --clef-size <数值>    TAB 谱号大小（默认 36；缩到卡片里时 28 更合适）
   --beam-thickness <数值>   符梁粗细（默认 4.5）
   --stem-thickness <数值>   符干粗细（默认 1.08）
+  --tab-font <像素>     品数字号（默认 14；字高别超过弦距）
+  --tab-spacing <像素>  六条弦的间距（默认 13）
+  --min-width <像素>    裁掉空白后至少保留的宽度，内容窄的谱因此不会被放得过大（默认 0）
   --padding <像素>      四周留白（默认 6；底部是它的两倍，免得最下一行的品数贴边）
   --no-embed-font       SVG 里不内嵌 Bravura 字体（文件从 430KB 降到 30KB，
                         单独打开会缺音符符号；页面里已经加载过字体时才用）
@@ -86,6 +89,15 @@ function parseArgs(argv) {
         break;
       case "--padding":
         args.padding = Number(argv[++i]);
+        break;
+      case "--tab-font":
+        args.tabFontSize = Number(argv[++i]);
+        break;
+      case "--tab-spacing":
+        args.tabLineSpacing = Number(argv[++i]);
+        break;
+      case "--min-width":
+        args.minWidth = Number(argv[++i]);
         break;
       case "--json":
         args.onlyTex = true;
@@ -149,6 +161,8 @@ async function main() {
     titleSize: Number.isFinite(args.titleSize) ? args.titleSize : 20,
     embedFont: args.embedFont !== false,
     padding: Number.isFinite(args.padding) ? args.padding : 6,
+    minWidth: Number.isFinite(args.minWidth) ? args.minWidth : 0,
+    tabFontSize: Number.isFinite(args.tabFontSize) ? args.tabFontSize : undefined,
     beatLines: args.beatLines === true,
     beatLineColor: args.beatLineColor ?? "#6e7681",
     engraving: {
@@ -158,6 +172,9 @@ async function main() {
         : undefined,
       stemThickness: Number.isFinite(args.stemThickness)
         ? args.stemThickness
+        : undefined,
+      tabLineSpacing: Number.isFinite(args.tabLineSpacing)
+        ? args.tabLineSpacing
         : undefined,
     },
   };

@@ -91,6 +91,7 @@ function makeSettings({
   pixelRatio = 2,
   theme = "dark",
   titleSize = 20,
+  tabFontSize,
   transparent = false,
   engraving = {},
 } = {}) {
@@ -117,6 +118,9 @@ function makeSettings({
   applyColor(resources.mainGlyphColor, colors.mainGlyphColor);
   applyColor(resources.secondaryGlyphColor, colors.secondaryGlyphColor);
   applyColor(resources.scoreInfoColor, colors.scoreInfoColor);
+  // 品数是从 tablatureFont 画出来的（默认 14），弦距是 tabLineSpacing（默认 13）。
+  // 图会缩到卡片宽度，字太小就糊成一片，所以两个一起调。
+  if (Number.isFinite(tabFontSize)) resources.tablatureFont.size = tabFontSize;
   // 默认标题是 32px Georgia，压在卡片上太抢，可以按需要调小。
   const Font = alphaTab.model?.Font;
   if (Font && Number.isFinite(titleSize)) {
@@ -154,6 +158,26 @@ function prepareScore(score, settings, opts = {}) {
       };
     }
   }
+  // 扫弦方向：alphaTab 默认把箭头画在六线谱里面，竖线正好穿过品数、
+  // 箭头尖又落在 1 弦那行，把 1 弦的 0 压掉一半（缩到卡片宽度后尤其明显）。
+  // 所以先把方向从模型里取出来、把箭头清掉，渲染完再自己画到谱面下方。
+  const arrows = new Map();
+  const brush = alphaTab.model?.BrushType;
+  for (const track of score.tracks) {
+    for (const staff of track.staves) {
+      for (const bar of staff.bars) {
+        for (const voice of bar.voices) {
+          for (const beat of voice.beats) {
+            if (!beat.brushType) continue;
+            const down = brush ? beat.brushType === brush.BrushDown : beat.brushType === 2;
+            arrows.set(beat, down ? "down" : "up");
+            beat.brushType = brush ? brush.None : 0;
+          }
+        }
+      }
+    }
+  }
+  return arrows;
 }
 
 export function parseTex(tex, opts = {}) {
@@ -207,6 +231,58 @@ function beatLines(renderer, color = "#6e7681", alpha = 0.55) {
   return lines;
 }
 
+/**
+ * 扫弦箭头：位置用渲染后的 `onNotesX`（这一拍音符的正中），方向用模型里记下的。
+ * 只返回逻辑坐标，具体画在哪儿由调用方决定。
+ */
+function strumArrows(renderer, arrows) {
+  const out = [];
+  if (!arrows || arrows.size === 0) return out;
+  for (const system of renderer.boundsLookup?.staffSystems ?? []) {
+    for (const masterBarBounds of system.bars ?? []) {
+      for (const barBounds of masterBarBounds.bars ?? []) {
+        for (const beatBounds of barBounds.beats ?? []) {
+          const dir = arrows.get(beatBounds.beat);
+          if (dir) out.push({ x: beatBounds.onNotesX, dir });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * 谱面真正占用的矩形。
+ *
+ * alphaTab 的图块宽度等于 `renderer.width`，但两小节的谱往往只画到一半，
+ * 直接按图块尺寸出图会留下大片空白，缩到卡片宽度后字就小了。
+ * 这里按 `boundsLookup` 把系统、小节、音的可见范围并起来，只留真正有内容的部分。
+ */
+function contentBounds(renderer) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  const take = (bounds) => {
+    if (!bounds) return;
+    minX = Math.min(minX, bounds.x);
+    minY = Math.min(minY, bounds.y);
+    maxX = Math.max(maxX, bounds.x + bounds.w);
+    maxY = Math.max(maxY, bounds.y + bounds.h);
+  };
+  for (const system of renderer.boundsLookup?.staffSystems ?? []) {
+    take(system.visualBounds);
+    for (const masterBarBounds of system.bars ?? []) {
+      for (const barBounds of masterBarBounds.bars ?? []) {
+        take(barBounds.visualBounds);
+        for (const beatBounds of barBounds.beats ?? []) take(beatBounds.visualBounds);
+      }
+    }
+  }
+  if (!(maxX > minX) || !(maxY > minY)) return null;
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
 function hexToRgba(hex, alpha = 1) {
   return {
     r: parseInt(hex.slice(1, 3), 16),
@@ -224,7 +300,7 @@ export async function renderPng(tex, opts = {}) {
   initSkia(opts.fontPath);
   const { settings, colors } = makeSettings(opts);
   const score = alphaTab.importer.ScoreLoader.loadAlphaTex(tex, settings);
-  prepareScore(score, settings, opts);
+  const arrows = prepareScore(score, settings, opts);
 
   const renderer = new alphaTab.rendering.ScoreRenderer(settings);
   renderer.width = opts.width ?? 900;
@@ -273,7 +349,10 @@ export async function renderPng(tex, opts = {}) {
   // 在浏览器里缩到卡片宽度后看着就像被切掉一半（第 6 弦的 0 尤其明显）。
   // 所以四周留一圈白，底部给多一点。
   const pad = opts.padding ?? 6;
-  const padBottom = opts.paddingBottom ?? pad * 2;
+  const arrowList = strumArrows(renderer, arrows);
+  // 扫弦箭头画在整块谱面下方，所以底部还要多留一行。
+  const padBottom =
+    opts.paddingBottom ?? (arrowList.length > 0 ? pad + 18 : pad * 2);
   const total = parts.reduce(
     (acc, part) => ({
       width: Math.max(acc.width, part.x + part.width),
@@ -281,8 +360,25 @@ export async function renderPng(tex, opts = {}) {
     }),
     { width: 0, height: 0 },
   );
-  const outWidth = total.width + pad * 2;
-  const outHeight = total.height + pad + padBottom;
+  // 只保留真正有内容的那块（图块宽度常常是整个 renderer.width，右边一大片空白）。
+  const content =
+    contentBounds(renderer) ?? { x: 0, y: 0, w: total.width, h: total.height };
+  // bounds 记的是「字形盒子」的边，品数字形还会向上/向下探出去一点，
+  // 不补的话 1 弦和 6 弦的品数会被裁掉小半截（这正是用户看到的「0 显示不全」）。
+  const inflate = (opts.tabFontSize ?? 14) * 0.85;
+  // 横向只补 3px 容纳字形探出，真正的留白由下面的 outWidth 加 pad*2 提供。
+  const overhang = 3;
+  content.x -= overhang;
+  content.w += overhang * 2;
+  content.y -= inflate;
+  content.h += inflate * 2;
+  // 内容窄的谱（比如两小节 2/4 只有 4 拍）裁完会变得很窄，卡片里按宽度一拉就放大一倍多，
+  // 和别的卡不是一个字号。给它补到 minWidth，让同一批图在页面里大小一致；补出来的空白两边分。
+  const outWidth = Math.max(content.w, opts.minWidth ?? 0) + pad * 2;
+  const outHeight = content.h + pad + padBottom;
+  const slack = Math.max(0, (opts.minWidth ?? 0) - content.w) / 2;
+  const shiftX = pad + slack - content.x;
+  const shiftY = pad - content.y;
 
   const canvas = new alphaSkia.AlphaSkiaCanvas();
   canvas.beginRender(outWidth * dpi, outHeight * dpi, 1);
@@ -299,8 +395,8 @@ export async function renderPng(tex, opts = {}) {
     if (!part.image) continue;
     canvas.drawImage(
       part.image,
-      (part.x + pad) * dpi,
-      (part.y + pad) * dpi,
+      (part.x + shiftX) * dpi,
+      (part.y + shiftY) * dpi,
       part.width * dpi,
       part.height * dpi,
     );
@@ -314,14 +410,39 @@ export async function renderPng(tex, opts = {}) {
     // 按 dpi 放大到 1.4 逻辑像素。
     canvas.lineWidth = Math.max(1, Math.round(1.4 * dpi));
     for (const line of beatLines(renderer, color)) {
-      const x = (line.x + pad) * dpi;
-      const top = (line.y1 + pad) * dpi;
-      const bottom = (line.y2 + pad) * dpi;
+      const x = (line.x + shiftX) * dpi;
+      const top = (line.y1 + shiftY) * dpi;
+      const bottom = (line.y2 + shiftY) * dpi;
       // alphaSkia 没有虚线，按 2 实 5 空自己切段
       for (let y = top; y < bottom; y += 7 * dpi) {
         canvas.beginPath();
         canvas.moveTo(x, y);
         canvas.lineTo(x, Math.min(y + 2 * dpi, bottom));
+        canvas.stroke();
+      }
+    }
+  }
+  // 扫弦方向：画在谱面下方，一根短竖线 + 箭头尖。
+  // 下扫画成朝上的箭头（六线谱 1 弦在上，下扫是从 6 弦扫到 1 弦），和板书一致。
+  if (arrowList.length > 0) {
+    const { r, g, b, a } = hexToRgba(opts.arrowColor ?? "#8b949e", 1);
+    canvas.color = alphaSkia.AlphaSkiaCanvas.rgbaToColor(r, g, b, a);
+    canvas.lineWidth = Math.max(1, Math.round(1.4 * dpi));
+    const top = (content.h + pad + 7) * dpi;
+    const bottom = top + 13 * dpi;
+    for (const arrow of arrowList) {
+      const x = (arrow.x + shiftX) * dpi;
+      canvas.beginPath();
+      canvas.moveTo(x, top);
+      canvas.lineTo(x, bottom);
+      canvas.stroke();
+      const down = arrow.dir === "down";
+      const tip = down ? top : bottom;
+      const sign = down ? 1 : -1;
+      for (const side of [-1, 1]) {
+        canvas.beginPath();
+        canvas.moveTo(x + side * 3.4 * dpi, tip + sign * 5 * dpi);
+        canvas.lineTo(x, tip);
         canvas.stroke();
       }
     }
@@ -350,7 +471,7 @@ export async function renderSvg(tex, opts = {}) {
   const { settings, colors } = makeSettings(opts);
   settings.core.engine = "svg";
   const score = alphaTab.importer.ScoreLoader.loadAlphaTex(tex, settings);
-  prepareScore(score, settings, opts);
+  const arrows = prepareScore(score, settings, opts);
 
   const renderer = new alphaTab.rendering.ScoreRenderer(settings);
   renderer.width = opts.width ?? 900;
@@ -386,17 +507,48 @@ export async function renderSvg(tex, opts = {}) {
   );
 
   const pad = opts.padding ?? 6;
-  const padBottom = opts.paddingBottom ?? pad * 2;
-  const outWidth = total.width + pad * 2;
-  const outHeight = total.height + pad + padBottom;
+  const arrowList = strumArrows(renderer, arrows);
+  const padBottom =
+    opts.paddingBottom ?? (arrowList.length > 0 ? pad + 18 : pad * 2);
+  const content =
+    contentBounds(renderer) ?? { x: 0, y: 0, w: total.width, h: total.height };
+  const inflate = (opts.tabFontSize ?? 14) * 0.85;
+  // 横向只补 3px 容纳字形探出，真正的留白由下面的 outWidth 加 pad*2 提供。
+  const overhang = 3;
+  content.x -= overhang;
+  content.w += overhang * 2;
+  content.y -= inflate;
+  content.h += inflate * 2;
+  const outWidth = Math.max(content.w, opts.minWidth ?? 0) + pad * 2;
+  const outHeight = content.h + pad + padBottom;
 
   const fontCss = opts.embedFont === false ? "" : fontFaceCss(opts.fontPath);
-  const style = `${fontCss}${colors.background ? `svg{background:${colors.background}}` : ""}.at{font-family:alphaTab}.beat-line{stroke:#6e7681;stroke-opacity:.55;stroke-width:1;stroke-dasharray:2 5}`;
+  const style = `${fontCss}${colors.background ? `svg{background:${colors.background}}` : ""}.at{font-family:alphaTab}.beat-line{stroke:#6e7681;stroke-opacity:.55;stroke-width:1;stroke-dasharray:2 5}.strum-arrow{stroke:#8b949e;stroke-width:1.4;stroke-linecap:round;fill:none}`;
+  // 下面的坐标都用 alphaTab 的逻辑坐标，外层统一平移到留白之后。
+  const arrowTop = content.y + content.h + 7;
+  const arrowBottom = arrowTop + 13;
+  const arrowMarks = arrowList
+    .map((arrow) => {
+      const x = arrow.x.toFixed(2);
+      const top = arrowTop.toFixed(2);
+      const bottom = arrowBottom.toFixed(2);
+      const down = arrow.dir === "down";
+      const tip = down ? arrowTop : arrowBottom;
+      const sign = down ? 1 : -1;
+      const head = [-1, 1]
+        .map(
+          (side) =>
+            `M ${(arrow.x + side * 3.4).toFixed(2)} ${(tip + sign * 5).toFixed(2)} L ${x} ${tip.toFixed(2)}`,
+        )
+        .join(" ");
+      return `<path class="strum-arrow" d="M ${x} ${top} L ${x} ${bottom} ${head}"/>`;
+    })
+    .join("");
   const lines = opts.beatLines
     ? beatLines(renderer, opts.beatLineColor ?? "#6e7681")
         .map(
           (line) =>
-            `<line class="beat-line" x1="${(line.x + pad).toFixed(2)}" y1="${(line.y1 + pad).toFixed(2)}" x2="${(line.x + pad).toFixed(2)}" y2="${(line.y2 + pad).toFixed(2)}"/>`,
+            `<line class="beat-line" x1="${line.x.toFixed(2)}" y1="${line.y1.toFixed(2)}" x2="${line.x.toFixed(2)}" y2="${line.y2.toFixed(2)}"/>`,
         )
         .join("")
     : "";
@@ -417,7 +569,9 @@ export async function renderSvg(tex, opts = {}) {
     })
     .join("\n");
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${outWidth}" height="${outHeight}" viewBox="0 0 ${outWidth} ${outHeight}"><style>${style}</style><g transform="translate(${pad},${pad})">${body}</g>${lines}</svg>`;
+  const shiftX = (pad + Math.max(0, (opts.minWidth ?? 0) - content.w) / 2 - content.x).toFixed(2);
+  const shiftY = (pad - content.y).toFixed(2);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${outWidth}" height="${outHeight}" viewBox="0 0 ${outWidth} ${outHeight}"><style>${style}</style><g transform="translate(${shiftX},${shiftY})">${body}${lines}${arrowMarks}</g></svg>`;
 }
 
 let fontCssCache = null;
