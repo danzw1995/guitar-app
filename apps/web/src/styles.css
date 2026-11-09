@@ -1412,6 +1412,80 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
   font-weight: 400;
 }
+.block-meter {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 今日三条 */
+.today-box {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+  padding: 10px 14px 12px;
+  margin: 14px 0 6px;
+}
+.today-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.today-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.today-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.today-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.today-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.today-item.done .today-label {
+  color: var(--muted);
+}
+.today-mark {
+  width: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.today-item.done .today-mark {
+  color: #3fb950;
+}
+.today-group {
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.today-label {
+  color: var(--text);
+}
+.today-item .btn {
+  margin-left: auto;
+}
+.today-hint {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
 
 /* 本阶段的练习卡片 */
 .drill-grid {

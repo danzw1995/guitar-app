@@ -463,6 +463,20 @@ for (const selector of ["select", "input", "textarea"]) {
     (beatLine.get("stroke") ?? "") !== "" && (beatLine.get("stroke-dasharray") ?? "") !== "",
     `stroke = ${beatLine.get("stroke") ?? "未设置"}, dasharray = ${beatLine.get("stroke-dasharray") ?? "未设置"}`,
   );
+
+  // 今日三条：进度条与「已练 N/M」得排在标题右边，不能把标题挤下去
+  const todayBox = narrowDecls(".today-box");
+  expect(
+    ".today-box 有边框和底色（今日三条）",
+    (todayBox.get("border") ?? "") !== "" && (todayBox.get("background") ?? "") !== "",
+    `border = ${todayBox.get("border") ?? "未设置"}, background = ${todayBox.get("background") ?? "未设置"}`,
+  );
+  const blockMeter = narrowDecls(".block-meter");
+  expect(
+    ".block-meter 靠右显示（每块的完成度）",
+    blockMeter.get("margin-left") === "auto",
+    `margin-left = ${blockMeter.get("margin-left") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

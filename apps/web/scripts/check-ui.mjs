@@ -223,6 +223,30 @@ try {
     "点试听时正在响的节拍器会自己停（同一时刻只响一路）",
     afterTone,
   );
+
+  // 7) 今日三条：三条都在，点「去练」能滚到那张卡；每块标题上有「已练 N/M」
+  const todayRaw = js(
+    "(() => { const items = [...document.querySelectorAll('.today-item')]; return JSON.stringify({ n: items.length, meters: [...document.querySelectorAll('.block-meter')].map((n) => n.textContent.trim()) }); })()",
+  );
+  let today = { n: 0, meters: [] };
+  try {
+    today = JSON.parse(JSON.parse(todayRaw));
+  } catch {
+    today = { n: 0, meters: [] };
+  }
+  log(today.n === 3, "「今天先练这 3 条」里有 3 条", `读到 ${today.n} 条`);
+  log(
+    today.meters.length === 3 && today.meters.every((text) => /^已练 \d+\/\d+$/.test(text)),
+    "每块练习的标题上都有「已练 N/M」",
+    today.meters.join(" / "),
+  );
+
+  const jumped = js(
+    "(() => { window.scrollTo(0, 0); const b = document.querySelector('.today-item .btn'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const scrolledTo = Number(js("Math.round(window.scrollY)"));
+  log(jumped === '"ok"' && scrolledTo > 0, "点「去练」会滚到那张卡", `scrollY = ${scrolledTo}`);
 } finally {
   ab(["close"]);
   console.log(

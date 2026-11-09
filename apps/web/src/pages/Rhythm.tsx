@@ -43,6 +43,57 @@ function meterOfDrill(drill: { tab: { beatsPerBar: number }; meter?: string }): 
   return drill.meter ?? meterOfTab(drill.tab);
 }
 
+/** 一条能被「今日三条」点名的练习（跨三块内容统一成一种形状）。 */
+interface Pickable {
+  id: string;
+  label: string;
+  group: string;
+}
+
+function hashOf(text: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+/**
+ * 今日三条：同一天刷新顺序不变，今天已经练过的排到后面。
+ *
+ * 用「日期 + id」的哈希排序而不是随机数——随机会让第二天抽到的东西
+ * 和前一天完全无关，而哈希至少保证「同一天不跳、第二天换一批」。
+ * 三条按块各取一条（跟读 / 时值 / 扫弦各一），不然可能三条都是时值。
+ */
+function pickFrom(items: Pickable[], today: string, records: RhythmRecords, count: number): Pickable[] {
+  return [...items]
+    .sort((a, b) => {
+      const doneA = records[a.id]?.lastAt === today ? 1 : 0;
+      const doneB = records[b.id]?.lastAt === today ? 1 : 0;
+      if (doneA !== doneB) return doneA - doneB;
+      return hashOf(`${today}:${a.id}`) - hashOf(`${today}:${b.id}`);
+    })
+    .slice(0, count);
+}
+
+function dailyPicks(items: Pickable[], today: string, records: RhythmRecords): Pickable[] {
+  const groups = new Map<string, Pickable[]>();
+  for (const item of items) {
+    const list = groups.get(item.group);
+    if (list) list.push(item);
+    else groups.set(item.group, [item]);
+  }
+  const picked: Pickable[] = [];
+  for (const list of groups.values()) picked.push(...pickFrom(list, today, records, 1));
+  return picked;
+}
+
+/** 某一块里练过（有成绩记录）的比例，用来画进度条。 */
+function doneRatio(ids: string[], records: RhythmRecords): { done: number; total: number } {
+  return { done: ids.filter((id) => records[id]).length, total: ids.length };
+}
+
 /**
  * 节奏专项：把「时值不稳」这件事拆开练。
  *
@@ -107,6 +158,42 @@ export default function Rhythm() {
 
   const best = (id: string) => records[id]?.bestBpm;
 
+  const today = dateKeyOf(new Date());
+  const picks = useMemo(
+    () =>
+      dailyPicks(
+        [
+          ...READING_DRILLS.map((drill) => ({
+            id: drill.id,
+            label: `练习 ${drill.no} · ${drill.name}`,
+            group: "跟读",
+          })),
+          ...RHYTHM_DRILLS.map((drill) => ({
+            id: drill.id,
+            label: drill.name,
+            group: "时值",
+          })),
+          ...STRUM_DRILLS.map((drill) => ({
+            id: drill.id,
+            label: `练习 ${drill.no} · ${drill.name}`,
+            group: "扫弦",
+          })),
+        ],
+        today,
+        records,
+      ),
+    [today, records],
+  );
+  const picksDone = picks.filter((pick) => records[pick.id]?.lastAt === today).length;
+  const readingDone = doneRatio(READING_DRILLS.map((drill) => drill.id), records);
+  const rhythmDone = doneRatio(RHYTHM_DRILLS.map((drill) => drill.id), records);
+  const strumDone = doneRatio(STRUM_DRILLS.map((drill) => drill.id), records);
+
+  function jumpTo(id: string) {
+    const card = document.getElementById(`drill-${id}`);
+    card?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   return (
     <section className="panel">
       <div className="panel-head">
@@ -154,15 +241,55 @@ export default function Rhythm() {
         <Metronome />
       </details>
 
+      <div className="today-box">
+        <div className="today-head">
+          <h3>今天先练这 3 条</h3>
+          <span className="today-count">
+            {picksDone}/{picks.length}
+          </span>
+        </div>
+        <div className="practice-progress" aria-hidden="true">
+          <span style={{ width: `${(picksDone / Math.max(1, picks.length)) * 100}%` }} />
+        </div>
+        <ul className="today-list">
+          {picks.map((pick) => {
+            const done = records[pick.id]?.lastAt === today;
+            return (
+              <li key={pick.id} className={done ? "today-item done" : "today-item"}>
+                <span className="today-mark" aria-hidden="true">
+                  {done ? "✓" : "○"}
+                </span>
+                <span className="today-group">{pick.group}</span>
+                <span className="today-label">{pick.label}</span>
+                <button
+                  type="button"
+                  className="btn btn-quiet"
+                  onClick={() => jumpTo(pick.id)}
+                >
+                  {done ? "再练一遍" : "去练"}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="today-hint">
+          这是按日期轮换的三条，练完（在跟练里点「记录成绩」）就会打勾；明天换一批。
+          不用按顺序——练不下去就换一条，比硬啃一条强。
+        </p>
+      </div>
+
       <h3 className="practice-h3">
         跟读练习
         <span className="practice-h3-hint">
           整理自《节奏与节拍》{READING_SOURCE}：先念会，再上琴
         </span>
+        <span className="block-meter">
+          已练 {readingDone.done}/{readingDone.total}
+        </span>
       </h3>
       <div className="drill-grid">
         {reading.map((drill) => (
-          <article key={drill.id} className="drill-card">
+          <article key={drill.id} id={`drill-${drill.id}`} className="drill-card">
             <header className="drill-head">
               <h4>
                 练习 {drill.no} · {drill.name}
@@ -221,10 +348,13 @@ export default function Rhythm() {
       <h3 className="practice-h3">
         时值练习
         <span className="practice-h3-hint">先跟着数拍词念，再点「跟练」一段一段加</span>
+        <span className="block-meter">
+          已练 {rhythmDone.done}/{rhythmDone.total}
+        </span>
       </h3>
       <div className="drill-grid">
         {drills.map((drill) => (
-          <article key={drill.id} className="drill-card">
+          <article key={drill.id} id={`drill-${drill.id}`} className="drill-card">
             <header className="drill-head">
               <h4>{drill.name}</h4>
               <span className={`level-badge lv${drill.level}`}>{LEVEL_LABEL[drill.level]}</span>
@@ -280,6 +410,9 @@ export default function Rhythm() {
         <span className="practice-h3-hint">
           整理自《节奏与节拍》{READING_SOURCE} 的 24 条扫弦
         </span>
+        <span className="block-meter">
+          已练 {strumDone.done}/{strumDone.total}
+        </span>
       </h3>
       <p className="rhythm-focus">
         板书把方向画在六线谱上（1 弦在最上面），所以谱面上的上箭头是「下扫」——这里已经按
@@ -299,7 +432,7 @@ export default function Rhythm() {
               .map((note) => note.beat),
           ).size;
           return (
-            <article key={drill.id} className="drill-card">
+            <article key={drill.id} id={`drill-${drill.id}`} className="drill-card">
               <header className="drill-head">
                 <h4>
                   练习 {drill.no} · {drill.name}
