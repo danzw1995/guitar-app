@@ -249,6 +249,53 @@ function beatLines(renderer, color = "#6e7681", alpha = 0.55) {
 }
 
 /**
+ * 每一拍的横向区间（逻辑像素），按时间顺序平铺。
+ *
+ * 和 `beatLines()` 用的是同一套切分：先把一小节按拍号切成 num 拍，
+ * 再取「拍与拍分界」的位置。这里返回的是**每一拍占的宽度**，
+ * 网页上播放时用它画一条跟着走的竖条（高亮当前拍）。
+ */
+function beatBands(renderer) {
+  const bands = [];
+  for (const system of renderer.boundsLookup?.staffSystems ?? []) {
+    for (const masterBarBounds of system.bars ?? []) {
+      for (const barBounds of masterBarBounds.bars ?? []) {
+        const beats = (barBounds.beats ?? [])
+          .filter((beat) => beat.beat)
+          .sort((a, b) => a.beat.playbackStart - b.beat.playbackStart);
+        const bar = barBounds.visualBounds;
+        if (!bar || beats.length === 0) continue;
+        const master = beats[0].beat.voice?.bar?.masterBar;
+        if (!master) continue;
+        const barTicks = master.calculateDuration();
+        const perBar = master.timeSignatureNumerator;
+        if (!(barTicks > 0) || !(perBar > 1)) continue;
+        const ticksPerBeat = barTicks / perBar;
+        const barStart = beats[0].beat.playbackStart;
+
+        const edges = [bar.x];
+        for (let k = 1; k < perBar; k += 1) {
+          const target = barStart + k * ticksPerBeat;
+          const nextIndex = beats.findIndex((beat) => beat.beat.playbackStart >= target);
+          if (nextIndex === -1) continue;
+          // 拍点落在两个音之间时取中点：画在音上会把品数盖住
+          const prev = nextIndex > 0 ? beats[nextIndex - 1].visualBounds : bar;
+          const next = beats[nextIndex].visualBounds;
+          const at = prev === bar ? next.x : (prev.x + prev.w + next.x) / 2;
+          if (at > edges[edges.length - 1]) edges.push(at);
+        }
+        edges.push(bar.x + bar.w);
+        for (let k = 0; k + 1 < edges.length; k += 1) {
+          const width = edges[k + 1] - edges[k];
+          if (width > 0.5) bands.push({ x: edges[k], w: width });
+        }
+      }
+    }
+  }
+  return bands;
+}
+
+/**
  * 扫弦箭头：位置用渲染后的 `onNotesX`（这一拍音符的正中），方向用模型里记下的。
  *
  * 箭头要画在**自己那一行谱**的下面：长谱会折成两三行系统，如果统一按整张图的高度去画，
@@ -358,7 +405,7 @@ function trimTransparent(image) {
     out.set(pixels.subarray(from, from + w * 4), y * w * 4);
   }
   const cropped = alphaSkia.AlphaSkiaImage.fromPixels(w, h, out.buffer);
-  return cropped ? { image: cropped, width: w, height: h } : null;
+  return cropped ? { image: cropped, width: w, height: h, x: minX, y: minY } : null;
 }
 
 /**
@@ -528,11 +575,17 @@ export async function renderPng(tex, opts = {}) {
   if (!png) {
     throw new Error("alphaSkia 编码 PNG 失败");
   }
+  // 每一拍的横向区间，换算成**最终图片**的像素坐标（网页里按百分比定位高亮条）。
+  const beats = (opts.beatBands === false ? [] : beatBands(renderer)).map((band) => ({
+    x: Math.round((band.x + shiftX) * dpi - trimmed.x + dx),
+    w: Math.round(band.w * dpi),
+  }));
   return {
     data: Buffer.from(png),
     width: image.width,
     height: image.height,
     background: colors.background,
+    beats,
   };
 }
 

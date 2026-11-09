@@ -247,6 +247,32 @@ try {
   await sleep(700);
   const scrolledTo = Number(js("Math.round(window.scrollY)"));
   log(jumped === '"ok"' && scrolledTo > 0, "点「去练」会滚到那张卡", `scrollY = ${scrolledTo}`);
+
+  // 8) 视听同步：试听时谱面上有一条跟着拍走的竖条
+  js("window.scrollTo(0, 0)");
+  await sleep(300);
+  js(
+    "(() => { const b = [...document.querySelectorAll('.drill-card button')].find(n => n.textContent.trim() === '试听'); b?.click(); return 'ok'; })()",
+  );
+  const beatLeft = () =>
+    String(
+      js(
+        "(() => { const b = document.querySelector('.tab-score-beat'); return b ? b.style.left : 'none'; })()",
+      ),
+    ).replace(/^"|"$/g, "");
+  await sleep(260);
+  const firstLeft = String(beatLeft());
+  log(firstLeft !== "none" && firstLeft.includes("%"), "试听时谱面上出现「当前拍」竖条", firstLeft);
+  await sleep(900);
+  const secondLeft = String(beatLeft());
+  log(
+    secondLeft !== "none" && secondLeft !== firstLeft,
+    "竖条跟着拍往前走到下一拍",
+    `${firstLeft} → ${secondLeft}`,
+  );
+  await sleep(3200);
+  const afterEnd = String(beatLeft());
+  log(afterEnd === "none", "放完竖条自己消失", afterEnd);
 } finally {
   ab(["close"]);
   console.log(

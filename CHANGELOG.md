@@ -9,6 +9,22 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.24.0] - 2026-11-09
+
+### Added
+- **视听同步**：试听一条练习时，谱面上有一条半透明竖条跟着拍往前走，放完自动消失。
+  谱是预渲染的静态图，所以生成图片时顺便把每一拍的横向区间量出来
+  （`tools/tab-score` 的 `beatBands()`）写进 `public/scores/beats.json`，
+  前端 `TabScore` 按百分比定位（`tab-score-beat`）。
+- `@danzw/tab-score` 的 `renderPng()` 返回值多一个 `beats: { x, w }[]`（拍位，图片像素）。
+
+### Changed
+- 播放用的「第几拍」按墙钟算（`performance.now()`），不依赖 `AudioContext.currentTime`
+  ——没声卡或标签页被挂起时它不动，高亮会卡在第一拍。
+- `gen-scores` 会校验每条谱的拍数（`bars × beatsPerBar`）与工具量出来的拍数一致，
+  对不上直接失败，避免竖条画错位置。
+- `check:ui` 增加到 16 项（竖条出现、跟着拍走、放完消失）。
+
 ## [0.23.0] - 2026-11-09
 
 ### Added

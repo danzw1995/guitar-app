@@ -43,6 +43,9 @@ const seen = new Set<string>();
 const hash = createHash("sha1");
 let bytes = 0;
 
+/** 每条谱每一拍的横向区间（图片像素），播放时用来高亮当前拍。 */
+const beats: Record<string, { width: number; beats: { x: number; w: number }[] }> = {};
+
 fs.mkdirSync(outDir, { recursive: true });
 
 for (const item of items) {
@@ -77,6 +80,12 @@ for (const item of items) {
     beatLineAlpha: 0.32,
   });
   fs.writeFileSync(path.join(outDir, `${item.id}.png`), png.data);
+  // 拍数必须和谱面对得上：竖条的位置是按「第几拍」取的，多一拍少一拍都会画错地方。
+  const expected = item.tab.bars * item.tab.beatsPerBar;
+  if (png.beats.length !== expected) {
+    throw new Error(`${item.id} 的拍数是 ${png.beats.length}，谱面应该是 ${expected} 拍`);
+  }
+  beats[item.id] = { width: png.width, beats: png.beats ?? [] };
   hash.update(item.id).update(png.data);
   bytes += png.data.length;
 }
@@ -90,6 +99,13 @@ for (const file of fs.readdirSync(outDir)) {
     console.log(`清理：${file}`);
   }
 }
+
+// 每拍的横向区间单独存一份：网页里播放时按它画一条跟着走的竖条。
+// 和图片一起带内容指纹（同一个 ?v=），改了谱面数据两边会一起更新。
+fs.writeFileSync(
+  path.join(outDir, "beats.json"),
+  `${JSON.stringify({ version: hash.copy().digest("hex").slice(0, 8), beats })}\n`,
+);
 
 // 内容指纹写进源码：`TabScore` 用它给图片地址加 `?v=`，否则重新生成后
 // 浏览器会一直拿缓存里的旧图（文件名没变）。

@@ -12,6 +12,7 @@ import {
   recordBlock,
   stageForCompleted,
   type Level,
+  type Tab,
 } from "@guitar/core";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
@@ -108,6 +109,8 @@ export default function Rhythm() {
   const [level, setLevel] = useState<Level | 0>(0);
   const [target, setTarget] = useState<FollowTarget | null>(null);
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
+  /** 正在试听哪一条、播到第几拍（`null` = 没在播）。 */
+  const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
   const { playTab } = useTone();
 
   const drills = useMemo(
@@ -193,6 +196,16 @@ export default function Rhythm() {
     const card = document.getElementById(`drill-${id}`);
     card?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
+
+  /** 试听一条谱：同时把「播到第几拍」喂给卡片上的谱面，画一条跟着走的竖条。 */
+  function audition(id: string, tab: Tab, bpm: number) {
+    setPlayhead({ id, beat: 0 });
+    playTab(tab, bpm, {
+      onBeat: (beat) => setPlayhead(beat < 0 ? null : { id, beat }),
+    });
+  }
+
+  const beatOf = (id: string) => (playhead?.id === id ? playhead.beat : null);
 
   return (
     <section className="panel">
@@ -306,13 +319,13 @@ export default function Rhythm() {
               念：<b>{drill.count}</b>
               <span className="rhythm-bpm">写在 {readingPitch(drill)} 上</span>
             </p>
-            <TabScore id={drill.id} tab={drill.tab} />
+            <TabScore id={drill.id} tab={drill.tab} beat={beatOf(drill.id)} />
             <div className="drill-actions">
               <button
                 type="button"
                 className="btn"
                 aria-label={`试听 ${drill.name}`}
-                onClick={() => playTab(drill.tab, drill.bpm[0])}
+                onClick={() => audition(drill.id, drill.tab, drill.bpm[0])}
               >
                 试听
               </button>
@@ -366,13 +379,13 @@ export default function Rhythm() {
                 {drill.bpm[0]}–{drill.bpm[1]} BPM
               </span>
             </p>
-            <TabScore id={drill.id} tab={drill.tab} />
+            <TabScore id={drill.id} tab={drill.tab} beat={beatOf(drill.id)} />
             <div className="drill-actions">
               <button
                 type="button"
                 className="btn"
                 aria-label={`试听 ${drill.name}（含节拍器）`}
-                onClick={() => playTab(drill.tab, drill.bpm[0])}
+                onClick={() => audition(drill.id, drill.tab, drill.bpm[0])}
               >
                 试听
               </button>
@@ -450,13 +463,13 @@ export default function Rhythm() {
               <p className="rhythm-count">
                 念：<b>{drill.count}</b>
               </p>
-              <TabScore id={drill.id} tab={drill.tab} />
+              <TabScore id={drill.id} tab={drill.tab} beat={beatOf(drill.id)} />
               <div className="drill-actions">
                 <button
                   type="button"
                   className="btn"
                   aria-label={`试听 练习 ${drill.no}`}
-                  onClick={() => playTab(drill.tab, drill.bpm ?? 70)}
+                  onClick={() => audition(drill.id, drill.tab, drill.bpm ?? 70)}
                 >
                   试听
                 </button>
@@ -508,13 +521,13 @@ export default function Rhythm() {
               数：<b>{pattern.count}</b>
               <span className="rhythm-bpm">{pattern.chord} 和弦</span>
             </p>
-            <TabScore id={pattern.id} tab={pattern.tab} />
+            <TabScore id={pattern.id} tab={pattern.tab} beat={beatOf(pattern.id)} />
             <div className="drill-actions">
               <button
                 type="button"
                 className="btn"
                 aria-label={`试听 ${pattern.name}（含节拍器）`}
-                onClick={() => playTab(pattern.tab, 70)}
+                onClick={() => audition(pattern.id, pattern.tab, 70)}
               >
                 试听
               </button>
@@ -561,13 +574,13 @@ export default function Rhythm() {
                 {snippet.bpm[0]}–{snippet.bpm[1]} BPM
               </span>
             </p>
-            <TabScore id={snippet.id} tab={snippet.tab} />
+            <TabScore id={snippet.id} tab={snippet.tab} beat={beatOf(snippet.id)} />
             <div className="drill-actions">
               <button
                 type="button"
                 className="btn"
                 aria-label={`试听 ${snippet.name}（含节拍器）`}
-                onClick={() => playTab(snippet.tab, snippet.bpm[0])}
+                onClick={() => audition(snippet.id, snippet.tab, snippet.bpm[0])}
               >
                 试听
               </button>

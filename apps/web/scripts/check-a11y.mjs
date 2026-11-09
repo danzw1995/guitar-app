@@ -216,7 +216,8 @@ check("节奏专项：难度筛选按钮有状态、谱子与数拍词可读", (
       "<summary>",
       "LEVEL_LABEL",
       "aria-label={`试听 ${drill.name}",
-      "playTab(drill.tab",
+      "audition(drill.id, drill.tab",
+      "beat={beatOf(drill.id)}",
     ],
     "Rhythm.tsx",
   );

@@ -99,8 +99,11 @@ alphaTab 的刷弦箭头会落在六线谱第一弦那一行，压住 1 弦的�
 ```js
 import { renderPng, renderSvg, specToAlphaTex } from "@danzw/tab-score";
 
-const { data, width, height } = await renderPng(tex, { theme: "dark", width: 900 });
+const { data, width, height, beats } = await renderPng(tex, { theme: "dark", width: 900 });
 fs.writeFileSync("out.png", data);
+// beats: [{ x, w }, …] 每一拍在图片里的横向区间（像素）。想做「播放时高亮当前拍」
+// 这类界面时按它定位；按顺序就是第 1 拍、第 2 拍…，长谱折行后仍然连续。
+console.log(beats.length, "拍");
 
 const svg = await renderSvg(tex, { theme: "light" });
 ```

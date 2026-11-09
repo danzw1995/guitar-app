@@ -22,6 +22,8 @@ export function useTone() {
   const voices = useRef<OscillatorNode[]>([]);
   const timers = useRef<number[]>([]);
   const ownerRef = useRef<symbol | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const beatRef = useRef<((beat: number) => void) | null>(null);
   const owner = () => {
     ownerRef.current ??= Symbol("tone");
     return ownerRef.current;
@@ -95,6 +97,14 @@ export function useTone() {
   function stop() {
     for (const id of timers.current) window.clearTimeout(id);
     timers.current = [];
+    if (rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    // 播放被打断时也要把「当前拍」收回去，不然高亮条会停在半路
+    const notify = beatRef.current;
+    beatRef.current = null;
+    notify?.(-1);
     for (const osc of voices.current) {
       try {
         osc.stop();
@@ -173,7 +183,11 @@ export function useTone() {
    * （听起来是扫弦）。**不叠节拍器**——试听要听的是这条节奏本身，
    * 要跟拍就用跟练模式。需要时可以把 `click` 打开，给一小节预备拍。
    */
-  function playTab(tab: Tab, bpm: number, opts: { click?: boolean } = {}) {
+  function playTab(
+    tab: Tab,
+    bpm: number,
+    opts: { click?: boolean; onBeat?: (beat: number) => void } = {},
+  ) {
     const ctx = ensure();
     if (!ctx) return;
     stop();
@@ -197,6 +211,34 @@ export function useTone() {
       for (let beat = 0; beat < beats; beat++) {
         tick(ctx, start + beat * secondsPerBeat, beat % tab.beatsPerBar === 0);
       }
+    }
+
+    // 「现在播到第几拍」：用墙钟算，不用 AudioContext 的时间轴——
+    // 有些浏览器（或没声卡的机器）AudioContext 一直是 suspended，
+    // currentTime 不动，高亮就会永远停在第一拍。音符是提前排好的，
+    // 两者起点都取「现在 + 80ms 预备」，几小节之内不会看出差。
+    if (opts.onBeat) {
+      const onBeat = opts.onBeat;
+      const total = tab.bars * tab.beatsPerBar;
+      beatRef.current = onBeat;
+      const t0 = performance.now() + 80;
+      let last = -1;
+      const step = () => {
+        if (beatRef.current !== onBeat) return;
+        const beat = Math.floor((performance.now() - t0) / 1000 / secondsPerBeat);
+        if (beat >= total) {
+          beatRef.current = null;
+          rafRef.current = null;
+          onBeat(-1);
+          return;
+        }
+        if (beat >= 0 && beat !== last) {
+          last = beat;
+          onBeat(beat);
+        }
+        rafRef.current = window.requestAnimationFrame(step);
+      };
+      rafRef.current = window.requestAnimationFrame(step);
     }
   }
 

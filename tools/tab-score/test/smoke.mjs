@@ -77,6 +77,22 @@ test("留白：四周各留 padding，底部再多留给扫弦箭头", async () 
   assert.equal(again.width - tight.width, 8, "左右各留 padding");
 });
 
+test("拍位：每小节数出 4 拍，横坐标从左到右、落在图片里", async () => {
+  // demo.tex 是两小节 4/4 —— 拍位要正好 8 个，和谱面对得上，
+  // 否则前端按「第几拍」定位的高亮条会画到别处。
+  const png = await renderPng(tex, { width: 720, theme: "dark" });
+  assert.equal(png.beats.length, 8, `拍数不对：${png.beats.length}`);
+  for (const beat of png.beats) {
+    assert.ok(beat.w > 0, `拍宽不对：${beat.w}`);
+    assert.ok(beat.x >= 0 && beat.x + beat.w <= png.width, "拍位跑到图片外面了");
+  }
+  // 同一小节内从左到右；第二小节折到下一行也无所谓，只要不重叠
+  const firstBar = png.beats.slice(0, 4);
+  for (let i = 1; i < firstBar.length; i++) {
+    assert.ok(firstBar[i].x > firstBar[i - 1].x, "第一小节的拍位没有从左到右");
+  }
+});
+
 test("engraving：TAB 谱号调小会改变画面，写错参数会报错", async () => {
   // 注意：谱号只影响字形大小，不影响画布高度（系统高度由六条弦线定死），
   // 所以这里比的是像素内容，不是尺寸。

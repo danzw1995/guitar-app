@@ -2,12 +2,15 @@ import { useMemo } from "react";
 import { type Tab } from "@guitar/core";
 import { layoutTab } from "../lib/tab-layout";
 import { SCORES_VERSION } from "../lib/scores-version";
+import { useScoreBeats } from "../lib/score-beats";
 
 interface Props {
   /** 谱面在 `public/scores/` 里的名字，由 `pnpm run gen:scores` 生成。 */
   id: string;
   tab: Tab;
   className?: string;
+  /** 正在播第几拍（从 0 数）；播放时谱面上会有一条跟着走的竖条。 */
+  beat?: number | null;
 }
 
 /**
@@ -21,16 +24,36 @@ interface Props {
  * 读屏的那句话从 `layoutTab` 取——图片本身没有语义。
  * `?v=` 是 `gen:scores` 写进去的内容指纹：谱面重新生成后文件名不变，
  * 不加这个参数浏览器会一直用旧的缓存图。
+ *
+ * `beat` 有值时叠一条半透明竖条（当前位置）。位置来自 `scores/beats.json`：
+ * 图片是死的，哪一拍画在哪个像素只有生成时才量得准。
  */
-export default function TabScore({ id, tab, className }: Props) {
+export default function TabScore({ id, tab, className, beat }: Props) {
   const label = useMemo(() => layoutTab(tab).ariaLabel, [tab]);
+  const beats = useScoreBeats();
+  const info = beats[id];
+  const band = beat !== null && beat !== undefined ? info?.beats[beat] : undefined;
+  const width = info?.width ?? 0;
+
   return (
-    <img
-      className={className ? `tab-score ${className}` : "tab-score"}
-      src={`${import.meta.env.BASE_URL}scores/${id}.png?v=${SCORES_VERSION}`}
-      alt={label}
-      loading="lazy"
-      decoding="async"
-    />
+    <span className={className ? `tab-score-wrap ${className}` : "tab-score-wrap"}>
+      <img
+        className="tab-score"
+        src={`${import.meta.env.BASE_URL}scores/${id}.png?v=${SCORES_VERSION}`}
+        alt={label}
+        loading="lazy"
+        decoding="async"
+      />
+      {band && width > 0 && (
+        <span
+          className="tab-score-beat"
+          style={{
+            left: `${(band.x / width) * 100}%`,
+            width: `${(band.w / width) * 100}%`,
+          }}
+          aria-hidden="true"
+        />
+      )}
+    </span>
   );
 }

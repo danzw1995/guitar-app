@@ -1617,12 +1617,28 @@ button, select, input { font: inherit; color: inherit; }
 }
 /* 六线谱是一张预渲染好的 2 倍图（`pnpm run gen:scores` 生成），
    页面里只负责别让它撑破卡片。 */
+.tab-score-wrap {
+  position: relative;
+  display: block;
+  max-width: 600px;
+  margin: 4px 0 2px;
+}
 .tab-score {
   display: block;
   width: 100%;
   max-width: 600px;
   height: auto;
-  margin: 4px 0 2px;
+}
+/* 播放时跟着拍的竖条：只盖这一拍的宽度，压在图上面（图是透明的，所以看得见）。 */
+.tab-score-beat {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(227, 179, 65, 0.14);
+  border-left: 2px solid rgba(227, 179, 65, 0.65);
+  border-radius: 2px;
+  pointer-events: none;
+  transition: left 90ms linear, width 90ms linear;
 }
 .tab-fret {
   fill: var(--text);
