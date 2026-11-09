@@ -1795,9 +1795,19 @@ test("alphaTex：附点、切音、三连音都按 alphaTab 的语法写", () =>
   assert.ok(!dottedTex.includes(".8."), "不要再写尾点形式 `.8.`，它后面跟花括号会解析失败");
   assert.ok(!/\{\w+\}\s+\{/.test(dottedTex), "一拍不能带两个花括号");
 
-  // 切音：音头画成 ×
+  // 切音：默认按制谱软件写 P.M.（品数保留、音符属性 `{pm}`），只有显式 dead 才画 ×
   const muted = tabOf([n(5, 3, 0, 1, { muted: true }), n(4, 2, 1, 1), n(3, 0, 2, 1), n(2, 1, 3, 1)]);
-  assert.ok(tabToAlphaTex(muted).includes("x.5"), "切音没有写成死音音头");
+  const mutedTex = tabToAlphaTex(muted);
+  assert.ok(mutedTex.includes("3.5{pm}"), `切音没有写成 P.M. 音符属性：${mutedTex}`);
+  assert.ok(!mutedTex.includes("x.5"), `默认不该再画死音：${mutedTex}`);
+  assert.ok(!/\.4\{pm\}/.test(mutedTex), `{pm} 写在时值后面会被当成 beat property，解析失败：${mutedTex}`);
+  // 和弦里每个音都要带 `{pm}`，否则那条 P.M. 虚线不完整
+  const mutedChord = tabOf([n(5, 3, 0, 1, { muted: true }), n(4, 2, 0, 1, { muted: true }), n(3, 0, 0, 1, { muted: true })]);
+  assert.ok(
+    tabToAlphaTex(mutedChord).includes("(3.5{pm} 2.4{pm} 0.3{pm})"),
+    `和弦切音没逐音写 {pm}：${tabToAlphaTex(mutedChord)}`,
+  );
+  assert.ok(tabToAlphaTex(muted, { mute: "dead" }).includes("x.5"), "显式 dead 模式才画死音");
 
   // 三连音：一组三个音，只在组头写一次 `{tu 3}`
   const triplets = tabOf([

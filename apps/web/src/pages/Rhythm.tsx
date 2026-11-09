@@ -272,8 +272,9 @@ export default function Rhythm() {
         附点切分都是原样，没有被压成一样的格子。
       </p>
       <p className="rhythm-legend">
-        看图：<b>↑</b> 下扫（6 弦 → 1 弦）、<b>↓</b> 上扫（1 弦 → 6 弦）；<b>x</b> 是切音（闷音，
-        整拍按死发「嗒」）；C 和弦第 6 弦不弹，按六线谱惯例<b>留空</b>，不是闷音。
+        看图：<b>↑</b> 下扫（6 弦 → 1 弦）、<b>↓</b> 上扫（1 弦 → 6 弦）；
+        <b>P.M.</b> 是切音（palm mute，右手掌根压在琴桥上，那一拍按死发「嗒」）；
+        C 和弦第 6 弦不弹，按六线谱惯例<b>留空</b>，不是闷音。
       </p>
       <div className="drill-grid">
         {strums.map((drill) => {

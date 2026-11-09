@@ -22,13 +22,15 @@ export interface AlphaTexOptions {
   title?: string;
   /**
    * 切音（右手把弦闷掉）怎么标。
-   * - `dead`：音头画成 ×（默认）——alphaTex 里就是 `x.5`，谱面上是叉号，和切音的实际发声最接近；
-   * - `plain`：不额外标，谱面只有扫弦箭头。
+   * - `palm`：制谱软件的写法——保留品数，在音符上加 `{pm}`，alphaTab 会在谱面上方写
+   *   `P.M.` 并拉一条虚线到闷音结束（Guitar Pro 就是这么标的），默认值；
+   * - `dead`：音头画成 ×（`x.5`），只在不想用 P.M. 时才用；
+   * - `plain`：不标，谱面只有扫弦箭头。
    *
-   * 试过 `{pm}`（P.M. palm mute），但 alphaTab 的 beat property 白名单里没有它，
-   * 整条 tex 会解析失败（`Error parsing alphaTex`），所以不用。
+   * 注意 `{pm}` 是**音符属性**，要写在音符后面、时值前面：`3.5{pm}.4`、`(3.5{pm} 2.4{pm}).8`。
+   * 写成 `(3.5 2.4).8{pm}` 会被当成 beat property，alphaTab 白名单里没有它，整条 tex 解析失败。
    */
-  mute?: "dead" | "plain";
+  mute?: "palm" | "dead" | "plain";
 }
 
 /** 一拍等于几个四分音符：4/4 是 1，6/8 是 0.5。 */
@@ -119,16 +121,19 @@ export function onsetsOf(notes: TabNote[]): Onset[] {
     }));
 }
 
-function noteText(note: TabNote, mute: "dead" | "plain"): string {
-  // 只有切音/闷音画 x；不弹的弦根本不会出现在 notes 里（那是留空）。
-  if (mute === "dead" && note.muted) return `x.${note.s}`;
+function noteText(note: TabNote, mute: "palm" | "dead" | "plain"): string {
+  if (note.muted) {
+    // {pm} 必须写在品数后面、时值前面（时值由上层统一追加）。
+    if (mute === "palm") return `${note.f}.${note.s}{pm}`;
+    if (mute === "dead") return `x.${note.s}`;
+  }
   return `${note.f}.${note.s}`;
 }
 
 function beatText(
   onset: Onset,
   token: string,
-  opts: { dotted: boolean; tuplet: boolean; mute: "dead" | "plain" },
+  opts: { dotted: boolean; tuplet: boolean; mute: "palm" | "dead" | "plain" },
 ): string {
   const body =
     onset.notes.length > 1
@@ -162,7 +167,7 @@ function tieText(onset: Onset, token: string, dotted: boolean): string {
  * 返回的文本可以直接丢给 `new alphaTab.AlphaTabApi(el, { core: { tex } })`。
  */
 export function tabToAlphaTex(tab: Tab, options: AlphaTexOptions = {}): string {
-  const mute = options.mute ?? "dead";
+  const mute = options.mute ?? "palm";
   const bpm = options.bpm ?? tab.bpm?.[0] ?? 80;
   const perBeat = quartersPerBeat(tab);
   const onsets = onsetsOf(tab.notes);
