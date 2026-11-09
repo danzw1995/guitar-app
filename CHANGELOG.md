@@ -9,6 +9,19 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.21.7] - 2026-11-09
+
+### Fixed
+- **单拍切音只写 `P.M.`、拉不出虚线**：alphaTab 的 `LineRangedGlyph` 只在「分组渲染」时才画线，
+  单独一拍不分组。打开 `settings.notation.extendLineEffectsToBeatEnd = true` 后，单拍也会画出
+  `P.M. ┄┄ ⊢`；标签字号从默认的小号斜体衬线换成 `Arial, sans-serif` 11 号。
+- **两行谱的箭头全挤在最底部**：`strumArrows()` 原来只返回 `{x, dir}`，画的时候按整张图的底部定位。
+  现在每行谱各算各的底边（用 `system.visualBounds` 的底，含符干符梁），并在有箭头时把
+  `display.systemPaddingBottom` 加高，箭头不会压到下一行的弦线。
+- **谱面顶端/底端被裁**：`renderPng()` 改成「先把图块画到一块留足 48px 余量的舞台画布上，
+  再按像素 alpha 裁边（`trimTransparent()`）」——`boundsLookup` 里没有画在谱线上方的 `P.M.`、
+  探出字盒的品数，按它算尺寸会缺角。
+
 ## [0.21.6] - 2026-11-09
 
 ### Changed

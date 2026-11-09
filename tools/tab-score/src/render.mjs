@@ -103,6 +103,9 @@ function makeSettings({
   settings.core.logLevel = "error";
   settings.display.scale = scale;
   settings.display.layoutMode = alphaTab.LayoutMode.Page;
+  // 效果线（P.M. 虚线）默认只在跨拍时才画成「一组」；单拍的闷音就只剩一个 P.M. 文字，
+  // 谱面上看不出闷到哪儿。打开这个开关，单拍也会画一条到拍尾的短线。
+  settings.notation.extendLineEffectsToBeatEnd = true;
   const resources = settings.display.resources;
   // 六线谱的比例尺：符梁/符干的粗细、谱号（就是那个大大的 TAB）的大小都在这儿。
   // 默认值是给整页五线谱用的，缩到卡片宽度时会显得笨重。
@@ -127,6 +130,14 @@ function makeSettings({
     resources.elementFonts.set(
       alphaTab.NotationElement.ScoreTitle,
       new Font("Arial, sans-serif", titleSize),
+    );
+  }
+  // `P.M.` 默认是小号斜体衬线字（给五线谱用的），缩到卡片里几乎看不清，
+  // 换成无衬线、放大到 11 号，和制谱软件的观感更接近。
+  if (Font) {
+    resources.elementFonts.set(
+      alphaTab.NotationElement.EffectPalmMute,
+      new Font("Arial, sans-serif", 11),
     );
   }
   alphaTab.Environment.highDpiFactor = pixelRatio;
@@ -176,6 +187,12 @@ function prepareScore(score, settings, opts = {}) {
         }
       }
     }
+  }
+  if (arrows.size > 0) {
+    // 箭头画在每行谱的下方，行距要留出这一行的高度，
+    // 否则第一行的箭头会压在第二行的弦线上。
+    settings.display.systemPaddingBottom = 34;
+    settings.display.lastSystemPaddingBottom = 26;
   }
   return arrows;
 }
@@ -233,20 +250,32 @@ function beatLines(renderer, color = "#6e7681", alpha = 0.55) {
 
 /**
  * 扫弦箭头：位置用渲染后的 `onNotesX`（这一拍音符的正中），方向用模型里记下的。
- * 只返回逻辑坐标，具体画在哪儿由调用方决定。
+ *
+ * 箭头要画在**自己那一行谱**的下面：长谱会折成两三行系统，如果统一按整张图的高度去画，
+ * 第一行的箭头就会跑到最后一行底下（`sn-folk` 那种四小节两行的谱尤其明显）。
+ * 所以这里连「这一行谱的底边」一起返回，调用方按 `bottom + 8` 落笔。
  */
 function strumArrows(renderer, arrows) {
   const out = [];
   if (!arrows || arrows.size === 0) return out;
   for (const system of renderer.boundsLookup?.staffSystems ?? []) {
+    const beats = [];
+    // 用整行系统的底边（比单小节高，含符干和符梁），否则箭头会插进符梁里。
+    let bottom = system.visualBounds
+      ? system.visualBounds.y + system.visualBounds.h
+      : -Infinity;
     for (const masterBarBounds of system.bars ?? []) {
       for (const barBounds of masterBarBounds.bars ?? []) {
+        const box = barBounds.visualBounds;
+        if (box) bottom = Math.max(bottom, box.y + box.h);
         for (const beatBounds of barBounds.beats ?? []) {
           const dir = arrows.get(beatBounds.beat);
-          if (dir) out.push({ x: beatBounds.onNotesX, dir });
+          if (dir) beats.push({ x: beatBounds.onNotesX, dir });
         }
       }
     }
+    if (!Number.isFinite(bottom)) continue;
+    for (const beat of beats) out.push({ ...beat, bottom });
   }
   return out;
 }
@@ -290,6 +319,46 @@ function hexToRgba(hex, alpha = 1) {
     b: parseInt(hex.slice(5, 7), 16),
     a: Math.round(Math.max(0, Math.min(1, alpha)) * 255),
   };
+}
+
+/**
+ * 把四边的透明像素裁掉，只留真正画了东西的那块。
+ *
+ * 为什么不用 `boundsLookup` 算：那里面只有谱线和音，画在谱线上方的 P.M.、箭头、
+ * 探出字盒的品数都不在内，按它裁就会缺一角。像素是最终的真相。
+ * `readPixels()` 给的是原始 RGBA（每 4 字节一组），alpha 固定在第 4 个，和通道顺序无关。
+ */
+function trimTransparent(image) {
+  const width = image.width;
+  const height = image.height;
+  const raw = image.readPixels();
+  if (!raw) return null;
+  const pixels = new Uint8Array(raw);
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width * 4;
+    for (let x = 0; x < width; x += 1) {
+      if (pixels[row + x * 4 + 3] > 8) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < minX || maxY < minY) return null;
+  const w = maxX - minX + 1;
+  const h = maxY - minY + 1;
+  const out = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y += 1) {
+    const from = ((minY + y) * width + minX) * 4;
+    out.set(pixels.subarray(from, from + w * 4), y * w * 4);
+  }
+  const cropped = alphaSkia.AlphaSkiaImage.fromPixels(w, h, out.buffer);
+  return cropped ? { image: cropped, width: w, height: h } : null;
 }
 
 /**
@@ -345,14 +414,8 @@ export async function renderPng(tex, opts = {}) {
   // alphaTab 给的 totalWidth/totalHeight 是「还没画完」时的高度，不可靠；
   // 每块图的像素尺寸已经按 highDpiFactor 放大过，坐标还是逻辑像素，所以要乘回去。
   const dpi = opts.pixelRatio ?? 2;
-  // 谱面自己的高度只到「谱线 + 符梁」为止，第 6 弦上贴着底边的品数会被压到画布最外一行，
-  // 在浏览器里缩到卡片宽度后看着就像被切掉一半（第 6 弦的 0 尤其明显）。
-  // 所以四周留一圈白，底部给多一点。
   const pad = opts.padding ?? 6;
   const arrowList = strumArrows(renderer, arrows);
-  // 扫弦箭头画在整块谱面下方，所以底部还要多留一行。
-  const padBottom =
-    opts.paddingBottom ?? (arrowList.length > 0 ? pad + 18 : pad * 2);
   const total = parts.reduce(
     (acc, part) => ({
       width: Math.max(acc.width, part.x + part.width),
@@ -360,40 +423,21 @@ export async function renderPng(tex, opts = {}) {
     }),
     { width: 0, height: 0 },
   );
-  // 只保留真正有内容的那块（图块宽度常常是整个 renderer.width，右边一大片空白）。
-  const content =
-    contentBounds(renderer) ?? { x: 0, y: 0, w: total.width, h: total.height };
-  // bounds 记的是「字形盒子」的边，品数字形还会向上/向下探出去一点，
-  // 不补的话 1 弦和 6 弦的品数会被裁掉小半截（这正是用户看到的「0 显示不全」）。
-  const inflate = (opts.tabFontSize ?? 14) * 0.85;
-  // 横向只补 3px 容纳字形探出，真正的留白由下面的 outWidth 加 pad*2 提供。
-  const overhang = 3;
-  content.x -= overhang;
-  content.w += overhang * 2;
-  content.y -= inflate;
-  content.h += inflate * 2;
-  // 内容窄的谱（比如两小节 2/4 只有 4 拍）裁完会变得很窄，卡片里按宽度一拉就放大一倍多，
-  // 和别的卡不是一个字号。给它补到 minWidth，让同一批图在页面里大小一致；补出来的空白两边分。
-  const outWidth = Math.max(content.w, opts.minWidth ?? 0) + pad * 2;
-  const outHeight = content.h + pad + padBottom;
-  const slack = Math.max(0, (opts.minWidth ?? 0) - content.w) / 2;
-  const shiftX = pad + slack - content.x;
-  const shiftY = pad - content.y;
-
-  const canvas = new alphaSkia.AlphaSkiaCanvas();
-  canvas.beginRender(outWidth * dpi, outHeight * dpi, 1);
-  if (colors.background) {
-    canvas.color = alphaSkia.AlphaSkiaCanvas.rgbaToColor(
-      parseInt(colors.background.slice(1, 3), 16),
-      parseInt(colors.background.slice(3, 5), 16),
-      parseInt(colors.background.slice(5, 7), 16),
-      255,
-    );
-    canvas.fillRect(0, 0, outWidth * dpi, outHeight * dpi);
-  }
+  // 只在真正画了东西的范围上合成：alphaTab 的图块就是「整行谱」的位图，
+  // 它已经把 P.M.、符干符梁都包含在内了；右边的空白由下面的像素裁边去掉。
+  // 四周再留一圈 margin，给探出图块的效果记号（P.M. 的虚线上边）和箭头留位。
+  const margin = 48;
+  const stage = new alphaSkia.AlphaSkiaCanvas();
+  stage.beginRender(
+    Math.ceil((total.width + margin * 2) * dpi),
+    Math.ceil((total.height + margin * 2) * dpi),
+    1,
+  );
+  const shiftX = margin;
+  const shiftY = margin;
   for (const part of parts) {
     if (!part.image) continue;
-    canvas.drawImage(
+    stage.drawImage(
       part.image,
       (part.x + shiftX) * dpi,
       (part.y + shiftY) * dpi,
@@ -405,48 +449,77 @@ export async function renderPng(tex, opts = {}) {
   if (opts.beatLines) {
     const color = opts.beatLineColor ?? "#6e7681";
     const { r, g, b, a } = hexToRgba(color, opts.beatLineAlpha ?? 0.55);
-    canvas.color = alphaSkia.AlphaSkiaCanvas.rgbaToColor(r, g, b, a);
+    stage.color = alphaSkia.AlphaSkiaCanvas.rgbaToColor(r, g, b, a);
     // 图会被浏览器缩到卡片宽度（约 520 CSS px），1 物理像素的线缩完就看不见了，
     // 按 dpi 放大到 1.4 逻辑像素。
-    canvas.lineWidth = Math.max(1, Math.round(1.4 * dpi));
+    stage.lineWidth = Math.max(1, Math.round(1.4 * dpi));
     for (const line of beatLines(renderer, color)) {
       const x = (line.x + shiftX) * dpi;
       const top = (line.y1 + shiftY) * dpi;
       const bottom = (line.y2 + shiftY) * dpi;
       // alphaSkia 没有虚线，按 2 实 5 空自己切段
       for (let y = top; y < bottom; y += 7 * dpi) {
-        canvas.beginPath();
-        canvas.moveTo(x, y);
-        canvas.lineTo(x, Math.min(y + 2 * dpi, bottom));
-        canvas.stroke();
+        stage.beginPath();
+        stage.moveTo(x, y);
+        stage.lineTo(x, Math.min(y + 2 * dpi, bottom));
+        stage.stroke();
       }
     }
   }
-  // 扫弦方向：画在谱面下方，一根短竖线 + 箭头尖。
+  // 扫弦方向：画在**各自那一行谱**的下方，一根短竖线 + 箭头尖。
   // 下扫画成朝上的箭头（六线谱 1 弦在上，下扫是从 6 弦扫到 1 弦），和板书一致。
   if (arrowList.length > 0) {
     const { r, g, b, a } = hexToRgba(opts.arrowColor ?? "#8b949e", 1);
-    canvas.color = alphaSkia.AlphaSkiaCanvas.rgbaToColor(r, g, b, a);
-    canvas.lineWidth = Math.max(1, Math.round(1.4 * dpi));
-    const top = (content.h + pad + 7) * dpi;
-    const bottom = top + 13 * dpi;
+    stage.color = alphaSkia.AlphaSkiaCanvas.rgbaToColor(r, g, b, a);
+    stage.lineWidth = Math.max(1, Math.round(1.4 * dpi));
     for (const arrow of arrowList) {
       const x = (arrow.x + shiftX) * dpi;
-      canvas.beginPath();
-      canvas.moveTo(x, top);
-      canvas.lineTo(x, bottom);
-      canvas.stroke();
+      const top = (arrow.bottom + shiftY + 8) * dpi;
+      const bottom = top + 13 * dpi;
+      stage.beginPath();
+      stage.moveTo(x, top);
+      stage.lineTo(x, bottom);
+      stage.stroke();
       const down = arrow.dir === "down";
       const tip = down ? top : bottom;
       const sign = down ? 1 : -1;
       for (const side of [-1, 1]) {
-        canvas.beginPath();
-        canvas.moveTo(x + side * 3.4 * dpi, tip + sign * 5 * dpi);
-        canvas.lineTo(x, tip);
-        canvas.stroke();
+        stage.beginPath();
+        stage.moveTo(x + side * 3.4 * dpi, tip + sign * 5 * dpi);
+        stage.lineTo(x, tip);
+        stage.stroke();
       }
     }
   }
+
+  const stageImage = stage.endRender();
+  if (!stageImage) {
+    throw new Error("alphaSkia 合成图片失败");
+  }
+  const trimmed = trimTransparent(stageImage);
+  if (!trimmed) {
+    throw new Error("谱面上没有任何内容（alphaTex 可能解析成了空谱）");
+  }
+  // 内容窄的谱（比如两小节 2/4 只有 4 拍）裁完会变得很窄，卡片里按宽度一拉就放大一倍多，
+  // 和别的卡不是一个字号。给它补到 minWidth，让同一批图在页面里大小一致；补出来的空白两边分。
+  const minWidth = Math.max(0, opts.minWidth ?? 0) * dpi;
+  const outWidth = Math.max(trimmed.width, minWidth) + pad * 2 * dpi;
+  const outHeight = trimmed.height + pad * 2 * dpi;
+
+  const canvas = new alphaSkia.AlphaSkiaCanvas();
+  canvas.beginRender(outWidth, outHeight, 1);
+  if (colors.background) {
+    canvas.color = alphaSkia.AlphaSkiaCanvas.rgbaToColor(
+      parseInt(colors.background.slice(1, 3), 16),
+      parseInt(colors.background.slice(3, 5), 16),
+      parseInt(colors.background.slice(5, 7), 16),
+      255,
+    );
+    canvas.fillRect(0, 0, outWidth, outHeight);
+  }
+  const dx = pad * dpi + Math.max(0, (minWidth - trimmed.width) / 2);
+  canvas.drawImage(trimmed.image, dx, pad * dpi, trimmed.width, trimmed.height);
+
   const image = canvas.endRender();
   if (!image) {
     throw new Error("alphaSkia 合成图片失败");

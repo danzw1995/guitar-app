@@ -506,6 +506,16 @@ C 大调的八个音上（5 弦 3 品 C、4 弦 2 品 E、3 弦 0 品 G、2 弦 
   的横坐标自己在谱面下方画箭头，箭头与品数不再抢位置；
 - **图片地址带内容指纹**：`gen:scores` 会重写 `src/lib/scores-version.ts`，`TabScore` 用
   `?v=<指纹>` 取图，否则重新生成后文件名没变、浏览器会一直用缓存里的旧谱；
+- **单拍切音也要拉出虚线**（v0.21.7）：alphaTab 的 `LineRangedGlyph` 只在分组渲染时才画线，
+  单独一拍不分组，谱面上只写一个 `P.M.` 没有线。`makeSettings()` 打开
+  `notation.extendLineEffectsToBeatEnd = true` 之后，单拍也有 `P.M. ┄┄ ⊢`；
+  标签字号换成 `Arial, sans-serif` 11 号（默认是小号斜体衬线，缩到卡片里几乎看不清）；
+- **箭头跟着每行谱走**（v0.21.7）：`strumArrows()` 返回 `{ x, dir, bottom }`，`bottom` 取该行
+  `system.visualBounds` 的底边（比小节框高，含符干符梁），箭头画在它下方 8~21px；
+  同时在有箭头时把 `display.systemPaddingBottom` 加高到 34，多行谱的箭头不会压到下一行弦线；
+- **图纸按像素裁边**（v0.21.7）：`renderPng()` 先把所有图块画到一块四周留 48px 余量的舞台画布上，
+  再按 alpha 求包围盒（`trimTransparent()`）裁掉透明边——`boundsLookup` 里没有画在谱线上方的
+  `P.M.` 和探出字盒的品数，按它算尺寸会缺角；
 - **图片四周要留白**（`padding: 6`，底部双倍 + 箭头区 18）：alphaTab 给的画布高度只到
   「谱线 + 符梁」，品数字形还会向下探出一点，不留白的话缩到卡片宽度后 `0` 会被切掉下半截。
   `renderPng()` 现在按内容框合成，四周留白、底部再给箭头挡出位置；
