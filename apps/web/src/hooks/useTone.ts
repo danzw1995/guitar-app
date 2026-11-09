@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { STANDARD_TUNING, frequencyOf, midiAt, tabEvents, type Tab } from "@guitar/core";
+import { claimAudio, getVolume, releaseAudio } from "../lib/audio-bus";
 
 export interface PlayOptions {
   /** 相邻两个音之间隔多久（秒）。 */
@@ -17,8 +18,14 @@ export interface PlayOptions {
 export function useTone() {
   const ctxRef = useRef<AudioContext | null>(null);
   const masterRef = useRef<GainNode | null>(null);
+  const volumeRef = useRef<GainNode | null>(null);
   const voices = useRef<OscillatorNode[]>([]);
   const timers = useRef<number[]>([]);
+  const ownerRef = useRef<symbol | null>(null);
+  const owner = () => {
+    ownerRef.current ??= Symbol("tone");
+    return ownerRef.current;
+  };
 
   function ensure(): AudioContext | null {
     const Ctor =
@@ -39,9 +46,14 @@ export function useTone() {
       comp.attack.value = 0.004;
       comp.release.value = 0.18;
       master.connect(comp);
-      comp.connect(ctx.destination);
+      const volume = ctx.createGain();
+      volume.gain.value = getVolume();
+      comp.connect(volume);
+      volume.connect(ctx.destination);
       masterRef.current = master;
+      volumeRef.current = volume;
     }
+    if (volumeRef.current) volumeRef.current.gain.value = getVolume();
     if (ctx.state === "suspended") void ctx.resume();
     return ctx;
   }
@@ -91,6 +103,7 @@ export function useTone() {
       }
     }
     voices.current = [];
+    releaseAudio(owner());
   }
 
   /**
@@ -101,6 +114,7 @@ export function useTone() {
     const ctx = ensure();
     if (!ctx) return;
     stop();
+    claimAudio(owner(), stop);
     const step = opts.step ?? 0.04;
     const start = ctx.currentTime + 0.05;
 
@@ -133,6 +147,7 @@ export function useTone() {
     const ctx = ensure();
     if (!ctx) return;
     stop();
+    claimAudio(owner(), stop);
     const start = ctx.currentTime + 0.05;
     midis.forEach((midi, index) => pluck(ctx, start + index * step, midi, 1));
   }
@@ -162,6 +177,7 @@ export function useTone() {
     const ctx = ensure();
     if (!ctx) return;
     stop();
+    claimAudio(owner(), stop);
     const start = ctx.currentTime + 0.08;
     const secondsPerBeat = 60 / Math.max(20, bpm);
 

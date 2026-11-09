@@ -29,6 +29,21 @@ import {
 const LEVELS: Level[] = [1, 2, 3, 4, 5];
 
 /**
+ * 练习的拍号：能直接读到就用它，否则按一小节几拍反推。
+ * 6/8 的谱 `beatsPerBar` 是 6（一拍一个八分），3 是 3/4，2 是 2/4。
+ */
+function meterOfTab(tab: { beatsPerBar: number }): string {
+  if (tab.beatsPerBar === 6) return "6/8";
+  if (tab.beatsPerBar === 3) return "3/4";
+  if (tab.beatsPerBar === 2) return "2/4";
+  return "4/4";
+}
+
+function meterOfDrill(drill: { tab: { beatsPerBar: number }; meter?: string }): string {
+  return drill.meter ?? meterOfTab(drill.tab);
+}
+
+/**
  * 节奏专项：把「时值不稳」这件事拆开练。
  *
  * 三块内容对应三种练法：
@@ -178,7 +193,7 @@ export default function Rhythm() {
                 type="button"
                 className="btn"
                 onClick={() => {
-                  setTarget(drill);
+                  setTarget({ ...drill, meter: meterOfDrill(drill) });
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
               >
@@ -235,7 +250,7 @@ export default function Rhythm() {
                 type="button"
                 className="btn"
                 onClick={() => {
-                  setTarget(drill);
+                  setTarget({ ...drill, meter: meterOfDrill(drill) });
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
               >
@@ -316,7 +331,13 @@ export default function Rhythm() {
                   type="button"
                   className="btn"
                   onClick={() => {
-                    setTarget({ id: drill.id, name: `练习 ${drill.no}`, bpm: [drill.bpm ?? 70, 110], tab: drill.tab });
+                    setTarget({
+                      id: drill.id,
+                      name: `练习 ${drill.no}`,
+                      bpm: [drill.bpm ?? 70, 110],
+                      tab: drill.tab,
+                      meter: meterOfDrill(drill),
+                    });
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
                 >
@@ -368,7 +389,11 @@ export default function Rhythm() {
                 type="button"
                 className="btn"
                 onClick={() => {
-                  setTarget({ ...pattern, bpm: [60, 90] as [number, number] });
+                  setTarget({
+                    ...pattern,
+                    bpm: [60, 90] as [number, number],
+                    meter: meterOfTab(pattern.tab),
+                  });
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
               >
@@ -417,7 +442,7 @@ export default function Rhythm() {
                 type="button"
                 className="btn"
                 onClick={() => {
-                  setTarget(snippet);
+                  setTarget({ ...snippet, meter: meterOfTab(snippet.tab) });
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
               >

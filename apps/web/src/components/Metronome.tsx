@@ -7,6 +7,7 @@ import {
   type Subdivision,
 } from "@guitar/core";
 import { useMetronome } from "../hooks/useMetronome";
+import { useAudioVolume, volumeLabel } from "../lib/audio-bus";
 
 /**
  * 节拍器面板：拍号、细分、速度、「每 4 小节 +5」。
@@ -18,6 +19,7 @@ export default function Metronome() {
   const [meterId, setMeterId] = useState("4/4");
   const [subdivision, setSubdivision] = useState<Subdivision>(1);
   const [ramp, setRamp] = useState(false);
+  const [volume, setVolume] = useAudioVolume();
 
   const { running, active, start, stop } = useMetronome({
     bpm,
@@ -99,6 +101,20 @@ export default function Metronome() {
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="metro-field">
+          <span>音量</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={Math.round(volume * 100)}
+            aria-label="节拍器与试听的音量"
+            onChange={(event) => setVolume(Number(event.target.value) / 100)}
+          />
+          <b className="metro-bpm">{volumeLabel(volume)}</b>
         </label>
 
         <label className="metro-check">

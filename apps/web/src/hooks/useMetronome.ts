@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { clicksPerBar, gridSlots, type Subdivision } from "@guitar/core";
+import { claimAudio, getVolume, releaseAudio } from "../lib/audio-bus";
 
 export interface MetronomeOptions {
   bpm: number;
@@ -42,6 +43,11 @@ export function useMetronome({
   const timerRef = useRef<number | null>(null);
   const dotsRef = useRef<Set<number>>(new Set());
   const cursor = useRef({ time: 0, index: 0 });
+  const ownerRef = useRef<symbol | null>(null);
+  const owner = () => {
+    ownerRef.current ??= Symbol("metronome");
+    return ownerRef.current;
+  };
 
   const bpmRef = useRef(bpm);
   const meterRef = useRef(meterId);
@@ -66,6 +72,7 @@ export function useMetronome({
     if (timerRef.current !== null) window.clearInterval(timerRef.current);
     timerRef.current = null;
     clearDots();
+    releaseAudio(owner());
     setRunning(false);
     setActive(-1);
   }
@@ -76,10 +83,15 @@ export function useMetronome({
   function click(ctx: AudioContext, when: number, accent: boolean, offBeat: boolean) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
+    // 音量滑杆：0 就彻底不响，1 是原来的默认响度
+    const volume = getVolume();
     osc.type = offBeat ? "sine" : "square";
     osc.frequency.value = accent ? 1568 : offBeat ? 660 : 1046;
     gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.linearRampToValueAtTime(accent ? 0.3 : offBeat ? 0.1 : 0.17, when + 0.002);
+    gain.gain.linearRampToValueAtTime(
+      (accent ? 0.3 : offBeat ? 0.1 : 0.17) * volume,
+      when + 0.002,
+    );
     gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
     osc.connect(gain);
     gain.connect(ctx.destination);
@@ -133,6 +145,8 @@ export function useMetronome({
     cursor.current = { time: ctx.currentTime + 0.08, index: 0 };
     setRunning(true);
     setActive(-1);
+    // 同一时刻只响一路：把正在试听的那边掐掉
+    claimAudio(owner(), stop);
     timerRef.current = window.setInterval(tick, 25);
   }
 

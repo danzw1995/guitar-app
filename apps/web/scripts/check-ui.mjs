@@ -200,6 +200,29 @@ try {
   const errors = ab(["errors"]);
   const errorText = typeof errors === "string" ? errors : "";
   log(!errorText || /no (page )?errors/i.test(errorText), "试听之后页面没有报错", errorText.slice(0, 300));
+
+  // 6) 同一时刻只响一路：节拍器在响的时候点试听，节拍器要自己停下来
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const metroButton = () =>
+    js(
+      "(() => { const b = document.querySelector('.metronome .btn'); return b ? b.textContent.trim() : 'none'; })()",
+    );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.metronome button')].find(n => n.textContent.trim() === '开始'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const runningText = String(await metroButton());
+  log(runningText.includes("停止"), "节拍器能开始（按钮变成「停止」）", runningText);
+  js(
+    "(() => { const b = [...document.querySelectorAll('.drill-card button')].find(n => n.textContent.trim() === '试听'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const afterTone = String(await metroButton());
+  log(
+    afterTone.includes("开始") && !afterTone.includes("停止"),
+    "点试听时正在响的节拍器会自己停（同一时刻只响一路）",
+    afterTone,
+  );
 } finally {
   ab(["close"]);
   console.log(

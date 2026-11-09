@@ -1268,6 +1268,33 @@ button, select, input { font: inherit; color: inherit; }
   width: 130px;
   accent-color: var(--accent);
 }
+/* 起始速度、数拍单位、加速档位：数字框和下拉都比滑杆窄一点，别把一行撑爆 */
+.follow-field input[type="number"] {
+  width: 58px;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+.follow-field select {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+.follow-field select:disabled {
+  opacity: 0.45;
+}
+.follow-volume {
+  min-width: 34px;
+  font-size: 12px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
 .follow-check {
   display: inline-flex;
   align-items: center;
