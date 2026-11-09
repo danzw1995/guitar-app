@@ -29,15 +29,8 @@ export interface TabNote {
   bend?: number;
   /** 扫弦方向（画在谱子下方）。 */
   arrow?: "D" | "U";
-  /** 右手切音：箭头上面加一个点（视频板书就是这么标的）。 */
+  /** 右手切音：这一下是闷音，谱面上画成 `x`（不发声）。 */
   muted?: boolean;
-  /**
-   * 这根弦不参与这一下：谱面上画 `x`（不发声）。
-   *
-   * 和弦扫弦时用得着——`C` 是 `x32010`，第 6 弦不弹，
-   * 只画五根弦的话谱面看起来像「少了一根弦」，把 x 标出来才是完整的六线谱。
-   */
-  ghost?: boolean;
 }
 
 export interface Tab {
@@ -76,7 +69,6 @@ export interface TabEvent {
 export function tabEvents(tab: Tab, bpm = 80): TabEvent[] {
   const secondsPerBeat = 60 / Math.max(20, bpm);
   return tab.notes
-    .filter((note) => !note.ghost)
     .map((note) => ({
       midi: STANDARD_TUNING.strings[note.s - 1] + note.f,
       string: note.s,
@@ -311,11 +303,9 @@ export function strumTab(opts: {
       const dur = hit.dur ?? (next ? next.at - hit.at : beatsPerBar - hit.at);
       const beat = bar * beatsPerBar + hit.at;
       frets.forEach((fret, stringIndex) => {
-        // 空着的弦也要占位画 x：不然六线谱上会缺一根弦，看着像没画全。
-        if (fret < 0) {
-          notes.push(n(6 - stringIndex, 0, beat, dur, { arrow: hit.dir, ghost: true }));
-          return;
-        }
+        // 不弹的弦（C 和弦的 6 弦）在六线谱里就是留空：那一行什么都不画。
+        // 画成 x 会和「切音 / 闷音」混成一个符号，读谱的人分不出来。
+        if (fret < 0) return;
         notes.push(n(6 - stringIndex, fret, beat, dur, { arrow: hit.dir, muted: hit.muted }));
       });
     });

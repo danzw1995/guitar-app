@@ -263,13 +263,17 @@ export default function Rhythm() {
       <h3 className="practice-h3">
         扫弦练习
         <span className="practice-h3-hint">
-          整理自《节奏与节拍》{READING_SOURCE} 的 24 条扫弦；圆点是右手切音
+          整理自《节奏与节拍》{READING_SOURCE} 的 24 条扫弦
         </span>
       </h3>
       <p className="rhythm-focus">
         板书把方向画在六线谱上（1 弦在最上面），所以谱面上的上箭头是「下扫」——这里已经按
         下 / 上 换算好了。每条都按板上的符干位置读：十六分就画成十六分，前八后十六、十六分四连、
         附点切分都是原样，没有被压成一样的格子。
+      </p>
+      <p className="rhythm-legend">
+        看图：<b>↑</b> 下扫（6 弦 → 1 弦）、<b>↓</b> 上扫（1 弦 → 6 弦）；<b>x</b> 是切音（闷音，
+        整拍按死发「嗒」）；C 和弦第 6 弦不弹，按六线谱惯例<b>留空</b>，不是闷音。
       </p>
       <div className="drill-grid">
         {strums.map((drill) => {

@@ -120,7 +120,7 @@ export function onsetsOf(notes: TabNote[]): Onset[] {
 }
 
 function noteText(note: TabNote, mute: "dead" | "plain"): string {
-  if (note.ghost) return `x.${note.s}`;
+  // 只有切音/闷音画 x；不弹的弦根本不会出现在 notes 里（那是留空）。
   if (mute === "dead" && note.muted) return `x.${note.s}`;
   return `${note.f}.${note.s}`;
 }

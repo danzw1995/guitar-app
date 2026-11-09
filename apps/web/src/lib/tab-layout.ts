@@ -62,8 +62,7 @@ const MAX_SYSTEM_WIDTH = 460;
 
 /** 六线谱场景。 */
 export function layoutTab(tab: Tab): TabScene {
-  // 空弦上的 x（`ghost`）由 alphaTab 画，自绘这层不算它，免得画出两个 0 来。
-  const { notes, beatsPerBar, bars } = { ...tab, notes: tab.notes.filter((note) => !note.ghost) };
+  const { notes, beatsPerBar, bars } = tab;
   /** 朗读练习只有一条节奏线（画 X），不是六线谱。 */
   const rhythmStyle = tab.display === "rhythm";
   const lineCount = rhythmStyle ? 1 : 6;
