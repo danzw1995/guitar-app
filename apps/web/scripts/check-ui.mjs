@@ -112,9 +112,9 @@ try {
   );
   log(switched === '"ok"', "能切到「节奏」页", switched === '"ok"' ? "" : String(switched));
 
-  // 3) 节奏页五块内容：跟读 16 + 时值 10 + 扫弦 24 + 扫弦型 12 + 风格 6 = 68
+  // 3) 节奏页六块内容：跟读 16 + 时值 10 + 扫弦 24 + 伴奏 17 + 扫弦型 12 + 风格 6 = 85
   const cards = js("document.querySelectorAll('.drill-card').length");
-  log(cards === "68", `节奏页 5 块内容共 68 张卡（读到 ${cards}）`);
+  log(cards === "85", `节奏页 6 块内容共 85 张卡（读到 ${cards}）`);
 
   const strum = js(
     "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('.drill-card').length : -1; })()",
@@ -236,7 +236,7 @@ try {
   }
   log(today.n === 3, "「今天先练这 3 条」里有 3 条", `读到 ${today.n} 条`);
   log(
-    today.meters.length === 3 && today.meters.every((text) => /^已练 \d+\/\d+$/.test(text)),
+    today.meters.length === 4 && today.meters.every((text) => /^已练 \d+\/\d+$/.test(text)),
     "每块练习的标题上都有「已练 N/M」",
     today.meters.join(" / "),
   );

@@ -10,6 +10,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import {
+  ACCOMPANIMENTS,
   READING_DRILLS,
   RHYTHM_DRILLS,
   SONG_SNIPPETS,
@@ -32,6 +33,7 @@ const items: Item[] = [
   ...STRUM_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab, bpm: drill.bpm })),
   ...STRUM_LIBRARY.map((pattern) => ({ id: pattern.id, tab: pattern.tab, bpm: 70 })),
   ...SONG_SNIPPETS.map((snippet) => ({ id: snippet.id, tab: snippet.tab, bpm: snippet.bpm[0] })),
+  ...ACCOMPANIMENTS.map((item) => ({ id: item.id, tab: item.tab, bpm: item.bpm })),
 ];
 
 const WIDTH = 720;
@@ -54,8 +56,11 @@ for (const item of items) {
   }
   seen.add(item.id);
   const tex = tabToAlphaTex(item.tab, item.bpm ? { bpm: item.bpm } : {});
+  // 五小节的伴奏型：一行排五小节会挤到看不清品数（720 宽时字只缩到 10px 左右），
+  // 改成 520 宽排成两行（3+2），品数在卡片里约 17px，和别的块一致。
+  const wide = item.tab.bars >= 5;
   const png = await renderPng(tex, {
-    width: WIDTH,
+    width: wide ? 520 : WIDTH,
     scale: 1,
     pixelRatio: 2,
     theme: "dark",
@@ -63,15 +68,17 @@ for (const item of items) {
     title: false,
     // 品数字号 + 弦距：默认 14/13 时字几乎顶到上下两条弦，读起来挤；
     // 15/18 的比例（≈0.85）和纸质六线谱接近。
-    tabFontSize: 15,
+    tabFontSize: wide ? 17 : 15,
     // 谱面裁掉空白后，窄一些的谱（两小节 2/4）会被卡片拉大，
     // 补到 420 逻辑像素，68 张图在页面里的字号就基本一致了。
-    minWidth: 420,
+    minWidth: wide ? 380 : 420,
     engraving: {
-      musicFontSize: 26, // TAB 谱号（默认 36，缩到卡片里太大）
+      // TAB 谱号的大小（默认 36，缩到卡片里太大）。它同时决定「谱号占多宽」，
+      // 太小时第一拍的品数会压到谱号上——五小节的伴奏型品数更大，所以给到 32。
+      musicFontSize: wide ? 32 : 26,
       beamThickness: 2.6, // 符梁（八分/十六分下面那几条横线，默认 4.5 太粗）
       stemThickness: 0.8, // 符干（默认 1.08）
-      tabLineSpacing: 18, // 六条弦的间距（默认 13）
+      tabLineSpacing: wide ? 19 : 18, // 六条弦的间距（默认 13）
       preNoteEffectPadding: 6, // 扫弦箭头已经挪到谱面下方，不用再留大缝
     },
     // 每拍之间那条细虚线：卡片上要能对着数拍子

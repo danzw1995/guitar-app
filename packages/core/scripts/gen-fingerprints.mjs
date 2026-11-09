@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { STRUM_DRILLS } from "../src/strum-drills.ts";
 import { READING_DRILLS } from "../src/reading-drills.ts";
 import { RHYTHM_DRILLS } from "../src/rhythm-drills.ts";
+import { ACCOMPANIMENTS } from "../src/accompaniment.ts";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "test", "fixtures", "rhythm-fingerprints.json");
 
@@ -40,6 +41,7 @@ const data = {
   strum: pick(STRUM_DRILLS),
   reading: pick(READING_DRILLS),
   rhythm: pick(RHYTHM_DRILLS),
+  accompaniment: pick(ACCOMPANIMENTS),
 };
 
 /** 每条练习压成一行：改一条数据，diff 里就只有一行，review 得动。 */

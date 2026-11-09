@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  ACCOMPANIMENTS,
   LEVEL_LABEL,
   READING_DRILLS,
   READING_SOURCE,
@@ -129,6 +130,10 @@ export default function Rhythm() {
     () => STRUM_DRILLS.filter((drill) => level === 0 || drill.level === level),
     [level],
   );
+  const accompaniments = useMemo(
+    () => ACCOMPANIMENTS.filter((item) => level === 0 || item.level === level),
+    [level],
+  );
 
   /** 记成绩：跟练记录（最高速度）+ 当天练习时长（让连续天数也涨）。 */
   function record(result: { bpm: number; minutes: number }) {
@@ -191,6 +196,7 @@ export default function Rhythm() {
   const readingDone = doneRatio(READING_DRILLS.map((drill) => drill.id), records);
   const rhythmDone = doneRatio(RHYTHM_DRILLS.map((drill) => drill.id), records);
   const strumDone = doneRatio(STRUM_DRILLS.map((drill) => drill.id), records);
+  const accompDone = doneRatio(ACCOMPANIMENTS.map((item) => item.id), records);
 
   function jumpTo(id: string) {
     const card = document.getElementById(`drill-${id}`);
@@ -502,6 +508,77 @@ export default function Rhythm() {
             </article>
           );
         })}
+      </div>
+
+      <h3 className="practice-h3">
+        伴奏型
+        <span className="practice-h3-hint">
+          整理自《节奏与节拍》{READING_SOURCE} 的 17 条分解伴奏
+        </span>
+        <span className="block-meter">
+          已练 {accompDone.done}/{accompDone.total}
+        </span>
+      </h3>
+      <p className="rhythm-focus">
+        板书是「上面五个和弦图 + 下面五小节六线谱」，谱上只画 x 标弦、不写品数——
+        这里照原样：五小节依次配 C → Am → F → G → C，谱面上的数字就是弦号。
+        分解型练熟以后，换成任何一首这四个和弦的歌都能用。
+      </p>
+      <div className="drill-grid">
+        {accompaniments.map((item) => (
+          <article key={item.id} id={`drill-${item.id}`} className="drill-card">
+            <header className="drill-head">
+              <h4>
+                练习 {item.no} · {item.name}
+              </h4>
+              <span className={`level-badge lv${item.level}`}>{LEVEL_LABEL[item.level]}</span>
+            </header>
+            <p className="rhythm-count">
+              和弦：<b>{item.chords.join(" → ")}</b>
+              <span className="rhythm-bpm">
+                {item.meter} · {item.bpm} BPM
+              </span>
+            </p>
+            <p className="rhythm-focus">{item.figure}</p>
+            <p className="rhythm-count">
+              弦号：<b>{item.pattern}</b>
+            </p>
+            <TabScore id={item.id} tab={item.tab} beat={beatOf(item.id)} />
+            <div className="drill-actions">
+              <button
+                type="button"
+                className="btn"
+                aria-label={`试听 练习 ${item.no}`}
+                onClick={() => audition(item.id, item.tab, item.bpm)}
+              >
+                试听
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setTarget({
+                    id: item.id,
+                    name: `练习 ${item.no} · ${item.name}`,
+                    bpm: [item.bpm, item.bpm + 40],
+                    tab: item.tab,
+                    meter: item.meter,
+                  });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                跟练
+              </button>
+              {best(item.id) !== undefined && (
+                <span className="best-badge">最高 {best(item.id)} BPM</span>
+              )}
+            </div>
+            {item.tip && <p className="pb-line">{item.tip}</p>}
+            {item.inferred && (
+              <p className="pb-line">板书这一帧看不清，这条是按同一块板上其它小节推断的。</p>
+            )}
+          </article>
+        ))}
       </div>
 
       <h3 className="practice-h3">

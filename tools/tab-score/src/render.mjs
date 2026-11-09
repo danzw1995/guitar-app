@@ -274,15 +274,23 @@ function beatBands(renderer) {
         const barStart = beats[0].beat.playbackStart;
 
         const edges = [bar.x];
+        const slot = bar.w / perBar;
         for (let k = 1; k < perBar; k += 1) {
           const target = barStart + k * ticksPerBeat;
           const nextIndex = beats.findIndex((beat) => beat.beat.playbackStart >= target);
-          if (nextIndex === -1) continue;
-          // 拍点落在两个音之间时取中点：画在音上会把品数盖住
-          const prev = nextIndex > 0 ? beats[nextIndex - 1].visualBounds : bar;
-          const next = beats[nextIndex].visualBounds;
-          const at = prev === bar ? next.x : (prev.x + prev.w + next.x) / 2;
-          if (at > edges[edges.length - 1]) edges.push(at);
+          let at;
+          if (nextIndex === -1) {
+            // 后面的拍上没有音（整小节和弦、延音），按比例切，别把两拍并成一拍
+            at = bar.x + slot * k;
+          } else {
+            // 拍点落在两个音之间时取中点：画在音上会把品数盖住
+            const prev = nextIndex > 0 ? beats[nextIndex - 1].visualBounds : bar;
+            const next = beats[nextIndex].visualBounds;
+            at = prev === bar ? next.x : (prev.x + prev.w + next.x) / 2;
+          }
+          // 夹在「这一拍该在的位置」附近，保证边界单调、每拍都分到一条
+          at = Math.min(Math.max(at, bar.x + slot * (k - 0.35)), bar.x + slot * (k + 0.35));
+          if (at > edges[edges.length - 1] + 2) edges.push(at);
         }
         edges.push(bar.x + bar.w);
         for (let k = 0; k + 1 < edges.length; k += 1) {

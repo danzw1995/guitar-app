@@ -111,6 +111,7 @@ import {
   READING_DRILLS,
   STRUM_LIBRARY,
   STRUM_DRILLS,
+  ACCOMPANIMENTS,
   SONG_SNIPPETS,
   tabToAlphaTex,
   tabOf,
@@ -1418,6 +1419,56 @@ test("扫弦练习：24 条，十六分保留原样，时值对得上", () => {
   assert.equal(muted[0].beat, 1, "切音应该在第 2 拍下扫上");
 });
 
+test("伴奏型：17 条，五小节 C–Am–F–G–C，品数取自和弦按法", () => {
+  assert.equal(ACCOMPANIMENTS.length, 17, `伴奏型应该是 17 条：${ACCOMPANIMENTS.length}`);
+  assert.equal(
+    new Set(ACCOMPANIMENTS.map((item) => item.no)).size,
+    17,
+    "练习编号不能重复",
+  );
+  assert.equal(
+    new Set(ACCOMPANIMENTS.map((item) => item.id)).size,
+    ACCOMPANIMENTS.length,
+    "id 不能重复",
+  );
+
+  for (const item of ACCOMPANIMENTS) {
+    assert.deepEqual(item.chords, ["C", "Am", "F", "G", "C"], `${item.name} 的和弦进行不对`);
+    assert.equal(item.tab.bars, 5, `${item.name} 应该是五小节`);
+    assert.ok(
+      [2, 3, 4].includes(item.tab.beatsPerBar),
+      `${item.name} 拍号不对：${item.tab.beatsPerBar}`,
+    );
+    assert.ok(item.pattern.length > 3, `${item.name} 缺少数弦号的序列`);
+    assert.ok(item.figure.length > 3, `${item.name} 缺少音型说明`);
+    assert.ok(item.tip.length > 3, `${item.name} 缺少提示`);
+    assert.ok(item.level >= 1 && item.level <= 5);
+
+    for (const note of item.tab.notes) {
+      const bar = Math.floor(note.beat / item.tab.beatsPerBar);
+      assert.ok(bar >= 0 && bar < 5, `${item.name} 有音跑出小节：第 ${note.beat} 拍`);
+      const fret = CHORD_BY_NAME.get(item.chords[bar])!.frets[6 - note.s];
+      assert.equal(
+        note.f,
+        fret,
+        `${item.name} 第 ${bar + 1} 小节 ${note.s} 弦应按下 ${fret} 品，谱上写了 ${note.f}`,
+      );
+      assert.ok(note.dur > 0, `${item.name} 有时值为 0 的音`);
+      const inBar = note.beat - bar * item.tab.beatsPerBar;
+      assert.ok(inBar >= 0 && inBar < item.tab.beatsPerBar, `${item.name} 有音跑出小节`);
+    }
+  }
+
+  // 练习 1 的第一小节：弦号复现成 pattern，第一下落在低音弦上
+  const first = ACCOMPANIMENTS.find((item) => item.no === 1)!;
+  const opening = first.tab.notes
+    .filter((note) => note.beat < first.tab.beatsPerBar)
+    .sort((a, b) => a.beat - b.beat);
+  assert.equal(opening[0].beat, 0, "第一下应该在小节头");
+  assert.ok(opening[0].s >= 4, "第一下应该是低音弦（5 或 6 弦），不是高音弦");
+  assert.equal(first.pattern.split("-")[0], String(opening[0].s));
+});
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FINGERPRINTS = JSON.parse(
   readFileSync(join(HERE, "fixtures", "rhythm-fingerprints.json"), "utf8"),
@@ -1440,6 +1491,7 @@ test("节奏指纹：练习的起音序列没有被意外改动", () => {
     ["strum", STRUM_DRILLS],
     ["reading", READING_DRILLS],
     ["rhythm", RHYTHM_DRILLS],
+    ["accompaniment", ACCOMPANIMENTS],
   ] as const;
   const problems: string[] = [];
 

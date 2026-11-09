@@ -319,6 +319,45 @@ export function strumTab(opts: {
   });
 }
 
+/**
+ * 分解和弦（伴奏型）：每个音自己带「第几拍 + 拨哪根弦」，品数从和弦按法里取。
+ *
+ * 视频板书就是这么写的：上面五个和弦图，下面五小节的 `x`——`x` 只标弦不标品。
+ * 这里 `hits` 的元素是 `[小节内的拍位, 弦号]`，和弦名给的是那一条小节配的和弦。
+ */
+export function accompanimentTab(opts: {
+  bars: { chord: string; hits: [number, number][] }[];
+  beatsPerBar?: number;
+  caption?: string;
+}): Tab {
+  const beatsPerBar = opts.beatsPerBar ?? 4;
+  const notes: TabNote[] = [];
+  const names: string[] = [];
+
+  opts.bars.forEach((bar, barIndex) => {
+    names.push(bar.chord);
+    const frets = shapeFrets(CHORD_BY_NAME.get(bar.chord));
+    const hits = [...bar.hits].sort((a, b) => a[0] - b[0]);
+    // 同一拍上的几根弦算一个「起音」，时值要算到下一个起音，不能算到同一拍的下一根弦
+    const onsets = [...new Set(hits.map(([at]) => at))].sort((a, b) => a - b);
+    hits.forEach(([at, stringNumber]) => {
+      const fret = frets[6 - stringNumber];
+      // 和弦里不弹的弦（比如 C 的 6 弦）板书上也不会画 x，跳过就好
+      if (fret === undefined || fret < 0) return;
+      const nextAt = onsets[onsets.indexOf(at) + 1];
+      const dur = nextAt === undefined ? beatsPerBar - at : nextAt - at;
+      notes.push(n(stringNumber, fret, barIndex * beatsPerBar + at, Math.max(0.0625, dur)));
+    });
+  });
+
+  return make(notes, {
+    bars: opts.bars.length,
+    beatsPerBar,
+    range: names.join(" → "),
+    caption: opts.caption ?? "数字是弦号：5 是 A 弦，1 是高音 E 弦",
+  });
+}
+
 /** 一串和弦：每个和弦占 beatsEach 拍。 */
 export function progressionTab(opts: {
   names: string[];
