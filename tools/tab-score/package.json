@@ -44,5 +44,14 @@
     "tablature",
     "alphatex",
     "sheet-music"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danzw1995/guitar-app.git",
+    "directory": "tools/tab-score"
+  },
+  "homepage": "https://github.com/danzw1995/guitar-app/tree/main/tools/tab-score#readme",
+  "bugs": {
+    "url": "https://github.com/danzw1995/guitar-app/issues"
+  }
 }
