@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Tab } from "@guitar/core";
 import type { FollowTarget } from "./FollowAlong";
-import { renderTexToMarkup } from "../lib/alpha-preview";
+import { renderScoreImage, type ScoreImage } from "../lib/score-image";
 import {
   addScore,
   loadScores,
   parseScore,
   removeScore,
+  setScoreImage,
   type MyScore,
 } from "../lib/my-scores";
 
@@ -26,28 +27,24 @@ interface Props {
   best: (id: string) => number | undefined;
 }
 
-interface Preview {
-  markup?: string;
+interface ImageState {
+  image?: ScoreImage;
   error?: string;
-  busy?: boolean;
-  title?: string;
-  meter?: string;
-  bpm?: number;
-  tab?: Tab | null;
 }
 
-function usePreview(tex: string | null): Preview {
-  const [state, setState] = useState<Preview>({});
+/** 一份 tex → 一张 PNG（失败只记错误，不抛）。 */
+function useScoreImage(tex: string | null): ImageState {
+  const [state, setState] = useState<ImageState>({});
   useEffect(() => {
     if (!tex) {
       setState({});
       return;
     }
     let alive = true;
-    setState({ busy: true });
-    renderTexToMarkup(tex)
-      .then((markup) => {
-        if (alive) setState({ markup });
+    setState({});
+    renderScoreImage(tex)
+      .then((image) => {
+        if (alive) setState({ image });
       })
       .catch((error: unknown) => {
         if (alive) setState({ error: (error as Error).message });
@@ -59,21 +56,60 @@ function usePreview(tex: string | null): Preview {
   return state;
 }
 
+function ScoreFigure({
+  image,
+  error,
+  title,
+  meter,
+  bpm,
+}: {
+  image?: ScoreImage;
+  error?: string;
+  title: string;
+  meter: string;
+  bpm: number;
+}) {
+  return (
+    <div className="alpha-preview" aria-busy={!image && !error ? "true" : undefined}>
+      {image ? (
+        <img
+          className="tab-score"
+          src={image.dataUrl}
+          alt={`${title} 的六线谱，${meter}，${bpm} BPM`}
+          width={image.width || undefined}
+          height={image.height || undefined}
+        />
+      ) : (
+        <span className="alpha-score-note">{error ?? "谱面渲染中…"}</span>
+      )}
+    </div>
+  );
+}
+
 function ScoreCard({
   score,
   audition,
   follow,
   best,
   onRemove,
+  onImage,
 }: {
   score: MyScore;
   audition: Props["audition"];
   follow: Props["follow"];
   best: Props["best"];
   onRemove: (id: string) => void;
+  onImage: (id: string, image: ScoreImage) => void;
 }) {
   const parsed = useMemo(() => parseScore(score.ascii), [score.ascii]);
-  // 存下的谱可能有很多条：进视口才画，免得一屏之外也排队渲染。
+  const stored = useMemo<ScoreImage | undefined>(
+    () =>
+      score.image
+        ? { dataUrl: score.image, width: score.imageWidth ?? 0, height: score.imageHeight ?? 0 }
+        : undefined,
+    [score.image, score.imageWidth, score.imageHeight],
+  );
+  // 旧记录没有存图：进视口后现画一张，画完补写回 localStorage。
   const [visible, setVisible] = useState(false);
   const boxRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -95,7 +131,12 @@ function ScoreCard({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  const preview = usePreview(visible && parsed.tab ? parsed.tex : null);
+  const needsRender = visible && !stored && Boolean(parsed.tab);
+  const rendered = useScoreImage(needsRender ? parsed.tex : null);
+  const image = stored ?? rendered.image;
+  useEffect(() => {
+    if (image && !stored) onImage(score.id, image);
+  }, [image, stored, onImage, score.id]);
   const high = best(score.id);
 
   return (
@@ -106,17 +147,16 @@ function ScoreCard({
           {parsed.meter} · {parsed.bpm} BPM
         </span>
       </header>
-      {parsed.error && <p className="my-error">{parsed.error}</p>}
-      {!parsed.error && (
-        <div className="alpha-preview" aria-busy={preview.busy ? "true" : undefined}>
-          {preview.markup ? (
-            <div dangerouslySetInnerHTML={{ __html: preview.markup }} />
-          ) : (
-            <span className="alpha-score-note">
-              {preview.error ?? (preview.busy ? "谱面渲染中…" : "还没画出来")}
-            </span>
-          )}
-        </div>
+      {parsed.error ? (
+        <p className="my-error">{parsed.error}</p>
+      ) : (
+        <ScoreFigure
+          image={image}
+          error={rendered.error}
+          title={score.title}
+          meter={parsed.meter}
+          bpm={parsed.bpm}
+        />
       )}
       <div className="drill-actions">
         {parsed.tab && (
@@ -166,7 +206,12 @@ export default function MyScores({ audition, follow, best }: Props) {
   const [note, setNote] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ReturnType<typeof parseScore> | null>(null);
   const [scores, setScores] = useState<MyScore[]>(() => loadScores());
-  const preview = usePreview(parsed?.tab ? parsed.tex : null);
+  const [saving, setSaving] = useState(false);
+  const preview = useScoreImage(parsed?.tab ? parsed.tex : null);
+
+  const handleImage = useCallback((id: string, image: ScoreImage) => {
+    setScores(setScoreImage(id, image));
+  }, []);
 
   function doPreview() {
     const next = parseScore(text);
@@ -174,16 +219,32 @@ export default function MyScores({ audition, follow, best }: Props) {
     setNote(next.error ?? null);
   }
 
-  function doSave() {
+  async function doSave() {
     const next = parseScore(text);
-    if (next.error) {
+    if (next.error || !next.tab) {
       setParsed(next);
-      setNote(next.error);
+      setNote(next.error ?? "这段谱里没有音");
       return;
     }
     setParsed(next);
-    setScores(addScore({ title: next.title, ascii: text }));
-    setNote(`已存下「${next.title}」`);
+    setSaving(true);
+    try {
+      const image = await renderScoreImage(next.tex);
+      setScores(
+        addScore({
+          title: next.title,
+          ascii: text,
+          image: image.dataUrl,
+          imageWidth: image.width,
+          imageHeight: image.height,
+        }),
+      );
+      setNote(`已存下「${next.title}」`);
+    } catch (error) {
+      setNote((error as Error).message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -219,8 +280,8 @@ export default function MyScores({ audition, follow, best }: Props) {
           <button type="button" className="btn" onClick={doPreview}>
             预览
           </button>
-          <button type="button" className="btn" onClick={doSave}>
-            存下这条
+          <button type="button" className="btn" onClick={() => void doSave()} disabled={saving}>
+            {saving ? "存图中…" : "存下这条"}
           </button>
           <button
             type="button"
@@ -242,15 +303,13 @@ export default function MyScores({ audition, follow, best }: Props) {
           <p className="rhythm-focus">
             {parsed.title} · {parsed.meter} · {parsed.bpm} BPM
           </p>
-          <div className="alpha-preview" aria-busy={preview.busy ? "true" : undefined}>
-            {preview.markup ? (
-              <div dangerouslySetInnerHTML={{ __html: preview.markup }} />
-            ) : (
-              <span className="alpha-score-note">
-                {preview.error ?? (preview.busy ? "谱面渲染中…" : "还没画出来")}
-              </span>
-            )}
-          </div>
+          <ScoreFigure
+            image={preview.image}
+            error={preview.error}
+            title={parsed.title}
+            meter={parsed.meter}
+            bpm={parsed.bpm}
+          />
           {parsed.tab && (
             <div className="drill-actions">
               <button
@@ -275,6 +334,7 @@ export default function MyScores({ audition, follow, best }: Props) {
               follow={follow}
               best={best}
               onRemove={(id) => setScores(removeScore(id))}
+              onImage={handleImage}
             />
           ))}
         </div>

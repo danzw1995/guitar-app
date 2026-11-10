@@ -281,21 +281,22 @@ try {
   const previewClick = js(
     "(() => { const b = [...document.querySelectorAll('.my-actions button')].find(n => n.textContent.trim() === '预览'); if (!b) return 'no'; b.click(); return 'ok'; })()",
   );
-  let previewSvgs = 0;
+  let previewImages = 0;
   for (let i = 0; i < 24; i++) {
     await sleep(400);
-    previewSvgs = Number(
-      String(js("(() => String(document.querySelectorAll('.my-preview svg').length))()")).replace(
-        /"/g,
-        "",
-      ),
+    previewImages = Number(
+      String(
+        js(
+          "(() => String([...document.querySelectorAll('.my-preview img.tab-score')].filter(n => n.complete && n.naturalWidth > 0).length))()",
+        ),
+      ).replace(/"/g, ""),
     );
-    if (previewSvgs > 0) break;
+    if (previewImages > 0) break;
   }
   log(
-    previewClick === '"ok"' && previewSvgs > 0,
-    "我的谱：点「预览」能把粘进来的谱画出来",
-    `读到 ${previewSvgs} 张谱`,
+    previewClick === '"ok"' && previewImages > 0,
+    "我的谱：点「预览」能画出一张和内置谱一样的图",
+    `读到 ${previewImages} 张图`,
   );
 
   const saved = js(
@@ -305,21 +306,22 @@ try {
   js(
     "(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()",
   );
-  let cardSvgs = 0;
+  let cardImages = 0;
   for (let i = 0; i < 24; i++) {
     await sleep(400);
-    cardSvgs = Number(
-      String(js("(() => String(document.querySelectorAll('.my-card svg').length))()")).replace(
-        /"/g,
-        "",
-      ),
+    cardImages = Number(
+      String(
+        js(
+          "(() => String([...document.querySelectorAll('.my-card img.tab-score')].filter(n => n.complete && n.naturalWidth > 0).length))()",
+        ),
+      ).replace(/"/g, ""),
     );
-    if (cardSvgs > 0) break;
+    if (cardImages > 0) break;
   }
   log(
-    saved === '"ok"' && cardSvgs > 0,
-    "我的谱：存下之后卡片里自己画出来",
-    `读到 ${cardSvgs} 张谱`,
+    saved === '"ok"' && cardImages > 0,
+    "我的谱：存下之后卡片里直接是图（刷新也不用再画）",
+    `读到 ${cardImages} 张图`,
   );
 
   // 收尾：把刚存的那条删掉，别把下次跑的环境弄脏

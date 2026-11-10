@@ -4,12 +4,16 @@ import { specToAlphaTex } from "@danzw777/tab-score/spec";
 
 const STORAGE_KEY = "guitar.scores.v1";
 
-/** 自己粘进来的一条谱（只存原文与标题，谱面每次打开现画）。 */
+/** 自己粘进来的一条谱：原文留着（能改、能再画），谱面本身存成 PNG，打开页面不再需要渲染器。 */
 export interface MyScore {
   id: string;
   title: string;
   ascii: string;
   createdAt: number;
+  /** `data:image/png;base64,…`；旧记录可能没有，遇到时现画一张补上。 */
+  image?: string;
+  imageWidth?: number;
+  imageHeight?: number;
 }
 
 interface SpecNote {
@@ -132,22 +136,58 @@ export function loadScores(): MyScore[] {
 }
 
 function persist(scores: MyScore[]): MyScore[] {
+  const kept = scores.slice(0, 40);
+  const write = (rows: MyScore[]): void => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows));
+  };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(scores.slice(0, 40)));
+    write(kept);
+    return kept;
   } catch {
-    // 存储满了就先不管：这一次的操作结果仍然返回给界面。
+    // localStorage 一般只有 5MB：图的 base64 占地方，满了就先丢掉较老记录的图
+    // （原文还在，打开页面时会重新画一张再补回来）。
+    const light = kept.map((item, index) =>
+      index < 8 ? item : { ...item, image: undefined, imageWidth: undefined, imageHeight: undefined },
+    );
+    try {
+      write(light);
+      return light;
+    } catch {
+      return kept;
+    }
   }
-  return scores;
 }
 
-export function addScore(input: { title: string; ascii: string }): MyScore[] {
+export function addScore(input: {
+  title: string;
+  ascii: string;
+  image?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+}): MyScore[] {
   const score: MyScore = {
     id: `my-${Date.now().toString(36)}`,
     title: input.title.trim() || "我的谱",
     ascii: input.ascii,
     createdAt: Date.now(),
+    image: input.image,
+    imageWidth: input.imageWidth,
+    imageHeight: input.imageHeight,
   };
   return persist([score, ...loadScores().filter((item) => item.ascii !== input.ascii)]);
+}
+
+/** 旧记录（v0.26.0 存下的没有图）第一次画出来时把图补回去，下次打开就不用再渲染。 */
+export function setScoreImage(
+  id: string,
+  image: { dataUrl: string; width: number; height: number },
+): MyScore[] {
+  const scores = loadScores().map((item) =>
+    item.id === id
+      ? { ...item, image: image.dataUrl, imageWidth: image.width, imageHeight: image.height }
+      : item,
+  );
+  return persist(scores);
 }
 
 export function removeScore(id: string): MyScore[] {

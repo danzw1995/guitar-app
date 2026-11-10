@@ -486,12 +486,16 @@ for (const selector of ["select", "input", "textarea"]) {
       (myInput.get("font-family") ?? "").includes("monospace"),
     `border = ${myInput.get("border") ?? "未设置"}, font-family = ${myInput.get("font-family") ?? "未设置"}`,
   );
-  const previewWrap = narrowDecls(".alpha-preview > div");
-  const previewSvg = narrowDecls(".alpha-preview svg");
+  const previewImage = narrowDecls(".alpha-preview img.tab-score");
   expect(
-    "预览里的谱不会溢出卡片（表面与 svg 都受 max-width 限制）",
-    previewWrap.get("max-width") === "100%" && previewSvg.get("max-width") === "100%",
-    `div max-width = ${previewWrap.get("max-width") ?? "未设置"}, svg max-width = ${previewSvg.get("max-width") ?? "未设置"}`,
+    "预览里的谱和内置谱同一个尺寸上限（600，不撑破卡片）",
+    previewImage.get("max-width") === "600px" && previewImage.get("height") === "auto",
+    `max-width = ${previewImage.get("max-width") ?? "未设置"}, height = ${previewImage.get("height") ?? "未设置"}`,
+  );
+  expect(
+    "预览区和内置谱用同一个 .tab-score 尺寸（600 上限）",
+    (narrowDecls(".tab-score").get("max-width") ?? "") === "600px",
+    `.tab-score max-width = ${narrowDecls(".tab-score").get("max-width") ?? "未设置"}`,
   );
 }
 

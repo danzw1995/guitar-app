@@ -1701,20 +1701,18 @@ button, select, input { font: inherit; color: inherit; }
   border-radius: var(--radius);
   background: var(--panel);
 }
+/* 我的谱的预览现在和内置谱一样是一张 PNG（浏览器里现画、现存），
+   所以这里只需要把它放在卡片中间、别撑破卡片。 */
 .alpha-preview {
   margin: 6px 0 2px;
   min-height: 64px;
   text-align: center;
 }
-/* alphaTab 把整块 surface 塞在一个 div 里，这个 div 会按内容（700px）撑开，
-   卡片里放不下时要让它一起缩，否则谱面会溢出卡片。 */
-.alpha-preview > div {
-  max-width: 100%;
-}
-.alpha-preview svg {
-  display: inline-block;
-  max-width: 100%;
+.alpha-preview img.tab-score {
+  width: 100%;
+  max-width: 600px;
   height: auto;
+  margin: 0 auto;
 }
 .alpha-score-note {
   font-size: 12px;

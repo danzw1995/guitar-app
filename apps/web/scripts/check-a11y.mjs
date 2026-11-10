@@ -281,8 +281,12 @@ check("我的谱：输入框有标签，存下的卡片能读能删", () => {
     ],
     "MyScores.tsx",
   );
-  // 谱面是 alphaTab 画出来的字形，读屏读不到内容——预览要说明「渲染中 / 画不出来」。
-  expect(mine, ["谱面渲染中", "还没画出来"], "MyScores.tsx");
+  // 谱面是一张图片，读屏读不到内容——预览要有 alt 说明，等图时也要说明「渲染中 / 画不出来」。
+  expect(
+    mine,
+    ["谱面渲染中", "alt={`${title} 的六线谱", "width={image.width", "height={image.height"],
+    "MyScores.tsx",
+  );
   expect(read("src/pages/Rhythm.tsx"), ["<MyScores", "audition={audition}"], "Rhythm.tsx");
 });
 

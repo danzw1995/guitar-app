@@ -627,26 +627,30 @@ C 大调的八个音上（5 弦 3 品 C、4 弦 2 品 E、3 弦 0 品 G、2 弦 
 实现：`apps/web/src/hooks/useTone.ts`（`strum` / `arpeggio` / `play` / `stop` + `arpeggioPattern`），
 和节拍器共用同样的「现场合成」思路，同样不依赖任何资源文件。
 
-## 17. 我的谱（v0.26.0）
+## 17. 我的谱（v0.26.0，v0.27.0 起存图）
 
 节奏页最下面一块：把一段手写的六线谱粘进来，预览、存下、试听、跟练。
-内置的 85 条练习仍然是预渲染好的 PNG，这一块是唯一会在浏览器里现画谱面的地方
-（`@coderline/alphatab` 用 `import()` 按需加载，不点「预览」就不会下载）。
+内置的 85 条练习是预渲染好的 PNG，这一块以前是唯一在浏览器里现画谱面的地方；
+v0.27.0 起**预览和存下的卡片也都是 PNG**，页面里只显示 `<img class="tab-score">`，
+和内置谱走同一套显示逻辑（`@coderline/alphatab` 仍然按需 `import()`，只在「预览」/「存下」时下载）。
 
 - **输入用 ASCII 六线谱**：六行弦线（`e B G D A E` 或 `1–6`），`|` 分小节，同一列的数字是和弦，
   `x` 闷音，`-` 延音；时值看列距（两列一个音 = 八分），不写符号；开头可以写
   `title:` / `tempo:` / `ts: 4/4`。解析器在 `@danzw777/tab-score` 的 `asciiTabToSpec()`，
   这里直接用同一个函数，两边规则不会走偏；
-- **「预览」先画一遍**：`lib/my-scores.ts` 的 `parseScore()` 把 ASCII 转成 alphaTex 与 `Tab`，
-  `lib/alpha-preview.ts` 用**一个** alphaTab 实例串行渲染，取 `host.innerHTML` 快照塞进页面
-  （三条硬约束写在那个文件开头：只养一个实例、不要清空 `innerHTML`、等 `<svg>` 稳定再取）；
-- **「存下这条」**：只存原文与标题到 `guitar.scores.v1`（最多 40 条），谱面每次打开现画；
-- **存下的卡片**：进视口才渲染（`IntersectionObserver`），带 `试听` / `跟练` / `删掉`，
+- **画一次就存成图**：`lib/my-scores.ts` 的 `parseScore()` 把 ASCII 转成 alphaTex 与 `Tab`；
+  `lib/alpha-preview.ts` 用一个 alphaTab 实例串行渲染，把它拼成一张**独立 SVG**
+  （内嵌 Bravura 字体，否则谱号变方框；补上每拍虚线，和 `tab-score` 用的是同一套算法）；
+  `lib/score-image.ts` 再把这张 SVG 画到 2 倍像素的 canvas 上，按 alpha 通道裁到内容、
+  四周留白（上左右 6、下 12）、最小宽度 420，导出一张 `data:image/png`；
+- **「存下这条」**：原文 + 标题 + 这张 PNG 一起存进 `guitar.scores.v1`（最多 40 条，一张约 20–30 KB）；
+  存储满了会先丢掉较老记录的图，原文还在，打开时会重新画一张补回来；
+- **旧记录**（v0.26.0 存的没有图）：第一次进视口时现画一张，画完写回 localStorage，之后打开就是纯图；
+- **存下的卡片**：进视口才挂图（`IntersectionObserver`），带 `试听` / `跟练` / `删掉`，
   跟练同样会往 `guitar.rhythm.v1` 记最高 BPM；
-- **和内置谱长得一样**：预览沿用同一套 engraving（`musicFontSize 26`、`beamThickness 2.6`、
-  `stemThickness 0.8`、`tabLineSpacing 18`），拍号与小节号不画（标题行已经写了拍号）；
-- **读屏**：谱面是字形路径，读屏读不到，所以输入框有 `<label>`、卡片有
-  `试听/删掉 xxx` 的 `aria-label`，渲染过程中会说「谱面渲染中…」、失败说「还没画出来」。
-
-
+- **和内置谱长得一样**：同一套 engraving（`musicFontSize 26`、`beamThickness 2.6`、
+  `stemThickness 0.8`、`tabLineSpacing 18`），同一套留白与 2 倍像素，同样以 600px 为上限显示；
+  拍号与小节号不画（标题行已经写了拍号）；
+- **读屏**：谱面是图片，所以 `alt` 写「<标题> 的六线谱，<拍号>，<速度> BPM」，
+  输入框有 `<label>`，卡片按钮有 `试听/删掉 xxx` 的 `aria-label`，等图时说「谱面渲染中…」。
 
