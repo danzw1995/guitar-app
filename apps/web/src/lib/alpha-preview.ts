@@ -11,7 +11,9 @@
 // 4. SMuFL 字形靠 font-family: alphaTab，独立 SVG 里必须内嵌字体，否则谱号变方框。
 import type { AlphaTabApi } from "@coderline/alphatab";
 
-const SCALE = 1.15;
+// 和 `gen-scores` 保持同一个缩放：预览图最后会被缩到 600px 显示，
+// 两边的 scale 一旦不同，同一段谱的线宽、字号就会看起来不一样。
+const SCALE = 1;
 
 const COLORS = {
   staffLineColor: "#3d444d",
