@@ -477,6 +477,22 @@ for (const selector of ["select", "input", "textarea"]) {
     blockMeter.get("margin-left") === "auto",
     `margin-left = ${blockMeter.get("margin-left") ?? "未设置"}`,
   );
+
+  // 我的谱：输入框要能和卡片区分开，预览里的谱不能溢出去
+  const myInput = narrowDecls(".my-input");
+  expect(
+    ".my-input 有边框、等宽字体（粘谱用的输入框）",
+    (myInput.get("border") ?? "") !== "" &&
+      (myInput.get("font-family") ?? "").includes("monospace"),
+    `border = ${myInput.get("border") ?? "未设置"}, font-family = ${myInput.get("font-family") ?? "未设置"}`,
+  );
+  const previewWrap = narrowDecls(".alpha-preview > div");
+  const previewSvg = narrowDecls(".alpha-preview svg");
+  expect(
+    "预览里的谱不会溢出卡片（表面与 svg 都受 max-width 限制）",
+    previewWrap.get("max-width") === "100%" && previewSvg.get("max-width") === "100%",
+    `div max-width = ${previewWrap.get("max-width") ?? "未设置"}, svg max-width = ${previewSvg.get("max-width") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

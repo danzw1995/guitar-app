@@ -1640,6 +1640,106 @@ button, select, input { font: inherit; color: inherit; }
   pointer-events: none;
   transition: left 90ms linear, width 90ms linear;
 }
+/* 我的谱：自己粘六线谱进来，谱面在浏览器里现画（alphaTab 按需加载）。 */
+.my-scores {
+  margin: 22px 0 6px;
+}
+.my-hint {
+  margin: 6px 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.75;
+}
+.my-hint code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 12px;
+}
+.my-editor {
+  display: grid;
+  gap: 10px;
+}
+.my-input {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.75;
+  tab-size: 4;
+  resize: vertical;
+}
+.my-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.my-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.my-note {
+  color: var(--muted);
+  font-size: 13px;
+}
+.my-error {
+  margin: 4px 0;
+  color: var(--red);
+  font-size: 13px;
+}
+.my-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.alpha-preview {
+  margin: 6px 0 2px;
+  min-height: 64px;
+  text-align: center;
+}
+/* alphaTab 把整块 surface 塞在一个 div 里，这个 div 会按内容（700px）撑开，
+   卡片里放不下时要让它一起缩，否则谱面会溢出卡片。 */
+.alpha-preview > div {
+  max-width: 100%;
+}
+.alpha-preview svg {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+}
+.alpha-score-note {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+.my-list {
+  margin-top: 14px;
+}
+.my-empty {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 .tab-fret {
   fill: var(--text);
   font-size: 13px;

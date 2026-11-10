@@ -273,6 +273,64 @@ try {
   await sleep(3200);
   const afterEnd = String(beatLeft());
   log(afterEnd === "none", "放完竖条自己消失", afterEnd);
+  // 9) 我的谱：粘一段六线谱 → 预览出图 → 存下后卡片里也有图 → 删掉
+  js(
+    "(() => { document.querySelector('.my-scores')?.scrollIntoView({ block: 'end' }); return 'ok'; })()",
+  );
+  await sleep(400);
+  const previewClick = js(
+    "(() => { const b = [...document.querySelectorAll('.my-actions button')].find(n => n.textContent.trim() === '预览'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  let previewSvgs = 0;
+  for (let i = 0; i < 24; i++) {
+    await sleep(400);
+    previewSvgs = Number(
+      String(js("(() => String(document.querySelectorAll('.my-preview svg').length))()")).replace(
+        /"/g,
+        "",
+      ),
+    );
+    if (previewSvgs > 0) break;
+  }
+  log(
+    previewClick === '"ok"' && previewSvgs > 0,
+    "我的谱：点「预览」能把粘进来的谱画出来",
+    `读到 ${previewSvgs} 张谱`,
+  );
+
+  const saved = js(
+    "(() => { const b = [...document.querySelectorAll('.my-actions button')].find(n => n.textContent.trim() === '存下这条'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  js(
+    "(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()",
+  );
+  let cardSvgs = 0;
+  for (let i = 0; i < 24; i++) {
+    await sleep(400);
+    cardSvgs = Number(
+      String(js("(() => String(document.querySelectorAll('.my-card svg').length))()")).replace(
+        /"/g,
+        "",
+      ),
+    );
+    if (cardSvgs > 0) break;
+  }
+  log(
+    saved === '"ok"' && cardSvgs > 0,
+    "我的谱：存下之后卡片里自己画出来",
+    `读到 ${cardSvgs} 张谱`,
+  );
+
+  // 收尾：把刚存的那条删掉，别把下次跑的环境弄脏
+  const removed = js(
+    "(() => { const b = [...document.querySelectorAll('.my-card button')].find(n => n.textContent.trim() === '删掉'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const leftCards = Number(
+    String(js("(() => String(document.querySelectorAll('.my-card').length))()")).replace(/"/g, ""),
+  );
+  log(removed === '"ok"' && leftCards === 0, "我的谱：删掉之后卡片消失", `还剩 ${leftCards} 条`);
 } finally {
   ab(["close"]);
   console.log(

@@ -1,6 +1,6 @@
 {
   "name": "@guitar/web",
-  "version": "0.25.1",
+  "version": "0.26.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,12 +10,13 @@
     "gen:scores": "node scripts/gen-scores.ts"
   },
   "dependencies": {
+    "@coderline/alphatab": "^1.9.0",
+    "@danzw/tab-score": "workspace:*",
     "@guitar/core": "workspace:*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@danzw/tab-score": "workspace:*",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",

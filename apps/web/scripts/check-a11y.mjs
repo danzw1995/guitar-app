@@ -268,6 +268,24 @@ check("样式：跳转链接聚焦可见、尊重「减少动态效果」", () =
   }
 });
 
+check("我的谱：输入框有标签，存下的卡片能读能删", () => {
+  const mine = read("src/components/MyScores.tsx");
+  expect(
+    mine,
+    [
+      'htmlFor="my-score-input"',
+      'id="my-score-input"',
+      "aria-label={`试听 ${score.title}`}",
+      "aria-label={`删掉 ${score.title}`}",
+      "aria-busy",
+    ],
+    "MyScores.tsx",
+  );
+  // 谱面是 alphaTab 画出来的字形，读屏读不到内容——预览要说明「渲染中 / 画不出来」。
+  expect(mine, ["谱面渲染中", "还没画出来"], "MyScores.tsx");
+  expect(read("src/pages/Rhythm.tsx"), ["<MyScores", "audition={audition}"], "Rhythm.tsx");
+});
+
 if (failed > 0) {
   console.log(`\n${failed} 项未通过`);
   process.exit(1);

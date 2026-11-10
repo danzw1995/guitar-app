@@ -1,6 +1,6 @@
 {
   "name": "@danzw/tab-score",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "把吉他六线谱（alphaTex 或 JSON）渲染成图片：一个不依赖浏览器的命令行工具和库。",
   "license": "MIT",
   "type": "module",
@@ -11,7 +11,10 @@
     "tab-score": "./bin/tab-score.mjs"
   },
   "exports": {
-    ".": "./src/index.mjs"
+    ".": "./src/index.mjs",
+    "./ascii": "./src/ascii.mjs",
+    "./spec": "./src/spec.mjs",
+    "./duration": "./src/duration.mjs"
   },
   "files": [
     "bin",

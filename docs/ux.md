@@ -627,4 +627,26 @@ C 大调的八个音上（5 弦 3 品 C、4 弦 2 品 E、3 弦 0 品 G、2 弦 
 实现：`apps/web/src/hooks/useTone.ts`（`strum` / `arpeggio` / `play` / `stop` + `arpeggioPattern`），
 和节拍器共用同样的「现场合成」思路，同样不依赖任何资源文件。
 
+## 17. 我的谱（v0.26.0）
+
+节奏页最下面一块：把一段手写的六线谱粘进来，预览、存下、试听、跟练。
+内置的 85 条练习仍然是预渲染好的 PNG，这一块是唯一会在浏览器里现画谱面的地方
+（`@coderline/alphatab` 用 `import()` 按需加载，不点「预览」就不会下载）。
+
+- **输入用 ASCII 六线谱**：六行弦线（`e B G D A E` 或 `1–6`），`|` 分小节，同一列的数字是和弦，
+  `x` 闷音，`-` 延音；时值看列距（两列一个音 = 八分），不写符号；开头可以写
+  `title:` / `tempo:` / `ts: 4/4`。解析器在 `@danzw/tab-score` 的 `asciiTabToSpec()`，
+  这里直接用同一个函数，两边规则不会走偏；
+- **「预览」先画一遍**：`lib/my-scores.ts` 的 `parseScore()` 把 ASCII 转成 alphaTex 与 `Tab`，
+  `lib/alpha-preview.ts` 用**一个** alphaTab 实例串行渲染，取 `host.innerHTML` 快照塞进页面
+  （三条硬约束写在那个文件开头：只养一个实例、不要清空 `innerHTML`、等 `<svg>` 稳定再取）；
+- **「存下这条」**：只存原文与标题到 `guitar.scores.v1`（最多 40 条），谱面每次打开现画；
+- **存下的卡片**：进视口才渲染（`IntersectionObserver`），带 `试听` / `跟练` / `删掉`，
+  跟练同样会往 `guitar.rhythm.v1` 记最高 BPM；
+- **和内置谱长得一样**：预览沿用同一套 engraving（`musicFontSize 26`、`beamThickness 2.6`、
+  `stemThickness 0.8`、`tabLineSpacing 18`），拍号与小节号不画（标题行已经写了拍号）；
+- **读屏**：谱面是字形路径，读屏读不到，所以输入框有 `<label>`、卡片有
+  `试听/删掉 xxx` 的 `aria-label`，渲染过程中会说「谱面渲染中…」、失败说「还没画出来」。
+
+
 

@@ -9,6 +9,18 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.26.0] - 2026-11-10
+
+### Added
+- **我的谱**：节奏页最下面新增一块，把手写的 ASCII 六线谱粘进来 → 预览 → 存下，
+  存下的卡片可以试听、跟练、删掉（`apps/web/src/components/MyScores.tsx`、
+  `apps/web/src/lib/my-scores.ts`、`apps/web/src/lib/alpha-preview.ts`，
+  最多存 40 条到 `guitar.scores.v1`）。
+- 预览用的 alphaTab 是 `import()` 按需加载的：内置的 85 张谱仍是预渲染 PNG，
+  不点「预览」不会下载渲染器（约 300KB gzip）。
+- `check:ui` 新增三条浏览器断言（预览出图、存下后卡片出图、删掉后卡片消失），
+  `check:a11y` 新增「输入框有标签、卡片能读能删」，`check:styles` 新增两条。
+
 ## [0.25.1] - 2026-11-10
 
 ### Added
