@@ -19,7 +19,7 @@ import {
   tabToAlphaTex,
   type Tab,
 } from "@guitar/core";
-import { renderPng } from "@danzw/tab-score";
+import { renderPng } from "@danzw777/tab-score";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.resolve(here, "../public/scores");

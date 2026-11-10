@@ -24,7 +24,7 @@
 ## [0.25.1] - 2026-11-10
 
 ### Added
-- `@danzw/tab-score`（`tools/tab-score`）支持 **ASCII 六线谱输入**：六行「弦名 + 弦线 + 数字」的文本
+- `@danzw777/tab-score`（`tools/tab-score`）支持 **ASCII 六线谱输入**：六行「弦名 + 弦线 + 数字」的文本
   直接渲染成图，`tab-score song.tab -o song.png`。弦名可写 `e/B/G/D/A/E` 或 `1–6`，
   同列数字算和弦，`x` 是闷音，时值按列距吸附（`src/ascii.mjs`，`samples/demo.tab` 可跑）。
 - 工具的 `--input ascii|tex|json` 可以强制输入格式；扩展名不认但内容像六线谱时也会自动按 ASCII 处理。
@@ -56,7 +56,7 @@
   谱是预渲染的静态图，所以生成图片时顺便把每一拍的横向区间量出来
   （`tools/tab-score` 的 `beatBands()`）写进 `public/scores/beats.json`，
   前端 `TabScore` 按百分比定位（`tab-score-beat`）。
-- `@danzw/tab-score` 的 `renderPng()` 返回值多一个 `beats: { x, w }[]`（拍位，图片像素）。
+- `@danzw777/tab-score` 的 `renderPng()` 返回值多一个 `beats: { x, w }[]`（拍位，图片像素）。
 
 ### Changed
 - 播放用的「第几拍」按墙钟算（`performance.now()`），不依赖 `AudioContext.currentTime`
@@ -137,7 +137,7 @@
 ### Changed
 - 品数与弦距重排：`tabFontSize: 15`、`tabLineSpacing: 18`（默认 14 / 13 时品数几乎顶到上下弦）；
   TAB 谱号 26、符梁 2.6、符干 0.8。
-- `@danzw/tab-score` 0.5.0：新增 `--tab-font` / `--tab-spacing` / `--min-width`，
+- `@danzw777/tab-score` 0.5.0：新增 `--tab-font` / `--tab-spacing` / `--min-width`，
   扫弦箭头改为工具自画（不再由 alphaTab 画在谱内）。
 
 ## [0.21.3] - 2026-11-08
@@ -149,7 +149,7 @@
   68 张谱图全部重新生成，底部至少留出 8 物理像素。
 
 ### Added
-- `@danzw/tab-score` 0.4.0：`padding` / `paddingBottom` 选项与 `--padding` 参数。
+- `@danzw777/tab-score` 0.4.0：`padding` / `paddingBottom` 选项与 `--padding` 参数。
 
 ## [0.21.2] - 2026-11-08
 
@@ -167,7 +167,7 @@
 - **谱面观感调细**：排版宽度 600 → 720（缩到卡片里字不跟着变小、留白更多），
   并按卡片尺寸调了 alphaTab 的比例尺：TAB 谱号 36 → 32、符梁 4.5 → 2.8、符干 1.08 → 0.8。
   之前符梁和谱号是按整页五线谱的默认值画的，缩到 480px 宽就糊成一块。
-- `@danzw/tab-score` 0.3.0：新增 `engraving` 选项（`musicFontSize` / `beamThickness` / `stemThickness` …），
+- `@danzw777/tab-score` 0.3.0：新增 `engraving` 选项（`musicFontSize` / `beamThickness` / `stemThickness` …），
   命令行对应 `--clef-size`、`--beam-thickness`、`--stem-thickness`。
 
 ### Fixed
@@ -177,7 +177,7 @@
 ## [0.21.0] - 2026-11-08
 
 ### Changed
-- **谱面改成预渲染的静态图片**：新增独立工具 `@danzw/tab-score`（`tools/tab-score`，MIT），
+- **谱面改成预渲染的静态图片**：新增独立工具 `@danzw777/tab-score`（`tools/tab-score`，MIT），
   用 alphaTab + alphaSkia 在 Node 里把 alphaTex 渲染成 PNG/SVG，不需要浏览器、不需要 DOM。
   `apps/web/scripts/gen-scores.ts`（`pnpm --filter @guitar/web run gen:scores`）把 68 条谱一次性
   生成到 `apps/web/public/scores/`，页面里只剩一个 `<img>`。

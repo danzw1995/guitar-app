@@ -491,7 +491,7 @@ C 大调的八个音上（5 弦 3 品 C、4 弦 2 品 E、3 弦 0 品 G、2 弦 
   只占很窄一条，第一拍的品数会压上去——所以「宽谱」的谱号固定给到 32（默认 36 太大、24 太小）。
 
 **谱面是谁画的（v0.21.0 起：预渲染成图片）**：节奏页的 85 张谱不是页面里画的，而是构建时用
-`@danzw/tab-score`（`tools/tab-score`，MIT）在 Node 里渲染好的 PNG，页面里只有 `<img src="scores/<id>.png">`。
+`@danzw777/tab-score`（`tools/tab-score`，MIT）在 Node 里渲染好的 PNG，页面里只有 `<img src="scores/<id>.png">`。
 链路是：`Tab` 数据 → `tabToAlphaTex()` → alphaTab 排版 → alphaSkia 出 2 倍图。
 
 - **数据没变**：还是 `Tab`（弦号、品、拍位、时值、方向、切音），换的只是「谁来画」；
@@ -635,7 +635,7 @@ C 大调的八个音上（5 弦 3 品 C、4 弦 2 品 E、3 弦 0 品 G、2 弦 
 
 - **输入用 ASCII 六线谱**：六行弦线（`e B G D A E` 或 `1–6`），`|` 分小节，同一列的数字是和弦，
   `x` 闷音，`-` 延音；时值看列距（两列一个音 = 八分），不写符号；开头可以写
-  `title:` / `tempo:` / `ts: 4/4`。解析器在 `@danzw/tab-score` 的 `asciiTabToSpec()`，
+  `title:` / `tempo:` / `ts: 4/4`。解析器在 `@danzw777/tab-score` 的 `asciiTabToSpec()`，
   这里直接用同一个函数，两边规则不会走偏；
 - **「预览」先画一遍**：`lib/my-scores.ts` 的 `parseScore()` 把 ASCII 转成 alphaTex 与 `Tab`，
   `lib/alpha-preview.ts` 用**一个** alphaTab 实例串行渲染，取 `host.innerHTML` 快照塞进页面

@@ -1,6 +1,6 @@
 import { n, tabOf, type Tab } from "@guitar/core";
-import { asciiTabToSpec } from "@danzw/tab-score/ascii";
-import { specToAlphaTex } from "@danzw/tab-score/spec";
+import { asciiTabToSpec } from "@danzw777/tab-score/ascii";
+import { specToAlphaTex } from "@danzw777/tab-score/spec";
 
 const STORAGE_KEY = "guitar.scores.v1";
 

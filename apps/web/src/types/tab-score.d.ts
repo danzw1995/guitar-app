@@ -1,4 +1,4 @@
-declare module "@danzw/tab-score/ascii" {
+declare module "@danzw777/tab-score/ascii" {
   export interface AsciiSpecNote {
     string: number;
     fret: number | string;
@@ -23,6 +23,6 @@ declare module "@danzw/tab-score/ascii" {
   ): string;
 }
 
-declare module "@danzw/tab-score/spec" {
+declare module "@danzw777/tab-score/spec" {
   export function specToAlphaTex(spec: unknown): string;
 }

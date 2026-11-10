@@ -1,4 +1,4 @@
-# @danzw/tab-score
+# @danzw777/tab-score
 
 把吉他六线谱（alphaTex 文本、JSON，或者手写的 ASCII 六线谱）渲染成图片：一个不依赖浏览器的命令行工具，也是一个可以直接 import 的库。
 
@@ -9,9 +9,9 @@
 ## 安装
 
 ```bash
-npm i -g @danzw/tab-score     # 全局安装
+npm i -g @danzw777/tab-score     # 全局安装
 # 或者在自己的项目里
-npm i @danzw/tab-score
+npm i @danzw777/tab-score
 ```
 
 `alphaSkia` 的原生二进制按平台装（`@coderline/alphaskia-windows|linux|macos`），它们是 `optionalDependencies`，会自动按当前系统挑一个。
@@ -128,7 +128,7 @@ E|----------------|----------------|
 ## 当库用
 
 ```js
-import { renderPng, renderSvg, specToAlphaTex, asciiTabToAlphaTex } from "@danzw/tab-score";
+import { renderPng, renderSvg, specToAlphaTex, asciiTabToAlphaTex } from "@danzw777/tab-score";
 
 const { data, width, height, beats } = await renderPng(tex, { theme: "dark", width: 900 });
 fs.writeFileSync("out.png", data);
