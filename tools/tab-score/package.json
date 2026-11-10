@@ -16,7 +16,9 @@
   "files": [
     "bin",
     "src",
-    "samples",
+    "samples/*.tex",
+    "samples/*.tab",
+    "samples/*.json",
     "README.md",
     "LICENSE"
   ],
