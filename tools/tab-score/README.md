@@ -19,8 +19,10 @@ npm i @danzw777/tab-score
 ## 用法
 
 ```bash
+npx @danzw777/tab-score song.tab -o song.png   # 不装也能直接用
+
 tab-score samples/demo.tex -o demo.png
-tab-score samples/progression.json --theme light --width 1000
+tab-score samples/spec.json --theme light --width 1000
 tab-score samples/demo.tab --beat-lines   # ASCII 六线谱
 tab-score song.tex --format svg -o song.svg
 tab-score song.tex --json            # 只看转换出来的 alphaTex，不渲染

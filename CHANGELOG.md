@@ -9,6 +9,21 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.26.1] - 2026-11-10
+
+### Changed
+- `@danzw/tab-score` 改名为 **`@danzw777/tab-score`**：`@danzw` 那个 scope 的发布 token 没有写权限
+  （暂存报 `400 Version uniqueness check failed unexpectedly`，直发报 404），换成自己账号的 scope 才通。
+  `apps/web` 的依赖名、`my-scores.ts` 的导入、类型声明与文档一并更新，行为不变。
+
+### Tooling
+- `@danzw777/tab-score@0.8.2` 已发布到 npm（`npm i -D @danzw777/tab-score`，
+  或 `npx @danzw777/tab-score song.tab -o song.png`）。发布过程中 npm 的「暂存→批准」接口对 staged 条目
+  一直返回 404 `staged version not found`，最后换成带 2FA 放行的 granular token 直接 `npm publish` 成功；
+  旧的 staged 0.8.0 与探针包 `@danzw777/probe-stage-8831` 仍挂在 staging 里，reject 同样 404。
+  （0.8.2 只是把 README 示例里的样例文件名修对：`samples/progression.json` → `samples/spec.json`，
+  并补了 `npx` 用法；0.8.1 是第一个发上 npm 的版本。）
+
 ## [0.26.0] - 2026-11-10
 
 ### Added
