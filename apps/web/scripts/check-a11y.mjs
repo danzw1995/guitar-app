@@ -201,7 +201,11 @@ check("六线谱：整张谱对读屏是一句话，练习页真的挂了谱子"
   );
 
   const practice = read("src/pages/Practice.tsx");
-  expect(practice, ["<TabDiagram", "<TabDiagram tab={drill.tab} />"], "Practice.tsx");
+  expect(
+    practice,
+    ["<TabScore id={drill.id} tab={drill.tab} />"],
+    "Practice.tsx",
+  );
   expect(practice, ['aria-label="练习阶段"', "aria-current"], "Practice.tsx");
 });
 

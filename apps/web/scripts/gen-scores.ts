@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   ACCOMPANIMENTS,
+  DRILLS,
   READING_DRILLS,
   RHYTHM_DRILLS,
   SONG_SNIPPETS,
@@ -27,6 +28,12 @@ const outDir = path.resolve(here, "../public/scores");
 /** 每条谱：id 就是文件名，bpm 影响不到图形（谱面不画速度），只取 tab。 */
 type Item = { id: string; tab: Tab; bpm?: number };
 
+/** 练习页的速度写成「50–70」这种区间，谱面只关心个位数，取第一个数字。 */
+function bpmOf(value: string): number {
+  const found = /(\d+)/.exec(value);
+  return found ? Number(found[1]) : 80;
+}
+
 const items: Item[] = [
   ...READING_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab, bpm: drill.bpm[0] })),
   ...RHYTHM_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab, bpm: drill.bpm[0] })),
@@ -34,6 +41,8 @@ const items: Item[] = [
   ...STRUM_LIBRARY.map((pattern) => ({ id: pattern.id, tab: pattern.tab, bpm: 70 })),
   ...SONG_SNIPPETS.map((snippet) => ({ id: snippet.id, tab: snippet.tab, bpm: snippet.bpm[0] })),
   ...ACCOMPANIMENTS.map((item) => ({ id: item.id, tab: item.tab, bpm: item.bpm })),
+  // 练习页的 50 关：以前是页面里现画的六线谱，现在也走同一条预渲染管线。
+  ...DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab, bpm: bpmOf(drill.bpm) })),
 ];
 
 const WIDTH = 720;

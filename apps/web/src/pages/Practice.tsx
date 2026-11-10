@@ -18,7 +18,7 @@ import {
 } from "@guitar/core";
 import { loadPractice, loadProgress, savePractice } from "../lib/storage";
 import Metronome from "../components/Metronome";
-import TabDiagram from "../components/TabDiagram";
+import TabScore from "../components/TabScore";
 
 /** 秒 → mm:ss。 */
 function clock(totalSeconds: number): string {
@@ -262,7 +262,7 @@ export default function Practice() {
                 </button>
               </div>
 
-              <TabDiagram tab={drill.tab} />
+              <TabScore id={drill.id} tab={drill.tab} />
 
               <div className="pb-side">
                 <p className="pb-line">
@@ -297,7 +297,7 @@ export default function Practice() {
               <h4>{drill.name}</h4>
               <span className="drill-block">{blockOf(drill.block).label}</span>
             </header>
-            <TabDiagram tab={drill.tab} />
+            <TabScore id={drill.id} tab={drill.tab} />
             <details className="pb-more">
               <summary>练法与验收</summary>
               <ol className="pb-steps">

@@ -121,24 +121,55 @@ export function onsetsOf(notes: TabNote[]): Onset[] {
     }));
 }
 
-function noteText(note: TabNote, mute: "palm" | "dead" | "plain"): string {
+function noteText(note: TabNote, mute: "palm" | "dead" | "plain", props?: string): string {
+  // 音符属性写在品数后面、时值前面（时值由上层统一追加）。
+  const suffix = props ? `{${props}}` : "";
   if (note.muted) {
-    // {pm} 必须写在品数后面、时值前面（时值由上层统一追加）。
     if (mute === "palm") return `${note.f}.${note.s}{pm}`;
     if (mute === "dead") return `x.${note.s}`;
   }
-  return `${note.f}.${note.s}`;
+  return `${note.f}.${note.s}${suffix}`;
+}
+
+/** 连奏记号在 alphaTab 里标在「前一个音」上，而我们的数据标在后一个音上。 */
+const TECH_PROPERTY: Record<string, string> = { h: "h", p: "p", s: "sl" };
+
+function techniqueOf(onsets: Onset[]): Map<TabNote, string> {
+  const map = new Map<TabNote, string>();
+  const previous = new Map<number, TabNote>();
+  for (const onset of onsets) {
+    for (const note of onset.notes) {
+      const property = note.tech ? TECH_PROPERTY[note.tech] : undefined;
+      if (property) {
+        const origin = previous.get(note.s);
+        if (origin) map.set(origin, property);
+      }
+      if (note.bend !== undefined) {
+        const semitones = Math.max(1, Math.round(note.bend));
+        map.set(note, `b (0 ${semitones} 4)`);
+      }
+      previous.set(note.s, note);
+    }
+  }
+  return map;
 }
 
 function beatText(
   onset: Onset,
   token: string,
-  opts: { dotted: boolean; tuplet: boolean; mute: "palm" | "dead" | "plain" },
+  opts: {
+    dotted: boolean;
+    tuplet: boolean;
+    mute: "palm" | "dead" | "plain";
+    technique?: Map<TabNote, string>;
+  },
 ): string {
+  const text = (note: TabNote) =>
+    noteText(note, opts.mute, opts.technique?.get(note));
   const body =
     onset.notes.length > 1
-      ? `(${onset.notes.map((note) => noteText(note, opts.mute)).join(" ")})`
-      : noteText(onset.notes[0], opts.mute);
+      ? `(${onset.notes.map(text).join(" ")})`
+      : text(onset.notes[0]);
   // 一拍只能带一个花括号：`{bd} {d}` 是语法错，必须合成 `{bd d}`（实测）。
   const props: string[] = [];
   if (opts.tuplet) props.push("tu 3");
@@ -200,6 +231,7 @@ export function tabToAlphaTex(tab: Tab, options: AlphaTexOptions = {}): string {
     return `r${token}${dotted ? " {d}" : ""}`;
   };
 
+  const technique = techniqueOf(onsets);
   const beats: string[] = [];
   for (let bar = 0; bar < tab.bars; bar++) {
     const start = bar * tab.beatsPerBar;
@@ -217,7 +249,12 @@ export function tabToAlphaTex(tab: Tab, options: AlphaTexOptions = {}): string {
         const { token, dotted } = durationParts(part);
         beats.push(
           index === 0
-            ? beatText(onset, token, { dotted, tuplet: tupletHead.has(onset), mute })
+            ? beatText(onset, token, {
+                dotted,
+                tuplet: tupletHead.has(onset),
+                mute,
+                technique,
+              })
             : tieText(onset, token, dotted),
         );
       }
