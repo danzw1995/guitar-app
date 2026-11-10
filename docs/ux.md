@@ -497,6 +497,8 @@ C 大调的八个音上（5 弦 3 品 C、4 弦 2 品 E、3 弦 0 品 G、2 弦 
 - **数据没变**：还是 `Tab`（弦号、品、拍位、时值、方向、切音），换的只是「谁来画」；
 - **改了谱数据要重新生成**：`pnpm --filter @guitar/web run gen:scores`，产物在 `apps/web/public/scores/`
   （85 张，约 2.1MB）。`gen:scores` 会顺手删掉不在列表里的旧图；
+- **想手写一张**：工具也吃 ASCII 六线谱（六行「弦名 + 弦线 + 数字」，`tab-score song.tab -o song.png`），
+  同一列的数字算和弦，时值按列距吸附；`tools/tab-score/README.md` 里有格式说明和 `samples/demo.tab`；
 - **为什么不在页面里画**：alphaTab 进前端要 ~300KB gzip，还要一个渲染实例排队。
   实测同一页的实例会互相抢图形（同时开 6 个只有前 3 个出谱，串行 24 个只有最后 3 张还活着），
   而这些谱一辈子不变——渲染一次存成图，最省事也最稳；

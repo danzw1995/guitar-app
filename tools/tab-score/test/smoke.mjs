@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { renderPng, renderSvg } from "../src/render.mjs";
 import { specToAlphaTex } from "../src/spec.mjs";
+import { asciiTabToSpec, asciiTabToAlphaTex } from "../src/ascii.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const tex = fs.readFileSync(`${root}samples/demo.tex`, "utf8");

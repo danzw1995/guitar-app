@@ -9,6 +9,14 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.25.1] - 2026-11-10
+
+### Added
+- `@danzw/tab-score`（`tools/tab-score`）支持 **ASCII 六线谱输入**：六行「弦名 + 弦线 + 数字」的文本
+  直接渲染成图，`tab-score song.tab -o song.png`。弦名可写 `e/B/G/D/A/E` 或 `1–6`，
+  同列数字算和弦，`x` 是闷音，时值按列距吸附（`src/ascii.mjs`，`samples/demo.tab` 可跑）。
+- 工具的 `--input ascii|tex|json` 可以强制输入格式；扩展名不认但内容像六线谱时也会自动按 ASCII 处理。
+
 ## [0.25.0] - 2026-11-09
 
 ### Added

@@ -9,15 +9,18 @@ import fs from "node:fs";
 import path from "node:path";
 import { renderPng, renderSvg } from "../src/render.mjs";
 import { specToAlphaTex } from "../src/spec.mjs";
+import { asciiTabToAlphaTex } from "../src/ascii.mjs";
 
 const USAGE = `用法: tab-score <输入文件> [选项]
 
 输入:
   .tex / .alphatex   alphaTex 文本
   .json              JSON 谱面（见 README 的格式说明）
+  .tab / .txt        ASCII 六线谱（六行 e/B/G/D/A/E，用 | 分小节）
 
 选项:
   -o, --out <文件>       输出文件（默认与输入同名，扩展名换成 .png）
+  --input <ascii|tex|json>  强制指定输入格式（扩展名不认时用）
   --format <png|svg>    输出格式（默认 png）
   --theme <dark|light>  配色（默认 dark）
   --width <像素>        版面宽度，逻辑像素（默认 720）
@@ -50,6 +53,9 @@ function parseArgs(argv) {
         break;
       case "--format":
         args.format = argv[++i];
+        break;
+      case "--input":
+        args.input = argv[++i];
         break;
       case "--theme":
         args.theme = argv[++i];
@@ -116,10 +122,27 @@ function parseArgs(argv) {
   return args;
 }
 
-function readInput(file) {
+function readInput(file, forced) {
   const text = fs.readFileSync(file, "utf8");
-  if (path.extname(file).toLowerCase() === ".json") {
+  const ext = path.extname(file).toLowerCase();
+  const kind =
+    forced ??
+    (ext === ".json"
+      ? "json"
+      : ext === ".tex" || ext === ".alphatex"
+        ? "tex"
+        : ext === ".tab" || ext === ".txt" || ext === ".ascii"
+          ? "ascii"
+          : // 不认识的扩展名：看着像六行弦线就当 ASCII 谱
+            /^[eEbBgGdDaA1-6]?\s*[|:][-0-9|]/m.test(text)
+            ? "ascii"
+            : "tex");
+
+  if (kind === "json") {
     return { tex: specToAlphaTex(JSON.parse(text)), source: "json" };
+  }
+  if (kind === "ascii") {
+    return { tex: asciiTabToAlphaTex(text, specToAlphaTex), source: "ascii" };
   }
   return { tex: text, source: "tex" };
 }
@@ -140,7 +163,7 @@ async function main() {
   }
 
   const input = args.files[0];
-  const { tex } = readInput(input);
+  const { tex } = readInput(input, args.input);
 
   if (args.onlyTex) {
     console.log(tex);
