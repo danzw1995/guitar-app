@@ -114,7 +114,7 @@ try {
 
   // 3) 节奏页六块内容：跟读 16 + 时值 10 + 扫弦 24 + 伴奏 17 + 扫弦型 12 + 风格 6 = 85
   const cards = js("document.querySelectorAll('.drill-card').length");
-  log(cards === "97", `节奏页 6 块内容共 97 张卡（读到 ${cards}）`);
+  log(cards === "103", `节奏页 6 块内容共 103 张卡（读到 ${cards}）`);
 
   const strum = js(
     "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('.drill-card').length : -1; })()",
@@ -139,7 +139,7 @@ try {
 
   // 3b) 谱图是 `loading="lazy"`，一步步滚完整页，再看每张卡的图有没有加载出来。
   let scrolled = 0;
-  for (let step = 0; step < 60; step++) {
+  for (let step = 0; step < 80; step++) {
     const info = js(
       "(() => { const max = document.documentElement.scrollHeight - window.innerHeight; window.scrollBy(0, 360); return JSON.stringify({ y: Math.round(window.scrollY), max }); })()",
     );
@@ -384,6 +384,26 @@ try {
     theoryBoxes === 12 && theoryImages === 12,
     "乐理 12 节课各有一张示范谱",
     `读到 ${theoryImages}/${theoryBoxes}`,
+  );
+
+  // 11) 示范谱也能试听：点第 1 节的「试听」，谱上出现当前拍竖条
+  const theoryPlay = js(
+    "(() => { const b = document.querySelector('.lesson-tab .lesson-play'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  let theoryBand = "none";
+  for (let i = 0; i < 12; i++) {
+    await sleep(300);
+    theoryBand = String(
+      js(
+        "(() => { const b = document.querySelector('.lesson-tab .tab-score-beat'); return b ? `${b.style.left}|${b.style.top}` : 'none'; })()",
+      ),
+    ).replace(/^"|"$/g, "");
+    if (theoryBand !== "none") break;
+  }
+  log(
+    theoryPlay === '"ok"' && theoryBand !== "none" && theoryBand.includes("|"),
+    "乐理：示范谱点「试听」也有当前拍竖条",
+    theoryBand === "none" ? "没看到竖条" : theoryBand,
   );
 } finally {
   ab(["close"]);

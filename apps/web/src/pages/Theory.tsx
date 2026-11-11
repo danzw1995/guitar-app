@@ -33,6 +33,7 @@ import ChordDiagram from "../components/ChordDiagram";
 import RhythmStrip from "../components/RhythmStrip";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
+import { useTone } from "../hooks/useTone";
 
 const C_MAJOR = scalePcs(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
 const C_MAJOR_NAMES = scaleNames(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
@@ -89,6 +90,18 @@ function beatsLabel(beats: number): string {
  * 钢琴负责解释「为什么」，吉他负责回答「那我怎么按」。
  */
 export default function Theory() {
+  const { playTab } = useTone();
+  const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
+
+  /** 试听一节课的示范谱：和节奏页同一套播放头，谱上会跟着走一条竖条。 */
+  function auditionTheory(id: string, tab: (typeof THEORY_TABS)[number]["tab"]) {
+    setPlayhead({ id, beat: 0 });
+    playTab(tab, 72, {
+      onBeat: (beat) => setPlayhead(beat < 0 ? null : { id, beat }),
+    });
+  }
+
+  const beatOf = (id: string) => (playhead?.id === id ? playhead.beat : null);
   const [chordName, setChordName] = useState("C");
   const [mapNames, setMapNames] = useState(false);
   const [cagedChord, setCagedChord] = useState("C");
@@ -155,8 +168,17 @@ export default function Theory() {
           多出来的 5 个用「升 / 降」表示（<code>C#</code> 就是 <code>C</code> 升高一个半音，也叫 <code>Db</code>）。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-01" tab={THEORY_TABS[0].tab} />
-          <p className="lesson-cap">{THEORY_TABS[0].caption}</p>
+          <TabScore id="th-01" tab={THEORY_TABS[0].tab} beat={beatOf("th-01")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[0].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-01", THEORY_TABS[0].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-figure">
           <PianoStrip />
@@ -183,8 +205,17 @@ export default function Theory() {
           （= 2 个半音）。注意 <b>E–F</b> 和 <b>B–C</b> 之间没有黑键——所以它们天生就是半音。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-02" tab={THEORY_TABS[1].tab} />
-          <p className="lesson-cap">{THEORY_TABS[1].caption}</p>
+          <TabScore id="th-02" tab={THEORY_TABS[1].tab} beat={beatOf("th-02")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[1].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-02", THEORY_TABS[1].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-figure">
           <PianoStrip highlight={[0, 2, 4, 5]} root={0} showSteps />
@@ -208,8 +239,17 @@ export default function Theory() {
           同一套间距都能用——吉他一个八度正好 12 个品，就是这个道理。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-03" tab={THEORY_TABS[2].tab} />
-          <p className="lesson-cap">{THEORY_TABS[2].caption}</p>
+          <TabScore id="th-03" tab={THEORY_TABS[2].tab} beat={beatOf("th-03")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[2].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-03", THEORY_TABS[2].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-figure">
           <PianoStrip highlight={[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]} />
@@ -232,8 +272,17 @@ export default function Theory() {
           从 C 开始取，刚好全在白键上（所以 C 大调没有升降号）；从 G 开始取，就要把 F 升半音。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-04" tab={THEORY_TABS[3].tab} />
-          <p className="lesson-cap">{THEORY_TABS[3].caption}</p>
+          <TabScore id="th-04" tab={THEORY_TABS[3].tab} beat={beatOf("th-04")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[3].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-04", THEORY_TABS[3].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-figure">
           <PianoStrip highlight={C_MAJOR} root={0} showSteps />
@@ -273,8 +322,17 @@ export default function Theory() {
           名字里的「大 / 小 / 纯」是<b>性质</b>：大三度听起来明亮，小三度听起来忧郁。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-05" tab={THEORY_TABS[4].tab} />
-          <p className="lesson-cap">{THEORY_TABS[4].caption}</p>
+          <TabScore id="th-05" tab={THEORY_TABS[4].tab} beat={beatOf("th-05")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[4].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-05", THEORY_TABS[4].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-figure">
           <StringStrip stringIndex={4} frets={12} highlight={[0, 7]} root={0} />
@@ -326,8 +384,17 @@ export default function Theory() {
           听起来一个明亮、一个忧郁。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-06" tab={THEORY_TABS[5].tab} />
-          <p className="lesson-cap">{THEORY_TABS[5].caption}</p>
+          <TabScore id="th-06" tab={THEORY_TABS[5].tab} beat={beatOf("th-06")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[5].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-06", THEORY_TABS[5].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-figure">
           <PianoStrip highlight={[0, 4, 7]} root={0} />
@@ -393,8 +460,17 @@ export default function Theory() {
           <b>点一行</b>可以看它的指法。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-07" tab={THEORY_TABS[6].tab} />
-          <p className="lesson-cap">{THEORY_TABS[6].caption}</p>
+          <TabScore id="th-07" tab={THEORY_TABS[6].tab} beat={beatOf("th-07")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[6].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-07", THEORY_TABS[6].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-table-wrap">
           <table className="theory-table">
@@ -444,8 +520,17 @@ export default function Theory() {
           就不用每次从空弦一个一个数品了。下面这一张图里同时藏着三条规律。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-08" tab={THEORY_TABS[7].tab} />
-          <p className="lesson-cap">{THEORY_TABS[7].caption}</p>
+          <TabScore id="th-08" tab={THEORY_TABS[7].tab} beat={beatOf("th-08")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[7].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-08", THEORY_TABS[7].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
 
         <div className="lesson-figure">
@@ -583,8 +668,17 @@ export default function Theory() {
           空弦处改成横按，就得到同一个和弦在别的把位。点下面的和弦换一个，再点形状按钮看它怎么挪。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-09" tab={THEORY_TABS[8].tab} />
-          <p className="lesson-cap">{THEORY_TABS[8].caption}</p>
+          <TabScore id="th-09" tab={THEORY_TABS[8].tab} beat={beatOf("th-09")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[8].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-09", THEORY_TABS[8].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-buttons">
           {["C", "A", "G", "E", "D"].map((name) => (
@@ -622,8 +716,17 @@ export default function Theory() {
           七音离根音 10 或 11 个半音，它几乎决定了这个和弦的"味道"。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-10" tab={THEORY_TABS[9].tab} />
-          <p className="lesson-cap">{THEORY_TABS[9].caption}</p>
+          <TabScore id="th-10" tab={THEORY_TABS[9].tab} beat={beatOf("th-10")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[9].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-10", THEORY_TABS[9].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-figure">
           <PianoStrip highlight={seventhPcs} root={0} />
@@ -689,8 +792,17 @@ export default function Theory() {
           每走一格，调号就多一个升号（或减一个降号）——这就是「G 大调为什么要升 F」的答案。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-11" tab={THEORY_TABS[10].tab} />
-          <p className="lesson-cap">{THEORY_TABS[10].caption}</p>
+          <TabScore id="th-11" tab={THEORY_TABS[10].tab} beat={beatOf("th-11")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[10].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-11", THEORY_TABS[10].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-buttons">
           {CIRCLE.map((entry) => (
@@ -759,8 +871,17 @@ export default function Theory() {
           4/4 拍里以四分音符为一拍，一小节四拍；所有音符都是在这一小节里「分蛋糕」。
         </p>
         <div className="lesson-tab">
-          <TabScore id="th-12" tab={THEORY_TABS[11].tab} />
-          <p className="lesson-cap">{THEORY_TABS[11].caption}</p>
+          <TabScore id="th-12" tab={THEORY_TABS[11].tab} beat={beatOf("th-12")} />
+          <div className="lesson-tab-foot">
+            <p className="lesson-cap">{THEORY_TABS[11].caption}</p>
+            <button
+              type="button"
+              className="btn-quiet lesson-play"
+              onClick={() => auditionTheory("th-12", THEORY_TABS[11].tab)}
+            >
+              试听
+            </button>
+          </div>
         </div>
         <div className="lesson-table-wrap">
           <table className="theory-table">

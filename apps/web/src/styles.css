@@ -768,6 +768,20 @@ button, select, input { font: inherit; color: inherit; }
 .lesson-tab .tab-score {
   margin: 0 auto;
 }
+/* 示范谱下面一行：说明文字在左、试听在右（v0.30.0）。 */
+.lesson-tab-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.lesson-tab-foot .lesson-cap {
+  flex: 1 1 auto;
+}
+.lesson-play {
+  flex: 0 0 auto;
+  margin-bottom: 2px;
+}
 .lesson-cap {
   margin: 6px 0 0;
   color: var(--muted);

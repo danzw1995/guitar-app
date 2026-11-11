@@ -35,7 +35,8 @@ export interface AlphaTexOptions {
 
 /** 一拍等于几个四分音符：4/4 是 1，6/8 是 0.5。 */
 function quartersPerBeat(tab: Tab): number {
-  return tab.beatsPerBar === 6 ? 0.5 : 1;
+  // 6/8 与 12/8 的「一拍」是八分音符（数据里 beatsPerBar 数的是八分），其余按四分算。
+  return tab.beatsPerBar === 6 || tab.beatsPerBar === 12 ? 0.5 : 1;
 }
 
 const EPS = 1e-3;
@@ -206,7 +207,7 @@ export function tabToAlphaTex(tab: Tab, options: AlphaTexOptions = {}): string {
   const lines: string[] = [];
   if (options.title) lines.push(`\\title "${options.title.replace(/"/g, "'")}"`);
   lines.push(`\\tempo ${Math.round(bpm)}`);
-  const denominator = tab.beatsPerBar === 6 ? 8 : 4;
+  const denominator = tab.beatsPerBar === 6 || tab.beatsPerBar === 12 ? 8 : 4;
   lines.push(`\\ts (${tab.beatsPerBar} ${denominator})`);
 
   // 三连音得先成组，才能在组里第一拍写 `{tu 3}`——所以先扫一遍标出组头和组员，再逐拍生成。

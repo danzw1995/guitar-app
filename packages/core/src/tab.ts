@@ -364,9 +364,12 @@ export function progressionTab(opts: {
   beatsEach?: number;
   step?: number;
   strums?: ("D" | "U" | null)[];
+  /** æ¯å°èå æï¼3/4ã6/8ã12/8 è¿ç±»è¿è¡è¦æ¾å¼ç»ï¼é»è®¤ 4ï¼ã */
+  beatsPerBar?: number;
 }): Tab {
   const beatsEach = opts.beatsEach ?? 4;
   const step = opts.step ?? 1;
+  const beatsPerBar = opts.beatsPerBar ?? 4;
   const notes: TabNote[] = [];
   let beat = 0;
   for (const name of opts.names) {
@@ -383,8 +386,10 @@ export function progressionTab(opts: {
     beat += beatsEach;
   }
   return make(notes, {
+    beatsPerBar,
+    bars: opts.names.length,
     range: opts.names.join(" → "),
-    caption: "换和弦都落在小节的第一拍",
+    caption: "每个和弦弹一小节的第一拍",
   });
 }
 

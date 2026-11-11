@@ -1820,7 +1820,7 @@ test("alphaTex：每条谱的每一小节都被填满", () => {
     const bars = body.split("|").map((bar) => bar.trim()).filter(Boolean);
     assert.equal(bars.length, item.bars, `${item.name} 的小节数不对`);
     // alphaTab 的硬约束：小节时值凑不齐就整张空白，所以这里必须一分不差。
-    const perBeat = item.beatsPerBar === 6 ? 0.5 : 1;
+    const perBeat = item.beatsPerBar === 6 || item.beatsPerBar === 12 ? 0.5 : 1;
     const expected = item.beatsPerBar * perBeat;
     for (const [index, bar] of bars.entries()) {
       const got = alphaBarQuarters(bar);
