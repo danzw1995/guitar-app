@@ -258,6 +258,10 @@ function beatLines(renderer, color = "#6e7681", alpha = 0.55) {
 function beatBands(renderer) {
   const bands = [];
   for (const system of renderer.boundsLookup?.staffSystems ?? []) {
+    // 每一行谱的纵向范围：高亮条只在自己那一行里画，不能贯穿整张图
+    const systemBox = system.visualBounds;
+    const systemY = systemBox?.y ?? 0;
+    const systemH = systemBox?.h ?? 0;
     for (const masterBarBounds of system.bars ?? []) {
       for (const barBounds of masterBarBounds.bars ?? []) {
         const beats = (barBounds.beats ?? [])
@@ -295,7 +299,7 @@ function beatBands(renderer) {
         edges.push(bar.x + bar.w);
         for (let k = 0; k + 1 < edges.length; k += 1) {
           const width = edges[k + 1] - edges[k];
-          if (width > 0.5) bands.push({ x: edges[k], w: width });
+          if (width > 0.5) bands.push({ x: edges[k], w: width, y: systemY, h: systemH });
         }
       }
     }
@@ -583,10 +587,13 @@ export async function renderPng(tex, opts = {}) {
   if (!png) {
     throw new Error("alphaSkia 编码 PNG 失败");
   }
-  // 每一拍的横向区间，换算成**最终图片**的像素坐标（网页里按百分比定位高亮条）。
+  // 每一拍的横向区间 + 所在那一行谱的纵向区间，换算成**最终图片**的像素坐标
+  // （网页里按百分比定位高亮条；多行谱必须带上 y，否则每一行同一列都会被照亮）。
   const beats = (opts.beatBands === false ? [] : beatBands(renderer)).map((band) => ({
     x: Math.round((band.x + shiftX) * dpi - trimmed.x + dx),
     w: Math.round(band.w * dpi),
+    y: Math.round((band.y + shiftY) * dpi - trimmed.y + pad * dpi),
+    h: Math.round(band.h * dpi),
   }));
   return {
     data: Buffer.from(png),

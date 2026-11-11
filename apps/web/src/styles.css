@@ -1641,11 +1641,12 @@ button, select, input { font: inherit; color: inherit; }
   max-width: 600px;
   height: auto;
 }
-/* 播放时跟着拍的竖条：只盖这一拍的宽度，压在图上面（图是透明的，所以看得见）。 */
+/* 播放时跟着拍的竖条：只盖这一拍的宽度和**这一行谱**的高度，压在图上面
+   （图是透明的，所以看得见；长谱折行时不能贯穿整张图）。 */
 .tab-score-beat {
   position: absolute;
   top: 0;
-  bottom: 0;
+  height: 100%;
   background: rgba(227, 179, 65, 0.14);
   border-left: 2px solid rgba(227, 179, 65, 0.65);
   border-radius: 2px;

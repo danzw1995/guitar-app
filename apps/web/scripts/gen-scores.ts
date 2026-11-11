@@ -104,7 +104,7 @@ for (const item of items) {
   if (png.beats.length !== expected) {
     throw new Error(`${item.id} 的拍数是 ${png.beats.length}，谱面应该是 ${expected} 拍`);
   }
-  beats[item.id] = { width: png.width, beats: png.beats ?? [] };
+  beats[item.id] = { width: png.width, height: png.height, beats: png.beats ?? [] };
   hash.update(item.id).update(png.data);
   bytes += png.data.length;
 }
@@ -119,8 +119,10 @@ for (const file of fs.readdirSync(outDir)) {
   }
 }
 
-// 每拍的横向区间单独存一份：网页里播放时按它画一条跟着走的竖条。
-// 和图片一起带内容指纹（同一个 ?v=），改了谱面数据两边会一起更新。
+// 每拍的区间单独存一份：网页里播放时按它画一条跟着走的竖条。
+// 它和图片一起带内容指纹（同一个 ?v=），所以拍位算法改了（比如多行谱的高亮行）
+// 也要让指纹变——不然浏览器会一直用缓存里的旧 beats.json。
+hash.update(JSON.stringify(beats));
 fs.writeFileSync(
   path.join(outDir, "beats.json"),
   `${JSON.stringify({ version: hash.copy().digest("hex").slice(0, 8), beats })}\n`,

@@ -86,6 +86,16 @@ test("拍位：每小节数出 4 拍，横坐标从左到右、落在图片里",
   for (const beat of png.beats) {
     assert.ok(beat.w > 0, `拍宽不对：${beat.w}`);
     assert.ok(beat.x >= 0 && beat.x + beat.w <= png.width, "拍位跑到图片外面了");
+    // 纵向也必须给：长谱折行时高亮条只该盖住「这一拍所在的那一行」，
+    // 没有 y/h 前端就只能按整张图的高度画，每一行同一列都会被照亮。
+    assert.ok(beat.h > 0, `拍位缺高度：${JSON.stringify(beat)}`);
+    assert.ok(beat.y >= 0 && beat.y + beat.h <= png.height, "拍位的纵向范围跑到图片外面了");
+  }
+  // 两小节的 demo 折成两行时，第二行的高亮必须落在下半张图里
+  const rows = [...new Set(png.beats.map((beat) => beat.y))];
+  assert.ok(rows.length >= 1, "拍位没有纵向信息");
+  if (rows.length > 1) {
+    assert.ok(rows[1] > rows[0], "第二行的 y 应该在第一行下面");
   }
   // 同一小节内从左到右；第二小节折到下一行也无所谓，只要不重叠
   const firstBar = png.beats.slice(0, 4);

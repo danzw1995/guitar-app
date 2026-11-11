@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.29.0`，core `0.19.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.29.1`，core `0.19.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -35,7 +35,7 @@ v0.26.1 只是包名改名与发布；v0.27.0 把「我的谱」的预览也改�
 `tools/tab-score` 是独立发布的包（`@danzw777/tab-score`），版本线与产品无关，现在是 `0.8.2`
 （0.7.0 加了 ASCII 六线谱输入，0.8.0 补子路径导出并把样例从发布包里摘掉，0.8.1 是第一次真正发布到 npm——
 因为 `@danzw` 那个 scope 当时的 token 没有写权限，包名从 `@danzw/tab-score` 改成了 `@danzw777/tab-score`；
-0.8.2 只修 README 里的样例文件名）。
+0.8.2 只修 README 里的样例文件名；0.8.3 给拍位补上纵向区间，多行谱的高亮只盖一行）。
 
 ## 一次发版的流程
 

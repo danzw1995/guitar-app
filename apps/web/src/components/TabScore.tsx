@@ -34,6 +34,10 @@ export default function TabScore({ id, tab, className, beat }: Props) {
   const info = beats[id];
   const band = beat !== null && beat !== undefined ? info?.beats[beat] : undefined;
   const width = info?.width ?? 0;
+  const height = info?.height ?? 0;
+  // 长谱会折成两三行：高亮条只覆盖「这一拍所在的那一行」，否则每一行的同一列都会被照亮。
+  const bandTop = band && height > 0 && band.y !== undefined ? (band.y / height) * 100 : null;
+  const bandHeight = band && height > 0 && band.h !== undefined ? (band.h / height) * 100 : null;
 
   return (
     <span className={className ? `tab-score-wrap ${className}` : "tab-score-wrap"}>
@@ -50,6 +54,9 @@ export default function TabScore({ id, tab, className, beat }: Props) {
           style={{
             left: `${(band.x / width) * 100}%`,
             width: `${(band.w / width) * 100}%`,
+            ...(bandTop !== null && bandHeight !== null
+              ? { top: `${bandTop}%`, height: `${bandHeight}%` }
+              : null),
           }}
           aria-hidden="true"
         />

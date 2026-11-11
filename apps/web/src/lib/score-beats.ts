@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { SCORES_VERSION } from "./scores-version";
 
-/** 一拍在图上的横向区间（图片像素）。 */
+/** 一拍在图上的区间（图片像素）。`y`/`h` 是这一拍所在那一行谱的纵向范围。 */
 export interface ScoreBeat {
   x: number;
   w: number;
+  y?: number;
+  h?: number;
 }
 
 export interface ScoreBeatMap {
   width: number;
+  height?: number;
   beats: ScoreBeat[];
 }
 
