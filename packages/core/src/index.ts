@@ -18,4 +18,5 @@ export * from "./rhythm-drills.ts";
 export * from "./reading-drills.ts";
 export * from "./strum-drills.ts";
 export * from "./accompaniment.ts";
+export * from "./theory-tabs.ts";
 export * from "./techniques.ts";

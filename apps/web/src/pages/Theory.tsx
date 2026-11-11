@@ -9,6 +9,7 @@ import {
   SCALE_BY_ID,
   STRUM_PATTERNS,
   SUBDIVISION_LABEL,
+  THEORY_TABS,
   chordInfo,
   circleKey,
   countLine,
@@ -31,6 +32,7 @@ import TheoryGame from "../components/TheoryGame";
 import ChordDiagram from "../components/ChordDiagram";
 import RhythmStrip from "../components/RhythmStrip";
 import Metronome from "../components/Metronome";
+import TabScore from "../components/TabScore";
 
 const C_MAJOR = scalePcs(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
 const C_MAJOR_NAMES = scaleNames(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
@@ -152,6 +154,10 @@ export default function Theory() {
           音名只有 <b>C D E F G A B</b> 七个字母，但一个八度里能按出 <b>12</b> 个不同的音高——
           多出来的 5 个用「升 / 降」表示（<code>C#</code> 就是 <code>C</code> 升高一个半音，也叫 <code>Db</code>）。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-01" tab={THEORY_TABS[0].tab} />
+          <p className="lesson-cap">{THEORY_TABS[0].caption}</p>
+        </div>
         <div className="lesson-figure">
           <PianoStrip />
           <p className="lesson-cap">钢琴一个八度：7 个白键 + 5 个黑键 = 12 个音</p>
@@ -176,6 +182,10 @@ export default function Theory() {
           两个相邻的音（中间没有别的键）差 <b>1 个半音</b>；中间夹着一个黑键的，差 <b>1 个全音</b>
           （= 2 个半音）。注意 <b>E–F</b> 和 <b>B–C</b> 之间没有黑键——所以它们天生就是半音。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-02" tab={THEORY_TABS[1].tab} />
+          <p className="lesson-cap">{THEORY_TABS[1].caption}</p>
+        </div>
         <div className="lesson-figure">
           <PianoStrip highlight={[0, 2, 4, 5]} root={0} showSteps />
           <p className="lesson-cap">C→D 是全音，E→F 是半音（白键之间没有黑键）</p>
@@ -197,6 +207,10 @@ export default function Theory() {
           一个八度平均分成 12 份，每一份叫 <b>100 音分</b>。好处是：不管从哪个音开始，
           同一套间距都能用——吉他一个八度正好 12 个品，就是这个道理。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-03" tab={THEORY_TABS[2].tab} />
+          <p className="lesson-cap">{THEORY_TABS[2].caption}</p>
+        </div>
         <div className="lesson-figure">
           <PianoStrip highlight={[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]} />
           <p className="lesson-cap">12 个键 = 12 个半音 = 一个八度</p>
@@ -217,6 +231,10 @@ export default function Theory() {
           <b>大调</b>不是随便挑 7 个音，而是按固定的间距取：<b>全 全 半 全 全 全 半</b>。
           从 C 开始取，刚好全在白键上（所以 C 大调没有升降号）；从 G 开始取，就要把 F 升半音。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-04" tab={THEORY_TABS[3].tab} />
+          <p className="lesson-cap">{THEORY_TABS[3].caption}</p>
+        </div>
         <div className="lesson-figure">
           <PianoStrip highlight={C_MAJOR} root={0} showSteps />
           <p className="lesson-cap">{C_MAJOR_NAMES.join(" ")}，间距正好是全全半全全全半</p>
@@ -254,6 +272,10 @@ export default function Theory() {
           两个音之间的半音数决定了它们「隔多远」，再给它一个名字（三度、五度……）。
           名字里的「大 / 小 / 纯」是<b>性质</b>：大三度听起来明亮，小三度听起来忧郁。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-05" tab={THEORY_TABS[4].tab} />
+          <p className="lesson-cap">{THEORY_TABS[4].caption}</p>
+        </div>
         <div className="lesson-figure">
           <StringStrip stringIndex={4} frets={12} highlight={[0, 7]} root={0} />
           <p className="lesson-cap">5 弦上 C（3 品）到 G（10 品）差 7 品 = 纯五度</p>
@@ -303,6 +325,10 @@ export default function Theory() {
           大三和弦 = 大三度 + 小三度；小三和弦 = 小三度 + 大三度。就差这一个顺序，
           听起来一个明亮、一个忧郁。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-06" tab={THEORY_TABS[5].tab} />
+          <p className="lesson-cap">{THEORY_TABS[5].caption}</p>
+        </div>
         <div className="lesson-figure">
           <PianoStrip highlight={[0, 4, 7]} root={0} />
           <p className="lesson-cap">C 大三和弦：C（根音）→ E（隔开 D）→ G（隔开 F）</p>
@@ -366,6 +392,10 @@ export default function Theory() {
           <b> I ii iii IV V vi vii°</b>。大写 = 大三和弦，小写 = 小三和弦，带 ° = 减三和弦。
           <b>点一行</b>可以看它的指法。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-07" tab={THEORY_TABS[6].tab} />
+          <p className="lesson-cap">{THEORY_TABS[6].caption}</p>
+        </div>
         <div className="lesson-table-wrap">
           <table className="theory-table">
             <thead>
@@ -413,6 +443,10 @@ export default function Theory() {
           前面学的音程、级数，在吉他上会变成几条固定的<b>形状</b>。记住它们，
           就不用每次从空弦一个一个数品了。下面这一张图里同时藏着三条规律。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-08" tab={THEORY_TABS[7].tab} />
+          <p className="lesson-cap">{THEORY_TABS[7].caption}</p>
+        </div>
 
         <div className="lesson-figure">
           <ScaleMap showNames={mapNames} showOctaves highlightFret={3} />
@@ -548,6 +582,10 @@ export default function Theory() {
           <b>C、A、G、E、D</b>（连起来读就是 CAGED）。把开放形状整块往上平移、
           空弦处改成横按，就得到同一个和弦在别的把位。点下面的和弦换一个，再点形状按钮看它怎么挪。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-09" tab={THEORY_TABS[8].tab} />
+          <p className="lesson-cap">{THEORY_TABS[8].caption}</p>
+        </div>
         <div className="lesson-buttons">
           {["C", "A", "G", "E", "D"].map((name) => (
             <button
@@ -583,6 +621,10 @@ export default function Theory() {
           三和弦是「根音 + 三音 + 五音」。再往上叠一个三度，就是<b>七音</b>，四个音一起响——这就是七和弦。
           七音离根音 10 或 11 个半音，它几乎决定了这个和弦的"味道"。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-10" tab={THEORY_TABS[9].tab} />
+          <p className="lesson-cap">{THEORY_TABS[9].caption}</p>
+        </div>
         <div className="lesson-figure">
           <PianoStrip highlight={seventhPcs} root={0} />
           <p className="lesson-cap">
@@ -646,6 +688,10 @@ export default function Theory() {
           再往前用等音写法继续 <b>Db → Ab → Eb → Bb → F</b>，正好一圈 12 个。
           每走一格，调号就多一个升号（或减一个降号）——这就是「G 大调为什么要升 F」的答案。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-11" tab={THEORY_TABS[10].tab} />
+          <p className="lesson-cap">{THEORY_TABS[10].caption}</p>
+        </div>
         <div className="lesson-buttons">
           {CIRCLE.map((entry) => (
             <button
@@ -712,6 +758,10 @@ export default function Theory() {
           弹四拍是长音，弹半拍是过门——<b>音高决定它是什么音，时值决定它像不像一首歌</b>。
           4/4 拍里以四分音符为一拍，一小节四拍；所有音符都是在这一小节里「分蛋糕」。
         </p>
+        <div className="lesson-tab">
+          <TabScore id="th-12" tab={THEORY_TABS[11].tab} />
+          <p className="lesson-cap">{THEORY_TABS[11].caption}</p>
+        </div>
         <div className="lesson-table-wrap">
           <table className="theory-table">
             <thead>

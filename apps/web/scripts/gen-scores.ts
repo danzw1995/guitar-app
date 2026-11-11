@@ -17,6 +17,7 @@ import {
   SONG_SNIPPETS,
   STRUM_DRILLS,
   STRUM_LIBRARY,
+  THEORY_TABS,
   tabToAlphaTex,
   type Tab,
 } from "@guitar/core";
@@ -43,6 +44,8 @@ const items: Item[] = [
   ...ACCOMPANIMENTS.map((item) => ({ id: item.id, tab: item.tab, bpm: item.bpm })),
   // 练习页的 50 关：以前是页面里现画的六线谱，现在也走同一条预渲染管线。
   ...DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab, bpm: bpmOf(drill.bpm) })),
+  // 乐理页 12 节课，每节配一条示范谱。
+  ...THEORY_TABS.map((item) => ({ id: item.id, tab: item.tab, bpm: 70 })),
 ];
 
 const WIDTH = 720;

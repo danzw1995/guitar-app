@@ -114,7 +114,7 @@ try {
 
   // 3) 节奏页六块内容：跟读 16 + 时值 10 + 扫弦 24 + 伴奏 17 + 扫弦型 12 + 风格 6 = 85
   const cards = js("document.querySelectorAll('.drill-card').length");
-  log(cards === "85", `节奏页 6 块内容共 85 张卡（读到 ${cards}）`);
+  log(cards === "97", `节奏页 6 块内容共 97 张卡（读到 ${cards}）`);
 
   const strum = js(
     "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('.drill-card').length : -1; })()",
@@ -333,6 +333,37 @@ try {
     String(js("(() => String(document.querySelectorAll('.my-card').length))()")).replace(/"/g, ""),
   );
   log(removed === '"ok"' && leftCards === 0, "我的谱：删掉之后卡片消失", `还剩 ${leftCards} 条`);
+
+  // 10) 乐理页：12 节课各配一张示范谱，滚完整页都加载出来
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '乐理'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const theoryBoxes = Number(
+    String(js("(() => String(document.querySelectorAll('.lesson-tab').length))()")).replace(/"/g, ""),
+  );
+  // 一节一节滚过去：图是懒加载的，一口气滚到底有些图来不及进视口。
+  for (let i = 0; i < theoryBoxes; i++) {
+    js(`document.querySelectorAll('.lesson-tab')[${i}]?.scrollIntoView({ block: 'center' })`);
+    await sleep(450);
+  }
+  let theoryImages = 0;
+  for (let i = 0; i < 24; i++) {
+    theoryImages = Number(
+      String(
+        js(
+          "(() => String([...document.querySelectorAll('.lesson-tab img.tab-score')].filter(n => n.complete && n.naturalWidth > 0).length))()",
+        ),
+      ).replace(/"/g, ""),
+    );
+    if (theoryImages >= theoryBoxes && theoryBoxes > 0) break;
+    await sleep(400);
+  }
+  log(
+    theoryBoxes === 12 && theoryImages === 12,
+    "乐理 12 节课各有一张示范谱",
+    `读到 ${theoryImages}/${theoryBoxes}`,
+  );
 } finally {
   ab(["close"]);
   console.log(

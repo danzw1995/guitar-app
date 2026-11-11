@@ -756,6 +756,18 @@ button, select, input { font: inherit; color: inherit; }
   border-left: 3px solid var(--accent);
   overflow-x: auto;
 }
+.lesson-tab {
+  margin: 0 0 12px;
+  padding: 10px 10px 8px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  overflow-x: auto;
+}
+.lesson-tab .tab-score {
+  margin: 0 auto;
+}
 .lesson-cap {
   margin: 6px 0 0;
   color: var(--muted);
