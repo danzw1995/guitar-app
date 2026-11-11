@@ -130,9 +130,14 @@ function ScoreCard({
   const stored = useMemo<ScoreImage | undefined>(
     () =>
       score.image
-        ? { dataUrl: score.image, width: score.imageWidth ?? 0, height: score.imageHeight ?? 0 }
+        ? {
+            dataUrl: score.image,
+            width: score.imageWidth ?? 0,
+            height: score.imageHeight ?? 0,
+            beats: score.beats,
+          }
         : undefined,
-    [score.image, score.imageWidth, score.imageHeight],
+    [score.image, score.imageWidth, score.imageHeight, score.beats],
   );
   // 旧记录没有存图：进视口后现画一张，画完补写回 localStorage。
   const [visible, setVisible] = useState(false);
@@ -156,12 +161,16 @@ function ScoreCard({
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  const needsRender = visible && !stored && Boolean(parsed.tab);
+  // 旧记录没有存图、或者存图时还没有拍位（v0.29.2 之前）：进视口后现画一张，
+  // 画完把图和拍位一起写回 localStorage，之后打开就只显示图。
+  const needsRender = visible && (!stored || !stored.beats || stored.beats.length === 0) && Boolean(parsed.tab);
   const rendered = useScoreImage(needsRender ? parsed.tex : null);
   const image = stored ?? rendered.image;
   useEffect(() => {
-    if (image && !stored) onImage(score.id, image);
-  }, [image, stored, onImage, score.id]);
+    // 没存图，或存了图但没有拍位（旧记录）：把新画出来的图和拍位一起写回去。
+    if (!rendered.image) return;
+    if (!stored || !stored.beats || stored.beats.length === 0) onImage(score.id, rendered.image);
+  }, [rendered.image, stored, onImage, score.id]);
   const high = best(score.id);
 
   return (

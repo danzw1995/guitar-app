@@ -19,6 +19,7 @@ import {
 import { loadPractice, loadProgress, savePractice } from "../lib/storage";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
+import { useTone } from "../hooks/useTone";
 
 /** 秒 → mm:ss。 */
 function clock(totalSeconds: number): string {
@@ -49,6 +50,18 @@ export default function Practice() {
 
   const [runningId, setRunningId] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
+  const { playTab } = useTone();
+  const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
+
+  /** 试听一条练习：谱面上会跟着走一条「当前拍」竖条，和节奏页同一套播放头。 */
+  function audition(id: string, tab: (typeof library)[number]["tab"], bpm: number) {
+    setPlayhead({ id, beat: 0 });
+    playTab(tab, bpm, {
+      onBeat: (beat) => setPlayhead(beat < 0 ? null : { id, beat }),
+    });
+  }
+
+  const beatOf = (id: string) => (playhead?.id === id ? playhead.beat : null);
 
   const stageDef = stageOf(stage);
   const library = useMemo(() => drillsOfStage(stage), [stage]);
@@ -212,7 +225,7 @@ export default function Practice() {
         <span style={{ width: `${(doneCount / session.blocks.length) * 100}%` }} />
       </div>
 
-      <details className="practice-metronome">
+      <details className="practice-metronome" open>
         <summary>节拍器（每一块都该开）</summary>
         <Metronome />
       </details>
@@ -246,6 +259,13 @@ export default function Practice() {
                 </span>
                 <button
                   type="button"
+                  className="btn-quiet"
+                  onClick={() => audition(drill.id, drill.tab, drill.bpm ? drill.bpm[0] : 70)}
+                >
+                  试听
+                </button>
+                <button
+                  type="button"
                   className="btn"
                   onClick={() => start(drill.id)}
                   aria-pressed={running}
@@ -262,7 +282,7 @@ export default function Practice() {
                 </button>
               </div>
 
-              <TabScore id={drill.id} tab={drill.tab} />
+              <TabScore id={drill.id} tab={drill.tab} beat={beatOf(drill.id)} />
 
               <div className="pb-side">
                 <p className="pb-line">
@@ -297,7 +317,16 @@ export default function Practice() {
               <h4>{drill.name}</h4>
               <span className="drill-block">{blockOf(drill.block).label}</span>
             </header>
-            <TabScore id={drill.id} tab={drill.tab} />
+            <TabScore id={drill.id} tab={drill.tab} beat={beatOf(drill.id)} />
+            <div className="drill-actions">
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => audition(drill.id, drill.tab, drill.bpm ? drill.bpm[0] : 70)}
+              >
+                试听
+              </button>
+            </div>
             <details className="pb-more">
               <summary>练法与验收</summary>
               <ol className="pb-steps">

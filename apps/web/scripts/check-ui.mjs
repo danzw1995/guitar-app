@@ -346,6 +346,26 @@ try {
   );
 
   // 收尾：把刚存的那条删掉，别把下次跑的环境弄脏
+  // 9c) 存下的卡片点试听，谱上也要有跟着拍走的竖条
+  const cardPlay = js(
+    "(() => { const b = [...document.querySelectorAll('.my-card button')].find(n => n.textContent.trim() === '试听'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  let cardBand = "none";
+  for (let i = 0; i < 12; i++) {
+    await sleep(300);
+    cardBand = String(
+      js(
+        "(() => { const b = document.querySelector('.my-card .tab-score-beat'); return b ? `${b.style.left}|${b.style.top}` : 'none'; })()",
+      ),
+    ).replace(/^"|"$/g, "");
+    if (cardBand !== "none") break;
+  }
+  log(
+    cardPlay === '"ok"' && cardBand !== "none" && cardBand.includes("|"),
+    "我的谱：存下的卡片点试听也有当前拍竖条",
+    cardBand === "none" ? "没看到竖条" : cardBand,
+  );
+
   const removed = js(
     "(() => { const b = [...document.querySelectorAll('.my-card button')].find(n => n.textContent.trim() === '删掉'); if (!b) return 'no'; b.click(); return 'ok'; })()",
   );
@@ -405,6 +425,40 @@ try {
     "乐理：示范谱点「试听」也有当前拍竖条",
     theoryBand === "none" ? "没看到竖条" : theoryBand,
   );
+
+  // 12) 练习页：节拍器默认是展开的，练习卡片能试听并出竖条
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '练习'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  const metronomeOpen = js(
+    "(() => { const d = document.querySelector('.practice-metronome'); return d ? (d.hasAttribute('open') && d.querySelector('.metronome') ? 'ok' : 'closed') : 'none'; })()",
+  );
+  log(
+    metronomeOpen === '"ok"',
+    "练习页：节拍器默认就在页面上（不用点开）",
+    metronomeOpen,
+  );
+
+  const practicePlay = js(
+    "(() => { const b = document.querySelector('.practice-list .btn-quiet'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  let practiceBand = "none";
+  for (let i = 0; i < 12; i++) {
+    await sleep(300);
+    practiceBand = String(
+      js(
+        "(() => { const b = document.querySelector('.practice-list .tab-score-beat'); return b ? `${b.style.left}|${b.style.top}` : 'none'; })()",
+      ),
+    ).replace(/^"|"$/g, "");
+    if (practiceBand !== "none") break;
+  }
+  log(
+    practicePlay === '"ok"' && practiceBand !== "none" && practiceBand.includes("|"),
+    "练习页：点试听也有当前拍竖条",
+    practiceBand === "none" ? "没看到竖条" : practiceBand,
+  );
+
 } finally {
   ab(["close"]);
   console.log(
