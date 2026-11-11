@@ -299,6 +299,27 @@ try {
     `读到 ${previewImages} 张图`,
   );
 
+  // 9b) 预览里点试听，谱上也要有跟着拍走的竖条（和内置谱同一个播放头）
+  js(
+    "(() => { const b = [...document.querySelectorAll('.my-preview button')].find(n => n.textContent.trim() === '试听'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  let previewBand = "none";
+  for (let i = 0; i < 12; i++) {
+    await sleep(300);
+    previewBand = String(
+      js(
+        "(() => { const b = document.querySelector('.my-preview .tab-score-beat'); return b ? `${b.style.left}|${b.style.top}|${b.style.height}` : 'none'; })()",
+      ),
+    ).replace(/^"|"$/g, "");
+    if (previewBand !== "none") break;
+  }
+  const bandParts = previewBand.split("|");
+  log(
+    previewBand !== "none" && bandParts.length === 3 && bandParts[1] !== "",
+    "我的谱：预览试听时也有跟着拍走的高亮",
+    previewBand === "none" ? "没看到竖条" : previewBand,
+  );
+
   const saved = js(
     "(() => { const b = [...document.querySelectorAll('.my-actions button')].find(n => n.textContent.trim() === '存下这条'); if (!b) return 'no'; b.click(); return 'ok'; })()",
   );

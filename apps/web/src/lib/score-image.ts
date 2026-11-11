@@ -15,6 +15,8 @@ export interface ScoreImage {
   /** 一倍像素下的尺寸，用来给 <img> 定宽高比。 */
   width: number;
   height: number;
+  /** 每一拍的区间（图片像素，含这一行谱的纵向范围），播放时画高亮条用。 */
+  beats?: { x: number; w: number; y: number; h: number }[];
 }
 
 const cache = new Map<string, Promise<ScoreImage>>();
@@ -56,8 +58,8 @@ function inkBounds(data: Uint8ClampedArray, width: number, height: number): Ink 
 }
 
 async function rasterize(tex: string): Promise<ScoreImage> {
-  const svg = await renderTexToSvg(tex);
-  const image = await loadSvg(svg);
+  const composed = await renderTexToSvg(tex);
+  const image = await loadSvg(composed.svg);
   const width = Math.max(1, Math.round(image.naturalWidth || image.width));
   const height = Math.max(1, Math.round(image.naturalHeight || image.height));
 
@@ -77,6 +79,7 @@ async function rasterize(tex: string): Promise<ScoreImage> {
   const padBottom = PADDING_BOTTOM * PIXEL_RATIO;
   const outputWidth = Math.max(ink.w + padX * 2, MIN_WIDTH * PIXEL_RATIO + padX * 2);
   const outputHeight = ink.h + padTop + padBottom;
+  const offsetX = Math.round((outputWidth - ink.w) / 2);
 
   const output = document.createElement("canvas");
   output.width = outputWidth;
@@ -89,16 +92,30 @@ async function rasterize(tex: string): Promise<ScoreImage> {
     ink.y,
     ink.w,
     ink.h,
-    Math.round((outputWidth - ink.w) / 2),
+    offsetX,
     padTop,
     ink.w,
     ink.h,
   );
 
+  // 拍位：SVG 用户单位 → 图片「一倍像素」坐标（和 width/height 同一套单位）。
+  // 图是先乘 2 倍再裁边、加留白的，所以横向要减掉 (ink.x - 居中偏移)、纵向减掉 (ink.y - 上留白)，再除回 2。
+  const shiftX = (ink.x - offsetX) / PIXEL_RATIO;
+  const shiftY = (ink.y - padTop) / PIXEL_RATIO;
+  const beats = composed.beats.map((beat) => {
+    // 夹在图片范围内：谱线从 ink 的边上开始，四舍五入后可能差 1px。
+    const x = Math.max(0, Math.min(Math.round(beat.x - shiftX), Math.round(outputWidth / PIXEL_RATIO) - 1));
+    const w = Math.max(1, Math.min(Math.round(beat.w), Math.round(outputWidth / PIXEL_RATIO) - x));
+    const y = Math.max(0, Math.min(Math.round(beat.y - shiftY), Math.round(outputHeight / PIXEL_RATIO) - 1));
+    const h = Math.max(1, Math.min(Math.round(beat.h), Math.round(outputHeight / PIXEL_RATIO) - y));
+    return { x, w, y, h };
+  });
+
   return {
     dataUrl: output.toDataURL("image/png"),
     width: Math.round(outputWidth / PIXEL_RATIO),
     height: Math.round(outputHeight / PIXEL_RATIO),
+    beats,
   };
 }
 

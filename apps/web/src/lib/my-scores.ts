@@ -14,6 +14,8 @@ export interface MyScore {
   image?: string;
   imageWidth?: number;
   imageHeight?: number;
+  /** 每一拍的位置（图片像素），试听时画高亮条用；旧记录没有就不画。 */
+  beats?: { x: number; w: number; y: number; h: number }[];
 }
 
 interface SpecNote {
@@ -147,7 +149,9 @@ function persist(scores: MyScore[]): MyScore[] {
     // localStorage 一般只有 5MB：图的 base64 占地方，满了就先丢掉较老记录的图
     // （原文还在，打开页面时会重新画一张再补回来）。
     const light = kept.map((item, index) =>
-      index < 8 ? item : { ...item, image: undefined, imageWidth: undefined, imageHeight: undefined },
+      index < 8
+        ? item
+        : { ...item, image: undefined, imageWidth: undefined, imageHeight: undefined, beats: undefined },
     );
     try {
       write(light);
@@ -164,6 +168,7 @@ export function addScore(input: {
   image?: string;
   imageWidth?: number;
   imageHeight?: number;
+  beats?: { x: number; w: number; y: number; h: number }[];
 }): MyScore[] {
   const score: MyScore = {
     id: `my-${Date.now().toString(36)}`,
@@ -173,6 +178,7 @@ export function addScore(input: {
     image: input.image,
     imageWidth: input.imageWidth,
     imageHeight: input.imageHeight,
+    beats: input.beats,
   };
   return persist([score, ...loadScores().filter((item) => item.ascii !== input.ascii)]);
 }
@@ -180,11 +186,22 @@ export function addScore(input: {
 /** 旧记录（v0.26.0 存下的没有图）第一次画出来时把图补回去，下次打开就不用再渲染。 */
 export function setScoreImage(
   id: string,
-  image: { dataUrl: string; width: number; height: number },
+  image: {
+    dataUrl: string;
+    width: number;
+    height: number;
+    beats?: { x: number; w: number; y: number; h: number }[];
+  },
 ): MyScore[] {
   const scores = loadScores().map((item) =>
     item.id === id
-      ? { ...item, image: image.dataUrl, imageWidth: image.width, imageHeight: image.height }
+      ? {
+          ...item,
+          image: image.dataUrl,
+          imageWidth: image.width,
+          imageHeight: image.height,
+          beats: image.beats,
+        }
       : item,
   );
   return persist(scores);

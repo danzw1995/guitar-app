@@ -681,7 +681,7 @@ export default function Rhythm() {
         ))}
       </div>
 
-      <MyScores audition={audition} best={best} follow={setTarget} />
+      <MyScores audition={audition} best={best} follow={setTarget} beatOf={beatOf} />
 
       <p className="practice-foot">
         时值练不稳时只有一个办法：**把 BPM 降到能听见每一拍**，稳了再加 5。

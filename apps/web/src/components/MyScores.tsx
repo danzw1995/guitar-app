@@ -25,6 +25,8 @@ interface Props {
   audition: (id: string, tab: Tab, bpm: number) => void;
   follow: (target: FollowTarget) => void;
   best: (id: string) => number | undefined;
+  /** 正在播第几拍（0 起），没在播就是 null；和内置谱用同一个播放头。 */
+  beatOf: (id: string) => number | null;
 }
 
 interface ImageState {
@@ -62,23 +64,44 @@ function ScoreFigure({
   title,
   meter,
   bpm,
+  beat,
 }: {
   image?: ScoreImage;
   error?: string;
   title: string;
   meter: string;
   bpm: number;
+  /** 正在播第几拍（0 起）；null / undefined 表示没在播。 */
+  beat?: number | null;
 }) {
+  const band =
+    image && typeof beat === "number" && beat >= 0 ? image.beats?.[beat] : undefined;
+  const width = image?.width ?? 0;
+  const height = image?.height ?? 0;
   return (
     <div className="alpha-preview" aria-busy={!image && !error ? "true" : undefined}>
       {image ? (
-        <img
-          className="tab-score"
-          src={image.dataUrl}
-          alt={`${title} 的六线谱，${meter}，${bpm} BPM`}
-          width={image.width || undefined}
-          height={image.height || undefined}
-        />
+        <span className="tab-score-wrap">
+          <img
+            className="tab-score"
+            src={image.dataUrl}
+            alt={`${title} 的六线谱，${meter}，${bpm} BPM`}
+            width={image.width || undefined}
+            height={image.height || undefined}
+          />
+          {band && width > 0 && height > 0 && (
+            <span
+              className="tab-score-beat"
+              aria-hidden="true"
+              style={{
+                left: `${(band.x / width) * 100}%`,
+                width: `${(band.w / width) * 100}%`,
+                top: `${(band.y / height) * 100}%`,
+                height: `${(band.h / height) * 100}%`,
+              }}
+            />
+          )}
+        </span>
       ) : (
         <span className="alpha-score-note">{error ?? "谱面渲染中…"}</span>
       )}
@@ -91,6 +114,7 @@ function ScoreCard({
   audition,
   follow,
   best,
+  beatOf,
   onRemove,
   onImage,
 }: {
@@ -98,6 +122,7 @@ function ScoreCard({
   audition: Props["audition"];
   follow: Props["follow"];
   best: Props["best"];
+  beatOf: Props["beatOf"];
   onRemove: (id: string) => void;
   onImage: (id: string, image: ScoreImage) => void;
 }) {
@@ -156,6 +181,7 @@ function ScoreCard({
           title={score.title}
           meter={parsed.meter}
           bpm={parsed.bpm}
+          beat={beatOf(score.id)}
         />
       )}
       <div className="drill-actions">
@@ -201,7 +227,7 @@ function ScoreCard({
   );
 }
 
-export default function MyScores({ audition, follow, best }: Props) {
+export default function MyScores({ audition, follow, best, beatOf }: Props) {
   const [text, setText] = useState(SAMPLE);
   const [note, setNote] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ReturnType<typeof parseScore> | null>(null);
@@ -237,6 +263,7 @@ export default function MyScores({ audition, follow, best }: Props) {
           image: image.dataUrl,
           imageWidth: image.width,
           imageHeight: image.height,
+          beats: image.beats,
         }),
       );
       setNote(`已存下「${next.title}」`);
@@ -309,6 +336,7 @@ export default function MyScores({ audition, follow, best }: Props) {
             title={parsed.title}
             meter={parsed.meter}
             bpm={parsed.bpm}
+            beat={beatOf("my-preview")}
           />
           {parsed.tab && (
             <div className="drill-actions">
@@ -333,6 +361,7 @@ export default function MyScores({ audition, follow, best }: Props) {
               audition={audition}
               follow={follow}
               best={best}
+              beatOf={beatOf}
               onRemove={(id) => setScores(removeScore(id))}
               onImage={handleImage}
             />

@@ -233,6 +233,8 @@ interface MasterBarBounds {
 
 interface StaffSystemBounds {
   bars?: MasterBarBounds[];
+  /** 这一行谱的纵向范围（播放时画高亮条要用）。 */
+  visualBounds?: VisualBounds;
 }
 
 interface BoundsLookup {
@@ -242,10 +244,18 @@ interface BoundsLookup {
 /**
  * 每拍的分割线（和 tab-score 生成的图用同一套算法）。
  * 注意 beats 是「同一时刻的一组音」，不是「拍」：先按 ticks 算拍点，再取相邻音的中点。
+ * 返回值里 `bands` 是每一拍的区间（还带这一行谱的纵向范围，播放时画高亮条用），
+ * `edges` 是分割线的横坐标（第一条是小节头，不画线）。
  */
-function beatEdges(bounds: BoundsLookup | undefined): number[] {
-  const edges: number[] = [];
+function beatBands(bounds: BoundsLookup | undefined): {
+  bands: { x: number; w: number; y: number; h: number }[];
+  edges: number[];
+} {
+  const bands: { x: number; w: number; y: number; h: number }[] = [];
   for (const system of bounds?.staffSystems ?? []) {
+    const systemBox = system.visualBounds;
+    const systemY = systemBox?.y ?? 0;
+    const systemH = systemBox?.h ?? 0;
     for (const masterBarBounds of system.bars ?? []) {
       for (const barBounds of masterBarBounds.bars ?? []) {
         const beats = (barBounds.beats ?? [])
@@ -261,6 +271,7 @@ function beatEdges(bounds: BoundsLookup | undefined): number[] {
         const ticksPerBeat = barTicks / perBar;
         const barStart = (beats[0].beat as { playbackStart: number }).playbackStart;
         const slot = bar.w / perBar;
+        const cuts = [bar.x];
         for (let k = 1; k < perBar; k += 1) {
           const target = barStart + k * ticksPerBeat;
           const nextIndex = beats.findIndex(
@@ -275,19 +286,33 @@ function beatEdges(bounds: BoundsLookup | undefined): number[] {
             at = prev === bar ? next.x : (prev.x + prev.w + next.x) / 2;
           }
           at = Math.min(Math.max(at, bar.x + slot * (k - 0.35)), bar.x + slot * (k + 0.35));
-          if (edges.length === 0 || at > edges[edges.length - 1] + 2) edges.push(at);
+          if (at > cuts[cuts.length - 1] + 2) cuts.push(at);
+        }
+        cuts.push(bar.x + bar.w);
+        for (let k = 0; k + 1 < cuts.length; k += 1) {
+          const w = cuts[k + 1] - cuts[k];
+          if (w > 0.5) bands.push({ x: cuts[k], w, y: systemY, h: systemH });
         }
       }
     }
   }
-  return edges;
+  // 分割线画在每一拍的开头（第一拍是小节头，不画）
+  const edges = bands.slice(1).map((band) => band.x);
+  return { bands, edges };
 }
 
 const BEAT_LINE_COLOR = "#8b949e";
 const BEAT_LINE_OPACITY = 0.32;
 
 /** 把 alphaTab 画在页面里的 DOM 拼成一张独立 SVG：自带字体、自带拍线，可单独转成图片。 */
-async function composeSvg(state: Engine): Promise<string> {
+/** 谱面画成一张独立 SVG，外加每一拍的区间（播放时画高亮条用；同一份 tex 只画一次）。 */
+export interface PreviewScore {
+  svg: string;
+  /** 每一拍的 `{x, w, y, h}`，SVG 用户单位（和 `svg` 的 viewBox 同一套坐标）。 */
+  beats: { x: number; w: number; y: number; h: number }[];
+}
+
+async function composeSvg(state: Engine): Promise<PreviewScore> {
   const svg = state.host.querySelector("svg") as SVGSVGElement | null;
   if (!svg) throw new Error("谱面渲染超时");
   const width = svg.width.baseVal.value;
@@ -296,8 +321,9 @@ async function composeSvg(state: Engine): Promise<string> {
 
   const extent = staffExtent(svg);
   const lookup = (state.api as unknown as { boundsLookup?: BoundsLookup }).boundsLookup;
+  const { bands, edges } = beatBands(lookup);
   const lines = extent
-    ? beatEdges(lookup)
+    ? edges
         .map(
           (x) =>
             `<line x1="${x.toFixed(2)}" y1="${extent.top.toFixed(2)}" x2="${x.toFixed(2)}" y2="${extent.bottom.toFixed(2)}" stroke="${BEAT_LINE_COLOR}" stroke-opacity="${BEAT_LINE_OPACITY}" stroke-width="1" stroke-dasharray="2 5" />`,
@@ -326,23 +352,23 @@ async function composeSvg(state: Engine): Promise<string> {
   const viewY = box.y - margin;
   const viewWidth = box.width + margin * 2;
   const viewHeight = box.height + margin * 2;
-  return (
+  const markup =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${viewWidth}" height="${viewHeight}" viewBox="${viewX} ${viewY} ${viewWidth} ${viewHeight}" style="font-family:'alphaTab'">` +
     (css ? `<style>${css}</style>` : "") +
     restyle(svg.innerHTML) +
     lines +
-    `</svg>`
-  );
+    `</svg>`;
+  return { svg: markup, beats: bands };
 }
 
-const svgCache = new Map<string, string>();
+const svgCache = new Map<string, PreviewScore>();
 
-/** 谱面画成一张独立 SVG（同一份 tex 只画一次）。 */
-export async function renderTexToSvg(tex: string): Promise<string> {
+/** 谱面画成一张独立 SVG（同一份 tex 只画一次），顺带给出每一拍的位置。 */
+export async function renderTexToSvg(tex: string): Promise<PreviewScore> {
   const hit = svgCache.get(tex);
   if (hit) return hit;
 
-  const task = async (): Promise<string> => {
+  const task = async (): Promise<PreviewScore> => {
     const state = await ensureEngine();
     await waitForFonts();
     state.errors.length = 0;
@@ -351,9 +377,9 @@ export async function renderTexToSvg(tex: string): Promise<string> {
     state.api.tex(tex);
     await waitForPaint(state, before);
     if (state.errors.length > 0) throw new Error(state.errors[0]);
-    const svg = await composeSvg(state);
-    svgCache.set(tex, svg);
-    return svg;
+    const composed = await composeSvg(state);
+    svgCache.set(tex, composed);
+    return composed;
   };
 
   const run = queue.then(task, task);
