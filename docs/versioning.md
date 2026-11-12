@@ -14,7 +14,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 
 | 包 | 版本号 | 说明 |
 |---|---|---|
-| 根 `package.json` | 产品版本 | 与 git tag 一致 |
+| 根 `package.json` | 产品版本 | MINOR 版本与 git tag 一一对应（patch 不打 tag） |
 | `apps/web` | 产品版本 | 跟随根 |
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
@@ -43,8 +43,9 @@ v0.26.1 只是包名改名与发布；v0.27.0 把「我的谱」的预览也改�
 2. 更新 `CHANGELOG.md`：把 `Unreleased` 的内容移到新版本号下，写日期。
 3. 更新根 `package.json` 与 `apps/web` 的版本号；`packages/core` 只在自己的 API 变了时升。
 4. 提交：`chore(release): v0.4.1`。
-5. 打 annotated tag：`git tag -a v0.4.1 -m "v0.4.1"`。
-6. 推送：`git push origin main --tags`（本仓库目前没配 remote，推送前先 `git remote add`）。
+5. **只有 MINOR（`vX.Y.0`）才打 tag**：`git tag -a v0.31.0 -m "v0.31.0"`；
+   patch 版本（`v0.30.1`、`v0.30.2`…）只 bump + 记 CHANGELOG + 提交，**不打 tag**。
+6. 推送：`git push origin main`（有 tag 时再 `--tags`）。
 
 ## 提交信息
 
@@ -61,6 +62,8 @@ scope：`core` / `web` / `docs` / `repo`。
 
 ## 追溯
 
-- 每个版本一个 tag；`git log v0.2.4..v0.3.0` 可看该版本全部提交。
-- `CHANGELOG.md` 按版本记录“做了什么”，tag 指向对应提交。
+- **tag 只打在 MINOR（`vX.Y.0`）上**：`git log v0.29.0..v0.30.0` 可看这一段（一个功能版本）的全部提交；
+  patch 版本靠 `CHANGELOG.md` 的条目与提交信息定位，不再单独打 tag
+  （2026-11-12 清理：删掉了 33 个 patch tag，只留 30 个 MINOR tag）。
+- `CHANGELOG.md` 按版本记录“做了什么”，MINOR tag 指向对应提交。
 - 破坏性变更在提交 body 里写 `BREAKING CHANGE:`。
