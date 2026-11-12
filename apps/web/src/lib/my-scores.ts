@@ -207,6 +207,40 @@ export function setScoreImage(
   return persist(scores);
 }
 
+/** 改一条已经存下的谱：换掉原文/标题/图，`createdAt` 保持不动（它还排在原来的位置）。 */
+export function updateScore(
+  id: string,
+  input: {
+    title: string;
+    ascii: string;
+    image?: string;
+    imageWidth?: number;
+    imageHeight?: number;
+    beats?: { x: number; w: number; y: number; h: number }[];
+  },
+): MyScore[] {
+  const scores = loadScores().map((item) =>
+    item.id === id
+      ? {
+          ...item,
+          title: input.title.trim() || "我的谱",
+          ascii: input.ascii,
+          image: input.image,
+          imageWidth: input.imageWidth,
+          imageHeight: input.imageHeight,
+          beats: input.beats,
+        }
+      : item,
+  );
+  return persist(scores);
+}
+
 export function removeScore(id: string): MyScore[] {
   return persist(loadScores().filter((item) => item.id !== id));
+}
+
+/** 导出用的文件名：把标题里不能出现在文件名里的字符换掉。 */
+export function scoreFileName(title: string): string {
+  const cleaned = title.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim();
+  return `${cleaned || "我的谱"}.png`;
 }

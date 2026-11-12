@@ -345,6 +345,48 @@ try {
     `读到 ${cardImages} 张图`,
   );
 
+  // 9d) 点「编辑」把这条放回编辑区，按钮变成「保存修改」；改完能存回同一条
+  const editClick = js(
+    "(() => { const b = [...document.querySelectorAll('.my-card button')].find(n => n.textContent.trim() === '编辑'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const editState = String(
+    js(
+      "(() => { const t = document.querySelector('#my-score-input'); const b = [...document.querySelectorAll('.my-actions button')].find(n => n.textContent.trim() === '保存修改'); return `${t && t.value.length > 0 ? 'filled' : 'empty'}|${b ? 'save' : 'nosave'}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    editClick === '"ok"' && editState === "filled|save",
+    "我的谱：点「编辑」把谱放回编辑区，按钮变成「保存修改」",
+    editState,
+  );
+  const editedSave = js(
+    "(() => { const b = [...document.querySelectorAll('.my-actions button')].find(n => n.textContent.trim() === '保存修改'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  await sleep(1200);
+  const afterEdit = String(
+    js(
+      "(() => `${document.querySelectorAll('.my-card').length}|${[...document.querySelectorAll('.my-actions button')].some(n => n.textContent.trim() === '存下这条') ? 'new' : 'edit'}`)()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    editedSave === '"ok"' && afterEdit === "1|new",
+    "我的谱：保存修改后还是同一条（不会多出一条）",
+    afterEdit,
+  );
+
+  // 9e) 卡片上有「导出 PNG」，指向这张图的 data URL
+  const exportLink = String(
+    js(
+      "(() => { const a = document.querySelector('.my-card a[download]'); return a ? `${a.getAttribute('href')?.slice(0, 14)}|${a.getAttribute('download')?.endsWith('.png') ? 'png' : 'x'}` : 'none'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    exportLink.startsWith("data:image/png") && exportLink.endsWith("|png"),
+    "我的谱：卡片上有「导出 PNG」，文件名是 .png",
+    exportLink,
+  );
+
   // 收尾：把刚存的那条删掉，别把下次跑的环境弄脏
   // 9c) 存下的卡片点试听，谱上也要有跟着拍走的竖条
   const cardPlay = js(

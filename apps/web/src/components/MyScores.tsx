@@ -7,7 +7,9 @@ import {
   loadScores,
   parseScore,
   removeScore,
+  scoreFileName,
   setScoreImage,
+  updateScore,
   type MyScore,
 } from "../lib/my-scores";
 
@@ -116,6 +118,7 @@ function ScoreCard({
   best,
   beatOf,
   onRemove,
+  onEdit,
   onImage,
 }: {
   score: MyScore;
@@ -124,6 +127,7 @@ function ScoreCard({
   best: Props["best"];
   beatOf: Props["beatOf"];
   onRemove: (id: string) => void;
+  onEdit: (score: MyScore) => void;
   onImage: (id: string, image: ScoreImage) => void;
 }) {
   const parsed = useMemo(() => parseScore(score.ascii), [score.ascii]);
@@ -226,6 +230,24 @@ function ScoreCard({
         <button
           type="button"
           className="btn btn-quiet"
+          onClick={() => onEdit(score)}
+          aria-label={`编辑 ${score.title}`}
+        >
+          编辑
+        </button>
+        {image && (
+          <a
+            className="btn btn-quiet"
+            href={image.dataUrl}
+            download={scoreFileName(score.title)}
+            aria-label={`导出 ${score.title} 的 PNG`}
+          >
+            导出 PNG
+          </a>
+        )}
+        <button
+          type="button"
+          className="btn btn-quiet"
           onClick={() => onRemove(score.id)}
           aria-label={`删掉 ${score.title}`}
         >
@@ -242,11 +264,30 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
   const [parsed, setParsed] = useState<ReturnType<typeof parseScore> | null>(null);
   const [scores, setScores] = useState<MyScore[]>(() => loadScores());
   const [saving, setSaving] = useState(false);
+  /** 正在改哪一条（null = 新写一条）。 */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
   const preview = useScoreImage(parsed?.tab ? parsed.tex : null);
 
   const handleImage = useCallback((id: string, image: ScoreImage) => {
     setScores(setScoreImage(id, image));
   }, []);
+
+  /** 把存下的谱放回编辑区，改完再存回同一条。 */
+  function startEdit(score: MyScore) {
+    setEditingId(score.id);
+    setText(score.ascii);
+    setParsed(null);
+    setNote(`正在改「${score.title}」，改完点「保存修改」`);
+    editorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setText(SAMPLE);
+    setParsed(null);
+    setNote(null);
+  }
 
   function doPreview() {
     const next = parseScore(text);
@@ -265,17 +306,22 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
     setSaving(true);
     try {
       const image = await renderScoreImage(next.tex);
-      setScores(
-        addScore({
-          title: next.title,
-          ascii: text,
-          image: image.dataUrl,
-          imageWidth: image.width,
-          imageHeight: image.height,
-          beats: image.beats,
-        }),
-      );
-      setNote(`已存下「${next.title}」`);
+      const payload = {
+        title: next.title,
+        ascii: text,
+        image: image.dataUrl,
+        imageWidth: image.width,
+        imageHeight: image.height,
+        beats: image.beats,
+      };
+      if (editingId) {
+        setScores(updateScore(editingId, payload));
+        setNote(`已保存「${next.title}」`);
+      } else {
+        setScores(addScore(payload));
+        setNote(`已存下「${next.title}」`);
+      }
+      setEditingId(null);
     } catch (error) {
       setNote((error as Error).message);
     } finally {
@@ -296,7 +342,7 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
         <code>-</code> 是延音，用 <code>|</code> 分小节；时值看列距，不写符号。
         开头可以写 <code>title:</code>、<code>tempo:</code>、<code>ts: 4/4</code>。
       </p>
-      <div className="my-editor">
+      <div className="my-editor" ref={editorRef}>
         <label className="visually-hidden" htmlFor="my-score-input">
           粘贴六线谱
         </label>
@@ -317,12 +363,18 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
             预览
           </button>
           <button type="button" className="btn" onClick={() => void doSave()} disabled={saving}>
-            {saving ? "存图中…" : "存下这条"}
+            {saving ? "存图中…" : editingId ? "保存修改" : "存下这条"}
           </button>
+          {editingId && (
+            <button type="button" className="btn btn-quiet" onClick={cancelEdit}>
+              取消修改
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-quiet"
             onClick={() => {
+              setEditingId(null);
               setText(SAMPLE);
               setParsed(null);
               setNote(null);
@@ -371,7 +423,11 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
               follow={follow}
               best={best}
               beatOf={beatOf}
-              onRemove={(id) => setScores(removeScore(id))}
+              onRemove={(id) => {
+                setScores(removeScore(id));
+                if (editingId === id) setEditingId(null);
+              }}
+              onEdit={startEdit}
               onImage={handleImage}
             />
           ))}

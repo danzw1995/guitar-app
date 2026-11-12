@@ -684,7 +684,7 @@ export default function Rhythm() {
       <MyScores audition={audition} best={best} follow={setTarget} beatOf={beatOf} />
 
       <p className="practice-foot">
-        时值练不稳时只有一个办法：**把 BPM 降到能听见每一拍**，稳了再加 5。
+        时值练不稳时只有一个办法：<b>把 BPM 降到能听见每一拍</b>，稳了再加 5。
         跟着这套顺序走：数拍词 → 60 BPM 单音 → 加到 80 → 再换到和弦上。
       </p>
     </section>
