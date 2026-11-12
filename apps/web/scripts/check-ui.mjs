@@ -594,6 +594,34 @@ try {
     `${followFields} / ${loopOn} / ${countInText} / ${barText}`,
   );
 
+  // 16) 搜索：输入「切音」只剩几条，清掉后恢复 103 条
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js(
+    "(() => { const i = document.querySelector('#rhythm-search'); const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; setter.call(i, '切音'); i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(500);
+  const searchState = String(
+    js(
+      "(() => { const n = document.querySelector('.rhythm-search-note'); return (n ? n.textContent : 'none') + '|' + document.querySelectorAll('.drill-card').length; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.rhythm-search button')].find(n => n.textContent.trim() === '清掉'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const clearedCards = Number(
+    String(js("(() => String(document.querySelectorAll('.drill-card').length))()")).replace(/^"|"$/g, ""),
+  );
+  const [searchNote, searchedCards] = searchState.split("|");
+  log(
+    /^找到 \d+ 条$/.test(searchNote) && Number(searchedCards) > 0 && Number(searchedCards) < 103 && clearedCards === 103,
+    "搜索：输入「切音」只剩几条，清掉后恢复全部",
+    `${searchState} / 清掉后 ${clearedCards}`,
+  );
+
 } finally {
   ab(["close"]);
   console.log(

@@ -512,6 +512,20 @@ for (const selector of ["select", "input", "textarea"]) {
     (groupBar.get("margin-bottom") ?? "") === "0",
     `margin-bottom = ${groupBar.get("margin-bottom") ?? "未设置"}`,
   );
+
+  // 节奏页搜索框：能看清边界（有边框与底色）
+  const searchInput = narrowDecls(".rhythm-search input");
+  expect(
+    "节奏页搜索框有边框和底色（不是一条裸线）",
+    Boolean(searchInput.get("border")) && Boolean(searchInput.get("background")),
+    `border = ${searchInput.get("border") ?? "未设置"}, background = ${searchInput.get("background") ?? "未设置"}`,
+  );
+  const emptyNote = narrowDecls(".rhythm-empty");
+  expect(
+    "搜不到的提示用弱化色，不抢卡片",
+    (emptyNote.get("color") ?? "") === "#6e7681",
+    `color = ${emptyNote.get("color") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

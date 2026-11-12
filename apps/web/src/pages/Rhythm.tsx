@@ -110,6 +110,8 @@ function doneRatio(ids: string[], records: RhythmRecords): { done: number; total
  */
 export default function Rhythm() {
   const [level, setLevel] = useState<Level | 0>(0);
+  /** 搜索词：在六块练习里按名字、音型、数拍词、和弦找。 */
+  const [query, setQuery] = useState("");
   const [target, setTarget] = useState<FollowTarget | null>(null);
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   /** 正在试听哪一条、播到第几拍（`null` = 没在播）。 */
@@ -136,6 +138,32 @@ export default function Rhythm() {
     () => ACCOMPANIMENTS.filter((item) => level === 0 || item.level === level),
     [level],
   );
+
+  // 搜索：只在六块练习里筛（今日三条与等级筛选是另一回事）
+  const q = query.trim().toLowerCase();
+  const hit = (...parts: (string | number | undefined)[]) =>
+    q === "" || parts.join(" ").toLowerCase().includes(q);
+  const shownDrills = drills.filter((drill) => hit("时值", drill.name, drill.focus, drill.count, ...drill.tips));
+  const shownReading = reading.filter((drill) =>
+    hit("跟读 朗读", drill.no, drill.name, drill.focus, drill.meter, drill.count, ...drill.tips),
+  );
+  const shownStrums = strums.filter((drill) =>
+    hit("扫弦", drill.no, drill.name, drill.figure, drill.count, drill.tip),
+  );
+  const shownAccompaniments = accompaniments.filter((item) =>
+    hit("伴奏 分解", item.no, item.name, item.figure, item.pattern, item.chords.join(" "), item.tip),
+  );
+  const shownPatterns = patterns.filter((item) => hit("扫弦 节奏型", item.name, item.count, item.tip));
+  const shownSnippets = SONG_SNIPPETS.filter((item) =>
+    hit("片段 曲子", item.name, item.style, item.chords.join(" "), item.tip),
+  );
+  const shownTotal =
+    shownDrills.length +
+    shownReading.length +
+    shownStrums.length +
+    shownAccompaniments.length +
+    shownPatterns.length +
+    shownSnippets.length;
 
   /** 记成绩：跟练记录（最高速度）+ 当天练习时长（让连续天数也涨）。 */
   function record(result: { bpm: number; minutes: number }) {
@@ -275,6 +303,30 @@ export default function Rhythm() {
         </p>
       </div>
 
+      <div className="rhythm-search">
+        <input
+          id="rhythm-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="找练习：切音、三连音、6/8、C–Am–F、前八后十六…"
+          aria-label="搜索节奏练习"
+        />
+        {query ? (
+          <button type="button" className="btn-quiet" onClick={() => setQuery("")}>
+            清掉
+          </button>
+        ) : null}
+        <span className="rhythm-search-note">
+          {query ? `找到 ${shownTotal} 条` : `共 ${READING_DRILLS.length + RHYTHM_DRILLS.length + STRUM_DRILLS.length + ACCOMPANIMENTS.length + STRUM_LIBRARY.length + SONG_SNIPPETS.length} 条`}
+        </span>
+      </div>
+      {query && shownTotal === 0 ? (
+        <p className="rhythm-search-empty">
+          没找到。试试：切音、十六分、三连音、6/8、扫弦、伴奏、附点、前八后十六。
+        </p>
+      ) : null}
+
       <h3 className="practice-h3">
         跟读练习
         <span className="practice-h3-hint">
@@ -285,7 +337,8 @@ export default function Rhythm() {
         </span>
       </h3>
       <div className="drill-grid">
-        {reading.map((drill) => (
+        {shownReading.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
+        {shownReading.map((drill) => (
           <article key={drill.id} id={`drill-${drill.id}`} className="drill-card">
             <header className="drill-head">
               <h4>
@@ -350,7 +403,8 @@ export default function Rhythm() {
         </span>
       </h3>
       <div className="drill-grid">
-        {drills.map((drill) => (
+        {shownDrills.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
+        {shownDrills.map((drill) => (
           <article key={drill.id} id={`drill-${drill.id}`} className="drill-card">
             <header className="drill-head">
               <h4>{drill.name}</h4>
@@ -422,7 +476,8 @@ export default function Rhythm() {
         C 和弦第 6 弦不弹，按六线谱惯例<b>留空</b>，不是闷音。
       </p>
       <div className="drill-grid">
-        {strums.map((drill) => {
+        {shownStrums.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
+        {shownStrums.map((drill) => {
           const mutes = new Set(
             drill.tab.notes
               .filter((note) => note.muted && note.beat < drill.tab.beatsPerBar)
@@ -503,7 +558,8 @@ export default function Rhythm() {
         分解型练熟以后，换成任何一首这四个和弦的歌都能用。
       </p>
       <div className="drill-grid">
-        {accompaniments.map((item) => (
+        {shownAccompaniments.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
+        {shownAccompaniments.map((item) => (
           <article key={item.id} id={`drill-${item.id}`} className="drill-card">
             <header className="drill-head">
               <h4>
@@ -564,7 +620,8 @@ export default function Rhythm() {
         <span className="practice-h3-hint">手上真正要做的动作，箭头是方向</span>
       </h3>
       <div className="drill-grid">
-        {patterns.map((pattern) => (
+        {shownPatterns.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
+        {shownPatterns.map((pattern) => (
           <article key={pattern.id} className="drill-card">
             <header className="drill-head">
               <h4>{pattern.name}</h4>
@@ -614,7 +671,8 @@ export default function Rhythm() {
         <span className="practice-h3-hint">连着和弦弹，最接近真实曲子的样子</span>
       </h3>
       <div className="drill-grid">
-        {SONG_SNIPPETS.map((snippet) => (
+        {shownSnippets.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
+        {shownSnippets.map((snippet) => (
           <article key={snippet.id} className="drill-card">
             <header className="drill-head">
               <h4>{snippet.name}</h4>
