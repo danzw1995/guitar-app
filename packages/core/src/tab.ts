@@ -108,6 +108,39 @@ export function tabOf(notes: TabNote[], opts: Partial<Tab> = {}): Tab {
   return make(notes, opts);
 }
 
+/**
+ * 谱面对读屏的一句话。
+ *
+ * 谱面要么是预渲染的 PNG、要么是 alphaTab 画出来的字形，都没有语义，
+ * 所以这句说明只能自己拼。v0.33.0 之前它长在自绘排版引擎里（`tab-layout.ts`），
+ * 那套引擎删掉后搬到这里——只依赖 `Tab` 数据，跟「怎么画」无关。
+ */
+export function tabAriaLabel(tab: Tab): string {
+  // 同一拍上的多个音算一个起音，时值取最长的那根（和弦按整拍响）。
+  const onsets = new Map<number, number>();
+  for (const note of tab.notes) {
+    const beat = Math.round(note.beat * 1000) / 1000;
+    onsets.set(beat, Math.max(onsets.get(beat) ?? 0, note.dur));
+  }
+  const beats = [...onsets.keys()].sort((a, b) => a - b);
+
+  // 空出来的地方会画休止符，说明话里也要提一句（否则读屏听着像漏了音）。
+  let rests = 0;
+  for (const beat of beats) {
+    const end = beat + (onsets.get(beat) ?? 0);
+    const bar = Math.floor(beat / tab.beatsPerBar);
+    const barEnd = (bar + 1) * tab.beatsPerBar;
+    const next = beats.find((other) => other > beat && Math.floor(other / tab.beatsPerBar) === bar);
+    const limit = next === undefined ? barEnd : Math.min(next, barEnd);
+    if (limit - end > 0.12) rests++;
+  }
+
+  const range = tab.range ? `（${tab.range}）` : "";
+  const restText = rests > 0 ? `、${rests} 处休止` : "";
+  const caption = tab.caption ? `。${tab.caption}` : "";
+  return `六线谱${range}，${tab.bars} 小节，共 ${tab.notes.length} 个音${restText}${caption}`;
+}
+
 /** 一串音按等间隔排开（八分、十六分都靠它）。 */
 export function sequence(  positions: { s: number; f: number; tech?: Tech; bend?: number }[],
   opts: { step?: number; start?: number; dur?: number } & Partial<Tab> = {},

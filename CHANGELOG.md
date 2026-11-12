@@ -9,6 +9,17 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.33.0] - 2026-11-12
+
+### Removed
+- 自绘的六线谱排版引擎：`apps/web/src/lib/tab-layout.ts`（548 行）、
+  `apps/web/src/components/TabDiagram.tsx`、`apps/web/scripts/check-tab.ts`（13 项断言）。
+  谱面从 v0.28.0 起就是预渲染的 PNG，这套引擎只剩「生成读屏描述」一个用途。
+
+### Added
+- core 的 `tabAriaLabel(tab)`：一句话说清几小节、几个音、几处休止，
+  带 `range` 与 `caption`；`TabScore` 的 `alt` 改用它。对应新增一条核心测试。
+
 ## [0.32.0] - 2026-11-12
 
 ### Added

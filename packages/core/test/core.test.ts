@@ -114,6 +114,7 @@ import {
   ACCOMPANIMENTS,
   SONG_SNIPPETS,
   tabToAlphaTex,
+  tabAriaLabel,
   tabOf,
   n,
 } from "../src/index.ts";
@@ -1272,6 +1273,31 @@ test("音阶谱必须严格上行：不能因为换弦空弦重复或回头", ()
   const cMids = c.notes.map((note) => STANDARD_TUNING.strings[note.s - 1] + note.f);
   assert.equal(cMids.length, 8);
   for (let i = 1; i < cMids.length; i++) assert.ok(cMids[i] > cMids[i - 1]);
+});
+
+test("谱面的读屏描述：一句话说清几小节、几个音、几处休止", () => {
+  const plain = tabOf([n(5, 3, 0), n(4, 0, 1), n(5, 3, 2), n(4, 0, 3)], { bars: 1 });
+  const text = tabAriaLabel(plain);
+  assert.match(text, /^六线谱/);
+  assert.match(text, /1 小节/);
+  assert.match(text, /共 4 个音/);
+  assert.doesNotMatch(text, /休止/, "没有空拍就不提休止");
+
+  // 第 2 拍空着 → 补一处休止；range 与 caption 也要带上
+  const withRest = tabOf([n(5, 3, 0), n(4, 0, 2, 2)], {
+    bars: 1,
+    range: "1–5 品",
+    caption: "C 大调音阶",
+  });
+  const restText = tabAriaLabel(withRest);
+  assert.match(restText, /（1–5 品）/);
+  assert.match(restText, /1 处休止/);
+  assert.match(restText, /C 大调音阶$/);
+
+  // 跟读练习里那条「八分 + 休止」必须报出休止处数
+  const drill = READING_DRILLS.find((item) => item.id === "rd-08");
+  assert.ok(drill);
+  assert.match(tabAriaLabel(drill.tab), /处休止/);
 });
 
 test("谱子能摊成试听时间轴：拍位换秒、同拍低音弦在前", () => {

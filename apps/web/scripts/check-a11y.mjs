@@ -12,6 +12,8 @@ import { fileURLToPath } from "node:url";
 
 const APP = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (p) => readFileSync(join(APP, p), "utf8");
+/** core 里的文件在仓库另一头，单独给一个读法。 */
+const readCore = (p) => readFileSync(join(APP, "..", "..", "packages", "core", p), "utf8");
 
 let failed = 0;
 const check = (label, fn) => {
@@ -181,24 +183,17 @@ check("练习页：进度条语义、计时器与按钮状态", () => {
 });
 
 check("六线谱：整张谱对读屏是一句话，练习页真的挂了谱子", () => {
-  const tab = read("src/components/TabDiagram.tsx");
-  expect(
-    tab,
-    ['role="img"', "aria-label={scene.ariaLabel}", "<figcaption", "layoutTab"],
-    "TabDiagram.tsx",
-  );
-
-  const layout = read("src/lib/tab-layout.ts");
-  expect(layout, ["ariaLabel", "六线谱", "tab-string"], "tab-layout.ts");
-
-  // 节奏页的谱是一张预渲染的 PNG（`public/scores/`），图片没有语义，
-  // 说明话由 alt 给——alt 又来自 layoutTab 生成的那句话。
+  // 谱面是预渲染的 PNG（`public/scores/`），图片没有语义，
+  // 说明话由 alt 给——alt 来自 core 的 `tabAriaLabel()`。
   const tabScore = read("src/components/TabScore.tsx");
   expect(
     tabScore,
-    ["layoutTab(tab).ariaLabel", "alt={label}", "scores/${id}.png"],
+    ["tabAriaLabel(tab)", "alt={label}", "scores/${id}.png"],
     "TabScore.tsx",
   );
+
+  const coreTab = readCore("src/tab.ts");
+  expect(coreTab, ["export function tabAriaLabel", "六线谱"], "core/src/tab.ts");
 
   const practice = read("src/pages/Practice.tsx");
   expect(

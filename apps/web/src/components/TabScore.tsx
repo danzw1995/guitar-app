@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { type Tab } from "@guitar/core";
-import { layoutTab } from "../lib/tab-layout";
+import { tabAriaLabel, type Tab } from "@guitar/core";
 import { SCORES_VERSION } from "../lib/scores-version";
 import { useScoreBeats } from "../lib/score-beats";
 
@@ -21,7 +20,7 @@ interface Props {
  * 这样做前端不用背 alphaTab 那 ~300KB，也不用在浏览器里排队渲染，
  * 卡片上就是一张普通的 `<img>`，能交给浏览器懒加载。
  *
- * 读屏的那句话从 `layoutTab` 取——图片本身没有语义。
+ * 读屏的那句话从 `tabAriaLabel()` 取（core 里的纯函数）——图片本身没有语义。
  * `?v=` 是 `gen:scores` 写进去的内容指纹：谱面重新生成后文件名不变，
  * 不加这个参数浏览器会一直用旧的缓存图。
  *
@@ -29,7 +28,7 @@ interface Props {
  * 图片是死的，哪一拍画在哪个像素只有生成时才量得准。
  */
 export default function TabScore({ id, tab, className, beat }: Props) {
-  const label = useMemo(() => layoutTab(tab).ariaLabel, [tab]);
+  const label = useMemo(() => tabAriaLabel(tab), [tab]);
   const beats = useScoreBeats();
   const info = beats[id];
   const band = beat !== null && beat !== undefined ? info?.beats[beat] : undefined;

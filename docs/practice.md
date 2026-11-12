@@ -106,8 +106,9 @@ S5 应用块最大。
   `chromaticTab` / `chromaticAcrossTab`（爬格子）、`hammerTab` / `pullTab` / `trillTab` /
   `slideTab` / `bendTab` / `vibratoTab`、`arpeggioTab`、`lickTab`（乐句）。
   生成器而不是手写 ASCII 谱：音高由 `pitchClassAt` 现算，不会写错品位。
-- `apps/web/src/components/TabDiagram.tsx`：画成 SVG。一拍的宽度按**同一根弦上最近两个音的间隔**
-  算，所以和弦不会把谱面撑开、十六分不会挤在一起；超宽横向滚动。
+- ~~`apps/web/src/components/TabDiagram.tsx`：画成 SVG~~ —— **v0.33.0 已删**。谱面从 v0.28.0 起
+  由 `@danzw777/tab-score` 预渲染成 PNG（`apps/web/public/scores/`），页面里只剩 `<img class="tab-score">`；
+  原来那套自绘引擎（`tab-layout.ts`）删掉后，读屏描述改由 core 的 `tabAriaLabel()` 拼。
 - 谱面元素：弦线与弦名、小节线、小节序号、品数、连奏小弧线（h / p / s）、推弦 `7b9`、
   揉弦 `7~`、扫弦箭头。
 - 正确性在 Node 里单测：每个音的弦号/品号/拍位合法、技巧类必须标技法、和弦同一拍多根弦。
