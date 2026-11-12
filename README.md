@@ -83,6 +83,13 @@ pnpm run check:ui                               # 默认连 127.0.0.1:5173，也
 pnpm run compare:boards                         # 板书截图 vs 我们渲染的谱，逐条对照
 ```
 
+手机端布局检查（Playwright + WebKit，三个尺寸 × 8 个页面，同样需要先 `pnpm dev`）：
+
+```powershell
+cd apps/web; node node_modules/playwright/cli.js install webkit   # 一次性，约 90MB
+pnpm run check:mobile                                             # 横向溢出 / 触控目标 / 折叠
+```
+
 > 需要 pnpm 9+：`npm install -g pnpm`。新增 JSON 必须无 BOM（见 CONTRIBUTING）。
 
 ## 文档

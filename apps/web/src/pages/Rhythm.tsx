@@ -20,6 +20,7 @@ import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
 import MyScores from "../components/MyScores";
 import { useTone } from "../hooks/useTone";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RHYTHM_PICKS } from "../lib/rhythm-index";
 import {
   loadPractice,
@@ -116,6 +117,10 @@ export default function Rhythm() {
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   /** 正在试听哪一条、播到第几拍（`null` = 没在播）。 */
   const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
+  const narrow = useMediaQuery("(max-width: 900px)");
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const isOpen = (key: string) => !narrow || expanded[key] === true;
+  const toggle = (key: string) => setExpanded((prev) => ({ ...prev, [key]: !prev[key] }));
   const { playTab } = useTone();
 
   const drills = useMemo(
@@ -261,7 +266,7 @@ export default function Rhythm() {
         />
       )}
 
-      <details className="practice-metronome" open>
+      <details className="practice-metronome" open={!narrow}>
         <summary>节拍器（先开起来，再看谱）</summary>
         <Metronome />
       </details>
@@ -328,7 +333,18 @@ export default function Rhythm() {
       ) : null}
 
       <h3 className="practice-h3">
-        跟读练习
+        <button
+          type="button"
+          className="block-toggle"
+          aria-expanded={isOpen("reading")}
+          aria-controls={`block-${"reading"}`}
+          onClick={() => toggle("reading")}
+        >
+          <span className="block-caret" aria-hidden="true">
+            {isOpen("reading") ? "\u25be" : "\u25b8"}
+          </span>
+          跟读练习
+        </button>
         <span className="practice-h3-hint">
           整理自《节奏与节拍》{READING_SOURCE}：先念会，再上琴
         </span>
@@ -336,7 +352,10 @@ export default function Rhythm() {
           已练 {readingDone.done}/{readingDone.total}
         </span>
       </h3>
-      <div className="drill-grid">
+      <div
+        id={`block-${"reading"}`}
+        className={`drill-grid ${isOpen("reading") ? "" : "block-closed"}`}
+      >
         {shownReading.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
         {shownReading.map((drill) => (
           <article key={drill.id} id={`drill-${drill.id}`} className="drill-card">
@@ -396,13 +415,27 @@ export default function Rhythm() {
       </div>
 
       <h3 className="practice-h3">
-        时值练习
+        <button
+          type="button"
+          className="block-toggle"
+          aria-expanded={isOpen("rhythm")}
+          aria-controls={`block-${"rhythm"}`}
+          onClick={() => toggle("rhythm")}
+        >
+          <span className="block-caret" aria-hidden="true">
+            {isOpen("rhythm") ? "\u25be" : "\u25b8"}
+          </span>
+          时值练习
+        </button>
         <span className="practice-h3-hint">先跟着数拍词念，再点「跟练」一段一段加</span>
         <span className="block-meter">
           已练 {rhythmDone.done}/{rhythmDone.total}
         </span>
       </h3>
-      <div className="drill-grid">
+      <div
+        id={`block-${"rhythm"}`}
+        className={`drill-grid ${isOpen("rhythm") ? "" : "block-closed"}`}
+      >
         {shownDrills.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
         {shownDrills.map((drill) => (
           <article key={drill.id} id={`drill-${drill.id}`} className="drill-card">
@@ -457,7 +490,18 @@ export default function Rhythm() {
       </div>
 
       <h3 className="practice-h3">
-        扫弦练习
+        <button
+          type="button"
+          className="block-toggle"
+          aria-expanded={isOpen("strum")}
+          aria-controls={`block-${"strum"}`}
+          onClick={() => toggle("strum")}
+        >
+          <span className="block-caret" aria-hidden="true">
+            {isOpen("strum") ? "\u25be" : "\u25b8"}
+          </span>
+          扫弦练习
+        </button>
         <span className="practice-h3-hint">
           整理自《节奏与节拍》{READING_SOURCE} 的 24 条扫弦
         </span>
@@ -475,7 +519,10 @@ export default function Rhythm() {
         <b>P.M.</b> 是切音（palm mute，右手掌根压在琴桥上，那一拍按死发「嗒」）；
         C 和弦第 6 弦不弹，按六线谱惯例<b>留空</b>，不是闷音。
       </p>
-      <div className="drill-grid">
+      <div
+        id={`block-${"strum"}`}
+        className={`drill-grid ${isOpen("strum") ? "" : "block-closed"}`}
+      >
         {shownStrums.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
         {shownStrums.map((drill) => {
           const mutes = new Set(
@@ -544,7 +591,18 @@ export default function Rhythm() {
       </div>
 
       <h3 className="practice-h3">
-        伴奏型
+        <button
+          type="button"
+          className="block-toggle"
+          aria-expanded={isOpen("accomp")}
+          aria-controls={`block-${"accomp"}`}
+          onClick={() => toggle("accomp")}
+        >
+          <span className="block-caret" aria-hidden="true">
+            {isOpen("accomp") ? "\u25be" : "\u25b8"}
+          </span>
+          伴奏型
+        </button>
         <span className="practice-h3-hint">
           整理自《节奏与节拍》{READING_SOURCE} 的 17 条分解伴奏
         </span>
@@ -557,7 +615,10 @@ export default function Rhythm() {
         这里照原样：五小节依次配 C → Am → F → G → C，谱面上的数字就是弦号。
         分解型练熟以后，换成任何一首这四个和弦的歌都能用。
       </p>
-      <div className="drill-grid">
+      <div
+        id={`block-${"accomp"}`}
+        className={`drill-grid ${isOpen("accomp") ? "" : "block-closed"}`}
+      >
         {shownAccompaniments.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
         {shownAccompaniments.map((item) => (
           <article key={item.id} id={`drill-${item.id}`} className="drill-card">
@@ -616,10 +677,24 @@ export default function Rhythm() {
       </div>
 
       <h3 className="practice-h3">
-        扫弦节奏型
+        <button
+          type="button"
+          className="block-toggle"
+          aria-expanded={isOpen("patterns")}
+          aria-controls={`block-${"patterns"}`}
+          onClick={() => toggle("patterns")}
+        >
+          <span className="block-caret" aria-hidden="true">
+            {isOpen("patterns") ? "\u25be" : "\u25b8"}
+          </span>
+          扫弦节奏型
+        </button>
         <span className="practice-h3-hint">手上真正要做的动作，箭头是方向</span>
       </h3>
-      <div className="drill-grid">
+      <div
+        id={`block-${"patterns"}`}
+        className={`drill-grid ${isOpen("patterns") ? "" : "block-closed"}`}
+      >
         {shownPatterns.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
         {shownPatterns.map((pattern) => (
           <article key={pattern.id} className="drill-card">
@@ -667,10 +742,24 @@ export default function Rhythm() {
       </div>
 
       <h3 className="practice-h3">
-        风格片段
+        <button
+          type="button"
+          className="block-toggle"
+          aria-expanded={isOpen("snippets")}
+          aria-controls={`block-${"snippets"}`}
+          onClick={() => toggle("snippets")}
+        >
+          <span className="block-caret" aria-hidden="true">
+            {isOpen("snippets") ? "\u25be" : "\u25b8"}
+          </span>
+          风格片段
+        </button>
         <span className="practice-h3-hint">连着和弦弹，最接近真实曲子的样子</span>
       </h3>
-      <div className="drill-grid">
+      <div
+        id={`block-${"snippets"}`}
+        className={`drill-grid ${isOpen("snippets") ? "" : "block-closed"}`}
+      >
         {shownSnippets.length === 0 ? <p className="rhythm-empty">这一块没有匹配的</p> : null}
         {shownSnippets.map((snippet) => (
           <article key={snippet.id} className="drill-card">

@@ -1,6 +1,6 @@
 {
   "name": "@guitar/web",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --port 4173",
     "gen:scores": "node scripts/gen-scores.ts",
-    "check:backup": "node --test scripts/check-backup.mjs"
+    "check:backup": "node --test scripts/check-backup.mjs",
+    "check:mobile": "node scripts/check-mobile.mjs"
   },
   "dependencies": {
     "@coderline/alphatab": "^1.9.0",
@@ -21,6 +22,8 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "playwright": "^1.65.0",
+    "playwright-core": "1.65.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
   }

@@ -388,6 +388,18 @@ button, select, input { font: inherit; color: inherit; }
   padding: 7px 10px;
   color: var(--text);
   min-height: 40px;
+  max-width: 100%;
+}
+
+/* 触屏上按钮要够大：40×40 是能稳稳点中的下限（WCAG 2.5.5 建议 44，这里是能兼顾桌面观感的折中） */
+@media (pointer: coarse) {
+  .btn,
+  .btn-quiet,
+  .chip,
+  .lesson-play,
+  .follow-field select {
+    min-height: 40px;
+  }
 }
 
 /* mode switch：主线 / 今日挑战 */
@@ -936,6 +948,7 @@ button, select, input { font: inherit; color: inherit; }
 }
 .lesson-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin: 8px 0;
 }
@@ -1638,7 +1651,7 @@ button, select, input { font: inherit; color: inherit; }
 /* 本阶段的练习卡片 */
 .drill-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr));
   gap: 10px;
   margin-bottom: 18px;
 }
@@ -2513,5 +2526,46 @@ button, select, input { font: inherit; color: inherit; }
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* 窄屏：flex 项默认 min-width:auto，长下拉会把整页撑出屏幕（v0.38.0） */
+@media (max-width: 640px) {
+  .toolbar label { min-width: 0; max-width: 100%; }
+  .toolbar select { min-width: 0; }
+}
+
+/* 触屏上小圆片也要够宽，不然「1 2 3 4」这种只有 28px（v0.38.0） */
+@media (pointer: coarse) {
+  .chip { min-width: 40px; justify-content: center; }
+}
+
+/* 节奏页六块：桌面是标题，窄屏是可点开的折叠条（v0.38.0） */
+.block-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: inherit;
+}
+.block-caret {
+  display: none;
+  color: var(--accent);
+  font-size: 12px;
+}
+@media (max-width: 900px) {
+  .block-toggle {
+    cursor: pointer;
+    min-height: 44px;
+  }
+  .block-caret {
+    display: inline;
+  }
+  .drill-grid.block-closed {
+    display: none;
   }
 }

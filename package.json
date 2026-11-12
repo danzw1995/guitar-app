@@ -1,7 +1,7 @@
 {
   "name": "guitar-app",
   "private": true,
-  "version": "0.37.0",
+  "version": "0.38.0",
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm --filter @guitar/web dev",
@@ -18,7 +18,8 @@
     "gen:fingerprints": "node packages/core/scripts/gen-fingerprints.mjs",
     "compare:boards": "node apps/web/scripts/compare-boards.mjs",
     "demo": "pnpm --filter @guitar/core demo",
-    "check:backup": "pnpm --filter @guitar/web run check:backup"
+    "check:backup": "pnpm --filter @guitar/web run check:backup",
+    "check:mobile": "pnpm --filter @guitar/web run check:mobile"
   },
   "devDependencies": {
     "@rollup/rollup-win32-x64-msvc": "4.67.2",
