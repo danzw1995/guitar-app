@@ -497,6 +497,21 @@ for (const selector of ["select", "input", "textarea"]) {
     (narrowDecls(".tab-score").get("max-width") ?? "") === "600px",
     `.tab-score max-width = ${narrowDecls(".tab-score").get("max-width") ?? "未设置"}`,
   );
+
+  // 统计页「节奏与伴奏」的分组进度条：名字、条、计数三列对齐
+  const group = narrowDecls(".stat-group");
+  expect(
+    ".stat-group 是三列网格（名字 / 进度条 / 计数）",
+    (group.get("display") ?? "") === "grid" &&
+      (group.get("grid-template-columns") ?? "").split(/\s+/).length === 3,
+    `display = ${group.get("display") ?? "未设置"}, columns = ${group.get("grid-template-columns") ?? "未设置"}`,
+  );
+  const groupBar = narrowDecls(".stat-group .practice-progress");
+  expect(
+    "统计页分组进度条不吃掉行距（margin 归零）",
+    (groupBar.get("margin-bottom") ?? "") === "0",
+    `margin-bottom = ${groupBar.get("margin-bottom") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

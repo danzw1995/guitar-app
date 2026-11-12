@@ -20,6 +20,7 @@ import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
 import MyScores from "../components/MyScores";
 import { useTone } from "../hooks/useTone";
+import { RHYTHM_PICKS } from "../lib/rhythm-index";
 import {
   loadPractice,
   loadProgress,
@@ -168,31 +169,7 @@ export default function Rhythm() {
   const best = (id: string) => records[id]?.bestBpm;
 
   const today = dateKeyOf(new Date());
-  const picks = useMemo(
-    () =>
-      dailyPicks(
-        [
-          ...READING_DRILLS.map((drill) => ({
-            id: drill.id,
-            label: `练习 ${drill.no} · ${drill.name}`,
-            group: "跟读",
-          })),
-          ...RHYTHM_DRILLS.map((drill) => ({
-            id: drill.id,
-            label: drill.name,
-            group: "时值",
-          })),
-          ...STRUM_DRILLS.map((drill) => ({
-            id: drill.id,
-            label: `练习 ${drill.no} · ${drill.name}`,
-            group: "扫弦",
-          })),
-        ],
-        today,
-        records,
-      ),
-    [today, records],
-  );
+  const picks = useMemo(() => dailyPicks(RHYTHM_PICKS, today, records), [today, records]);
   const picksDone = picks.filter((pick) => records[pick.id]?.lastAt === today).length;
   const readingDone = doneRatio(READING_DRILLS.map((drill) => drill.id), records);
   const rhythmDone = doneRatio(RHYTHM_DRILLS.map((drill) => drill.id), records);

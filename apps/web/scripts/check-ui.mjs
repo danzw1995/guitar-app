@@ -501,6 +501,22 @@ try {
     practiceBand === "none" ? "没看到竖条" : practiceBand,
   );
 
+  // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const statsInfo = String(
+    js(
+      "(() => { const groups = document.querySelectorAll('.stat-group').length; const head = [...document.querySelectorAll('.stat-sub')].some(n => n.textContent.trim() === '节奏与伴奏'); const card = [...document.querySelectorAll('.stat-card')].find(n => n.textContent.includes('最高速度')); const bpm = card ? card.querySelector('b').textContent.trim() : 'none'; return `${groups}|${head ? 'head' : 'nohead'}|${/^(\\d+ BPM|—)$/.test(bpm) ? 'bpm' : bpm}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    statsInfo === "6|head|bpm",
+    "统计页：有「节奏与伴奏」，六块完成度与最高速度都在",
+    statsInfo,
+  );
+
 } finally {
   ab(["close"]);
   console.log(

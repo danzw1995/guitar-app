@@ -7,7 +7,8 @@ import {
   THEORY_LEVEL_IDS,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
-import { loadDaily, loadPractice, loadProgress, type DailyMap } from "../lib/storage";
+import { loadDaily, loadPractice, loadProgress, loadRhythm, type DailyMap } from "../lib/storage";
+import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { fmt, fmtSpan } from "../lib/format";
 import Stars from "../components/Stars";
 
@@ -17,6 +18,16 @@ export default function Stats() {
   const daily = loadDaily() as DailyMap;
   const practice = practiceStats(loadPractice(), dateKeyOf(new Date()));
   const today = dateKeyOf(new Date());
+
+  // 节奏页的跟练成绩：每条练习最快练到多少 BPM、练过几次、上次是哪天。
+  const rhythm = loadRhythm();
+  const rhythmItems = Object.entries(rhythm);
+  const rhythmMinutes = Math.round(rhythmItems.reduce((sum, [, item]) => sum + item.minutes, 0));
+  const rhythmSessions = rhythmItems.reduce((sum, [, item]) => sum + item.sessions, 0);
+  const topRhythm = rhythmItems
+    .map(([id, item]) => ({ id, ...item }))
+    .sort((a, b) => b.bestBpm - a.bestBpm || b.sessions - a.sessions)
+    .slice(0, 5);
 
   const summary = summarizeProgress(LEVEL_IDS, progress);
   const theory = summarizeProgress(THEORY_LEVEL_IDS, progress);
@@ -161,6 +172,63 @@ export default function Stats() {
           </div>
         ))}
       </div>
+
+      <h3 className="stat-sub">节奏与伴奏</h3>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <b>
+            {rhythmItems.length}/{RHYTHM_ITEMS.length}
+          </b>
+          <span>跟练过的条目</span>
+        </div>
+        <div className="stat-card">
+          <b>{rhythmSessions}</b>
+          <span>跟练次数</span>
+        </div>
+        <div className="stat-card">
+          <b>{rhythmMinutes} 分钟</b>
+          <span>跟练累计</span>
+        </div>
+        <div className="stat-card">
+          <b>{topRhythm[0] ? `${topRhythm[0].bestBpm} BPM` : "—"}</b>
+          <span>最高速度</span>
+        </div>
+      </div>
+
+      <div className="stat-groups">
+        {RHYTHM_GROUPS.map((group) => {
+          const items = rhythmItemsOf(group);
+          const done = items.filter((item) => rhythm[item.id]).length;
+          const percent = items.length > 0 ? (done / items.length) * 100 : 0;
+          return (
+            <div className="stat-group" key={group}>
+              <span className="stat-group-name">{group}</span>
+              <span className="practice-progress">
+                <span style={{ width: `${percent}%` }} />
+              </span>
+              <span className="stat-group-count">
+                {done}/{items.length}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {topRhythm.length > 0 ? (
+        <ul className="stat-list">
+          {topRhythm.map((item) => (
+            <li key={item.id}>
+              <span>{rhythmItemById(item.id)?.label ?? item.id}</span>
+              <span className="muted">
+                {item.bestBpm} BPM · 练 {item.sessions} 次
+                {item.lastAt ? ` · ${item.lastAt.slice(5)}` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="hint">还没有跟练记录。去节奏页点任意一条的「跟练」，练完点「记录成绩」。</p>
+      )}
 
       <h3 className="stat-sub">最近战绩</h3>
       {summary.perfectCount === 0 && summary.completed === 0 ? (
