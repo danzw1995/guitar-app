@@ -517,6 +517,31 @@ try {
     statsInfo,
   );
 
+  // 14) 设置页：导出备份（点了之后给一句「已导出 …json」）
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '设置'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const hasBackupButtons = String(
+    js(
+      "(() => { const texts = [...document.querySelectorAll('.backup-actions button')].map(n => n.textContent.trim()); return texts.join('+'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.backup-actions button')].find(n => n.textContent.trim() === '导出备份'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const backupNote = String(
+    js(
+      "(() => { const n = document.querySelector('.backup-note'); return n ? n.textContent.trim() : 'none'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    hasBackupButtons === "导出备份+导入备份" && /^已导出 guitar-lab-backup-\d{4}-\d{2}-\d{2}\.json/.test(backupNote),
+    "设置页：能导出备份，并提示导出的文件名",
+    `${hasBackupButtons} / ${backupNote}`,
+  );
+
 } finally {
   ab(["close"]);
   console.log(

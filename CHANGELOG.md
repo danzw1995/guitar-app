@@ -9,6 +9,15 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.34.0] - 2026-11-12
+
+### Added
+- 设置页新增「数据备份」：「导出备份」把本机 `guitar.*` 打成一个 JSON 下载，
+  「导入备份」读回来后**按记录合并**：关卡与每日挑战留星多的、打卡取并集与更多分钟、
+  跟练成绩取最高 BPM、我的谱按 id 去重（最多 40 条）。换设备、清缓存前存一份就不会丢。
+- `apps/web/src/lib/backup.ts`（`buildBackup` / `parseBackup` / `mergeBackup` / `applyBackup`）与
+  `pnpm check:backup` 的 6 条断言；`check:all` 从四步变五步。
+
 ## [0.33.0] - 2026-11-12
 
 ### Removed

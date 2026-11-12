@@ -373,6 +373,11 @@ button, select, input { font: inherit; color: inherit; }
   margin-bottom: 14px;
 }
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; min-height: 44px; }
+/* 备份：两个按钮一组，窄屏换行时仍然靠右 */
+.backup-row { align-items: flex-start; }
+.backup-actions { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.backup-note { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+.backup-note.error { color: #f0883e; }
 /* 勾选框本身小，但整行是 <label>，点文字也能切换；这里把可视尺寸也放大一点 */
 .settings-row input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--accent); cursor: pointer; }
 .settings-labels { align-items: flex-start; }

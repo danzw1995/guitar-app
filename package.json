@@ -1,7 +1,7 @@
 {
   "name": "guitar-app",
   "private": true,
-  "version": "0.33.0",
+  "version": "0.34.0",
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm --filter @guitar/web dev",
@@ -12,12 +12,13 @@
     "check:pwa": "node apps/web/scripts/check-pwa.mjs",
     "check:a11y": "node apps/web/scripts/check-a11y.mjs",
     "check:ui": "node apps/web/scripts/check-ui.mjs",
-    "check:all": "pnpm test && node apps/web/scripts/check-styles.mjs && node apps/web/scripts/check-pwa.mjs && node apps/web/scripts/check-a11y.mjs",
+    "check:all": "pnpm test && node apps/web/scripts/check-styles.mjs && node apps/web/scripts/check-pwa.mjs && node apps/web/scripts/check-a11y.mjs && pnpm check:backup",
     "gen:icons": "node apps/web/scripts/gen-icons.mjs",
     "gen:levels": "pnpm --filter @guitar/core gen:levels",
     "gen:fingerprints": "node packages/core/scripts/gen-fingerprints.mjs",
     "compare:boards": "node apps/web/scripts/compare-boards.mjs",
-    "demo": "pnpm --filter @guitar/core demo"
+    "demo": "pnpm --filter @guitar/core demo",
+    "check:backup": "pnpm --filter @guitar/web run check:backup"
   },
   "devDependencies": {
     "@rollup/rollup-win32-x64-msvc": "4.67.2",
