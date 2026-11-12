@@ -542,6 +542,58 @@ try {
     `${hasBackupButtons} / ${backupNote}`,
   );
 
+  // 15) 跟练：预备拍与 A-B 循环（开始先数预备小节，再进「第 N 小节」）
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js(
+    "(() => { document.querySelectorAll('.drill-card')[26]?.scrollIntoView({ block: 'center' }); return 'ok'; })()",
+  );
+  await sleep(400);
+  js(
+    "(() => { const c = document.querySelectorAll('.drill-card')[26]; const b = [...c.querySelectorAll('button')].find(n => n.textContent.trim() === '跟练'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(800);
+  const followFields = String(
+    js(
+      "(() => [...document.querySelectorAll('.follow select')].map(n => n.getAttribute('aria-label') || '').join('|'))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const l = [...document.querySelectorAll('.follow-check')].find(n => n.textContent.includes('只练')); l?.querySelector('input')?.click(); return 'ok'; })()",
+  );
+  await sleep(200);
+  const loopOn = String(
+    js(
+      "(() => { const l = [...document.querySelectorAll('.follow-check')].find(n => n.textContent.includes('只练')); return l?.querySelector('input')?.checked ? 'on' : 'off'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow button')].find(n => n.textContent.trim() === '开始跟练'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  const countInText = String(
+    js("(() => document.querySelector('.follow-bar')?.textContent ?? 'none')()"),
+  ).replace(/^"|"$/g, "");
+  await sleep(4200);
+  const barText = String(
+    js("(() => document.querySelector('.follow-bar')?.textContent ?? 'none')()"),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow button')].find(n => n.textContent.trim() === '停止'); b?.click(); return 'ok'; })()",
+  );
+  log(
+    followFields.includes("开始前空打几小节") &&
+      followFields.includes("循环从第几小节开始") &&
+      followFields.includes("循环到第几小节结束") &&
+      loopOn === "on" &&
+      countInText === "预备…" &&
+      /^第 \d+ 小节$/.test(barText),
+    "跟练：有预备拍与 A-B 循环，开始先数预备小节再进第 N 小节",
+    `${followFields} / ${loopOn} / ${countInText} / ${barText}`,
+  );
+
 } finally {
   ab(["close"]);
   console.log(

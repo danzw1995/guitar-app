@@ -62,15 +62,26 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   const [subdivision, setSubdivision] = useState<Subdivision>(() =>
     defaultSubdivision(target.tab, meter),
   );
+  const [countIn, setCountIn] = useState(1);
+  const [loopOn, setLoopOn] = useState(false);
+  const [loopFrom, setLoopFrom] = useState(1);
+  const [loopTo, setLoopTo] = useState(target.tab.bars);
   const [seconds, setSeconds] = useState(0);
   const [volume, setVolume] = useAudioVolume();
 
-  const { running, start, stop } = useMetronome({
+  const totalBars = target.tab.bars;
+  const loop = loopOn
+    ? { from: Math.min(loopFrom, loopTo), to: Math.max(loopFrom, loopTo) }
+    : null;
+
+  const { running, bar, countingIn, start, stop } = useMetronome({
     bpm,
     meterId: meter,
     subdivision,
     ramp: ramp ? { bars, step } : undefined,
     onBpm: setBpm,
+    countIn,
+    loop,
   });
 
   useEffect(() => {
@@ -85,6 +96,9 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     setBpm(target.bpm[0]);
     setSeconds(0);
     setSubdivision(defaultSubdivision(target.tab, meter));
+    setLoopFrom(1);
+    setLoopTo(target.tab.bars);
+    setLoopOn(false);
     stop();
   }, [target.id]);
 
@@ -113,6 +127,11 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
         <div className="follow-tempo">
           <b>{bpm}</b>
           <span>BPM</span>
+          {running ? (
+            <em className="follow-bar">
+              {countingIn ? "预备…" : `第 ${loop ? bar : bar + 1} 小节`}
+            </em>
+          ) : null}
         </div>
 
         <div className="follow-controls">
@@ -208,6 +227,62 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
               {[2, 3, 5, 8, 10].map((value) => (
                 <option key={value} value={value}>
                   {value} BPM
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="follow-field">
+            <span>预备</span>
+            <select
+              value={countIn}
+              aria-label="开始前空打几小节"
+              onChange={(event) => setCountIn(Number(event.target.value))}
+            >
+              {[0, 1, 2].map((value) => (
+                <option key={value} value={value}>
+                  {value === 0 ? "不用" : `${value} 小节`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="follow-check">
+            <input
+              type="checkbox"
+              checked={loopOn}
+              onChange={(event) => setLoopOn(event.target.checked)}
+            />
+            只练
+          </label>
+
+          <label className="follow-field">
+            <span>第</span>
+            <select
+              value={loopFrom}
+              aria-label="循环从第几小节开始"
+              disabled={!loopOn}
+              onChange={(event) => setLoopFrom(Number(event.target.value))}
+            >
+              {Array.from({ length: totalBars }, (_, index) => index + 1).map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="follow-field">
+            <span>到第</span>
+            <select
+              value={loopTo}
+              aria-label="循环到第几小节结束"
+              disabled={!loopOn}
+              onChange={(event) => setLoopTo(Number(event.target.value))}
+            >
+              {Array.from({ length: totalBars }, (_, index) => index + 1).map((value) => (
+                <option key={value} value={value}>
+                  {value}
                 </option>
               ))}
             </select>
