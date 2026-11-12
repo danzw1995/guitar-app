@@ -622,6 +622,34 @@ try {
     `${searchState} / 清掉后 ${clearedCards}`,
   );
 
+  // 17) 新版本提示：触发后出现在底部，「稍后」能收掉
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const beforeToast = String(js("(() => String(document.querySelectorAll('.update-toast').length))()")).replace(
+    /^"|"$/g,
+    "",
+  );
+  js("(() => { window.__guitarNotifyUpdate?.(); return 'ok'; })()");
+  await sleep(400);
+  const toastText = String(
+    js("(() => document.querySelector('.update-toast')?.textContent ?? 'none')()"),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.update-toast button')].find(n => n.textContent.trim() === '稍后'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+  const afterToast = String(js("(() => String(document.querySelectorAll('.update-toast').length))()")).replace(
+    /^"|"$/g,
+    "",
+  );
+  log(
+    beforeToast === "0" && toastText.includes("新版本") && toastText.includes("刷新") && afterToast === "0",
+    "新版本提示：默认不出现，收到更新后弹在底部，「稍后」能收掉",
+    `前 ${beforeToast} / ${toastText} / 后 ${afterToast}`,
+  );
+
 } finally {
   ab(["close"]);
   console.log(

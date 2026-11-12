@@ -9,6 +9,16 @@
 - 和弦与音阶试听（目前音频只有节拍器）
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.37.0] - 2026-11-12
+
+### Added
+- **新版本提示**：页面一直开着时，新的 service worker 接管会触发 `controllerchange`，
+  底部弹一条「新版本已经下好了，刷新一下就是新的」+ `稍后` / `刷新`。
+  不自动刷新（练到一半刷新会掀掉正在跟的节拍器）；首次安装不弹。
+  另外每 30 分钟（只在页面可见时）问一次 `registration.update()`。
+- `apps/web/src/lib/sw-update.ts`（`watchForUpdates` / `pollForUpdates`）、
+  `apps/web/src/components/UpdateToast.tsx`；`check:pwa` 与 `check:ui` 各加一条守着它。
+
 ## [0.36.0] - 2026-11-12
 
 ### Added

@@ -526,6 +526,20 @@ for (const selector of ["select", "input", "textarea"]) {
     (emptyNote.get("color") ?? "") === "#6e7681",
     `color = ${emptyNote.get("color") ?? "未设置"}`,
   );
+
+  // 新版本提示：贴底固定，不随页面滚走
+  const toast = narrowDecls(".update-toast");
+  expect(
+    "新版本提示固定在底部（position: fixed + bottom）",
+    (toast.get("position") ?? "") === "fixed" && Boolean(toast.get("bottom")),
+    `position = ${toast.get("position") ?? "未设置"}, bottom = ${toast.get("bottom") ?? "未设置"}`,
+  );
+  const toastButton = narrowDecls(".update-toast-refresh");
+  expect(
+    "新版本提示的「刷新」按钮是主按钮（有底色）",
+    Boolean(toastButton.get("background")),
+    `background = ${toastButton.get("background") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

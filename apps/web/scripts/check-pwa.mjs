@@ -100,6 +100,19 @@ check("main.tsx 只在生产构建注册 service worker", () => {
   if (!source.includes('serviceWorker.register("/sw.js")')) throw new Error("没有注册 /sw.js");
 });
 
+check("新版本提示：盯着 controllerchange，按钮才刷新", () => {
+  const update = readFileSync(join(APP, "src", "lib", "sw-update.ts"), "utf8");
+  if (!update.includes("controllerchange")) throw new Error("没有监听 controllerchange");
+  if (!update.includes("registration?.update()")) throw new Error("没有定期 registration.update()");
+
+  const toast = readFileSync(join(APP, "src", "components", "UpdateToast.tsx"), "utf8");
+  if (!toast.includes("window.location.reload()")) throw new Error("「刷新」没有 reload");
+  if (!toast.includes('role="status"')) throw new Error("提示不是 role=status（读屏不会播报）");
+
+  const app = readFileSync(join(APP, "src", "App.tsx"), "utf8");
+  if (!app.includes("<UpdateToast />")) throw new Error("App 里没有挂 UpdateToast");
+});
+
 if (failed > 0) {
   console.log(`\n${failed} 项未通过`);
   process.exit(1);

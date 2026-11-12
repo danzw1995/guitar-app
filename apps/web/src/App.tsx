@@ -9,6 +9,7 @@ import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
 import OfflineBanner from "./components/OfflineBanner";
 import Onboarding from "./components/Onboarding";
+import UpdateToast from "./components/UpdateToast";
 
 type Tab =
   | "chords"
@@ -80,6 +81,7 @@ export default function App() {
 
       <footer className="app-footer">v{__APP_VERSION__} · Web-first · 标准调弦</footer>
 
+      <UpdateToast />
       <Onboarding onFinish={() => setTab("game")} />
     </div>
   );
