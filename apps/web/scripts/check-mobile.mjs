@@ -3,10 +3,21 @@
 // 用法：node apps/web/scripts/check-mobile.mjs [url]
 // 需要先 `npx playwright install webkit`（约 90MB，只装一次）。
 import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { webkit, devices } from "playwright";
 
 const BASE = process.argv[2] ?? "http://127.0.0.1:5186";
-const OUT = "apps/web/.tmp";
+// 相对脚本定位，别依赖 cwd（`pnpm --filter @guitar/web` 跑时 cwd 是 apps/web）
+const OUT = fileURLToPath(new URL("../.tmp", import.meta.url));
+
+// Playwright 启动浏览器要在临时目录里建 artifacts 目录；受限环境（pnpm 子进程）里
+// 用户 Temp 不可写会报 `EPERM: operation not permitted, mkdtemp ...`，
+// 所以把临时目录指到项目里的 .tmp（和截图放在一起）。
+mkdirSync(join(OUT, "playwright"), { recursive: true });
+process.env.TMPDIR = join(OUT, "playwright");
+process.env.TMP = process.env.TMPDIR;
+process.env.TEMP = process.env.TMPDIR;
 const TABS = ["练习", "节奏", "和弦", "音阶", "乐理", "音阶游戏", "统计", "设置"];
 const VIEWPORTS = [
   { name: "iPhone 15", ...devices["iPhone 15"] },
