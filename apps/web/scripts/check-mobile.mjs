@@ -152,6 +152,31 @@ for (const device of VIEWPORTS) {
         "节奏：窄屏默认折叠，点开一块才出卡片",
         `高 ${collapsedHeight}px（上限 ${limit}），卡片 ${cardsBefore} → ${cardsAfter}`,
       );
+
+      // 跟练在手机上要铺满整屏，而不是缩在卡片里
+      await page.locator(".drill-card button", { hasText: "跟练" }).first().click();
+      await page.waitForTimeout(600);
+      const followBox = await page.evaluate(() => {
+        const panel = document.querySelector(".follow");
+        if (!panel) return null;
+        const rect = panel.getBoundingClientRect();
+        return {
+          top: Math.round(rect.top),
+          h: Math.round(rect.height),
+          pos: getComputedStyle(panel).position,
+          vh: window.innerHeight,
+        };
+      });
+      check(Boolean(followBox), "跟练面板能打开", "没找到 .follow");
+      if (followBox) {
+        check(
+          followBox.pos === "fixed" && followBox.top <= 1 && followBox.h >= followBox.vh - 2,
+          "手机上跟练铺满整屏",
+          JSON.stringify(followBox),
+        );
+        await page.locator(".follow button", { hasText: "收起" }).first().click();
+        await page.waitForTimeout(300);
+      }
     }
   }
 

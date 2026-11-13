@@ -330,7 +330,7 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
   }
 
   return (
-    <section className="my-scores">
+    <section className={`my-scores${editingId ? " editing" : ""}`}>
       <h3 className="practice-h3">
         我的谱
         <span className="practice-h3-hint">

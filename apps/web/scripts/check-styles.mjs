@@ -527,6 +527,27 @@ for (const selector of ["select", "input", "textarea"]) {
     `color = ${emptyNote.get("color") ?? "未设置"}`,
   );
 
+  // 手机上跟练与我的谱编辑器改成整屏面板（窄屏媒体查询里）
+  const narrowBlock = (selector) => {
+    const index = css.indexOf(selector);
+    if (index < 0) return "";
+    const open = css.indexOf("{", index);
+    const close = css.indexOf("}", open);
+    return open < 0 || close < 0 ? "" : css.slice(open + 1, close);
+  };
+  const followNarrow = narrowBlock(".follow {\n    position: fixed");
+  expect(
+    "窄屏下跟练是整屏面板（fixed + 贴边）",
+    followNarrow.includes("inset: 0") && followNarrow.includes("position: fixed"),
+    "没找到 @media (max-width: 900px) 里 .follow 的 fixed/inset",
+  );
+  const editorNarrow = narrowBlock(".my-scores.editing .my-editor {\n    position: fixed");
+  expect(
+    "窄屏下编辑我的谱是整屏面板（fixed + 贴边）",
+    editorNarrow.includes("inset: 0") && editorNarrow.includes("position: fixed"),
+    "没找到 @media (max-width: 900px) 里 .my-scores.editing .my-editor 的 fixed/inset",
+  );
+
   // 新版本提示：贴底固定，不随页面滚走
   const toast = narrowDecls(".update-toast");
   expect(
