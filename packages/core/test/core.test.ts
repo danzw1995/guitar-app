@@ -104,6 +104,9 @@ import {
   tabEvents,
   practiceStats,
   recordBlock,
+  heatmapOf,
+  heatLevel,
+  weekdayIndex,
   stageForCompleted,
   techniqueById,
   techniquesOf,
@@ -1665,6 +1668,65 @@ test("练习记录：连续天数、本周分钟数与去重", () => {
   // 昨天没练、前天练了 → 连续天数断掉
   const gap = recordBlock({}, "2026-11-03", { drill: "w-crawl", minutes: 5, stage: 0 });
   assert.equal(practiceStats(gap, "2026-11-05").streak, 0);
+});
+
+test("热力图：一列一周、行从周一开始，最后一列是今天那周", () => {
+  const heat = heatmapOf({}, "2026-11-05", 26);
+  assert.equal(heat.weeks.length, 26);
+  for (const column of heat.weeks) {
+    assert.equal(column.length, 7);
+    assert.equal(weekdayIndex(column[0].date), 0, "每列第一行必须是周一");
+  }
+  assert.equal(heat.from, heat.weeks[0][0].date);
+  assert.equal(heat.to, "2026-11-05");
+
+  const last = heat.weeks[25];
+  const todayCell = last.find((cell) => cell.date === "2026-11-05");
+  assert.ok(todayCell, "今天必须在最后一列里");
+  assert.equal(todayCell.future, false, "今天不是未来");
+  for (const column of heat.weeks) {
+    for (const cell of column) {
+      assert.equal(cell.future, cell.date > "2026-11-05", `${cell.date} 的未来标记`);
+    }
+  }
+});
+
+test("热力图：按分钟分四档，范围外的日子不算进来", () => {
+  assert.equal(heatLevel(0), 0);
+  assert.equal(heatLevel(1), 1);
+  assert.equal(heatLevel(9), 1);
+  assert.equal(heatLevel(10), 2);
+  assert.equal(heatLevel(19), 2);
+  assert.equal(heatLevel(20), 3);
+  assert.equal(heatLevel(39), 3);
+  assert.equal(heatLevel(40), 4);
+  assert.equal(heatLevel(180), 4);
+
+  const log = {
+    "2026-11-04": { minutes: 12, stage: 0, done: ["a"] },
+    "2026-11-05": { minutes: 45, stage: 0, done: ["b"] },
+    "2020-01-01": { minutes: 99, stage: 0, done: ["c"] },
+  };
+  const heat = heatmapOf(log, "2026-11-05", 4);
+  assert.equal(heat.days, 2);
+  assert.equal(heat.total, 57);
+  assert.equal(heat.max, 45);
+  const cells = heat.weeks.flat();
+  assert.equal(cells.find((cell) => cell.date === "2026-11-04").level, 2);
+  assert.equal(cells.find((cell) => cell.date === "2026-11-05").level, 4);
+});
+
+test("热力图：月份标签落在换月的那一列，且不会挤在一起", () => {
+  const heat = heatmapOf({}, "2026-11-05", 26);
+  assert.ok(heat.months.length >= 5, `26 周至少跨半年，读到 ${heat.months.length} 个标签`);
+  assert.equal(heat.months[0].week, 0);
+  for (let i = 1; i < heat.months.length; i++) {
+    assert.ok(heat.months[i].week - heat.months[i - 1].week >= 3, "两个标签至少隔 3 列");
+  }
+  for (const month of heat.months) {
+    const monday = heat.weeks[month.week][0].date;
+    assert.equal(month.label, `${Number(monday.slice(5, 7))}月`);
+  }
 });
 
 test("技巧库：左右手各 7 张，每张都有练法与验收", () => {

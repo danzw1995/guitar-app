@@ -1,5 +1,6 @@
 import {
   dateKeyOf,
+  heatmapOf,
   lastNDays,
   practiceStats,
   streakOf,
@@ -10,14 +11,20 @@ import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadDaily, loadPractice, loadProgress, loadRhythm, type DailyMap } from "../lib/storage";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { fmt, fmtSpan } from "../lib/format";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
 
 /** 统计页：全部来自本机 localStorage，没有账号也没有上报。 */
 export default function Stats() {
   const progress = loadProgress();
   const daily = loadDaily() as DailyMap;
-  const practice = practiceStats(loadPractice(), dateKeyOf(new Date()));
+  const practiceLog = loadPractice();
+  const practice = practiceStats(practiceLog, dateKeyOf(new Date()));
   const today = dateKeyOf(new Date());
+  // 热力图：宽屏放一整年（52 周），中等屏幕半年，手机上 18 周，免得横向塞不下
+  const narrow = useMediaQuery("(max-width: 900px)");
+  const wide = useMediaQuery("(min-width: 1100px)");
+  const heat = heatmapOf(practiceLog, today, narrow ? 18 : wide ? 52 : 26);
 
   // 节奏页的跟练成绩：每条练习最快练到多少 BPM、练过几次、上次是哪天。
   // 练习页的跟练用 `p:` 前缀存在同一张表里，这里只数节奏页那 103 条。
@@ -167,6 +174,55 @@ export default function Stats() {
           <span>练习页跟练过的条目</span>
         </div>
       </div>
+      <div
+        className="heat"
+        role="img"
+        aria-label={`练习热力图：最近 ${heat.weeks.length} 周练了 ${heat.days} 天，共 ${heat.total} 分钟`}
+      >
+        <div className="heat-days" aria-hidden="true">
+          {["一", "", "三", "", "五", "", "日"].map((label, index) => (
+            <span key={index}>{label}</span>
+          ))}
+        </div>
+        <div className="heat-col">
+          <div
+            className="heat-months"
+            aria-hidden="true"
+            style={{ gridTemplateColumns: `repeat(${heat.weeks.length}, var(--heat-cell))` }}
+          >
+            {heat.months.map((month) => (
+              <span key={month.week} style={{ gridColumn: month.week + 1 }}>
+                {month.label}
+              </span>
+            ))}
+          </div>
+          <div className="heat-grid" aria-hidden="true">
+            {heat.weeks.flatMap((column) =>
+              column.map((cell) => (
+                <i
+                  key={cell.date}
+                  className={`heat-cell lv${cell.level}${cell.future ? " future" : ""}`}
+                  title={`${cell.date} · ${cell.minutes > 0 ? `${cell.minutes} 分钟` : "没练"}`}
+                />
+              )),
+            )}
+          </div>
+        </div>
+        <p className="heat-legend">
+          <span>
+            最近 {heat.weeks.length} 周 · {heat.days} 天 · {heat.total} 分钟
+          </span>
+          <span className="heat-scale" aria-hidden="true">
+            少
+            {[0, 1, 2, 3, 4].map((level) => (
+              <i key={level} className={`heat-cell lv${level}`} />
+            ))}
+            多
+          </span>
+        </p>
+      </div>
+
+      <p className="heat-note">最近 7 天（分钟）</p>
       <div className="practice-week">
         {practice.weekMinutes.map((minutes, index) => (
           <div key={index} className={minutes > 0 ? "practice-day done" : "practice-day"}>

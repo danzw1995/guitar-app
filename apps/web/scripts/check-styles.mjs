@@ -576,6 +576,29 @@ for (const selector of ["select", "input", "textarea"]) {
     (hiddenLesson.get("display") ?? "") === "none",
     `display = ${hiddenLesson.get("display") ?? "未设置"}`,
   );
+
+  // 统计页热力图：一列一周、一行一天；五档深浅各不相同；手机格子更小
+  const heatGrid = narrowDecls(".heat-grid");
+  expect(
+    "热力图是一列一周的七行网格",
+    (heatGrid.get("display") ?? "") === "grid" &&
+      (heatGrid.get("grid-template-rows") ?? "").includes("repeat(7") &&
+      (heatGrid.get("grid-auto-flow") ?? "") === "column",
+    `display = ${heatGrid.get("display") ?? "未设置"}, rows = ${heatGrid.get("grid-template-rows") ?? "未设置"}`,
+  );
+  const heatLevels = [1, 2, 3, 4].map((level) => narrowDecls(`.heat-cell.lv${level}`).get("background") ?? "");
+  expect(
+    "热力图五档颜色由浅到深",
+    heatLevels.every((color) => color.startsWith("rgba(232, 176, 75")) &&
+      new Set(heatLevels).size === 4,
+    heatLevels.join(" / "),
+  );
+  const heatNarrow = narrowDecls(".heat");
+  expect(
+    "手机上热力图的格子更小",
+    px(heatNarrow.get("--heat-cell")) !== null && px(heatNarrow.get("--heat-cell")) < 13,
+    `--heat-cell = ${heatNarrow.get("--heat-cell") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

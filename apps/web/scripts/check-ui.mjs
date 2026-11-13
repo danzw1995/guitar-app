@@ -588,6 +588,19 @@ try {
     statsInfo,
   );
 
+  // 13b) 统计页：练习热力图（一列一周 × 7 行，共 N 周）
+  const heatInfo = String(
+    js(
+      "(() => { const heat = document.querySelector('.heat'); if (!heat) return 'none'; const cells = heat.querySelectorAll('.heat-grid .heat-cell').length; const weeks = heat.querySelectorAll('.heat-grid').length ? Math.round(cells / 7) : 0; const label = heat.getAttribute('aria-label') || ''; const levels = new Set([...heat.querySelectorAll('.heat-grid .heat-cell')].map((c) => c.className.match(/lv(\\d)/)[1])).size; return `${cells}|${weeks}|${label.includes('热力图') ? 'label' : 'nolabel'}|${levels}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  const [heatCells, heatWeeks, heatLabel] = heatInfo.split("|");
+  log(
+    Number(heatCells) % 7 === 0 && Number(heatWeeks) >= 18 && heatLabel === "label",
+    "统计页：练习热力图是「一列一周」的格子图",
+    heatInfo,
+  );
+
   // 14) 设置页：导出备份（点了之后给一句「已导出 …json」）
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '设置'); b?.click(); return 'ok'; })()",

@@ -59,6 +59,11 @@ export function dayNumberOf(dateKey: string): number {
 export const previousDateKey = (key: string): string => shiftDateKey(key, -1);
 export const nextDateKey = (key: string): string => shiftDateKey(key, 1);
 
+/** 前后挪 n 天（n 可为负）；用来拼周历、热力图这类跨月的表。 */
+export function addDays(key: string, days: number): string {
+  return shiftDateKey(key, days);
+}
+
 /** 最近 n 天（含今天），按时间升序。 */
 export function lastNDays(today: string, n: number): string[] {
   const out: string[] = [];
