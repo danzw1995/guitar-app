@@ -2569,3 +2569,91 @@ button, select, input { font: inherit; color: inherit; }
     display: none;
   }
 }
+
+/* 手机底部导航（v0.39.0）：≤900px 才出现，桌面用顶部那排 Tab */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .tabs {
+    display: none;
+  }
+  .app-main {
+    padding-bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+  .bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: rgba(13, 17, 23, 0.96);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(8px);
+  }
+  .bottom-tab {
+    min-height: 48px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .bottom-tab.active {
+    color: var(--accent);
+    background: rgba(227, 179, 65, 0.12);
+  }
+  .more-sheet {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+  }
+  .more-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(0, 0, 0, 0.5);
+  }
+  .more-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 14px 14px calc(18px + env(safe-area-inset-bottom));
+    background: #161b22;
+    border-radius: 16px 16px 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .more-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .more-head h2 {
+    margin: 0;
+    font-size: 15px;
+  }
+  .more-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .more-item {
+    min-height: 48px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #0d1117;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .more-item.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}

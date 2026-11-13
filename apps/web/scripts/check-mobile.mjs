@@ -54,10 +54,57 @@ for (const device of VIEWPORTS) {
 
   console.log(`\n${device.name}（${device.viewport.width}×${device.viewport.height}）`);
 
+  // 手机上换成底部导航：四个常用入口 + 「更多」，顶部那排 Tab 收起来
+  const PRIMARY = ["练习", "节奏", "乐理", "统计"];
+
+  async function goTab(label) {
+    if (PRIMARY.includes(label)) {
+      await page.locator(".bottom-nav button", { hasText: label }).first().click();
+      return;
+    }
+    await page.locator(".bottom-nav button", { hasText: "更多" }).first().click();
+    await page.waitForTimeout(200);
+    await page.locator(".more-sheet .more-item", { hasText: label }).first().click();
+  }
+
+  const nav = await page.evaluate(() => {
+    const bar = document.querySelector(".bottom-nav");
+    if (!bar) return null;
+    const rect = bar.getBoundingClientRect();
+    const items = [...bar.querySelectorAll("button")].map((node) => {
+      const box = node.getBoundingClientRect();
+      return { text: node.textContent.trim(), h: Math.round(box.height), w: Math.round(box.width) };
+    });
+    const main = document.querySelector(".app-main");
+    return {
+      top: Math.round(rect.top),
+      vh: window.innerHeight,
+      items,
+      pad: main ? getComputedStyle(main).paddingBottom : "0px",
+      tabsHidden: getComputedStyle(document.querySelector(".tabs")).display === "none",
+    };
+  });
+
+  check(Boolean(nav), "底部导航存在", "没找到 .bottom-nav");
+  if (nav) {
+    check(nav.tabsHidden, "顶部 Tab 在手机上收起", "nav.tabs 还显示着");
+    check(nav.items.length === 5, "底部导航 5 个入口", `实际 ${nav.items.length} 个`);
+    check(nav.items.every((item) => item.h >= 44), "底部导航每项 ≥44 高", JSON.stringify(nav.items));
+    check(nav.top > nav.vh - 140, "底部导航贴在屏幕底部", `top ${nav.top} / 视口 ${nav.vh}`);
+    check(parseFloat(nav.pad) >= 60, "正文给底部导航留了位置", `padding-bottom ${nav.pad}`);
+  }
+
+  await page.locator(".bottom-nav button", { hasText: "更多" }).first().click();
+  await page.waitForTimeout(250);
+  const sheetItems = await page.locator(".more-sheet .more-item").count();
+  check(sheetItems === 4, "「更多」里 4 个入口", `实际 ${sheetItems} 个`);
+  await page.locator(".more-sheet .more-item", { hasText: "设置" }).first().click();
+  await page.waitForTimeout(600);
+  check((await page.locator(".more-sheet").count()) === 0, "从「更多」选完会关掉浮层", "浮层还在");
+  check((await page.locator(".settings-row").count()) > 0, "「更多」里能进设置", "设置页没出现");
+
   for (const tab of TABS) {
-    const button = page.locator("nav.tabs button", { hasText: tab }).first();
-    if (!(await button.count())) continue;
-    await button.click();
+    await goTab(tab);
     await page.waitForTimeout(tab === "节奏" || tab === "乐理" ? 1800 : 900);
 
     const metrics = await page.evaluate(() => {

@@ -720,6 +720,12 @@ v0.27.0 起**预览和存下的卡片也都是 PNG**，页面里只显示 `<img 
   首屏高度从 23,200px 降到约 2,000px（iPhone 15）。
 - **节拍器**在手机上默认收起（`open={!narrow}`），桌面默认展开。
 - **触屏尺寸**：`@media (pointer: coarse)` 下按钮最小 40×40，小圆片 `min-width: 40px`。
+- **底部导航**（v0.39.0）：≤900px 时顶部那排八个 Tab 收起，底部固定五个入口——
+  练习 / 节奏 / 乐理 / 统计 + 「更多」；和弦、音阶、音阶游戏、设置收进「更多」的下拉面板，
+  面板里四个大按钮（每个 ≥48px），Esc 或点背景关掉。底部导航用
+  `padding-bottom: calc(6px + env(safe-area-inset-bottom))` 躲开横条，正文同步加了 `padding-bottom`，
+  内容不会被盖住；顶部 Tab 在桌面上照旧。
 - **检查**：`pnpm run check:mobile`（Playwright + WebKit）跑 393 / 360 / 768 三个宽度 × 8 个页面，
   断言「不横向溢出」「按钮 ≥ 40」「节奏页折叠且点开才出卡片」，
-  截图落在 `apps/web/.tmp/mobile-*.png`。
+  截图落在 `apps/web/.tmp/mobile-*.png`。v0.39.0 起还断言「底部导航 5 个入口、每项 ≥44、贴底、正文有留位」
+  与「从「更多」能进设置」。
