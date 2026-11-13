@@ -13,13 +13,16 @@ import {
   stageOf,
   techniquesOf,
   type DayLog,
+  type Drill,
   type Feel,
   type PracticeLog,
 } from "@guitar/core";
-import { loadPractice, loadProgress, savePractice } from "../lib/storage";
+import { loadPractice, loadProgress, loadRhythm, savePractice, saveRhythm, type RhythmRecords } from "../lib/storage";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
+import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
 import { useTone } from "../hooks/useTone";
+import { meterOfTab } from "../lib/meter";
 
 /** 秒 → mm:ss。 */
 function clock(totalSeconds: number): string {
@@ -52,6 +55,8 @@ export default function Practice() {
   const [seconds, setSeconds] = useState(0);
   const { playTab } = useTone();
   const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
+  const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
+  const [follow, setFollow] = useState<FollowTarget | null>(null);
 
   /** 试听一条练习：谱面上会跟着走一条「当前拍」竖条，和节奏页同一套播放头。 */
   function audition(id: string, tab: (typeof library)[number]["tab"], bpm: number) {
@@ -62,6 +67,50 @@ export default function Practice() {
   }
 
   const beatOf = (id: string) => (playhead?.id === id ? playhead.beat : null);
+
+  /**
+   * 跟练：节拍器起速、每几小节往上加，练完记下当前速度。
+   *
+   * 成绩存在节奏页同一张表里，但键加了 `p:` 前缀——练习页的条目和节奏页的
+   * 103 条分开数，统计页的「节奏与伴奏」也不会把它们算进去。
+   */
+  const followKey = (id: string) => `p:${id}`;
+  const best = (key: string) => records[key]?.bestBpm;
+
+  function openFollow(drill: Drill) {
+    setFollow({
+      id: followKey(drill.id),
+      name: drill.name,
+      bpm: drill.bpm ?? [70, 90],
+      tab: drill.tab,
+      meter: meterOfTab(drill.tab),
+    });
+  }
+
+  function recordFollow(result: { bpm: number; minutes: number }) {
+    if (!follow) return;
+    const previous = records[follow.id];
+    const next: RhythmRecords = {
+      ...records,
+      [follow.id]: {
+        bestBpm: Math.max(previous?.bestBpm ?? 0, result.bpm),
+        sessions: (previous?.sessions ?? 0) + 1,
+        minutes: (previous?.minutes ?? 0) + result.minutes,
+        lastAt: today,
+      },
+    };
+    setRecords(next);
+    saveRhythm(next);
+
+    // 跟练的时长也算今天的练习量：用 `p:` 这个块记，和「计时/完成」记的不冲突
+    commit(
+      recordBlock(log, today, {
+        drill: follow.id,
+        minutes: result.minutes,
+        stage,
+      }),
+    );
+  }
 
   const stageDef = stageOf(stage);
   const library = useMemo(() => drillsOfStage(stage), [stage]);
@@ -120,6 +169,15 @@ export default function Practice() {
           每条练习都配六线谱——先看谱，再上手。
         </p>
       </div>
+
+      {follow && (
+        <FollowAlong
+          target={follow}
+          best={best(follow.id)}
+          onFinish={recordFollow}
+          onClose={() => setFollow(null)}
+        />
+      )}
 
       {/* ---------- 阶段 ---------- */}
       <ol className="stage-track" aria-label="练习阶段">
@@ -264,6 +322,9 @@ export default function Practice() {
                 >
                   试听
                 </button>
+                <button type="button" className="btn-quiet" onClick={() => openFollow(drill)}>
+                  跟练
+                </button>
                 <button
                   type="button"
                   className="btn"
@@ -326,6 +387,12 @@ export default function Practice() {
               >
                 试听
               </button>
+              <button type="button" className="btn-quiet" onClick={() => openFollow(drill)}>
+                跟练
+              </button>
+              {best(followKey(drill.id)) !== undefined && (
+                <span className="best-badge">最高 {best(followKey(drill.id))} BPM</span>
+              )}
             </div>
             <details className="pb-more">
               <summary>练法与验收</summary>

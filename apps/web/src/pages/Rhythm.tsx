@@ -22,6 +22,7 @@ import MyScores from "../components/MyScores";
 import { useTone } from "../hooks/useTone";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RHYTHM_PICKS } from "../lib/rhythm-index";
+import { meterOfTab } from "../lib/meter";
 import {
   loadPractice,
   loadProgress,
@@ -32,17 +33,6 @@ import {
 } from "../lib/storage";
 
 const LEVELS: Level[] = [1, 2, 3, 4, 5];
-
-/**
- * 练习的拍号：能直接读到就用它，否则按一小节几拍反推。
- * 6/8 的谱 `beatsPerBar` 是 6（一拍一个八分），3 是 3/4，2 是 2/4。
- */
-function meterOfTab(tab: { beatsPerBar: number }): string {
-  if (tab.beatsPerBar === 6) return "6/8";
-  if (tab.beatsPerBar === 3) return "3/4";
-  if (tab.beatsPerBar === 2) return "2/4";
-  return "4/4";
-}
 
 function meterOfDrill(drill: { tab: { beatsPerBar: number }; meter?: string }): string {
   return drill.meter ?? meterOfTab(drill.tab);

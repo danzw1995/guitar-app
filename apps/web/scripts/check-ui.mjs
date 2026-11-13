@@ -535,6 +535,43 @@ try {
     practiceBand === "none" ? "没看到竖条" : practiceBand,
   );
 
+  // 12b) 练习页也能跟练：计划里的每一块、卡片上的每一条都有「跟练」
+  const practiceFollowBtns = Number(
+    String(
+      js(
+        "(() => String([...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === '跟练').length))()",
+      ),
+    ).replace(/^"|"$/g, ""),
+  );
+  log(practiceFollowBtns >= 9, "练习页：每条练习都有「跟练」按钮", `读到 ${practiceFollowBtns} 个`);
+
+  const practiceFollowOpen = js(
+    "(() => { const b = [...document.querySelectorAll('.practice-block .btn-quiet')].find((n) => n.textContent.trim() === '跟练'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const followTitle = String(
+    js("(() => { const h = document.querySelector('.follow-head h3'); return h ? h.textContent : 'none'; })()"),
+  ).replace(/^"|"$/g, "");
+  const followMeta = String(
+    js("(() => { const p = document.querySelector('.follow-head p'); return p ? p.textContent : 'none'; })()"),
+  ).replace(/^"|"$/g, "");
+  log(
+    practiceFollowOpen === '"ok"' && followTitle.startsWith("跟练 ·") && followMeta.includes("目标"),
+    "练习页：点「跟练」能打开面板，带这条练习的起始与目标速度",
+    `${followTitle} | ${followMeta}`,
+  );
+
+  const practiceFollowClose = js(
+    "(() => { const b = [...document.querySelectorAll('.follow-head button')].find((n) => n.textContent.trim() === '收起'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const followGone = js("(() => (document.querySelector('.follow') ? 'still' : 'gone'))()");
+  log(
+    practiceFollowClose === '"ok"' && followGone === '"gone"',
+    "练习页：点「收起」跟练面板就消失",
+    followGone,
+  );
+
   // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",

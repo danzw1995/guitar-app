@@ -20,8 +20,10 @@ export default function Stats() {
   const today = dateKeyOf(new Date());
 
   // 节奏页的跟练成绩：每条练习最快练到多少 BPM、练过几次、上次是哪天。
+  // 练习页的跟练用 `p:` 前缀存在同一张表里，这里只数节奏页那 103 条。
   const rhythm = loadRhythm();
-  const rhythmItems = Object.entries(rhythm);
+  const rhythmItems = Object.entries(rhythm).filter(([id]) => !id.startsWith("p:"));
+  const practiceFollows = Object.keys(rhythm).filter((id) => id.startsWith("p:"));
   const rhythmMinutes = Math.round(rhythmItems.reduce((sum, [, item]) => sum + item.minutes, 0));
   const rhythmSessions = rhythmItems.reduce((sum, [, item]) => sum + item.sessions, 0);
   const topRhythm = rhythmItems
@@ -159,6 +161,10 @@ export default function Stats() {
         <div className="stat-card">
           <b>{practice.days}</b>
           <span>练过的天数</span>
+        </div>
+        <div className="stat-card">
+          <b>{practiceFollows.length}</b>
+          <span>练习页跟练过的条目</span>
         </div>
       </div>
       <div className="practice-week">
