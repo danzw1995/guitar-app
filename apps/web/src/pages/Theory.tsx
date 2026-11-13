@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import {
   CHORD_BY_NAME,
   CHORD_QUALITIES,
@@ -89,6 +90,21 @@ function beatsLabel(beats: number): string {
  * 每一节都是同一个结构：一句话 → 钢琴上看 → 吉他上看。
  * 钢琴负责解释「为什么」，吉他负责回答「那我怎么按」。
  */
+const LESSONS = [
+  { no: 1, title: "音：只有 7 个名字，却有 12 个音" },
+  { no: 2, title: "半音与全音：相邻，还是隔一个" },
+  { no: 3, title: "12 平均律：把八度平均切成 12 份" },
+  { no: 4, title: "音阶公式：大调与小调" },
+  { no: 5, title: "音程：两个音隔多远" },
+  { no: 6, title: "和弦：隔一个音取一个，叠两次" },
+  { no: 7, title: "和弦级数：在一个调里排座位" },
+  { no: 8, title: "指板规律：把上面的东西变成「形状」" },
+  { no: 9, title: "CAGED：一个和弦的几种按法" },
+  { no: 10, title: "七和弦：再往上叠一个三度" },
+  { no: 11, title: "五度圈：调号是从哪来的" },
+  { no: 12, title: "时值：一个音要待多久" },
+] as const;
+
 export default function Theory() {
   const { playTab } = useTone();
   const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
@@ -109,6 +125,17 @@ export default function Theory() {
   const [circleId, setCircleId] = useState("C");
   const [subdivision, setSubdivision] = useState<Subdivision>(1);
   const [strumId, setStrumId] = useState("folk");
+
+  const narrow = useMediaQuery("(max-width: 900px)");
+  const [open, setOpen] = useState<number | null>(null);
+
+  /** 手机上是「目录 + 单节」：目录页不铺开正文，选中哪一节就只显示哪一节。 */
+  useEffect(() => {
+    for (const node of document.querySelectorAll<HTMLElement>(".theory .lesson")) {
+      const number = Number(node.dataset.lesson ?? "0");
+      node.hidden = narrow && number !== open;
+    }
+  }, [narrow, open]);
 
   const circle = circleKey(circleId);
   const circleKeyDef = KEY_BY_ID.get(circleId);
@@ -144,7 +171,7 @@ export default function Theory() {
   const strum = strumPatternById(strumId) ?? STRUM_PATTERNS[0];
 
   return (
-    <section className="panel">
+    <section className="panel theory" data-open={open ?? ""}>
       <div className="panel-head">
         <h2>乐理入门</h2>
         <p>
@@ -158,8 +185,76 @@ export default function Theory() {
         </p>
       </div>
 
+      <nav className="lesson-toc" aria-label="目录">
+        <p className="lesson-toc-head">
+          {narrow && open !== null ? (
+            <>
+              <button type="button" className="btn-quiet" onClick={() => setOpen(null)}>
+                返回目录
+              </button>
+              <span>
+                第 {open} 节 · {LESSONS[open - 1].title}
+              </span>
+            </>
+          ) : (
+            "下面是 12 节：想从头读就从第 1 节开始，想查哪一节点下面的目录。"
+          )}
+        </p>
+        {!(narrow && open !== null) && (
+          <ol className="lesson-toc-list">
+            {LESSONS.map((lesson) => (
+              <li key={lesson.no}>
+                <button
+                  type="button"
+                  className="lesson-toc-item"
+                  onClick={() => {
+                    if (narrow) {
+                      setOpen(lesson.no);
+                      window.scrollTo({ top: 0 });
+                    } else {
+                      document
+                        .querySelector(`[data-lesson="${lesson.no}"]`)
+                        ?.scrollIntoView({ block: "start" });
+                    }
+                  }}
+                >
+                  <span className="lesson-toc-no">{lesson.no}</span>
+                  {lesson.title}
+                </button>
+              </li>
+            ))}
+          </ol>
+        )}
+        {narrow && open !== null && (
+          <div className="lesson-toc-nav">
+            <button
+              type="button"
+              className="btn-quiet"
+              disabled={open <= 1}
+              onClick={() => {
+                setOpen(Math.max(1, (open ?? 1) - 1));
+                window.scrollTo({ top: 0 });
+              }}
+            >
+              上一节
+            </button>
+            <button
+              type="button"
+              className="btn-quiet"
+              disabled={open >= LESSONS.length}
+              onClick={() => {
+                setOpen(Math.min(LESSONS.length, (open ?? LESSONS.length) + 1));
+                window.scrollTo({ top: 0 });
+              }}
+            >
+              下一节
+            </button>
+          </div>
+        )}
+      </nav>
+
       {/* ---------- 1. 音 ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="1">
         <h3>
           <span className="lesson-no">1</span>音：只有 7 个名字，却有 12 个音
         </h3>
@@ -196,7 +291,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 2. 半音 / 全音 ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="2">
         <h3>
           <span className="lesson-no">2</span>半音与全音：相邻，还是隔一个
         </h3>
@@ -230,7 +325,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 3. 12 平均律 ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="3">
         <h3>
           <span className="lesson-no">3</span>12 平均律：把八度平均切成 12 份
         </h3>
@@ -263,7 +358,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 4. 音阶公式（大调 + 小调） ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="4">
         <h3>
           <span className="lesson-no">4</span>音阶公式：大调与小调
         </h3>
@@ -313,7 +408,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 5. 音程 ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="5">
         <h3>
           <span className="lesson-no">5</span>音程：两个音隔多远
         </h3>
@@ -374,7 +469,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 6. 和弦 = 三度叠置 ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="6">
         <h3>
           <span className="lesson-no">6</span>和弦：隔一个音取一个，叠两次
         </h3>
@@ -450,7 +545,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 7. 和弦级数 ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="7">
         <h3>
           <span className="lesson-no">7</span>和弦级数：在一个调里排座位
         </h3>
@@ -511,7 +606,7 @@ export default function Theory() {
         </p>
       </section>
 
-      <section className="lesson">
+      <section className="lesson" data-lesson="8">
         <h3>
           <span className="lesson-no">8</span>指板规律：把上面的东西变成「形状」
         </h3>
@@ -658,7 +753,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 9. CAGED ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="9">
         <h3>
           <span className="lesson-no">9</span>CAGED：一个和弦的几种按法
         </h3>
@@ -707,7 +802,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 10. 七和弦 ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="10">
         <h3>
           <span className="lesson-no">10</span>七和弦：再往上叠一个三度
         </h3>
@@ -782,7 +877,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 11. 五度圈 ---------- */}
-      <section className="lesson">
+      <section className="lesson" data-lesson="11">
         <h3>
           <span className="lesson-no">11</span>五度圈：调号是从哪来的
         </h3>
@@ -861,7 +956,7 @@ export default function Theory() {
       </section>
 
       {/* ---------- 12. 时值 ---------- */}
-      <section className="lesson" id="lesson-12">
+      <section className="lesson" data-lesson="12">
         <h3>
           <span className="lesson-no">12</span>时值：一个音要待多久
         </h3>

@@ -561,6 +561,21 @@ for (const selector of ["select", "input", "textarea"]) {
     Boolean(toastButton.get("background")),
     `background = ${toastButton.get("background") ?? "未设置"}`,
   );
+
+  // 乐理目录：12 节排成可换行的网格；手机上看单节时其余要收起来
+  const tocList = narrowDecls(".lesson-toc-list");
+  expect(
+    "乐理目录是会自动换行的网格",
+    (tocList.get("display") ?? "") === "grid" &&
+      (tocList.get("grid-template-columns") ?? "").includes("auto-fill"),
+    `display = ${tocList.get("display") ?? "未设置"}, columns = ${tocList.get("grid-template-columns") ?? "未设置"}`,
+  );
+  const hiddenLesson = narrowDecls(".theory .lesson[hidden]");
+  expect(
+    "手机上看单节时其余小节收起来",
+    (hiddenLesson.get("display") ?? "") === "none",
+    `display = ${hiddenLesson.get("display") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

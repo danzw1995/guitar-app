@@ -139,6 +139,20 @@ for (const device of VIEWPORTS) {
       await page.screenshot({ path: `${OUT}/mobile-${device.name.replace(/\s+/g, "")}-${tab}.png` });
     }
 
+    // 乐理在手机上先是目录，点一节只看那一节
+    if (tab === "乐理") {
+      const tocCount = await page.locator(".lesson-toc-item").count();
+      check(tocCount === 12, "乐理：目录里有 12 节", `实际 ${tocCount} 节`);
+      await page.locator(".lesson-toc-item").first().click();
+      await page.waitForTimeout(600);
+      const opened = await page.evaluate(() => ({
+        visible: [...document.querySelectorAll(".theory .lesson")].filter((node) => !node.hidden).length,
+        head: document.querySelector(".lesson-toc-head")?.textContent?.trim() ?? "",
+      }));
+      check(opened.visible === 1, "乐理：点一节只显示这一节", `可见 ${opened.visible} 节`);
+      check(opened.head.includes("第 1 节"), "乐理：单节模式显示节号与标题", opened.head);
+    }
+
     // 节奏页在手机上要折叠：首屏不该是两万像素的长卷
     if (tab === "节奏") {
       const collapsedHeight = metrics.scrollH;

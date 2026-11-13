@@ -2700,3 +2700,60 @@ button, select, input { font: inherit; color: inherit; }
     flex: 0 0 auto;
   }
 }
+
+/* 乐理目录（v0.41.0）：手机上先看目录，点一节只看那一节 */
+.lesson-toc {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #0d1117;
+}
+.lesson-toc-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.lesson-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 6px;
+}
+.lesson-toc-item {
+  width: 100%;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+}
+.lesson-toc-item:hover {
+  background: #161b22;
+  border-color: var(--line);
+}
+.lesson-toc-no {
+  flex: 0 0 18px;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.lesson-toc-nav {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.theory .lesson[hidden] {
+  display: none;
+}
