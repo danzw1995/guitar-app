@@ -10,6 +10,7 @@ import {
   STRUM_DRILLS,
   STRUM_LIBRARY,
   dateKeyOf,
+  pushBpmPoint,
   recordBlock,
   stageForCompleted,
   type Level,
@@ -172,6 +173,7 @@ export default function Rhythm() {
         sessions: (previous?.sessions ?? 0) + 1,
         minutes: (previous?.minutes ?? 0) + result.minutes,
         lastAt: today,
+        history: pushBpmPoint(previous?.history, today, result.bpm),
       },
     };
     setRecords(next);

@@ -107,6 +107,8 @@ import {
   heatmapOf,
   heatLevel,
   weekdayIndex,
+  pushBpmPoint,
+  sparklineOf,
   stageForCompleted,
   techniqueById,
   techniquesOf,
@@ -1727,6 +1729,66 @@ test("热力图：月份标签落在换月的那一列，且不会挤在一起",
     const monday = heat.weeks[month.week][0].date;
     assert.equal(month.label, `${Number(monday.slice(5, 7))}月`);
   }
+});
+
+test("跟练曲线：同一天只留最快的，点按日期排好，最多留 60 个", () => {
+  let points = pushBpmPoint(undefined, "2026-11-01", 60);
+  assert.deepEqual(points, [{ date: "2026-11-01", bpm: 60 }]);
+
+  // 同一天练了两次，留快的
+  points = pushBpmPoint(points, "2026-11-01", 52);
+  assert.equal(points.length, 1);
+  assert.equal(points[0].bpm, 60);
+  points = pushBpmPoint(points, "2026-11-01", 72);
+  assert.equal(points[0].bpm, 72);
+
+  // 乱序写入也按日期排
+  points = pushBpmPoint(points, "2026-10-30", 55);
+  points = pushBpmPoint(points, "2026-11-03", 80);
+  assert.deepEqual(
+    points.map((point) => point.date),
+    ["2026-10-30", "2026-11-01", "2026-11-03"],
+  );
+
+  // 超过上限时丢最早的
+  let many: { date: string; bpm: number }[] = [];
+  for (let i = 0; i < 70; i++) {
+    many = pushBpmPoint(many, `2026-01-${String((i % 28) + 1).padStart(2, "0")}`, 40 + i, 10);
+  }
+  assert.equal(many.length, 10);
+
+  // 非法输入不写进去
+  assert.deepEqual(pushBpmPoint([], "", 60), []);
+  assert.deepEqual(pushBpmPoint([], "2026-11-01", 0), []);
+});
+
+test("跟练曲线：数值换算成折线，首尾落在框内", () => {
+  const spark = sparklineOf([60, 70, 92], 120, 30, 3);
+  assert.equal(spark.dots.length, 3);
+  assert.equal(spark.min, 60);
+  assert.equal(spark.max, 92);
+  assert.ok(spark.d.startsWith("M"), `折线应以 M 开头：${spark.d}`);
+  assert.equal(spark.d.match(/L/g)?.length, 2, "三个点应该有两段线");
+
+  for (const dot of spark.dots) {
+    assert.ok(dot.x >= 3 && dot.x <= 117, `x 越界：${dot.x}`);
+    assert.ok(dot.y >= 3 && dot.y <= 27, `y 越界：${dot.y}`);
+  }
+  // 速度越高越靠上
+  assert.ok(spark.dots[2].y < spark.dots[0].y, "92 BPM 应该比 60 BPM 更靠上");
+  assert.equal(spark.dots[0].x, 3);
+  assert.equal(spark.dots[2].x, 117);
+
+  // 只有一个点：画在正中间
+  const single = sparklineOf([70], 120, 30, 3);
+  assert.equal(single.dots.length, 1);
+  assert.equal(single.dots[0].x, 60);
+
+  // 全一样：不除零，贴底
+  const flat = sparklineOf([80, 80, 80], 120, 30, 3);
+  assert.ok(flat.dots.every((dot) => dot.y === 27), "一样高的时候贴底");
+
+  assert.deepEqual(sparklineOf([], 120, 30), { d: "", dots: [], min: 0, max: 0 });
 });
 
 test("技巧库：左右手各 7 张，每张都有练法与验收", () => {

@@ -22,18 +22,18 @@ export function resetOnboarding(): void {
 const STEPS = [
   {
     n: "1",
-    title: "选一关",
-    body: "默认从 L01 开始（C 大调 1–5 品）。关卡下拉里能看到每关的难度和要填几格。",
+    title: "今天练什么",
+    body: "打开就是「今日练习」：按今天有多少分钟排出几块，每块都配六线谱和节拍器。",
   },
   {
     n: "2",
-    title: "填一格",
-    body: "点带 ? 的格子选音名；桌面也可以用键盘直接打 E、Eb、C#。第一次填写才开始计时。",
+    title: "一条一条来",
+    body: "点「试听」先听一遍，点「跟练」跟着节拍器从慢到快；练完点「完成」，连续天数就涨了。",
   },
   {
     n: "3",
-    title: "提交看结果",
-    body: "全对且够快是 3 星，慢一点是 2 星，做完就 1 星——拿到 1 星就解锁下一关。",
+    title: "卡住了看谱",
+    body: "每条练习都带六线谱；「我的谱」在节奏页最下面，贴一段六线谱就能画出来存下来。",
   },
 ];
 
@@ -107,10 +107,9 @@ export default function Onboarding({ onFinish, forced = false }: OnboardingProps
         </ol>
 
         <p className="onboard-more">
-          其他五个页面：<b>练习</b>（按今天有多少分钟生成计划，附 14 张技巧卡和节拍器）、
-          <b>乐理</b>（十二节课，从「音」讲到「时值」，页面底部还有 12 关的<b>乐理挑战</b>）、
-          <b>和弦</b>（16 个指法 + 级数）、<b>统计</b>、<b>设置</b>。
-          游戏页除了主线，还有<b>每日挑战</b>和没有提示的<b>推算模式</b>。
+          其他页面：<b>节奏</b>（103 张卡：跟读、时值、扫弦、伴奏型、节奏型、风格片段）、
+          <b>乐理</b>（十二节课，从「音」讲到「时值」）、<b>和弦</b>（16 个指法 + 级数）、
+          <b>音阶</b>、<b>音阶游戏</b>（填空 + 每日挑战 + 推算模式）、<b>统计</b>、<b>设置</b>。
         </p>
 
         <div className="onboard-actions">
@@ -120,7 +119,7 @@ export default function Onboarding({ onFinish, forced = false }: OnboardingProps
             ref={firstButtonRef}
             onClick={finish}
           >
-            开始第一关
+            开始练习
           </button>
           <button type="button" className="btn ghost" onClick={finish}>
             知道了

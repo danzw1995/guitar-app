@@ -487,6 +487,52 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 13px;
 }
 .stat-list li:last-child { border-bottom: 0; }
+/* 跟练进步曲线（v0.45.0）：名字 + 一条折线 + 首尾速度 */
+.curve-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-width: 620px;
+}
+.curve-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.curve-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.curve-svg {
+  width: 120px;
+  height: 30px;
+  overflow: visible;
+}
+.curve-svg path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.curve-svg circle {
+  fill: var(--accent);
+}
+@media (max-width: 720px) {
+  .curve-list li {
+    grid-template-columns: 1fr auto;
+  }
+  .curve-svg {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+  }
+}
 
 @media (max-width: 720px) {
   .app { padding: 12px 10px 6px; }
@@ -2025,8 +2071,22 @@ button, select, input { font: inherit; color: inherit; }
   display: block;
   width: var(--heat-cell);
   height: var(--heat-cell);
+  padding: 0;
+  border: 0;
   border-radius: 3px;
   background: #21262d;
+  font: inherit;
+  cursor: pointer;
+}
+.heat-cell:disabled {
+  cursor: default;
+}
+.heat-cell.on {
+  box-shadow: 0 0 0 1.5px var(--accent);
+}
+.heat-cell:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
 }
 .heat-cell.lv1 {
   background: rgba(232, 176, 75, 0.24);
@@ -2061,6 +2121,52 @@ button, select, input { font: inherit; color: inherit; }
 .heat-scale .heat-cell {
   width: 10px;
   height: 10px;
+  cursor: default;
+}
+.heat-hint {
+  grid-column: 1 / -1;
+  margin: -2px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+/* 点一格展开「那天练了什么」 */
+.heat-detail {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0d1117;
+  font-size: 12px;
+}
+.heat-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.heat-detail-head b {
+  font-size: 13px;
+}
+.heat-detail-head span {
+  color: var(--muted);
+}
+.heat-detail-head .btn-quiet {
+  margin-left: auto;
+}
+.heat-detail-meta {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+.heat-detail-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 2px;
+}
+.heat-detail-list em {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
 }
 .heat-note {
   margin: 0 0 4px;

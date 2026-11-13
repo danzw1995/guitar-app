@@ -2,6 +2,7 @@ import {
   fromLegacyBest,
   isValidDateKey,
   parseProgress,
+  type BpmPoint,
   type LevelProgress,
   type PracticeLog,
   type ProgressMap,
@@ -163,9 +164,27 @@ export interface RhythmRecord {
   minutes: number;
   /** 最后一次练的日期（`YYYY-MM-DD`）。 */
   lastAt: string;
+  /** 最高速度的变化：一天一个点，最多 60 个（v0.45.0 起记录）。 */
+  history?: BpmPoint[];
 }
 
 export type RhythmRecords = Record<string, RhythmRecord>;
+
+/** 曲线上的点只收合法日期与正数 BPM，按日期排好、最多留 60 个。 */
+function parseHistory(value: unknown): BpmPoint[] {
+  if (!Array.isArray(value)) return [];
+  const points: BpmPoint[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const point = raw as Record<string, unknown>;
+    const date = typeof point.date === "string" ? point.date : "";
+    const bpm = Number(point.bpm);
+    if (!isValidDateKey(date) || !Number.isFinite(bpm) || bpm <= 0) continue;
+    points.push({ date, bpm: Math.round(bpm) });
+  }
+  points.sort((a, b) => a.date.localeCompare(b.date));
+  return points.slice(-60);
+}
 
 export function loadRhythm(): RhythmRecords {
   const raw = readJson(RHYTHM_KEY);
@@ -182,6 +201,7 @@ export function loadRhythm(): RhythmRecords {
       sessions: Number.isFinite(Number(item.sessions)) ? Number(item.sessions) : 1,
       minutes: Number.isFinite(Number(item.minutes)) ? Math.max(0, Number(item.minutes)) : 0,
       lastAt: typeof item.lastAt === "string" ? item.lastAt : "",
+      history: parseHistory(item.history),
     };
   }
   return records;

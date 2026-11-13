@@ -1,11 +1,17 @@
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   dateKeyOf,
+  DRILLS,
+  FEELS,
   heatmapOf,
   lastNDays,
   practiceStats,
+  sparklineOf,
+  stageOf,
   streakOf,
   summarizeProgress,
   THEORY_LEVEL_IDS,
+  weekdayIndex,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadDaily, loadPractice, loadProgress, loadRhythm, type DailyMap } from "../lib/storage";
@@ -15,6 +21,8 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
 
 /** 统计页：全部来自本机 localStorage，没有账号也没有上报。 */
+const WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+
 export default function Stats() {
   const progress = loadProgress();
   const daily = loadDaily() as DailyMap;
@@ -25,6 +33,52 @@ export default function Stats() {
   const narrow = useMediaQuery("(max-width: 900px)");
   const wide = useMediaQuery("(min-width: 1100px)");
   const heat = heatmapOf(practiceLog, today, narrow ? 18 : wide ? 52 : 26);
+
+  // 点热力图里的一格 → 展开那天练了什么。键盘用方向键在格子间走（左右一周、上下一天）。
+  const drillNames = useMemo(() => new Map(DRILLS.map((drill) => [drill.id, drill.name])), []);
+  const [day, setDay] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<number | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const todayIndex = heat.weeks.length * 7 - 7 + weekdayIndex(today);
+  const activeIndex = Math.min(cursor ?? todayIndex, heat.weeks.length * 7 - 1);
+  const dayLog = day ? practiceLog[day] : undefined;
+
+  useEffect(() => {
+    if (cursor === null) return;
+    gridRef.current
+      ?.querySelector<HTMLButtonElement>(`[data-heat-index="${cursor}"]`)
+      ?.focus();
+  }, [cursor]);
+
+  const moveCursor = (delta: number) => {
+    const from = cursor ?? todayIndex;
+    setCursor(Math.max(0, Math.min(todayIndex, from + delta)));
+  };
+
+  const onGridKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    const delta =
+      event.key === "ArrowLeft"
+        ? -7
+        : event.key === "ArrowRight"
+          ? 7
+          : event.key === "ArrowUp"
+            ? -1
+            : event.key === "ArrowDown"
+              ? 1
+              : 0;
+    if (delta !== 0) {
+      event.preventDefault();
+      moveCursor(delta);
+      return;
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      setCursor(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      setCursor(todayIndex);
+    }
+  };
 
   // 节奏页的跟练成绩：每条练习最快练到多少 BPM、练过几次、上次是哪天。
   // 练习页的跟练用 `p:` 前缀存在同一张表里，这里只数节奏页那 103 条。
@@ -37,6 +91,13 @@ export default function Stats() {
     .map(([id, item]) => ({ id, ...item }))
     .sort((a, b) => b.bestBpm - a.bestBpm || b.sessions - a.sessions)
     .slice(0, 5);
+
+  // 跟练进步：只有两天以上记录的条目才画得出曲线（练习页的 p: 条目也算）
+  const curves = Object.entries(rhythm)
+    .map(([id, item]) => ({ id, points: item.history ?? [] }))
+    .filter((item) => item.points.length >= 2)
+    .sort((a, b) => b.points.length - a.points.length)
+    .slice(0, 6);
 
   const summary = summarizeProgress(LEVEL_IDS, progress);
   const theory = summarizeProgress(THEORY_LEVEL_IDS, progress);
@@ -196,15 +257,34 @@ export default function Stats() {
               </span>
             ))}
           </div>
-          <div className="heat-grid" aria-hidden="true">
-            {heat.weeks.flatMap((column) =>
-              column.map((cell) => (
-                <i
-                  key={cell.date}
-                  className={`heat-cell lv${cell.level}${cell.future ? " future" : ""}`}
-                  title={`${cell.date} · ${cell.minutes > 0 ? `${cell.minutes} 分钟` : "没练"}`}
-                />
-              )),
+          <div
+            className="heat-grid"
+            ref={gridRef}
+            role="group"
+            aria-label="点一格看那天练了什么；方向键移动，左右一周、上下一天"
+            onKeyDown={onGridKey}
+          >
+            {heat.weeks.flatMap((column, week) =>
+              column.map((cell, weekday) => {
+                const index = week * 7 + weekday;
+                const on = cell.date === day;
+                return (
+                  <button
+                    key={cell.date}
+                    type="button"
+                    data-heat-index={index}
+                    tabIndex={cell.future || index !== activeIndex ? -1 : 0}
+                    disabled={cell.future}
+                    aria-pressed={on}
+                    aria-label={`${cell.date}，${cell.minutes > 0 ? `${cell.minutes} 分钟` : "没练"}`}
+                    className={`heat-cell lv${cell.level}${cell.future ? " future" : ""}${on ? " on" : ""}`}
+                    onClick={() => {
+                      setCursor(index);
+                      setDay(on ? null : cell.date);
+                    }}
+                  />
+                );
+              }),
             )}
           </div>
         </div>
@@ -220,6 +300,39 @@ export default function Stats() {
             多
           </span>
         </p>
+        <p className="heat-hint">点一格看那天练了什么</p>
+
+        {day && (
+          <div className="heat-detail">
+            <div className="heat-detail-head">
+              <b>{day}</b>
+              <span>{WEEKDAYS[weekdayIndex(day)]}</span>
+              <button type="button" className="btn-quiet" onClick={() => setDay(null)}>
+                关掉
+              </button>
+            </div>
+            {dayLog && dayLog.minutes > 0 ? (
+              <>
+                <p className="heat-detail-meta">
+                  {dayLog.minutes} 分钟 · 第 {dayLog.stage + 1} 阶段「{stageOf(dayLog.stage).name}」
+                  {dayLog.feel
+                    ? ` · 感觉：${FEELS.find((feel) => feel.id === dayLog.feel)?.label ?? ""}`
+                    : ""}
+                </p>
+                <ul className="heat-detail-list">
+                  {dayLog.done.map((id) => (
+                    <li key={id}>
+                      {drillNames.get(id.replace(/^p:/, "")) ?? id}
+                      {id.startsWith("p:") && <em>跟练</em>}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="heat-detail-meta">那天没练。</p>
+            )}
+          </div>
+        )}
       </div>
 
       <p className="heat-note">最近 7 天（分钟）</p>
@@ -290,6 +403,42 @@ export default function Stats() {
         </ul>
       ) : (
         <p className="hint">还没有跟练记录。去节奏页点任意一条的「跟练」，练完点「记录成绩」。</p>
+      )}
+
+      {curves.length > 0 && (
+        <>
+          <h3 className="stat-sub">跟练进步</h3>
+          <ul className="curve-list">
+            {curves.map((curve) => {
+              const values = curve.points.map((point) => point.bpm);
+              const spark = sparklineOf(values, 120, 30);
+              const first = curve.points[0];
+              const last = curve.points[curve.points.length - 1];
+              const head = spark.dots[spark.dots.length - 1];
+              const practice = curve.id.startsWith("p:");
+              const name = practice
+                ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
+                : rhythmItemById(curve.id)?.label ?? curve.id;
+              return (
+                <li key={curve.id}>
+                  <span className="curve-name">{name}</span>
+                  <svg
+                    className="curve-svg"
+                    viewBox="0 0 120 30"
+                    role="img"
+                    aria-label={`${first.date} 的 ${first.bpm} BPM，到 ${last.date} 的 ${last.bpm} BPM，共 ${curve.points.length} 天`}
+                  >
+                    <path d={spark.d} />
+                    <circle cx={head.x} cy={head.y} r={2} />
+                  </svg>
+                  <span className="muted">
+                    {first.bpm} → {last.bpm} BPM · {curve.points.length} 天
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
 
       <h3 className="stat-sub">最近战绩</h3>

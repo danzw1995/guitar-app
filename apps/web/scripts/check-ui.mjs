@@ -103,6 +103,16 @@ try {
     log(gone === "false", "新手引导能关掉（它盖住了整页）");
   }
 
+  // 1b) 落地页就是「练习」：新打开的人第一眼看到今日三条，不是先落在音阶游戏里
+  const landing = js(
+    "(() => { const cur = document.querySelector('nav.tabs button[aria-current=\"page\"]'); const h = document.querySelector('.panel-head h2'); return (cur?.textContent ?? '') + '|' + (h?.textContent ?? ''); })()",
+  );
+  log(
+    landing === '"练习|今日练习"',
+    "打开就是「练习」页（今日练习）",
+    landing === '"练习|今日练习"' ? "" : String(landing),
+  );
+
   // 2) 主导航 8 个 Tab，能切到「节奏」
   const tabs = js("document.querySelectorAll('nav.tabs button').length");
   log(tabs === "8", `主导航有 8 个 Tab（读到 ${tabs}）`);
@@ -601,7 +611,52 @@ try {
     heatInfo,
   );
 
-  // 14) 设置页：导出备份（点了之后给一句「已导出 …json」）
+  // 13c) 统计页：点热力图的一格，展开那天练了什么；再点一次收起
+  const heatDate = String(
+    js(
+      "(() => { const cells = [...document.querySelectorAll('.heat-grid .heat-cell')].filter(c => !c.disabled); const cell = cells.at(-1); if (!cell) return 'noday'; const date = (cell.getAttribute('aria-label') || '').slice(0, 10); cell.click(); return date; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await sleep(300);
+  const heatDetail = String(
+    js(
+      "(() => { const d = document.querySelector('.heat-detail'); return d ? d.innerText.replace(/\\n/g, ' ') : 'none'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    /^\d{4}-\d{2}-\d{2}$/.test(heatDate) && heatDetail.includes(heatDate),
+    "统计页：点一格能看到那天练了什么",
+    heatDetail,
+  );
+  js("document.querySelector('.heat-detail .btn-quiet')?.click() ?? null");
+  await sleep(250);
+  const heatClosed = String(
+    js("String(document.querySelectorAll('.heat-detail').length)"),
+  ).replace(/^"|"$/g, "");
+  log(heatClosed === "0", "统计页：关掉后明细就消失", heatClosed);
+
+  // 13d) 统计页：跟练进步曲线（两天以上才画；这里塞一条三天的记录再刷一次）
+  js(
+    "(() => { localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'rd-01': { bestBpm: 96, sessions: 4, minutes: 20, lastAt: '2026-11-12', history: [{ date: '2026-10-01', bpm: 62 }, { date: '2026-10-20', bpm: 80 }, { date: '2026-11-12', bpm: 96 }] } })); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(1400);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const curveInfo = String(
+    js(
+      "(() => { const rows = [...document.querySelectorAll('.curve-list li')]; if (!rows.length) return 'none'; const d = rows[0].querySelector('.curve-svg path')?.getAttribute('d') || ''; const label = rows[0].querySelector('.curve-svg')?.getAttribute('aria-label') || ''; const name = rows[0].querySelector('.curve-name')?.textContent || ''; return `${rows.length}|${d.startsWith('M') ? 'path' : 'nopath'}|${label.includes('BPM') ? 'bpm' : 'nobpm'}|${name}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  const [curveCount, curvePath, curveLabel, curveName] = curveInfo.split("|");
+  log(
+    curveCount === "1" && curvePath === "path" && curveLabel === "bpm" && curveName.includes("练习 1"),
+    "统计页：跟练进步画成一条折线",
+    curveInfo,
+  );
+
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '设置'); b?.click(); return 'ok'; })()",
   );

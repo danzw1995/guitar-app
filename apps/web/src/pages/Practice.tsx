@@ -8,6 +8,7 @@ import {
   dateKeyOf,
   drillsOfStage,
   practiceStats,
+  pushBpmPoint,
   recordBlock,
   stageForCompleted,
   stageOf,
@@ -97,6 +98,7 @@ export default function Practice() {
         sessions: (previous?.sessions ?? 0) + 1,
         minutes: (previous?.minutes ?? 0) + result.minutes,
         lastAt: today,
+        history: pushBpmPoint(previous?.history, today, result.bpm),
       },
     };
     setRecords(next);

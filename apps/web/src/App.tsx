@@ -39,7 +39,8 @@ const SECONDARY: Tab[] = ["chords", "scales", "game", "settings"];
 const labelOf = (id: Tab) => TABS.find((t) => t.id === id)?.label ?? id;
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("game");
+  // 落地页是「练习」：第一次打开就能看到今日三条，而不是先落在音阶游戏里
+  const [tab, setTab] = useState<Tab>("practice");
   const [moreOpen, setMoreOpen] = useState(false);
 
   // 「更多」是个浮层：Esc 关掉，打开时把焦点放进去
@@ -163,7 +164,7 @@ export default function App() {
       )}
 
       <UpdateToast />
-      <Onboarding onFinish={() => setTab("game")} />
+      <Onboarding onFinish={() => setTab("practice")} />
     </div>
   );
 }

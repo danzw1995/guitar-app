@@ -117,7 +117,10 @@ for (const device of VIEWPORTS) {
         })
         .filter((item) => item.right > vw + 1 && item.w > 24)
         .slice(0, 4);
+      // 热力图的格子是日历格（52 周 × 40px 放不下），不按 40×40 的点按目标要求；
+      // 它另有 aria-label、方向键和「点开看明细」这条路。
       const smallButtons = [...document.querySelectorAll("main button, main .btn")]
+        .filter((node) => !node.classList.contains("heat-cell"))
         .filter((node) => {
           const rect = node.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0 && (rect.width < 40 || rect.height < 40);
