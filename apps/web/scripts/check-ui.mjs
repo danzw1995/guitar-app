@@ -273,7 +273,29 @@ try {
   await sleep(3200);
   const afterEnd = String(beatLeft());
   log(afterEnd === "none", "放完竖条自己消失", afterEnd);
-  // 9) 我的谱：粘一段六线谱 → 预览出图 → 存下后卡片里也有图 → 删掉
+  // 9) 我的谱：内置示例一键填进编辑区
+  const exampleNames = String(
+    js(
+      "(() => [...document.querySelectorAll('.my-examples .chip')].map(n => n.textContent.trim()).join('|'))()",
+    ),
+  );
+  log(
+    exampleNames.includes("小星星") && exampleNames.includes("欢乐颂"),
+    "我的谱：有内置示例（小星星 / 欢乐颂 / 两只老虎）",
+    exampleNames,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.my-examples .chip')].find(n => n.textContent.trim() === '小星星'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+  const exampleFilled = String(
+    js(
+      "(() => { const t = document.querySelector('#my-score-input'); return t ? t.value.split('\\n')[0] : 'none'; })()",
+    ),
+  );
+  log(exampleFilled.includes("小星星"), "我的谱：点示例会把谱填进编辑区", exampleFilled);
+
+  // 9a) 我的谱：粘一段六线谱 → 预览出图 → 存下后卡片里也有图 → 删掉
   js(
     "(() => { document.querySelector('.my-scores')?.scrollIntoView({ block: 'end' }); return 'ok'; })()",
   );

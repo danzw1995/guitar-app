@@ -64,6 +64,8 @@ function splitLabel(line) {
 
 function stringOfLabel(label, fallback) {
   if (!label) return fallback;
+  // 大写 E 是 6 弦，小写 e 是 1 弦——不能都按小写查表
+  if (label === "E") return 6;
   const key = label.toLowerCase();
   if (key in LABELS) return LABELS[key];
   return fallback;

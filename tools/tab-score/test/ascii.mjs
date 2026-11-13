@@ -89,6 +89,23 @@ test("ASCII 六线谱：样例文件能直接渲染成 PNG", async () => {
   assert.equal(png.beats.length, 8, "两小节 4/4 应该有 8 拍");
 });
 
+test("ASCII 六线谱：小写 e 是 1 弦、大写 E 是 6 弦（别把 E 行覆盖掉）", () => {
+  const text = [
+    "e|0---------------|",
+    "B|----------------|",
+    "G|----------------|",
+    "D|----------------|",
+    "A|----------------|",
+    "E|3---------------|",
+  ].join("\n");
+  const spec = asciiTabToSpec(text);
+  const notes = spec.bars[0].hits.flatMap((hit) => hit.notes);
+  assert.equal(notes.length, 2, "两根弦上各一个音，不能被覆盖成一个");
+  const byString = new Map(notes.map((note) => [note.string, note.fret]));
+  assert.equal(byString.get(1), 0, "小写 e 是 1 弦空弦");
+  assert.equal(byString.get(6), 3, "大写 E 是 6 弦 3 品");
+});
+
 test("ASCII 六线谱：空文件要报错，不能悄悄出空白谱", () => {
   assert.throws(() => asciiTabToSpec("hello\nworld"), /没找到六线谱/);
   assert.throws(

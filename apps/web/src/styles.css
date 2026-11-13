@@ -1819,6 +1819,17 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--text);
   font-size: 12px;
 }
+.my-examples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.my-examples-label {
+  color: var(--muted);
+  font-size: 13px;
+}
 .my-editor {
   display: grid;
   gap: 10px;
