@@ -56,7 +56,7 @@ async function ensureEngine(): Promise<Engine> {
   host.className = "alpha-host";
   // 必须留在排版流里、有真实宽高，否则 alphaTab 一张图都不画。
   host.style.cssText =
-    "position:fixed;top:0;left:0;width:700px;height:720px;opacity:0;pointer-events:none;z-index:-1;overflow:hidden;";
+    "position:fixed;top:0;left:0;width:700px;height:1600px;opacity:0;pointer-events:none;z-index:-1;overflow:hidden;";
   document.body.appendChild(host);
 
   const api = new alphaTab.AlphaTabApi(host, {
@@ -196,7 +196,7 @@ async function bravuraCss(): Promise<string> {
   return fontCssPromise;
 }
 
-/** 六条弦线的上下沿：高度不到 2.5 的 rect 就是弦线。 */
+/** 六条弦线的上下沿：高度不到 2.5 的 rect 就是弦线（拿不到就退回 null，由调用方兜底）。 */
 function staffExtent(svg: SVGSVGElement): { top: number; bottom: number } | null {
   let top = Number.POSITIVE_INFINITY;
   let bottom = Number.NEGATIVE_INFINITY;
@@ -247,15 +247,26 @@ interface BoundsLookup {
  * 返回值里 `bands` 是每一拍的区间（还带这一行谱的纵向范围，播放时画高亮条用），
  * `edges` 是分割线的横坐标（第一条是小节头，不画线）。
  */
-function beatBands(bounds: BoundsLookup | undefined): {
+function beatBands(
+  bounds: BoundsLookup | undefined,
+  parts: SystemPart[],
+): {
   bands: { x: number; w: number; y: number; h: number }[];
-  edges: number[];
+  lines: { x: number; y1: number; y2: number }[];
 } {
   const bands: { x: number; w: number; y: number; h: number }[] = [];
-  for (const system of bounds?.staffSystems ?? []) {
-    const systemBox = system.visualBounds;
-    const systemY = systemBox?.y ?? 0;
-    const systemH = systemBox?.h ?? 0;
+  const lines: { x: number; y1: number; y2: number }[] = [];
+  const systems = bounds?.staffSystems ?? [];
+  for (let systemIndex = 0; systemIndex < systems.length; systemIndex += 1) {
+    const system = systems[systemIndex];
+    const part = parts[systemIndex];
+    // 纵向范围优先用这一行自己的六条弦线（量得到就正好卡在弦线上），量不到再用 alphaTab 的框。
+    const extent = part ? staffExtent(part.svg) : null;
+    const systemY = part && extent ? part.y + extent.top : (system.visualBounds?.y ?? 0);
+    const systemH =
+      part && extent ? extent.bottom - extent.top : (system.visualBounds?.h ?? 0);
+    // 这一行谱从第几个拍区间开始：分割线只在这一行内部画，第一拍是小节头，不画。
+    const firstBand = bands.length;
     for (const masterBarBounds of system.bars ?? []) {
       for (const barBounds of masterBarBounds.bars ?? []) {
         const beats = (barBounds.beats ?? [])
@@ -295,10 +306,14 @@ function beatBands(bounds: BoundsLookup | undefined): {
         }
       }
     }
+    // 分割线画在每一拍的开头：这一行的第一个区间是小节头，跳过；
+    // 每一行单独算，否则第二行第一拍会被当成上一行的下一拍画一条线。
+    for (let index = firstBand + 1; index < bands.length; index += 1) {
+      const band = bands[index];
+      lines.push({ x: band.x, y1: band.y, y2: band.y + band.h });
+    }
   }
-  // 分割线画在每一拍的开头（第一拍是小节头，不画）
-  const edges = bands.slice(1).map((band) => band.x);
-  return { bands, edges };
+  return { bands, lines };
 }
 
 const BEAT_LINE_COLOR = "#8b949e";
@@ -312,53 +327,85 @@ export interface PreviewScore {
   beats: { x: number; w: number; y: number; h: number }[];
 }
 
-async function composeSvg(state: Engine): Promise<PreviewScore> {
-  const svg = state.host.querySelector("svg") as SVGSVGElement | null;
-  if (!svg) throw new Error("谱面渲染超时");
-  const width = svg.width.baseVal.value;
-  const height = svg.height.baseVal.value;
-  if (!(width > 0) || !(height > 0)) throw new Error("谱面渲染超时");
+/** 一个系统（一行谱）在宿主里的位置与内容框。 */
+interface SystemPart {
+  svg: SVGSVGElement;
+  /** 这一行在宿主坐标系里的左上角（alphaTab 把每一行画成一块绝对定位的 <svg>）。 */
+  x: number;
+  y: number;
+  /** 这一行真正画到的范围（局部坐标，可能超出 <svg> 的框）。 */
+  box: VisualBounds;
+}
 
-  const extent = staffExtent(svg);
-  const lookup = (state.api as unknown as { boundsLookup?: BoundsLookup }).boundsLookup;
-  const { bands, edges } = beatBands(lookup);
-  const lines = extent
-    ? edges
-        .map(
-          (x) =>
-            `<line x1="${x.toFixed(2)}" y1="${extent.top.toFixed(2)}" x2="${x.toFixed(2)}" y2="${extent.bottom.toFixed(2)}" stroke="${BEAT_LINE_COLOR}" stroke-opacity="${BEAT_LINE_OPACITY}" stroke-width="1" stroke-dasharray="2 5" />`,
-        )
-        .join("")
-    : "";
-  const css = await bravuraCss();
-  // alphaTab 给 <svg> 的宽高只包住谱线，符梁、箭头、品数会画出这个框被裁掉，
-  // 所以按真实内容（getBBox）重开一块画布，四周留一圈余量。
-  let box = { x: 0, y: 0, width, height };
-  try {
-    const measured = svg.getBBox();
-    if (measured.width > 0 && measured.height > 0) {
-      box = {
-        x: Math.min(0, measured.x),
-        y: Math.min(0, measured.y),
-        width: Math.max(measured.x + measured.width, width) - Math.min(0, measured.x),
-        height: Math.max(measured.y + measured.height, height) - Math.min(0, measured.y),
-      };
+/**
+ * alphaTab 在 Page 布局下**每一行谱都是一个独立的 <svg>**（宿主里绝对定位，top 各不相同），
+ * 只取第一个 <svg> 的话，超过一行谱的谱面就只剩第一行——小星星这种四小节的就会少一半。
+ * 所以这里按每一行自己的位置拼回一张图，再按所有行的内容框重开画布。
+ */
+async function composeSvg(state: Engine): Promise<PreviewScore> {
+  const svgs = Array.from(state.host.querySelectorAll("svg")) as SVGSVGElement[];
+  if (svgs.length === 0) throw new Error("谱面渲染超时");
+  const hostRect = state.host.getBoundingClientRect();
+
+  const parts: SystemPart[] = svgs.map((svg) => {
+    const rect = svg.getBoundingClientRect();
+    const width = svg.width.baseVal.value || rect.width;
+    const height = svg.height.baseVal.value || rect.height;
+    // 量不到就退回 svg 自己的框；量到了就以真实内容为准（符梁、品数会探出去）。
+    let box: VisualBounds = { x: 0, y: 0, w: width, h: height };
+    try {
+      const measured = svg.getBBox();
+      if (measured.width > 0 && measured.height > 0) {
+        box = { x: measured.x, y: measured.y, w: measured.width, h: measured.height };
+      }
+    } catch {
+      // 量不到就退回 svg 自己的宽高。
     }
-  } catch {
-    // 量不到就退回 svg 自己的宽高。
+    return { svg, x: rect.left - hostRect.left, y: rect.top - hostRect.top, box };
+  });
+  if (!(parts[0].box.w > 0) || !(parts[0].box.h > 0)) throw new Error("谱面渲染超时");
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const part of parts) {
+    minX = Math.min(minX, part.x + part.box.x);
+    minY = Math.min(minY, part.y + part.box.y);
+    maxX = Math.max(maxX, part.x + part.box.x + part.box.w);
+    maxY = Math.max(maxY, part.y + part.box.y + part.box.h);
   }
+
   const margin = 8;
-  const viewX = box.x - margin;
-  const viewY = box.y - margin;
-  const viewWidth = box.width + margin * 2;
-  const viewHeight = box.height + margin * 2;
+  const viewX = minX - margin;
+  const viewY = minY - margin;
+  const viewWidth = maxX - minX + margin * 2;
+  const viewHeight = maxY - minY + margin * 2;
+
+  const lookup = (state.api as unknown as { boundsLookup?: BoundsLookup }).boundsLookup;
+  const { bands, lines } = beatBands(lookup, parts);
+  const lineMarkup = lines
+    .map(
+      (line) =>
+        `<line x1="${line.x.toFixed(2)}" y1="${line.y1.toFixed(2)}" x2="${line.x.toFixed(2)}" y2="${line.y2.toFixed(2)}" stroke="${BEAT_LINE_COLOR}" stroke-opacity="${BEAT_LINE_OPACITY}" stroke-width="1" stroke-dasharray="2 5" />`,
+    )
+    .join("");
+  const css = await bravuraCss();
+  const body = parts
+    .map(
+      (part) =>
+        `<g transform="translate(${part.x.toFixed(2)},${part.y.toFixed(2)})">${restyle(part.svg.innerHTML)}</g>`,
+    )
+    .join("");
   const markup =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${viewWidth}" height="${viewHeight}" viewBox="${viewX} ${viewY} ${viewWidth} ${viewHeight}" style="font-family:'alphaTab'">` +
     (css ? `<style>${css}</style>` : "") +
-    restyle(svg.innerHTML) +
-    lines +
+    body +
+    lineMarkup +
     `</svg>`;
-  return { svg: markup, beats: bands };
+  // 拍区间是整页坐标，换成 viewBox 坐标（score-image 那边按用户坐标裁图）。
+  const beats = bands.map((band) => ({ ...band, x: band.x - viewX, y: band.y - viewY }));
+  return { svg: markup, beats };
 }
 
 const svgCache = new Map<string, PreviewScore>();

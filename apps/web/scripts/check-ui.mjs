@@ -320,6 +320,18 @@ try {
     "我的谱：点「预览」能画出一张和内置谱一样的图",
     `读到 ${previewImages} 张图`,
   );
+  // 9a2) 四小节的谱要画成两行：alphaTab 每行谱是一个独立的 <svg>，只取第一块就会少一半
+  const previewShape = String(
+    js(
+      "(() => { const img = document.querySelector('.my-preview img.tab-score'); return img ? `${img.naturalWidth}x${img.naturalHeight}` : 'none'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  const [previewW, previewH] = previewShape.split("x").map(Number);
+  log(
+    previewW > 0 && previewH / previewW > 0.3,
+    "我的谱：四小节的谱预览出来是两行（不是只剩第一行）",
+    previewShape,
+  );
 
   // 9b) 预览里点试听，谱上也要有跟着拍走的竖条（和内置谱同一个播放头）
   js(
