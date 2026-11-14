@@ -10,6 +10,8 @@ import {
   practiceStats,
   pushBpmPoint,
   recordBlock,
+  REGRESS_BOOST_DAYS,
+  regressedIds,
   stageForCompleted,
   stageOf,
   techniquesOf,
@@ -116,9 +118,17 @@ export default function Practice() {
 
   const stageDef = stageOf(stage);
   const library = useMemo(() => drillsOfStage(stage), [stage]);
+  // 跟练速度退步的练习（`p:` 前缀的记录）加几天紧迫度，让它们先回来
+  const boost = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const key of regressedIds(records)) {
+      if (key.startsWith("p:")) map.set(key.slice(2), REGRESS_BOOST_DAYS);
+    }
+    return map;
+  }, [records]);
   const session = useMemo(
-    () => buildSession({ minutes, stage, date: today, log }),
-    [minutes, stage, today, log],
+    () => buildSession({ minutes, stage, date: today, log, boost }),
+    [minutes, stage, today, log, boost],
   );
   const stats = useMemo(() => practiceStats(log, today), [log, today]);
 
@@ -314,9 +324,12 @@ export default function Practice() {
                     {isDone ? " · 已完成" : ""}
                   </p>
                   <p className="pb-due">
-                    {block.lastAt
-                      ? `上次练 ${block.days} 天前`
-                      : "还没练过，今天先见一面"}
+                    {[
+                      block.lastAt ? `上次练 ${block.days} 天前` : "还没练过，今天先见一面",
+                      block.boost ? "跟练速度退步了，先补上" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 </div>
                 <span className="pb-timer" role="timer" aria-live="off">

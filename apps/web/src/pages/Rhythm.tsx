@@ -14,6 +14,8 @@ import {
   pickDue,
   pushBpmPoint,
   recordBlock,
+  REGRESS_BOOST_DAYS,
+  regressedIds,
   stageForCompleted,
   type Level,
   type Tab,
@@ -64,7 +66,12 @@ function hashOf(text: string): number {
  * offset 取「日期哈希」，所以同一天刷新不变、第二天换一批；三条按块各取一条
  * （跟读 / 时值 / 扫弦各一），不然可能三条都是时值。
  */
-function dailyPicks(items: Pickable[], today: string, records: RhythmRecords): Pickable[] {
+function dailyPicks(
+  items: Pickable[],
+  today: string,
+  records: RhythmRecords,
+  boost: Map<string, number>,
+): Pickable[] {
   const lastAt = new Map<string, string>();
   for (const [id, record] of Object.entries(records)) {
     if (record.lastAt) lastAt.set(id, record.lastAt);
@@ -77,7 +84,9 @@ function dailyPicks(items: Pickable[], today: string, records: RhythmRecords): P
     else groups.set(item.group, [item]);
   }
   const picked: Pickable[] = [];
-  for (const list of groups.values()) picked.push(pickDue(list, lastAt, today, offset).item);
+  for (const list of groups.values()) {
+    picked.push(pickDue(list, lastAt, today, offset, { boost }).item);
+  }
   return picked;
 }
 
@@ -198,7 +207,16 @@ export default function Rhythm() {
   const best = (id: string) => records[id]?.bestBpm;
 
   const today = dateKeyOf(new Date());
-  const picks = useMemo(() => dailyPicks(RHYTHM_PICKS, today, records), [today, records]);
+  // 跟练速度退步的加几天紧迫度，让它们先回来
+  const boost = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const id of regressedIds(records)) map.set(id, REGRESS_BOOST_DAYS);
+    return map;
+  }, [records]);
+  const picks = useMemo(
+    () => dailyPicks(RHYTHM_PICKS, today, records, boost),
+    [today, records, boost],
+  );
   const picksDone = picks.filter((pick) => records[pick.id]?.lastAt === today).length;
   const readingDone = doneRatio(READING_DRILLS.map((drill) => drill.id), records);
   const rhythmDone = doneRatio(RHYTHM_DRILLS.map((drill) => drill.id), records);
@@ -287,7 +305,10 @@ export default function Rhythm() {
                 </span>
                 <span className="today-group">{pick.group}</span>
                 <span className="today-label">{pick.label}</span>
-                <span className="today-due">{dueLabel(records[pick.id], today)}</span>
+                <span className="today-due">
+                  {dueLabel(records[pick.id], today)}
+                  {boost.has(pick.id) ? " · 速度掉了" : ""}
+                </span>
                 <button
                   type="button"
                   className="btn btn-quiet"

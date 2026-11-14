@@ -49,32 +49,53 @@ export interface DuePick<T> {
   lastAt?: string;
   /** 距上次几天；从没练过是 `FRESH_DAYS`。 */
   days: number;
+  /** 额外加的紧迫度（天），没加就是 0。 */
+  boost: number;
+}
+
+export interface DueOptions {
+  /** 额外加的紧迫度（天）：退步过的条目加几天，让它先回来。 */
+  boost?: Map<string, number>;
+  /** 今天先不练的（手动「换一条」）；还有别的候选时跳过它。 */
+  exclude?: Set<string>;
 }
 
 /**
  * 从一堆候选里挑一条：先挑最久没练的；一样久时按 `offset` 轮换，
  * 保证「同一天刷新不跳、第二天换一条」，也不至于永远卡在第一条。
+ *
+ * `boost` 给某几条加几天紧迫度（退步了、或者上次卡住没练完）；
+ * `exclude` 是「今天不想练这条」，但整池都被排除时忽略它，免得空手。
  */
 export function pickDue<T extends { id: string }>(
   pool: readonly T[],
   lastAt: Map<string, string>,
   today: string,
   offset: number,
+  options: DueOptions = {},
 ): DuePick<T> {
   if (pool.length === 0) throw new Error("pickDue: 候选是空的");
 
-  const ranked = pool.map((item, index) => {
+  const left = options.exclude?.size
+    ? pool.filter((item) => !options.exclude?.has(item.id))
+    : pool;
+  const usable = left.length > 0 ? left : pool;
+
+  const ranked = usable.map((item) => {
     const seen = lastAt.get(item.id);
+    const boost = options.boost?.get(item.id) ?? 0;
+    const index = pool.indexOf(item);
     return {
       item,
       lastAt: seen,
       days: dueDaysOf(seen, today),
+      boost,
       // 同分时按 offset 轮换：offset 天天变，所以第二天会轮到下一条
       rank: (index - offset + pool.length * 8) % pool.length,
     };
   });
 
-  ranked.sort((a, b) => b.days - a.days || a.rank - b.rank);
+  ranked.sort((a, b) => b.days + b.boost - (a.days + a.boost) || a.rank - b.rank);
   const best = ranked[0];
-  return { item: best.item, lastAt: best.lastAt, days: best.days };
+  return { item: best.item, lastAt: best.lastAt, days: best.days, boost: best.boost };
 }

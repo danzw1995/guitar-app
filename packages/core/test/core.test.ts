@@ -109,6 +109,7 @@ import {
   weekdayIndex,
   pushBpmPoint,
   sparklineOf,
+  regressedIds,
   lastPracticed,
   dueDaysOf,
   pickDue,
@@ -1826,6 +1827,40 @@ test("间隔复习：最久没练的先回来，今天练过的不算", () => {
   const tie = lastPracticed({ "2026-11-08": { done: ["a", "b"] } }, "2026-11-10");
   assert.equal(pickDue([{ id: "a" }, { id: "b" }], tie, "2026-11-10", 0).item.id, "a");
   assert.equal(pickDue([{ id: "a" }, { id: "b" }], tie, "2026-11-10", 1).item.id, "b");
+});
+
+test("退步的加急：跟练最高 BPM 掉下来，挑选时排在更前面", () => {
+  const records = {
+    // 练到过 96，最近只有 88 —— 掉了 8，算退步
+    drop: { history: [{ date: "2026-11-01", bpm: 96 }, { date: "2026-11-09", bpm: 88 }] },
+    // 一直在爬：80 → 92
+    climb: { history: [{ date: "2026-11-01", bpm: 80 }, { date: "2026-11-09", bpm: 92 }] },
+    // 只掉 4：一天的抖动，不算
+    jitter: { history: [{ date: "2026-11-01", bpm: 90 }, { date: "2026-11-09", bpm: 86 }] },
+    // 只有一天记录，没有基准
+    once: { history: [{ date: "2026-11-09", bpm: 70 }] },
+    // 没有曲线
+    none: {},
+  };
+  const regressed = regressedIds(records);
+  assert.ok(regressed.has("drop"), "掉 8 的算退步");
+  assert.ok(!regressed.has("climb"));
+  assert.ok(!regressed.has("jitter"), "只掉 4 不算");
+  assert.ok(!regressed.has("once"));
+  assert.ok(!regressed.has("none"));
+
+  // 两条都练过同一天：b 没退步、a 退步了，boost 让 a 先回来
+  const last = lastPracticed({ "2026-11-08": { done: ["a", "b"] } }, "2026-11-10");
+  const pool = [{ id: "a" }, { id: "b" }];
+  assert.equal(pickDue(pool, last, "2026-11-10", 0).item.id, "a", "一样久时先按 offset 轮");
+  const boost = new Map([["b", 10]]);
+  assert.equal(pickDue(pool, last, "2026-11-10", 0, { boost }).item.id, "b", "加急之后 b 先");
+  assert.equal(pickDue(pool, last, "2026-11-10", 0, { boost }).boost, 10);
+
+  // 今天先不练的跳过；整池都被排除时忽略排除，不至于空手
+  const skip = new Set(["a"]);
+  assert.equal(pickDue(pool, last, "2026-11-10", 0, { exclude: skip }).item.id, "b");
+  assert.equal(pickDue(pool, last, "2026-11-10", 0, { exclude: new Set(["a", "b"]) }).item.id, "a");
 });
 
 test("今日计划：有练习记录时按「多久没练」挑，同一天同一份", () => {

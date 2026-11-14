@@ -252,7 +252,7 @@ try {
     ),
   ).replace(/^"|"$/g, "");
   log(
-    dues.split("|").length === 3 && dues.split("|").every((text) => /^(还没练过|今天练过|上次练 \d+ 天前)$/.test(text)),
+    dues.split("|").length === 3 && dues.split("|").every((text) => /^(还没练过|今天练过|上次练 \d+ 天前)( · 速度掉了)?$/.test(text)),
     "三条都写着「为什么今天练它」（多久没练）",
     dues,
   );
@@ -679,6 +679,27 @@ try {
     curveCount === "1" && curvePath === "path" && curveLabel === "bpm" && curveName.includes("练习 1"),
     "统计页：跟练进步画成一条折线",
     curveInfo,
+  );
+
+  // 13e) 退步加急：rd-01 练到过 96、5 天前只有 86 → 挤进今日三条并标「速度掉了」
+  js(
+    "(() => { const d = new Date(); d.setDate(d.getDate() - 5); const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'rd-01': { bestBpm: 96, sessions: 4, minutes: 20, lastAt: k, history: [{ date: '2026-10-01', bpm: 62 }, { date: '2026-10-20', bpm: 96 }, { date: k, bpm: 86 }] } })); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(1400);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(800);
+  const regressDue = String(
+    js(
+      "(() => { const row = document.querySelector('.today-item[data-pick=\"rd-01\"] .today-due'); return row ? row.textContent.trim() : 'missing'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    regressDue.endsWith("· 速度掉了") && regressDue.includes("上次练"),
+    "退步的那条会挤进今日三条，并标「速度掉了」",
+    regressDue,
   );
 
   js(

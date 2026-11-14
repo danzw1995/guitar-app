@@ -1239,6 +1239,8 @@ export interface SessionBlock {
   lastAt?: string;
   /** 距上次几天；从没练过是 `FRESH_DAYS`。 */
   days?: number;
+  /** 额外加的紧迫度（天）：退步过的条目会带着这个值被挑中。 */
+  boost?: number;
 }
 
 export interface Session {
@@ -1260,15 +1262,20 @@ export interface BuildOptions {
    * 不给就按日期轮换（老行为，同一天同一份计划）。
    */
   log?: PracticeLog;
+  /**
+   * 额外紧迫度（天），键是练习 id：跟练速度退步的加几天，让它先回来。
+   * 不传就是纯「多久没练」。
+   */
+  boost?: Map<string, number>;
 }
 
 /**
  * 同一天、同一阶段、同样时长 → 同一份计划。
  *
  * 挑哪条：有练习记录时按「多久没练」挑（最久没碰的先回来，昨天练过的靠后），
- * 一样久时按日期轮换；没有记录就纯轮换。
+ * 一样久时按日期轮换；没有记录就纯轮换。`boost` 里的练习会多算几天紧迫度。
  */
-export function buildSession({ minutes, stage, date, log }: BuildOptions): Session {
+export function buildSession({ minutes, stage, date, log, boost }: BuildOptions): Session {
   const stageDef = stageOf(stage);
   const weights = WEIGHTS[stageDef.id] ?? WEIGHTS[0];
   const effective = { ...weights };
@@ -1286,8 +1293,15 @@ export function buildSession({ minutes, stage, date, log }: BuildOptions): Sessi
   const lastAt = lastPracticed(log ?? {}, date);
   const sessionBlocks: SessionBlock[] = blocks.map((id, index) => {
     const pool = drillsFor(stageDef.id, id);
-    const picked = pickDue(pool, lastAt, date, day + index);
-    return { block: id, drill: picked.item, minutes: alloc[index], lastAt: picked.lastAt, days: picked.days };
+    const picked = pickDue(pool, lastAt, date, day + index, { boost });
+    return {
+      block: id,
+      drill: picked.item,
+      minutes: alloc[index],
+      lastAt: picked.lastAt,
+      days: picked.days,
+      boost: picked.boost,
+    };
   });
 
   return {

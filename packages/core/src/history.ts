@@ -69,3 +69,29 @@ export function sparklineOf(values: number[], width: number, height: number, pad
 function round(value: number): number {
   return Math.round(value * 10) / 10;
 }
+
+/** 掉了多少 BPM 才算「退步」——一天的抖动不算。 */
+export const REGRESS_BPM = 5;
+
+/** 退步过的条目在挑选时多算几天紧迫度（大约等于「放了一周」）。 */
+export const REGRESS_BOOST_DAYS = 7;
+
+/**
+ * 哪些条目「退步了」：跟练曲线上最后一个点比历史最高还低 `REGRESS_BPM` 以上。
+ *
+ * 用来给间隔复习加权重：练到过 96、最近只有 88 的，应该比「一直 88」的先回来。
+ * 只有一天记录的不算（没有比较的基准）。
+ */
+export function regressedIds(
+  records: Record<string, { history?: BpmPoint[] } | undefined>,
+): Set<string> {
+  const out = new Set<string>();
+  for (const [id, record] of Object.entries(records)) {
+    const points = record?.history;
+    if (!points || points.length < 2) continue;
+    const last = points[points.length - 1].bpm;
+    const peak = Math.max(...points.map((point) => point.bpm));
+    if (peak - last >= REGRESS_BPM) out.add(id);
+  }
+  return out;
+}
