@@ -297,6 +297,36 @@ try {
   // 清掉跳过表，免得影响后面的断言
   js("localStorage.removeItem('guitar.skips.v1')");
 
+  // 7d) 这一周先不练：提示里的第二条出路，点完写进压后表，撤销能把两边一起撤掉
+  js("(() => { document.querySelector('.today-item .today-swap')?.click(); return 'ok'; })()");
+  await sleep(300);
+  js("(() => { document.querySelector('.undo-toast-more')?.click(); return 'ok'; })()");
+  await sleep(400);
+  const pauseToast = String(js("document.querySelector('.undo-toast')?.textContent ?? ''")).replace(
+    /^"|"$/g,
+    "",
+  );
+  const pausedIds = String(
+    js("localStorage.getItem('guitar.pauses.v1') ?? ''"),
+  ).replace(/^"|"$/g, "");
+  log(
+    pauseToast.includes("这一周") && pausedIds.includes(firstId),
+    "点「这一周别出现」后写进压后表，提示改成「这一周」",
+    `${pauseToast.trim()} · ${pausedIds}`,
+  );
+  js("(() => { document.querySelector('.undo-toast-btn')?.click(); return 'ok'; })()");
+  await sleep(400);
+  const pausesAfterUndo = String(
+    js("localStorage.getItem('guitar.pauses.v1') ?? ''"),
+  ).replace(/^"|"$/g, "");
+  log(
+    pickIds() === idsBefore && !pausesAfterUndo.includes(firstId),
+    "撤销把跳过和压后一起撤掉，那条回到三条里",
+    `${pausesAfterUndo || "{}"} · ${pickIds()}`,
+  );
+  js("localStorage.removeItem('guitar.skips.v1')");
+  js("localStorage.removeItem('guitar.pauses.v1')");
+
   const jumped = js(
     "(() => { window.scrollTo(0, 0); const b = document.querySelector('.today-item .btn:not(.today-swap)'); if (!b) return 'no'; b.click(); return 'ok'; })()",
   );

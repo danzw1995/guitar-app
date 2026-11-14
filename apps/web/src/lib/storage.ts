@@ -23,6 +23,8 @@ export const PRACTICE_KEY = "guitar.practice.v1";
 export const RHYTHM_KEY = "guitar.rhythm.v1";
 /** 今天先不练的条目：日期 -> id 列表（只留最近 7 天）。 */
 export const SKIPS_KEY = "guitar.skips.v1";
+/** 这一周先不练：id -> 到哪天为止（含当天）。 */
+export const PAUSES_KEY = "guitar.pauses.v1";
 /** v0.2.x 只存每关最佳时间，迁移时读一次。 */
 const LEGACY_BEST_PREFIX = "guitar.best.";
 
@@ -268,6 +270,54 @@ function pruneSkips(log: SkipLog, today: string): SkipLog {
   for (const [date, ids] of Object.entries(log)) {
     if (keep.has(date)) out[date] = ids;
   }
+  return out;
+}
+
+/** `id → 到哪天为止先不练`（含当天，日期格式 YYYY-MM-DD）。 */
+export type PauseLog = Record<string, string>;
+
+/** 「这一周先不练」默认压后 7 天（含今天）。 */
+const PAUSE_DAYS = 7;
+
+export function loadPauses(today = dateKeyOf(new Date())): PauseLog {
+  const raw = readJson(PAUSES_KEY);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+
+  const log: PauseLog = {};
+  for (const [id, until] of Object.entries(raw as Record<string, unknown>)) {
+    if (id === "" || typeof until !== "string" || !isValidDateKey(until)) continue;
+    log[id] = until;
+  }
+  return prunePauses(log, today);
+}
+
+export function savePauses(log: PauseLog): void {
+  writeJson(PAUSES_KEY, log);
+}
+
+/** 今天还压着的 id（`until` 到今天为止都算）。 */
+export function pausedOf(log: PauseLog, today: string): Set<string> {
+  const ids = new Set<string>();
+  for (const [id, until] of Object.entries(log)) if (until >= today) ids.add(id);
+  return ids;
+}
+
+/** 压后到 `today + days - 1`（默认 7 天，含今天）。 */
+export function addPause(log: PauseLog, id: string, today: string, days = PAUSE_DAYS): PauseLog {
+  return { ...log, [id]: addDays(today, days - 1) };
+}
+
+/** 撤掉压后（撤销 / 提前恢复）。 */
+export function removePause(log: PauseLog, id: string): PauseLog {
+  const next = { ...log };
+  delete next[id];
+  return next;
+}
+
+/** 过期的压后直接扔掉。 */
+function prunePauses(log: PauseLog, today: string): PauseLog {
+  const out: PauseLog = {};
+  for (const [id, until] of Object.entries(log)) if (until >= today) out[id] = until;
   return out;
 }
 

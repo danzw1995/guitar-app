@@ -2880,6 +2880,22 @@ button, select, input { font: inherit; color: inherit; }
   cursor: pointer;
 }
 
+.undo-toast-more {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
+}
+
 .undo-toast-close {
   min-width: 40px;
   min-height: 40px;

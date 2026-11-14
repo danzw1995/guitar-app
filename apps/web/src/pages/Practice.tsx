@@ -21,16 +21,22 @@ import {
   type PracticeLog,
 } from "@guitar/core";
 import {
+  addPause,
   addSkip,
+  loadPauses,
   loadPractice,
   loadProgress,
   loadRhythm,
   loadSkips,
+  pausedOf,
+  removePause,
   removeSkip,
+  savePauses,
   savePractice,
   saveRhythm,
   saveSkips,
   skipsOf,
+  type PauseLog,
   type RhythmRecords,
   type SkipLog,
 } from "../lib/storage";
@@ -75,8 +81,9 @@ export default function Practice() {
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   const [follow, setFollow] = useState<FollowTarget | null>(null);
   const [skips, setSkips] = useState<SkipLog>(() => loadSkips());
-  /** 刚跳过的哪一条（底部提示 + 撤销）。 */
-  const [undo, setUndo] = useState<{ id: string; label: string } | null>(null);
+  const [pauses, setPauses] = useState<PauseLog>(() => loadPauses());
+  /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
+  const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
 
   /** 试听一条练习：谱面上会跟着走一条「当前拍」竖条，和节奏页同一套播放头。 */
   function audition(id: string, tab: (typeof library)[number]["tab"], bpm: number) {
@@ -116,12 +123,24 @@ export default function Practice() {
     setUndo({ id, label });
   }
 
-  /** 点错了就撤销：把这条从今天的跳过表里拿掉，计划马上回到原来那条。 */
+  /** 提示里的第二条出路：这条这一周都别再排进来。 */
+  function pauseBlock() {
+    if (!undo) return;
+    const next = addPause(pauses, undo.id, today);
+    savePauses(next);
+    setPauses(next);
+    setUndo({ ...undo, paused: true });
+  }
+
+  /** 点错了就撤销：跳过和压后一起撤，计划马上回到原来那条。 */
   function undoSkip() {
     if (!undo) return;
-    const next = removeSkip(skips, today, undo.id);
-    saveSkips(next);
-    setSkips(next);
+    const nextSkip = removeSkip(skips, today, undo.id);
+    const nextPause = removePause(pauses, undo.id);
+    saveSkips(nextSkip);
+    savePauses(nextPause);
+    setSkips(nextSkip);
+    setPauses(nextPause);
     setUndo(null);
   }
 
@@ -161,8 +180,11 @@ export default function Practice() {
     }
     return map;
   }, [records]);
-  // 今天点了「换一条」的练习：计划里先跳过它们
-  const skip = useMemo(() => skipsOf(skips, today), [skips, today]);
+  // 今天点了「换一条」的练习，加上「这一周先不练」的：计划里都先跳过
+  const skip = useMemo(
+    () => new Set([...skipsOf(skips, today), ...pausedOf(pauses, today)]),
+    [skips, pauses, today],
+  );
   const session = useMemo(
     () => buildSession({ minutes, stage, date: today, log, boost, skip }),
     [minutes, stage, today, log, boost, skip],
@@ -533,7 +555,8 @@ export default function Practice() {
 
       {undo && (
         <UndoToast
-          message={`已跳过「${undo.label}」`}
+          message={undo.paused ? `这一周不再出现「${undo.label}」` : `已跳过「${undo.label}」`}
+          action={undo.paused ? undefined : { label: "这一周别出现", onClick: pauseBlock }}
           onUndo={undoSkip}
           onClose={() => setUndo(null)}
         />

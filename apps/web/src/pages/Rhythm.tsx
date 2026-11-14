@@ -33,13 +33,19 @@ import {
   addSkip,
   loadPractice,
   loadProgress,
+  addPause,
+  loadPauses,
   loadRhythm,
   loadSkips,
+  pausedOf,
+  removePause,
   removeSkip,
+  savePauses,
   savePractice,
   saveRhythm,
   saveSkips,
   skipsOf,
+  type PauseLog,
   type RhythmRecords,
   type SkipLog,
 } from "../lib/storage";
@@ -128,8 +134,9 @@ export default function Rhythm() {
   const [target, setTarget] = useState<FollowTarget | null>(null);
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   const [skips, setSkips] = useState<SkipLog>(() => loadSkips());
-  /** 刚跳过的哪一条（底部提示 + 撤销）。 */
-  const [undo, setUndo] = useState<{ id: string; label: string } | null>(null);
+  const [pauses, setPauses] = useState<PauseLog>(() => loadPauses());
+  /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
+  const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
   /** 正在试听哪一条、播到第几拍（`null` = 没在播）。 */
   const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
   const narrow = useMediaQuery("(max-width: 900px)");
@@ -224,9 +231,14 @@ export default function Rhythm() {
     for (const id of regressedIds(records)) map.set(id, REGRESS_BOOST_DAYS);
     return map;
   }, [records]);
+  /** 今天不再出现的条目：跳过表 + 这一周先不练的，合成一个集合交给 pickDue。 */
+  const skip = useMemo(
+    () => new Set([...skipsOf(skips, today), ...pausedOf(pauses, today)]),
+    [skips, pauses, today],
+  );
   const picks = useMemo(
-    () => dailyPicks(RHYTHM_PICKS, today, records, boost, skipsOf(skips, today)),
-    [today, records, boost, skips],
+    () => dailyPicks(RHYTHM_PICKS, today, records, boost, skip),
+    [today, records, boost, skip],
   );
   /** 「换一条」：把这条记进今天的跳过表，三条会重新挑一次（今天不再出现）。 */
   const swapPick = (id: string) => {
@@ -236,12 +248,23 @@ export default function Rhythm() {
     setSkips(next);
     setUndo({ id, label });
   };
-  /** 点错了就撤销：把这条从今天的跳过表里拿掉，它马上回到三条里。 */
+  /** 提示里的第二条出路：这条这一周都别再排进来。 */
+  const pausePick = () => {
+    if (!undo) return;
+    const next = addPause(pauses, undo.id, today);
+    savePauses(next);
+    setPauses(next);
+    setUndo({ ...undo, paused: true });
+  };
+  /** 点错了就撤销：跳过和压后一起撤，它马上回到三条里。 */
   const undoSkip = () => {
     if (!undo) return;
-    const next = removeSkip(skips, today, undo.id);
-    saveSkips(next);
-    setSkips(next);
+    const nextSkip = removeSkip(skips, today, undo.id);
+    const nextPause = removePause(pauses, undo.id);
+    saveSkips(nextSkip);
+    savePauses(nextPause);
+    setSkips(nextSkip);
+    setPauses(nextPause);
     setUndo(null);
   };
   const picksDone = picks.filter((pick) => records[pick.id]?.lastAt === today).length;
@@ -868,7 +891,8 @@ export default function Rhythm() {
 
       {undo && (
         <UndoToast
-          message={`已跳过「${undo.label}」`}
+          message={undo.paused ? `这一周不再出现「${undo.label}」` : `已跳过「${undo.label}」`}
+          action={undo.paused ? undefined : { label: "这一周别出现", onClick: pausePick }}
           onUndo={undoSkip}
           onClose={() => setUndo(null)}
         />

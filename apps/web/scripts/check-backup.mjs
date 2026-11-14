@@ -127,3 +127,27 @@ test("合并跳过表：同一天取并集，坏日期不进", () => {
   assert.equal(skips["不是日期"], undefined, "坏日期不进");
   assert.equal(skips["2026-11-11"], undefined, "不是数组的不进");
 });
+
+test("合并压后表：同一条取更晚的截止日，坏日期不进", () => {
+  const current = {
+    ...empty(),
+    data: { "guitar.pauses.v1": { "s0-crawl": "2026-11-20", "rd-01": "2026-11-15" } },
+  };
+  const incoming = {
+    ...empty(),
+    data: {
+      "guitar.pauses.v1": {
+        "s0-crawl": "2026-11-17",
+        "rd-01": "2026-11-18",
+        "rt-triplet": "2026-11-16",
+        "坏": "不是日期",
+      },
+    },
+  };
+  const { next } = mergeBackup(current, incoming);
+  const pauses = next.data["guitar.pauses.v1"];
+  assert.equal(pauses["s0-crawl"], "2026-11-20", "本机的截止日更晚就留着");
+  assert.equal(pauses["rd-01"], "2026-11-18", "备份的截止日更晚就用它");
+  assert.equal(pauses["rt-triplet"], "2026-11-16", "备份里多出来的那条要进来");
+  assert.equal(pauses["坏"], undefined, "坏日期不进");
+});
