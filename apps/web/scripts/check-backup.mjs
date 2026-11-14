@@ -151,3 +151,31 @@ test("合并压后表：同一条取更晚的截止日，坏日期不进", () =>
   assert.equal(pauses["rt-triplet"], "2026-11-16", "备份里多出来的那条要进来");
   assert.equal(pauses["坏"], undefined, "坏日期不进");
 });
+
+test("合并和弦转换：最快速度取高的，日期取晚的", () => {
+  const current = {
+    ...empty(),
+    data: {
+      "guitar.chords.v1": {
+        "pg-1645": { bestBpm: 92, sessions: 3, minutes: 3, lastAt: "2026-11-10" },
+        "pg-folk": { bestBpm: 70, sessions: 1, minutes: 1, lastAt: "2026-11-12" },
+      },
+    },
+  };
+  const incoming = {
+    ...empty(),
+    data: {
+      "guitar.chords.v1": {
+        "pg-1645": { bestBpm: 104, sessions: 5, minutes: 5, lastAt: "2026-11-14" },
+        "pg-1564": { bestBpm: 80, sessions: 1, minutes: 1, lastAt: "2026-11-13" },
+      },
+    },
+  };
+  const { next } = mergeBackup(current, incoming);
+  const chords = next.data["guitar.chords.v1"];
+  assert.equal(chords["pg-1645"].bestBpm, 104, "最快的速度取高的");
+  assert.equal(chords["pg-1645"].lastAt, "2026-11-14", "日期取更晚的");
+  assert.equal(chords["pg-1645"].sessions, 5, "练过几次取大的");
+  assert.equal(chords["pg-folk"].bestBpm, 70, "本机独有的要留着");
+  assert.equal(chords["pg-1564"].bestBpm, 80, "备份里多出来的要进来");
+});

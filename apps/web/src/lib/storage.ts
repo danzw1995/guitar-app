@@ -192,8 +192,8 @@ function parseHistory(value: unknown): BpmPoint[] {
   return points.slice(-60);
 }
 
-export function loadRhythm(): RhythmRecords {
-  const raw = readJson(RHYTHM_KEY);
+/** 一张「id → 成绩」的表：跟练与和弦转换共用同一套形状。 */
+function parseRecords(raw: unknown): RhythmRecords {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
 
   const records: RhythmRecords = {};
@@ -211,6 +211,21 @@ export function loadRhythm(): RhythmRecords {
     };
   }
   return records;
+}
+
+export function loadRhythm(): RhythmRecords {
+  return parseRecords(readJson(RHYTHM_KEY));
+}
+
+/** 和弦转换的成绩：每组进行练到多快（v0.59.0 起）。 */
+export const CHORDS_KEY = "guitar.chords.v1";
+
+export function loadChords(): RhythmRecords {
+  return parseRecords(readJson(CHORDS_KEY));
+}
+
+export function saveChords(records: RhythmRecords): void {
+  writeJson(CHORDS_KEY, records);
 }
 
 export function saveRhythm(records: RhythmRecords): void {

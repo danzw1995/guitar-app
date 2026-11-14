@@ -5,6 +5,7 @@ export * from "./progress.ts";
 export * from "./daily.ts";
 export * from "./solfege.ts";
 export * from "./chords.ts";
+export * from "./chord-drill.ts";
 export * from "./intervals.ts";
 export * from "./rhythm.ts";
 export * from "./tab.ts";

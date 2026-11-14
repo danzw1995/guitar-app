@@ -1048,6 +1048,47 @@ try {
   await sleep(400);
   js("localStorage.removeItem('guitar.rhythm.v1')");
 
+  // 16c) 和弦页：转换练习（四组进行 + 开始按钮 + 没成绩时的提示）
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '和弦'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const chordDrill = JSON.parse(
+    String(
+      js(
+        "(() => { const sec = document.querySelector('.chord-drill'); const chips = [...document.querySelectorAll('.cd-progs .chip')]; const on = chips.find(c => c.getAttribute('aria-pressed') === 'true'); return JSON.stringify({ has: Boolean(sec), chips: chips.length, on: on?.textContent?.trim() ?? '', btn: document.querySelector('.cd-controls .btn')?.textContent?.trim() ?? '', hint: document.querySelector('.cd-hint')?.textContent?.trim() ?? '' }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    chordDrill.has &&
+      chordDrill.chips === 4 &&
+      chordDrill.on === "C–Am–F–G" &&
+      chordDrill.btn === "开始" &&
+      chordDrill.hint.includes("还没记过成绩"),
+    "和弦页：转换练习有四组进行，默认第一组，没成绩时提示「这组还没记过成绩」",
+    `${chordDrill.chips} 组 / ${chordDrill.btn}`,
+  );
+
+  js("(() => { document.querySelectorAll('.cd-progs .chip')[1]?.click(); return 'ok'; })()");
+  await sleep(300);
+  const progState = JSON.parse(
+    String(
+      js(
+        "(() => { const chips = [...document.querySelectorAll('.cd-progs .chip')]; return JSON.stringify({ second: chips[1]?.getAttribute('aria-pressed') ?? '', first: chips[0]?.getAttribute('aria-pressed') ?? '' }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    progState.second === "true" && progState.first === "false",
+    "和弦页：点第二组进行，选中态跟着走",
+    `${progState.first} → ${progState.second}`,
+  );
+
   // 17) 新版本提示：触发后出现在底部，「稍后」能收掉
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",

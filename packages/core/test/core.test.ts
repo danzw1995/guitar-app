@@ -51,6 +51,10 @@ import {
   totalStars,
   checkAnswer,
   type AttemptResult,
+  PROGRESSIONS,
+  chordAt,
+  changesIn,
+  drillBeats,
 } from "../src/index.ts";
 import {
   CIRCLE,
@@ -2186,5 +2190,55 @@ test("alphaTex：附点、切音、三连音都按 alphaTab 的语法写", () =>
   const sixTex = tabToAlphaTex(sixEight);
   assert.ok(sixTex.includes("\\ts (6 8)"), `6/8 拍号写错了：${sixTex}`);
 });
+
+test("和弦转换：每 N 拍换一个，循环着走，第一拍不算换", () => {
+  const chords = ["C", "Am", "F", "G"];
+
+  // 每 2 拍换：0、1 拍是 C；2、3 拍是 Am；一直循环
+  assert.deepEqual(chordAt(chords, 2, 0), { chord: "C", next: "Am", index: 0 });
+  assert.deepEqual(chordAt(chords, 2, 1), { chord: "C", next: "Am", index: 0 });
+  assert.equal(chordAt(chords, 2, 2).chord, "Am");
+  assert.equal(chordAt(chords, 2, 3).chord, "Am");
+  assert.equal(chordAt(chords, 2, 6).chord, "G");
+  assert.equal(chordAt(chords, 2, 6).next, "C", "最后一拍的下一个要绕回第一个");
+  assert.equal(chordAt(chords, 2, 8).chord, "C", "8 拍正好绕一圈");
+
+  // 每 4 拍换：一整小节一个和弦
+  assert.equal(chordAt(chords, 4, 3).chord, "C");
+  assert.equal(chordAt(chords, 4, 4).chord, "Am");
+
+  // 负数、非整数、0 拍间隔都别炸
+  assert.equal(chordAt(chords, 2, -3).chord, "C");
+  assert.equal(chordAt(chords, 2, 2.7).chord, "Am");
+  assert.equal(chordAt(chords, 0, 5).chord, "Am", "0 拍按 1 拍处理");
+
+  // 换了几次：第一拍是「按上去」，不算换
+  assert.equal(changesIn(4, 2), 1);
+  assert.equal(changesIn(5, 2), 2);
+  assert.equal(changesIn(8, 2), 3);
+  assert.equal(changesIn(4, 4), 0);
+  assert.equal(changesIn(1, 2), 0);
+  assert.equal(changesIn(0, 2), 0);
+
+  // 一分钟就是 BPM 那么多拍
+  assert.equal(drillBeats(80), 80);
+  assert.equal(drillBeats(0), 1);
+});
+
+test("和弦转换：四组进行里的和弦都在和弦库里", () => {
+  assert.equal(PROGRESSIONS.length, 4);
+  for (const progression of PROGRESSIONS) {
+    assert.equal(progression.chords.length, 4, `${progression.id} 应该是四个和弦`);
+    assert.equal(
+      progression.name,
+      progression.chords.join("–"),
+      `${progression.id} 的名字要跟和弦对得上`,
+    );
+    for (const name of progression.chords) {
+      assert.ok(CHORD_BY_NAME.has(name), `${progression.id} 里的 ${name} 不在和弦库里`);
+    }
+  }
+});
+
 
 

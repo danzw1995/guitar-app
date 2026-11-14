@@ -12,6 +12,7 @@ import { isValidDateKey } from "@guitar/core";
  * - 我的谱：按 id 去重，最多留 40 条（按创建时间取新的）；
  * - 今天跳过的练习：同一天取并集（不因为导入把「今天不想练」又冒出来）；
  * - 这一周先不练：同一条取更晚的截止日（不会因为导入提前恢复）；
+ * - 和弦转换：跟跟练同一套规则（最快速度取高、日期取晚）；
  * - 设置 / 音量 / 新手引导：以导入的为准（换设备时要恢复的就是这些）。
  */
 
@@ -26,6 +27,7 @@ export const BACKUP_KEYS = [
   "guitar.onboarded.v1",
   "guitar.skips.v1",
   "guitar.pauses.v1",
+  "guitar.chords.v1",
 ] as const;
 
 export type BackupKey = (typeof BACKUP_KEYS)[number];
@@ -248,6 +250,10 @@ export function mergeBackup(
 
   const pauses = mergePauses(a["guitar.pauses.v1"], b["guitar.pauses.v1"]);
   if (Object.keys(pauses).length) data["guitar.pauses.v1"] = pauses;
+
+  // 和弦转换跟跟练同一套形状：最快速度取高的，日期取晚的
+  const chords = mergeRhythm(a["guitar.chords.v1"], b["guitar.chords.v1"]);
+  if (Object.keys(chords).length) data["guitar.chords.v1"] = chords;
 
   for (const key of ["guitar.settings.v1", "guitar.audio.v1", "guitar.onboarded.v1"] as const) {
     if (b[key] !== undefined) data[key] = b[key];

@@ -395,6 +395,23 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 18b. 和弦转换：当前和弦要一眼看得见，进度条要撑满
+{
+  const now = narrowDecls(".cd-now");
+  const size = Number(String(now.get("font-size") ?? "").replace("px", ""));
+  expect(
+    ".cd-now 是整块里最大的字（≥ 36px）",
+    Number.isFinite(size) && size >= 36,
+    `font-size = ${now.get("font-size") ?? "未设置"}`,
+  );
+  const bar = narrowDecls(".cd-bar span");
+  expect(
+    ".cd-bar span 用强调色画进度",
+    (bar.get("background") ?? "").includes("var(--accent)") && bar.get("display") === "block",
+    `background = ${bar.get("background") ?? "未设置"}`,
+  );
+}
+
 // 19. 朗读谱：X 要比品数更醒目
 {
   const x = narrowDecls(".tab-fret.rhythm");

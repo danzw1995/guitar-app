@@ -293,6 +293,31 @@ button, select, input { font: inherit; color: inherit; }
 .chord-hint { text-align: left; line-height: 1.7; margin-top: 4px; }
 .chord-hint b { color: var(--text); }
 
+/* 和弦转换练习（v0.59.0） */
+.cd-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 14px; }
+.cd-progs { display: flex; flex-wrap: wrap; gap: 6px; }
+.cd-field { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.cd-field input { width: 68px; }
+.cd-display {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-2);
+  text-align: center;
+}
+.cd-now { font-size: 46px; font-weight: 800; line-height: 1.1; color: var(--accent); }
+.cd-next { font-size: 13px; color: var(--muted); }
+.cd-next b { color: var(--text); font-size: 15px; }
+.cd-stat { font-size: 13px; font-variant-numeric: tabular-nums; }
+.cd-bar { height: 6px; border-radius: 999px; background: #0d1117; overflow: hidden; margin-top: 4px; }
+.cd-bar span { display: block; height: 100%; background: var(--accent); transition: width 120ms linear; }
+.cd-result { display: grid; gap: 10px; justify-items: start; margin-top: 12px; font-size: 14px; }
+.cd-result p { margin: 0; }
+.cd-saved { color: var(--green); font-size: 13px; }
+.cd-hint { margin: 12px 0 0; }
+
 /* game */
 .game-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 .game-clock { text-align: right; display: flex; flex-direction: column; gap: 2px; }

@@ -9,6 +9,7 @@ import {
   stackThirds,
 } from "@guitar/core";
 import ChordDiagram from "../components/ChordDiagram";
+import ChordDrill from "../components/ChordDrill";
 import { arpeggioPattern, useTone } from "../hooks/useTone";
 
 /** 指法数字的含义（1=食指 … 4=小指）。 */
@@ -46,7 +47,8 @@ export default function Chords() {
   );
 
   return (
-    <section className="panel">
+    <>
+      <section className="panel">
       <div className="panel-head">
         <h2>常用和弦</h2>
         <p>
@@ -162,6 +164,9 @@ export default function Chords() {
           </p>
         </div>
       </div>
-    </section>
+      </section>
+
+      <ChordDrill />
+    </>
   );
 }
