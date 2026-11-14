@@ -102,3 +102,28 @@ test("不是备份的文件要报人话", () => {
 test("备份文件名带日期", () => {
   assert.equal(backupFileName(new Date(2026, 10, 12)), "guitar-lab-backup-2026-11-12.json");
 });
+
+test("合并跳过表：同一天取并集，坏日期不进", () => {
+  const current = {
+    ...empty(),
+    data: { "guitar.skips.v1": { "2026-11-14": ["s0-crawl"], "2026-11-13": ["rd-01"] } },
+  };
+  const incoming = {
+    ...empty(),
+    data: {
+      "guitar.skips.v1": {
+        "2026-11-14": ["rd-01", "s0-crawl"],
+        "2026-11-12": ["rt-rest"],
+        "不是日期": ["x"],
+        "2026-11-11": "不是数组",
+      },
+    },
+  };
+  const { next } = mergeBackup(current, incoming);
+  const skips = next.data["guitar.skips.v1"];
+  assert.deepEqual(skips["2026-11-14"].sort(), ["rd-01", "s0-crawl"], "同一天要并起来，不能重复");
+  assert.deepEqual(skips["2026-11-13"], ["rd-01"], "本机有、备份没有的那天要留着");
+  assert.deepEqual(skips["2026-11-12"], ["rt-rest"], "备份里多的那天要进来");
+  assert.equal(skips["不是日期"], undefined, "坏日期不进");
+  assert.equal(skips["2026-11-11"], undefined, "不是数组的不进");
+});

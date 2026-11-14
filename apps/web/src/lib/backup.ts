@@ -10,6 +10,7 @@ import { isValidDateKey } from "@guitar/core";
  * - 练习打卡：分钟取大、练过的条目取并集、stage/bpmMax 取大；
  * - 跟练成绩：bestBpm / sessions / minutes 取大，lastAt 取更晚的；
  * - 我的谱：按 id 去重，最多留 40 条（按创建时间取新的）；
+ * - 今天跳过的练习：同一天取并集（不因为导入把「今天不想练」又冒出来）；
  * - 设置 / 音量 / 新手引导：以导入的为准（换设备时要恢复的就是这些）。
  */
 
@@ -22,6 +23,7 @@ export const BACKUP_KEYS = [
   "guitar.scores.v1",
   "guitar.audio.v1",
   "guitar.onboarded.v1",
+  "guitar.skips.v1",
 ] as const;
 
 export type BackupKey = (typeof BACKUP_KEYS)[number];
@@ -184,6 +186,23 @@ function mergeScores(current: unknown, incoming: unknown): unknown[] {
     .slice(0, 40);
 }
 
+/** 跳过表：同一天取并集（导入不会把「今天不想练」的那条又变回来）。 */
+function mergeSkips(a: unknown, b: unknown): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const source of [a, b]) {
+    if (!isDict(source)) continue;
+    for (const [date, value] of Object.entries(source)) {
+      if (!isValidDateKey(date) || !Array.isArray(value)) continue;
+      const ids = new Set(out[date] ?? []);
+      for (const id of value) {
+        if (typeof id === "string" && id !== "") ids.add(id);
+      }
+      if (ids.size) out[date] = [...ids];
+    }
+  }
+  return out;
+}
+
 /** 纯函数：把导入的备份合进当前的，返回合并后的备份与摘要。 */
 export function mergeBackup(
   current: BackupFile,
@@ -207,6 +226,9 @@ export function mergeBackup(
 
   const scores = mergeScores(a["guitar.scores.v1"], b["guitar.scores.v1"]);
   if (scores.length) data["guitar.scores.v1"] = scores;
+
+  const skips = mergeSkips(a["guitar.skips.v1"], b["guitar.skips.v1"]);
+  if (Object.keys(skips).length) data["guitar.skips.v1"] = skips;
 
   for (const key of ["guitar.settings.v1", "guitar.audio.v1", "guitar.onboarded.v1"] as const) {
     if (b[key] !== undefined) data[key] = b[key];
