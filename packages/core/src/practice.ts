@@ -13,6 +13,7 @@
  */
 
 import { previousDateKey, streakOf } from "./daily.ts";
+import { lastPracticed, pickDue } from "./review.ts";
 import {
   arpeggioTab,
   bendTab,
@@ -1234,6 +1235,10 @@ export interface SessionBlock {
   block: BlockId;
   drill: Drill;
   minutes: number;
+  /** 这条上次练是哪天（不含今天）；从没练过就没有。 */
+  lastAt?: string;
+  /** 距上次几天；从没练过是 `FRESH_DAYS`。 */
+  days?: number;
 }
 
 export interface Session {
@@ -1250,10 +1255,20 @@ export interface BuildOptions {
   stage: number;
   /** `YYYY-MM-DD`，同一天生成同一份计划。 */
   date: string;
+  /**
+   * 练习记录。给了它就按「最久没练」挑今天的练习（间隔复习），
+   * 不给就按日期轮换（老行为，同一天同一份计划）。
+   */
+  log?: PracticeLog;
 }
 
-/** 同一天、同一阶段、同样时长 → 同一份计划（练习内容按日期轮换）。 */
-export function buildSession({ minutes, stage, date }: BuildOptions): Session {
+/**
+ * 同一天、同一阶段、同样时长 → 同一份计划。
+ *
+ * 挑哪条：有练习记录时按「多久没练」挑（最久没碰的先回来，昨天练过的靠后），
+ * 一样久时按日期轮换；没有记录就纯轮换。
+ */
+export function buildSession({ minutes, stage, date, log }: BuildOptions): Session {
   const stageDef = stageOf(stage);
   const weights = WEIGHTS[stageDef.id] ?? WEIGHTS[0];
   const effective = { ...weights };
@@ -1268,10 +1283,11 @@ export function buildSession({ minutes, stage, date }: BuildOptions): Session {
   );
 
   const day = dayIndex(date);
+  const lastAt = lastPracticed(log ?? {}, date);
   const sessionBlocks: SessionBlock[] = blocks.map((id, index) => {
     const pool = drillsFor(stageDef.id, id);
-    const drill = pool[(day + index) % pool.length];
-    return { block: id, drill, minutes: alloc[index] };
+    const picked = pickDue(pool, lastAt, date, day + index);
+    return { block: id, drill: picked.item, minutes: alloc[index], lastAt: picked.lastAt, days: picked.days };
   });
 
   return {

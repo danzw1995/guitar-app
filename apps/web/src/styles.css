@@ -1270,6 +1270,13 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+/* 「上次练 6 天前」——比元信息更淡，只说为什么要练这条 */
+.pb-due {
+  margin: 2px 0 0;
+  color: var(--muted);
+  opacity: 0.72;
+  font-size: 11px;
+}
 .pb-timer {
   font-variant-numeric: tabular-nums;
   font-size: 15px;

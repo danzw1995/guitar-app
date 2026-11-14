@@ -117,8 +117,8 @@ export default function Practice() {
   const stageDef = stageOf(stage);
   const library = useMemo(() => drillsOfStage(stage), [stage]);
   const session = useMemo(
-    () => buildSession({ minutes, stage, date: today }),
-    [minutes, stage, today],
+    () => buildSession({ minutes, stage, date: today, log }),
+    [minutes, stage, today, log],
   );
   const stats = useMemo(() => practiceStats(log, today), [log, today]);
 
@@ -312,6 +312,11 @@ export default function Practice() {
                     {block.minutes} 分钟
                     {drill.bpm ? ` · ${drill.bpm[0]}–${drill.bpm[1]} BPM` : ""}
                     {isDone ? " · 已完成" : ""}
+                  </p>
+                  <p className="pb-due">
+                    {block.lastAt
+                      ? `上次练 ${block.days} 天前`
+                      : "还没练过，今天先见一面"}
                   </p>
                 </div>
                 <span className="pb-timer" role="timer" aria-live="off">

@@ -582,6 +582,19 @@ try {
     followGone,
   );
 
+  // 12c) 练习页：每块计划都写着「为什么今天练这条」（上次练几天前 / 还没练过）
+  const dueInfo = String(
+    js(
+      "(() => { const blocks = document.querySelectorAll('.practice-block').length; const dues = [...document.querySelectorAll('.practice-block .pb-due')]; const ok = dues.filter(n => /^(上次练 \\d+ 天前|还没练过)/.test(n.textContent.trim())).length; return `${blocks}|${dues.length}|${ok}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  const [planBlocks, dueLines, dueOk] = dueInfo.split("|");
+  log(
+    Number(planBlocks) >= 4 && dueLines === planBlocks && dueOk === planBlocks,
+    "练习页：每块计划都写了「上次练几天前 / 还没练过」",
+    dueInfo,
+  );
+
   // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",

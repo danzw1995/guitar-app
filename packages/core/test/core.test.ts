@@ -109,6 +109,10 @@ import {
   weekdayIndex,
   pushBpmPoint,
   sparklineOf,
+  lastPracticed,
+  dueDaysOf,
+  pickDue,
+  FRESH_DAYS,
   stageForCompleted,
   techniqueById,
   techniquesOf,
@@ -1789,6 +1793,71 @@ test("跟练曲线：数值换算成折线，首尾落在框内", () => {
   assert.ok(flat.dots.every((dot) => dot.y === 27), "一样高的时候贴底");
 
   assert.deepEqual(sparklineOf([], 120, 30), { d: "", dots: [], min: 0, max: 0 });
+});
+
+test("间隔复习：最久没练的先回来，今天练过的不算", () => {
+  const log = {
+    "2026-11-01": { minutes: 30, done: ["a"] },
+    "2026-11-08": { minutes: 30, done: ["b"] },
+    "2026-11-10": { minutes: 30, done: ["c"] },
+  };
+  const last = lastPracticed(log, "2026-11-10");
+  assert.equal(last.get("a"), "2026-11-01", "a 只剩 11-01 那次（今天的记录不参与）");
+  assert.equal(last.get("b"), "2026-11-08");
+  assert.equal(last.get("c"), undefined, "今天练的 c 不进表，计划才不会当场变");
+
+  assert.equal(dueDaysOf("2026-11-08", "2026-11-10"), 2);
+  assert.equal(dueDaysOf(undefined, "2026-11-10"), FRESH_DAYS);
+
+  // a 已经 9 天没练，b 才 2 天，c 没练过（按 FRESH_DAYS=4 算）→ 先挑 a
+  const pool = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  const first = pickDue(pool, last, "2026-11-10", 0);
+  assert.equal(first.item.id, "a");
+  assert.equal(first.lastAt, "2026-11-01");
+  assert.equal(first.days, 9);
+
+  // 昨天把 a 练过之后，轮到没练过的 c；再把 c 练了，才轮到 b
+  const afterA = lastPracticed({ ...log, "2026-11-09": { done: ["a"] } }, "2026-11-10");
+  assert.equal(pickDue(pool, afterA, "2026-11-10", 0).item.id, "c");
+  const afterC = lastPracticed({ ...log, "2026-11-09": { done: ["a", "c"] } }, "2026-11-10");
+  assert.equal(pickDue(pool, afterC, "2026-11-10", 0).item.id, "b");
+
+  // 一样久时按 offset 轮换：第二天换一条，不永远卡在第一条
+  const tie = lastPracticed({ "2026-11-08": { done: ["a", "b"] } }, "2026-11-10");
+  assert.equal(pickDue([{ id: "a" }, { id: "b" }], tie, "2026-11-10", 0).item.id, "a");
+  assert.equal(pickDue([{ id: "a" }, { id: "b" }], tie, "2026-11-10", 1).item.id, "b");
+});
+
+test("今日计划：有练习记录时按「多久没练」挑，同一天同一份", () => {
+  const date = "2026-11-10";
+  const plain = buildSession({ minutes: 60, stage: 0, date });
+  const same = buildSession({ minutes: 60, stage: 0, date });
+  assert.deepEqual(
+    plain.blocks.map((block) => block.drill.id),
+    same.blocks.map((block) => block.drill.id),
+    "同一天两次生成必须是同一份计划",
+  );
+
+  // 把今天的计划全练过（记到昨天），今天再生成：能换的都该换掉
+  const done = plain.blocks.map((block) => block.drill.id);
+  const log = { "2026-11-09": { minutes: 60, stage: 0, done } };
+  const next = buildSession({ minutes: 60, stage: 0, date, log });
+  for (const block of next.blocks) {
+    const pool = drillsFor(0, block.block);
+    const same = done.includes(block.drill.id);
+    if (pool.length > 1) {
+      assert.ok(!same, `${block.block} 有 ${pool.length} 条可选，不该还练昨天那条`);
+    }
+  }
+
+  // 每块都带上「多久没练」，页面要显示
+  for (const block of next.blocks) {
+    assert.ok(block.days !== undefined && block.days >= 0, `${block.block} 没带上 days`);
+  }
+  assert.ok(
+    next.blocks.some((block) => block.lastAt),
+    "昨天练过的那批里，总有几条该带上 lastAt",
+  );
 });
 
 test("技巧库：左右手各 7 张，每张都有练法与验收", () => {

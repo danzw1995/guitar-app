@@ -16,6 +16,7 @@ export * from "./theory-game.ts";
 export * from "./practice.ts";
 export * from "./heatmap.ts";
 export * from "./history.ts";
+export * from "./review.ts";
 export * from "./rhythm-drills.ts";
 export * from "./reading-drills.ts";
 export * from "./strum-drills.ts";
