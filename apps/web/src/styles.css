@@ -986,6 +986,54 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 12px;
   line-height: 1.6;
 }
+/* 每节课末尾的「练一练」：学完这一节，下一步该弹什么 */
+.lesson-go-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+}
+.lesson-go-label {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.lesson-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+.lesson-go:hover {
+  border-color: var(--accent);
+  background: rgba(212, 167, 44, 0.1);
+}
+.lesson-go-arrow {
+  color: var(--muted);
+}
+/* 从乐理跳过来时，目标卡片闪一下边框 */
+.flash {
+  animation: flash-ring 1.6s ease-out 1;
+}
+@keyframes flash-ring {
+  0%,
+  35% {
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(212, 167, 44, 0);
+  }
+}
 .lesson-note {
   margin: 10px 0 0;
   padding: 10px 12px;

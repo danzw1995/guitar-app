@@ -412,6 +412,22 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// 18c. 乐理课末尾的「练一练」按钮：点得着（≥ 40px），跳过去要有反馈（.flash 动画）
+{
+  const go = narrowDecls(".lesson-go");
+  const height = Number(String(go.get("min-height") ?? "").replace("px", ""));
+  expect(
+    ".lesson-go 的点击高度不小于 40px",
+    Number.isFinite(height) && height >= 40,
+    `min-height = ${go.get("min-height") ?? "未设置"}`,
+  );
+  expect(
+    ".flash 是动画（跳过去时闪一下边框）",
+    css.includes(".flash {") && css.includes("@keyframes flash-ring"),
+    css.includes("@keyframes flash-ring") ? "有 flash-ring" : "缺 @keyframes flash-ring",
+  );
+}
+
 // 19. 朗读谱：X 要比品数更醒目
 {
   const x = narrowDecls(".tab-fret.rhythm");

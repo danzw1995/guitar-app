@@ -607,6 +607,50 @@ try {
     theoryBand === "none" ? "没看到竖条" : theoryBand,
   );
 
+  // 11b) 每节课末尾有「练一练」：点最后一节跳到节奏页那一条，并滚到眼前
+  const goCount = Number(String(js("(() => String(document.querySelectorAll('.lesson-go').length))()")).replace(/^"|"$/g, ""));
+  const goText = String(
+    js("(() => { const list = [...document.querySelectorAll('.lesson-go')]; return list[list.length - 1]?.textContent?.trim() ?? ''; })()"),
+  )
+    .replace(/^"|"$/g, "")
+    .replace(/\\"/g, '"');
+  js("(() => { const list = [...document.querySelectorAll('.lesson-go')]; list[list.length - 1]?.click(); return 'ok'; })()");
+  await sleep(1200);
+  const goJump = JSON.parse(
+    String(
+      js(
+        "(() => { const el = document.getElementById('drill-rd-01'); const r = el?.getBoundingClientRect(); return JSON.stringify({ hash: location.hash, inView: r ? r.top < window.innerHeight && r.bottom > 0 : false, flash: el?.classList.contains('flash') ?? false, h: r ? Math.round(r.height) : 0, vh: window.innerHeight }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    goCount === 12 && goText.includes("跟读练习") && goJump.hash === "#rhythm/drill-rd-01" && goJump.inView && goJump.flash,
+    "乐理每节课末尾的「练一练」跳到那一条练习，并闪一下边框",
+    `按钮 ${goCount} 个 · ${goJump.hash} · 在视口内 ${goJump.inView} · 闪烁 ${goJump.flash}`,
+  );
+
+  // 11c) 深链接进来也能定位（练习页那条在别的阶段，得先切阶段）
+  ab(["open", `${URL}#practice/drill-s1-cycle`]);
+  await sleep(1000);
+  const deep = JSON.parse(
+    String(
+      js(
+        "(() => { const el = document.getElementById('drill-s1-cycle'); const r = el?.getBoundingClientRect(); return JSON.stringify({ found: Boolean(el), inView: r ? r.top >= 0 && r.bottom <= window.innerHeight : false }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    deep.found && deep.inView,
+    "深链接 #practice/drill-s1-cycle 直接落在那一条练习上",
+    `找到 ${deep.found} · 在视口内 ${deep.inView}`,
+  );
+  ab(["open", URL]);
+  await sleep(600);
+
   // 12) 练习页：节拍器默认是展开的，练习卡片能试听并出竖条
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '练习'); b?.click(); return 'ok'; })()",

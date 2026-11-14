@@ -35,6 +35,7 @@ import RhythmStrip from "../components/RhythmStrip";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import { useTone } from "../hooks/useTone";
+import { goTo, type Tab } from "../lib/nav";
 
 const C_MAJOR = scalePcs(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
 const C_MAJOR_NAMES = scaleNames(KEY_BY_ID.get("C")!, SCALE_BY_ID.get("major")!);
@@ -104,6 +105,41 @@ const LESSONS = [
   { no: 11, title: "五度圈：调号是从哪来的" },
   { no: 12, title: "时值：一个音要待多久" },
 ] as const;
+
+/**
+ * 每节课后接一条练习：学完这一节，下一步该弹什么。
+ * 目标是页面里的元素 id（练习页的卡片是 `drill-<id>`，节奏页的卡片也是 `drill-<id>`）。
+ */
+const LESSON_PRACTICE: Record<number, { tab: Tab; target?: string; label: string }> = {
+  1: { tab: "practice", target: "drill-s0-crawl", label: "单弦爬格子：一边弹一边报音名" },
+  2: { tab: "practice", target: "drill-s0-scale", label: "C 大调一个八度：听全全半全全全半" },
+  3: { tab: "scales", label: "音阶页：看十二个音怎么排" },
+  4: { tab: "practice", target: "drill-s1-scale", label: "C 大调上下行" },
+  5: { tab: "practice", target: "drill-s0-crawl-across", label: "跨弦爬格子：同一个音在不同弦上" },
+  6: { tab: "chords", label: "和弦页：听一遍、看按法" },
+  7: { tab: "practice", target: "drill-s1-cycle", label: "四和弦循环 C–G–Am–F" },
+  8: { tab: "practice", target: "drill-s2-cross", label: "跨弦 6→3→5→2：形状跟着走" },
+  9: { tab: "practice", target: "drill-s4-caged", label: "CAGED 五把位（C 和弦）" },
+  10: { tab: "chords", label: "和弦页：七和弦的按法" },
+  11: { tab: "practice", target: "drill-s5-transpose", label: "转调伴奏（C → G）" },
+  12: { tab: "rhythm", target: "drill-rd-01", label: "跟读练习 1：四分 → 八分" },
+};
+
+function LessonPractice({ no }: { no: number }) {
+  const link = LESSON_PRACTICE[no];
+  if (!link) return null;
+  return (
+    <p className="lesson-go-row">
+      <span className="lesson-go-label">练一练</span>
+      <button type="button" className="lesson-go" onClick={() => goTo(link.tab, link.target)}>
+        {link.label}
+        <span className="lesson-go-arrow" aria-hidden="true">
+          →
+        </span>
+      </button>
+    </p>
+  );
+}
 
 export default function Theory() {
   const { playTab } = useTone();
@@ -288,6 +324,7 @@ export default function Theory() {
         <p className="lesson-cap">
           音有高低，也有长短——长短那套东西叫「时值」，在<a className="inline-link" href="#lesson-12">第 12 节</a>。
         </p>
+        <LessonPractice no={1} />
       </section>
 
       {/* ---------- 2. 半音 / 全音 ---------- */}
@@ -322,6 +359,7 @@ export default function Theory() {
             在吉他上：半音 = 挪一品，全音 = 挪两品。C 在 5 弦 3 品，D 就在 5 品，E 在 7 品。
           </p>
         </div>
+        <LessonPractice no={2} />
       </section>
 
       {/* ---------- 3. 12 平均律 ---------- */}
@@ -355,6 +393,7 @@ export default function Theory() {
           和数学上完美的 3:2（约 702 音分）差一点点——这点误差换来的是
           <b>任意调都能自由转调</b>。
         </p>
+        <LessonPractice no={3} />
       </section>
 
       {/* ---------- 4. 音阶公式（大调 + 小调） ---------- */}
@@ -405,6 +444,7 @@ export default function Theory() {
           为什么听起来「忧郁」？看第三个音：大调的三音在主音上方 <b>4 个半音</b>（大三度），
           小调只有 <b>3 个半音</b>（小三度）。就这一个半音的差别，决定了整首歌的色彩。
         </p>
+        <LessonPractice no={4} />
       </section>
 
       {/* ---------- 5. 音程 ---------- */}
@@ -466,6 +506,7 @@ export default function Theory() {
         <a className="btn ghost lesson-practice" href="#theory-game">
           去「乐理挑战」练音程（T09–T12）
         </a>
+        <LessonPractice no={5} />
       </section>
 
       {/* ---------- 6. 和弦 = 三度叠置 ---------- */}
@@ -542,6 +583,7 @@ export default function Theory() {
         <a className="btn ghost lesson-practice" href="#theory-game">
           去「乐理挑战」练三和弦（T01–T04）
         </a>
+        <LessonPractice no={6} />
       </section>
 
       {/* ---------- 7. 和弦级数 ---------- */}
@@ -604,6 +646,7 @@ export default function Theory() {
           换个调，级数不变、和弦变：G 大调的 I 是 G、IV 是 C、V 是 D。
           这也解释了为什么很多歌「听起来一样」——它们用的是同一套级数进行。
         </p>
+        <LessonPractice no={7} />
       </section>
 
       <section className="lesson" data-lesson="8">
@@ -750,6 +793,7 @@ export default function Theory() {
           三条规律 + 空弦音 <b>E A D G B E</b>，就能推任意一个音：先找到最近的空弦或已知音，
           再用「同弦 + 半音」「同品跨弦 +3 级」「八度 +2/+3」走两步就到了。
         </p>
+        <LessonPractice no={8} />
       </section>
 
       {/* ---------- 9. CAGED ---------- */}
@@ -799,6 +843,7 @@ export default function Theory() {
           小和弦只给 <b>E / A / D</b> 三个形状：C 形、G 形的大三音在两根弦上各出现一次，
           降一个仍然是「大三 + 小三」混着，教材里 Cm、Gm 本来用的就是 A 形 / E 形的横按。
         </p>
+        <LessonPractice no={9} />
       </section>
 
       {/* ---------- 10. 七和弦 ---------- */}
@@ -874,6 +919,7 @@ export default function Theory() {
           **属七**是 10 个半音（小七度，最不稳定，所以最想"解决"到别的和弦），
           **小七**在小三和弦上加 10 个半音，听起来最柔和。流行歌里 Cmaj7、G7、Dm7 就是这么来的。
         </p>
+        <LessonPractice no={10} />
       </section>
 
       {/* ---------- 11. 五度圈 ---------- */}
@@ -953,6 +999,7 @@ export default function Theory() {
           从 G 往上数 E 到 F 只有半音，把 F 升成 F# 才凑够全音。五度圈就是
           「哪些音要升、要升几个」的一张总表：升号调的升序永远是 <b>F C G D A E B</b>。
         </p>
+        <LessonPractice no={11} />
       </section>
 
       {/* ---------- 12. 时值 ---------- */}
@@ -1099,6 +1146,7 @@ export default function Theory() {
           练节奏最容易犯的错是<b>一卡就加速</b>。把节拍器降到 60，慢到能听见每一拍，
           稳了再加 5——稳不下来的速度就不是你的速度。
         </p>
+        <LessonPractice no={12} />
       </section>
 
       <TheoryGame />

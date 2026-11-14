@@ -10,16 +10,7 @@ import Settings from "./pages/Settings";
 import OfflineBanner from "./components/OfflineBanner";
 import Onboarding from "./components/Onboarding";
 import UpdateToast from "./components/UpdateToast";
-
-type Tab =
-  | "chords"
-  | "scales"
-  | "theory"
-  | "game"
-  | "practice"
-  | "rhythm"
-  | "stats"
-  | "settings";
+import { flashTarget, parseHash, type Tab } from "./lib/nav";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "practice", label: "练习" },
@@ -59,7 +50,28 @@ export default function App() {
     setTab(id);
     setMoreOpen(false);
     window.scrollTo({ top: 0 });
+    // 让地址栏跟上（replaceState 不产生历史记录，后退键不会被 Tab 切换塞满）
+    window.history.replaceState(null, "", `#${id}`);
   };
+
+  // 深链接：`#rhythm/drill-rd-01` 这种地址进来（或前进后退）时切到那个页面并滚到那一条
+  useEffect(() => {
+    const apply = () => {
+      const route = parseHash(window.location.hash);
+      if (!route) return;
+      setTab(route.tab);
+      setMoreOpen(false);
+      if (route.target) {
+        // 等这一页渲染完再滚（页面是条件渲染，切换后的第一帧还没有目标元素）
+        window.setTimeout(() => flashTarget(route.target as string), 90);
+      } else {
+        window.scrollTo({ top: 0 });
+      }
+    };
+    apply();
+    window.addEventListener("hashchange", apply);
+    return () => window.removeEventListener("hashchange", apply);
+  }, []);
 
   return (
     <div className="app">

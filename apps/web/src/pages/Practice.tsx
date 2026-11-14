@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  DRILLS,
   FEELS,
   SESSION_MINUTES,
   STAGES,
@@ -41,6 +42,7 @@ import {
   type RhythmRecords,
   type SkipLog,
 } from "../lib/storage";
+import { parseHash } from "../lib/nav";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
@@ -175,6 +177,18 @@ export default function Practice() {
 
   const stageDef = stageOf(stage);
   const library = useMemo(() => drillsOfStage(stage), [stage]);
+
+  // 从乐理课「练一练」跳过来的：那条练习可能在别的阶段，先把阶段切过去，
+  // 否则卡片根本没渲染，滚动就找不到目标。
+  useEffect(() => {
+    const route = parseHash(window.location.hash);
+    const id = route?.target?.replace(/^drill-/, "");
+    if (!id) return;
+    const drill = DRILLS.find((item) => item.id === id);
+    if (drill && drill.stage !== stage) setStage(drill.stage);
+    // 只在进来时看一次 hash；之后用户自己切阶段不该被拉回去
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // 跟练速度退步的练习（`p:` 前缀的记录）加几天紧迫度，让它们先回来
   const boost = useMemo(() => {
     const map = new Map<string, number>();
@@ -498,7 +512,7 @@ export default function Practice() {
       </h3>
       <div className="drill-grid">
         {library.map((drill) => (
-          <article key={drill.id} className="drill-card">
+          <article key={drill.id} id={`drill-${drill.id}`} className="drill-card">
             <header className="drill-head">
               <h4>{drill.name}</h4>
               <span className="drill-block">{blockOf(drill.block).label}</span>
