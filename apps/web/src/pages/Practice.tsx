@@ -76,6 +76,8 @@ export default function Practice() {
   const [hand, setHand] = useState<"left" | "right">("left");
 
   const [runningId, setRunningId] = useState<string | null>(null);
+  /** 刚勾完一块、被滚到眼前的那一块（亮一下边框，1.6 秒后恢复）。 */
+  const [nextId, setNextId] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(0);
   const { playTab } = useTone();
   const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
@@ -213,6 +215,13 @@ export default function Practice() {
     return () => window.clearInterval(timer);
   }, [runningId]);
 
+  // 亮一下就走：滚过去的那一块 1.6 秒后恢复原样，免得整页一直有个高亮
+  useEffect(() => {
+    if (!nextId) return;
+    const timer = window.setTimeout(() => setNextId(null), 1600);
+    return () => window.clearTimeout(timer);
+  }, [nextId]);
+
   function commit(next: PracticeLog) {
     setLog(next);
     savePractice(next);
@@ -239,6 +248,16 @@ export default function Practice() {
     commit(recordBlock(log, today, { drill: drillId, minutes: used, stage }));
     setRunningId(null);
     setSeconds(0);
+    // 勾完一块就滚到下一块：练的时候不用自己找「接下来练哪」
+    const next = session.blocks.find((block) => block.drill.id !== drillId && !done.has(block.drill.id));
+    if (next) {
+      setNextId(next.drill.id);
+      window.requestAnimationFrame(() => {
+        document
+          .querySelector(`[data-block="${next.drill.id}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
   }
 
   return (
@@ -364,6 +383,12 @@ export default function Practice() {
         <span style={{ width: `${(doneCount / session.blocks.length) * 100}%` }} />
       </div>
 
+      {doneCount === session.blocks.length && session.blocks.length > 0 && (
+        <p className="practice-all-done">
+          今天的计划做完了。想再练一会儿，就去下面练习库里挑一条——明天的计划会按今天练过的重新排。
+        </p>
+      )}
+
       <details className="practice-metronome" open>
         <summary>节拍器（每一块都该开）</summary>
         <Metronome />
@@ -377,7 +402,10 @@ export default function Practice() {
           return (
             <li
               key={drill.id}
-              className={`practice-block${isDone ? " done" : ""}${running ? " running" : ""}`}
+              data-block={drill.id}
+              className={`practice-block${isDone ? " done" : ""}${running ? " running" : ""}${
+                nextId === drill.id ? " next" : ""
+              }`}
             >
               <div className="pb-head">
                 <span className="pb-index" aria-hidden="true">

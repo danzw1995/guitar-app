@@ -728,6 +728,33 @@ try {
   );
   js("localStorage.removeItem('guitar.skips.v1')");
 
+  // 12f) 练习页：勾完一块就滚到下一块，并亮一下（1.6 秒后自己褪掉）
+  js("(() => { window.scrollTo(0, 0); return 'ok'; })()");
+  await sleep(200);
+  const beforeFinish = js("Math.round(window.scrollY)");
+  js(
+    "(() => { const b = document.querySelector('.practice-block .pb-head .btn.primary'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const finishState = JSON.parse(
+    String(
+      js(
+        "(() => { const li = document.querySelector('.practice-block.next'); return JSON.stringify({ y: Math.round(window.scrollY), id: li?.getAttribute('data-block') ?? '' }); })()",
+      ),
+    ).replace(/^"|"$/g, "").replace(/\\"/g, '"'),
+  );
+  log(
+    finishState.id !== "" && Number(finishState.y) > Number(beforeFinish),
+    "练习页：勾完一块就滚到下一块，那一块会亮一下",
+    `滚了 ${beforeFinish} → ${finishState.y}，高亮 ${finishState.id}`,
+  );
+  await sleep(1400);
+  log(
+    Number(js("document.querySelectorAll('.practice-block.next').length")) === 0,
+    "练习页：高亮 1.6 秒后自己褪掉",
+  );
+  js("localStorage.removeItem('guitar.practice.v1')");
+
   // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",

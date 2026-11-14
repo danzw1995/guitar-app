@@ -1237,6 +1237,21 @@ button, select, input { font: inherit; color: inherit; }
 .practice-block.running {
   border-color: rgba(232, 176, 75, 0.5);
 }
+/* 勾完一块滚过来的那一块：亮一下，1.6 秒后自己褪掉 */
+.practice-block.next {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+  transition: box-shadow 200ms ease, border-color 200ms ease;
+}
+.practice-all-done {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(63, 185, 80, 0.35);
+  border-radius: 10px;
+  background: rgba(63, 185, 80, 0.08);
+  font-size: 13px;
+  color: var(--text);
+}
 .pb-head {
   display: flex;
   align-items: center;
