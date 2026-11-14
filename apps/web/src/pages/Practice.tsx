@@ -20,7 +20,19 @@ import {
   type Feel,
   type PracticeLog,
 } from "@guitar/core";
-import { loadPractice, loadProgress, loadRhythm, savePractice, saveRhythm, type RhythmRecords } from "../lib/storage";
+import {
+  addSkip,
+  loadPractice,
+  loadProgress,
+  loadRhythm,
+  loadSkips,
+  savePractice,
+  saveRhythm,
+  saveSkips,
+  skipsOf,
+  type RhythmRecords,
+  type SkipLog,
+} from "../lib/storage";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
@@ -60,6 +72,7 @@ export default function Practice() {
   const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   const [follow, setFollow] = useState<FollowTarget | null>(null);
+  const [skips, setSkips] = useState<SkipLog>(() => loadSkips());
 
   /** 试听一条练习：谱面上会跟着走一条「当前拍」竖条，和节奏页同一套播放头。 */
   function audition(id: string, tab: (typeof library)[number]["tab"], bpm: number) {
@@ -88,6 +101,13 @@ export default function Practice() {
       tab: drill.tab,
       meter: meterOfTab(drill.tab),
     });
+  }
+
+  /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */
+  function swapBlock(id: string) {
+    const next = addSkip(skips, today, id);
+    saveSkips(next);
+    setSkips(next);
   }
 
   function recordFollow(result: { bpm: number; minutes: number }) {
@@ -126,9 +146,11 @@ export default function Practice() {
     }
     return map;
   }, [records]);
+  // 今天点了「换一条」的练习：计划里先跳过它们
+  const skip = useMemo(() => skipsOf(skips, today), [skips, today]);
   const session = useMemo(
-    () => buildSession({ minutes, stage, date: today, log, boost }),
-    [minutes, stage, today, log, boost],
+    () => buildSession({ minutes, stage, date: today, log, boost, skip }),
+    [minutes, stage, today, log, boost, skip],
   );
   const stats = useMemo(() => practiceStats(log, today), [log, today]);
 
@@ -344,6 +366,14 @@ export default function Practice() {
                 </button>
                 <button type="button" className="btn-quiet" onClick={() => openFollow(drill)}>
                   跟练
+                </button>
+                <button
+                  type="button"
+                  className="btn-quiet"
+                  onClick={() => swapBlock(drill.id)}
+                  title="今天先不练这条，换一条"
+                >
+                  换一条
                 </button>
                 <button
                   type="button"

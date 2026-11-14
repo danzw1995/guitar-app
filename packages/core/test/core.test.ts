@@ -1895,6 +1895,32 @@ test("今日计划：有练习记录时按「多久没练」挑，同一天同�
   );
 });
 
+test("今日计划：跳过的那条今天不再出现，跳光了也不会空手", () => {
+  const date = "2026-11-10";
+  const plain = buildSession({ minutes: 60, stage: 0, date });
+
+  // 跳过第一块的那条：它必须换人，其他块不受影响
+  const first = plain.blocks[0];
+  const skip = new Set([first.drill.id]);
+  const next = buildSession({ minutes: 60, stage: 0, date, skip });
+  assert.equal(next.blocks.length, plain.blocks.length, "块数不该变");
+  assert.notEqual(next.blocks[0].drill.id, first.drill.id, "跳过的那条不该还在");
+  for (let i = 1; i < plain.blocks.length; i += 1) {
+    assert.equal(next.blocks[i].drill.id, plain.blocks[i].drill.id, `第 ${i + 1} 块不该动`);
+  }
+
+  // 每一块都跳光：退回整块挑一条，不能抛错也不能少块
+  const all = new Set(plain.blocks.map((block) => block.drill.id));
+  for (const block of plain.blocks) {
+    for (const drill of drillsFor(0, block.block)) all.add(drill.id);
+  }
+  const fallback = buildSession({ minutes: 60, stage: 0, date, skip: all });
+  assert.equal(fallback.blocks.length, plain.blocks.length, "全跳过也要给出整份计划");
+  for (const block of fallback.blocks) {
+    assert.ok(block.drill, `${block.block} 全跳过时没挑出练习`);
+  }
+});
+
 test("技巧库：左右手各 7 张，每张都有练法与验收", () => {
   assert.equal(TECHNIQUES.length, 14);
   assert.equal(techniquesOf("left").length, 7);

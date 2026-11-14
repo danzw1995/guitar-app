@@ -626,6 +626,30 @@ try {
     dueInfo,
   );
 
+  // 12d) 练习页：「换一条」把这一块换成同组的另一条，块数不变
+  const planNames = () =>
+    String(
+      js(
+        "(() => [...document.querySelectorAll('.practice-block .pb-title h4')].map(n => n.textContent.trim()).join('|'))()",
+      ),
+    ).replace(/^"|"$/g, "");
+  const planBefore = planNames();
+  const swapped = String(
+    js(
+      "(() => { const swap = [...document.querySelectorAll('.practice-block button')].find(n => n.textContent.trim() === '换一条'); if (!swap) return 'no'; swap.click(); return 'ok'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await sleep(500);
+  const planAfter = planNames();
+  log(
+    swapped === "ok" &&
+      planAfter.split("|").length === planBefore.split("|").length &&
+      planAfter.split("|")[0] !== planBefore.split("|")[0],
+    "练习页：点「换一条」这一块换人，块数不变",
+    `${planBefore.split("|")[0]} → ${planAfter.split("|")[0]}`,
+  );
+  js("localStorage.removeItem('guitar.skips.v1')");
+
   // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
