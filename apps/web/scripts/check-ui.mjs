@@ -828,6 +828,31 @@ try {
     heatInfo,
   );
 
+  // 13b2) 统计页：「这一周 vs 上周同期」——种两天记录，卡片上要有正数差和起算日
+  js(
+    "(() => { const log = { '2026-11-10': { minutes: 30, stage: 0, done: ['s0-crawl'] }, '2026-11-13': { minutes: 25, stage: 0, done: ['s0-scale'] }, '2026-11-05': { minutes: 20, stage: 0, done: ['s0-press'] } }; localStorage.setItem('guitar.practice.v1', JSON.stringify(log)); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const weekInfo = JSON.parse(
+    String(
+      js(
+        "(() => { const up = document.querySelector('.stat-card b.stat-up'); const hint = document.querySelector('.week-hint'); return JSON.stringify({ up: up?.textContent?.trim() ?? '', hint: hint?.textContent?.replace(/\\s+/g, ' ').trim() ?? '' }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    weekInfo.up.startsWith("+") && weekInfo.hint.includes("起算") && weekInfo.hint.includes("上周同期"),
+    "统计页：「这一周」跟上周同期比，多练了会标绿",
+    `${weekInfo.up} · ${weekInfo.hint.slice(0, 40)}`,
+  );
+
   // 13c) 统计页：点热力图的一格，展开那天练了什么；再点一次收起
   const heatDate = String(
     js(

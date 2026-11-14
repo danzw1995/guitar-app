@@ -460,6 +460,9 @@ button, select, input { font: inherit; color: inherit; }
 }
 .stat-card b { font-size: 20px; font-variant-numeric: tabular-nums; }
 .stat-card span { color: var(--muted); font-size: 12px; }
+/* 比上周多练了就绿一下；少了不标红——练少了不该像报错 */
+.stat-card b.stat-up { color: var(--green); }
+.week-hint { margin: 0 0 10px; }
 .stat-sub { margin: 22px 0 10px; font-size: 15px; }
 .stat-groups {
   margin: 14px 0 16px;

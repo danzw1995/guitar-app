@@ -28,6 +28,8 @@ import {
   isPerfect,
   isUnlocked,
   isValidDateKey,
+  mondayOf,
+  weekSummaryOf,
   lastNDays,
   nextDateKey,
   nextNoteQuery,
@@ -2239,6 +2241,51 @@ test("和弦转换：四组进行里的和弦都在和弦库里", () => {
     }
   }
 });
+
+test("这一周：从周一起算，上周只比到同一天", () => {
+  // 2026-11-14 是周六；本周一 = 11-09
+  assert.equal(mondayOf("2026-11-14"), "2026-11-09");
+  assert.equal(mondayOf("2026-11-09"), "2026-11-09", "周一自己就是起点");
+  assert.equal(mondayOf("2026-11-15"), "2026-11-09", "周日还算这一周");
+
+  const log = {
+    "2026-11-09": { minutes: 30, stage: 0, done: ["s0-crawl", "s0-scale"] },
+    "2026-11-11": { minutes: 20, stage: 0, done: ["s0-crawl"] },
+    // 上周同期（11-02 … 11-07）：两天，一条重复的
+    "2026-11-03": { minutes: 15, stage: 0, done: ["s0-press"] },
+    "2026-11-07": { minutes: 10, stage: 0, done: ["s0-crawl"] },
+    // 上周日（11-08）不在「上周同期」里：它是上上周的尾巴
+    "2026-11-08": { minutes: 99, stage: 0, done: ["s0-record"] },
+    // 更早的、和未来的都不该算进来
+    "2026-10-01": { minutes: 500, stage: 0, done: ["s0-riff"] },
+    "2026-11-20": { minutes: 60, stage: 0, done: ["s0-riff"] },
+  };
+
+  const week = weekSummaryOf(log, "2026-11-14");
+  assert.equal(week.from, "2026-11-09");
+  assert.equal(week.to, "2026-11-14");
+  assert.equal(week.days, 2);
+  assert.equal(week.minutes, 50);
+  assert.equal(week.items, 2, "s0-crawl 两天都练了，只算一条");
+  assert.equal(week.prevDays, 2);
+  assert.equal(week.prevMinutes, 25);
+  assert.equal(week.deltaMinutes, 25);
+  assert.equal(week.deltaDays, 0);
+});
+
+test("这一周：同一天只算一次，光打开没练的不算", () => {
+  const log = {
+    "2026-11-10": { minutes: 0, stage: 0, done: [] },
+    "2026-11-12": { minutes: 40, stage: 1, done: ["s1-cycle"] },
+  };
+  const week = weekSummaryOf(log, "2026-11-14");
+  assert.equal(week.days, 1, "0 分钟、0 条目的那天不算练过");
+  assert.equal(week.minutes, 40);
+  assert.equal(week.prevMinutes, 0);
+  assert.equal(week.deltaMinutes, 40);
+  assert.equal(week.deltaDays, 1);
+});
+
 
 
 

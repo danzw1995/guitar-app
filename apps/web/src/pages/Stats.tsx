@@ -13,6 +13,7 @@ import {
   summarizeProgress,
   THEORY_LEVEL_IDS,
   weekdayIndex,
+  weekSummaryOf,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadPauses, loadPractice, loadProgress, loadRhythm, loadSkips, removePause, savePauses, skipsOf, type DailyMap } from "../lib/storage";
@@ -30,6 +31,8 @@ export default function Stats() {
   const practiceLog = loadPractice();
   const practice = practiceStats(practiceLog, dateKeyOf(new Date()));
   const today = dateKeyOf(new Date());
+  // 这一周 vs 上周同期（周一起算，core 的 weekSummaryOf）
+  const weekStats = weekSummaryOf(practiceLog, today);
   // 热力图：宽屏放一整年（52 周），中等屏幕半年，手机上 18 周，免得横向塞不下
   const narrow = useMediaQuery("(max-width: 900px)");
   const wide = useMediaQuery("(min-width: 1100px)");
@@ -252,6 +255,13 @@ export default function Stats() {
           <span>最近 7 天</span>
         </div>
         <div className="stat-card">
+          <b className={weekStats.deltaMinutes > 0 ? "stat-up" : undefined}>
+            {weekStats.deltaMinutes > 0 ? "+" : ""}
+            {weekStats.deltaMinutes} 分钟
+          </b>
+          <span>比上周同期（{weekStats.prevMinutes} → {weekStats.minutes}）</span>
+        </div>
+        <div className="stat-card">
           <b>{practice.totalMinutes} 分钟</b>
           <span>累计练习</span>
         </div>
@@ -264,6 +274,10 @@ export default function Stats() {
           <span>练习页跟练过的条目</span>
         </div>
       </div>
+      <p className="hint week-hint">
+        这一周从 {weekStats.from.slice(5).replace("-", "/")} 起算：练了 {weekStats.days} 天、{weekStats.items} 条；
+        上周同期 {weekStats.prevDays} 天、{weekStats.prevMinutes} 分钟。
+      </p>
       <div
         className="heat"
         role="img"
