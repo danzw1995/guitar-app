@@ -245,6 +245,17 @@ try {
     today = { n: 0, meters: [] };
   }
   log(today.n === 3, "「今天先练这 3 条」里有 3 条", `读到 ${today.n} 条`);
+
+  const dues = String(
+    js(
+      "(() => [...document.querySelectorAll('.today-item .today-due')].map(n => n.textContent.trim()).join('|'))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    dues.split("|").length === 3 && dues.split("|").every((text) => /^(还没练过|今天练过|上次练 \d+ 天前)$/.test(text)),
+    "三条都写着「为什么今天练它」（多久没练）",
+    dues,
+  );
   log(
     today.meters.length === 4 && today.meters.every((text) => /^已练 \d+\/\d+$/.test(text)),
     "每块练习的标题上都有「已练 N/M」",

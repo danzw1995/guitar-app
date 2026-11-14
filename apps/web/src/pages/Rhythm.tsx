@@ -10,6 +10,8 @@ import {
   STRUM_DRILLS,
   STRUM_LIBRARY,
   dateKeyOf,
+  dueDaysOf,
+  pickDue,
   pushBpmPoint,
   recordBlock,
   stageForCompleted,
@@ -56,24 +58,18 @@ function hashOf(text: string): number {
 }
 
 /**
- * 今日三条：同一天刷新顺序不变，今天已经练过的排到后面。
+ * 今日三条：和练习页用同一套「多久没练」的挑选（core 的 `pickDue`）。
  *
- * 用「日期 + id」的哈希排序而不是随机数——随机会让第二天抽到的东西
- * 和前一天完全无关，而哈希至少保证「同一天不跳、第二天换一批」。
- * 三条按块各取一条（跟读 / 时值 / 扫弦各一），不然可能三条都是时值。
+ * 最久没碰的先回来，今天已经练过的算 0 天、自动排到最后（练完打勾，明天再回来）。
+ * offset 取「日期哈希」，所以同一天刷新不变、第二天换一批；三条按块各取一条
+ * （跟读 / 时值 / 扫弦各一），不然可能三条都是时值。
  */
-function pickFrom(items: Pickable[], today: string, records: RhythmRecords, count: number): Pickable[] {
-  return [...items]
-    .sort((a, b) => {
-      const doneA = records[a.id]?.lastAt === today ? 1 : 0;
-      const doneB = records[b.id]?.lastAt === today ? 1 : 0;
-      if (doneA !== doneB) return doneA - doneB;
-      return hashOf(`${today}:${a.id}`) - hashOf(`${today}:${b.id}`);
-    })
-    .slice(0, count);
-}
-
 function dailyPicks(items: Pickable[], today: string, records: RhythmRecords): Pickable[] {
+  const lastAt = new Map<string, string>();
+  for (const [id, record] of Object.entries(records)) {
+    if (record.lastAt) lastAt.set(id, record.lastAt);
+  }
+  const offset = hashOf(today) % 97;
   const groups = new Map<string, Pickable[]>();
   for (const item of items) {
     const list = groups.get(item.group);
@@ -81,8 +77,16 @@ function dailyPicks(items: Pickable[], today: string, records: RhythmRecords): P
     else groups.set(item.group, [item]);
   }
   const picked: Pickable[] = [];
-  for (const list of groups.values()) picked.push(...pickFrom(list, today, records, 1));
+  for (const list of groups.values()) picked.push(pickDue(list, lastAt, today, offset).item);
   return picked;
+}
+
+/** 今日三条每行右边那句话：今天练过 / 上次练几天前 / 还没练过。 */
+function dueLabel(record: { lastAt?: string } | undefined, today: string): string {
+  if (!record?.lastAt) return "还没练过";
+  if (record.lastAt === today) return "今天练过";
+  const days = dueDaysOf(record.lastAt, today);
+  return days === 0 ? "今天练过" : `上次练 ${days} 天前`;
 }
 
 /** 某一块里练过（有成绩记录）的比例，用来画进度条。 */
@@ -277,12 +281,13 @@ export default function Rhythm() {
           {picks.map((pick) => {
             const done = records[pick.id]?.lastAt === today;
             return (
-              <li key={pick.id} className={done ? "today-item done" : "today-item"}>
+              <li key={pick.id} data-pick={pick.id} className={done ? "today-item done" : "today-item"}>
                 <span className="today-mark" aria-hidden="true">
                   {done ? "✓" : "○"}
                 </span>
                 <span className="today-group">{pick.group}</span>
                 <span className="today-label">{pick.label}</span>
+                <span className="today-due">{dueLabel(records[pick.id], today)}</span>
                 <button
                   type="button"
                   className="btn btn-quiet"
@@ -295,7 +300,7 @@ export default function Rhythm() {
           })}
         </ul>
         <p className="today-hint">
-          这是按日期轮换的三条，练完（在跟练里点「记录成绩」）就会打勾；明天换一批。
+          三条按「多久没练」挑：最久没碰的先回来，练过的排后面（在跟练里点「记录成绩」就会打勾）。
           不用按顺序——练不下去就换一条，比硬啃一条强。
         </p>
       </div>

@@ -1669,6 +1669,7 @@ button, select, input { font: inherit; color: inherit; }
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  min-width: 0;
 }
 .today-item.done .today-label {
   color: var(--muted);
@@ -1690,9 +1691,24 @@ button, select, input { font: inherit; color: inherit; }
 }
 .today-label {
   color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-due {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 .today-item .btn {
-  margin-left: auto;
+  margin-left: 8px;
+}
+@media (max-width: 720px) {
+  .today-due {
+    display: none;
+  }
 }
 .today-hint {
   margin: 10px 0 0;
