@@ -24,6 +24,7 @@ import {
   addPause,
   addSkip,
   loadPauses,
+  pauseUntilOf,
   loadPractice,
   loadProgress,
   loadRhythm,
@@ -186,8 +187,17 @@ export default function Practice() {
     [skips, pauses, today],
   );
   const session = useMemo(
-    () => buildSession({ minutes, stage, date: today, log, boost, skip }),
-    [minutes, stage, today, log, boost, skip],
+    () =>
+      buildSession({
+        minutes,
+        stage,
+        date: today,
+        log,
+        boost,
+        skip,
+        freeze: pauseUntilOf(pauses),
+      }),
+    [minutes, stage, today, log, boost, skip, pauses],
   );
   const stats = useMemo(() => practiceStats(log, today), [log, today]);
 

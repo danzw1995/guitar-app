@@ -314,11 +314,17 @@ export function removePause(log: PauseLog, id: string): PauseLog {
   return next;
 }
 
-/** 过期的压后直接扔掉。 */
+/** 过期的压后：释放后还留 7 天，用来算「压后那几天不攒紧迫度」，之后扔掉。 */
 function prunePauses(log: PauseLog, today: string): PauseLog {
+  const floor = addDays(today, -PAUSE_DAYS);
   const out: PauseLog = {};
-  for (const [id, until] of Object.entries(log)) if (until >= today) out[id] = until;
+  for (const [id, until] of Object.entries(log)) if (until >= floor) out[id] = until;
   return out;
+}
+
+/** `id → 释放日`：压后期间不算「多久没练」（含刚释放的那几天）。 */
+export function pauseUntilOf(log: PauseLog): Map<string, string> {
+  return new Map(Object.entries(log));
 }
 
 export function loadSettings(): Settings {

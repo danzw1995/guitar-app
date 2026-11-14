@@ -327,6 +327,25 @@ try {
   js("localStorage.removeItem('guitar.skips.v1')");
   js("localStorage.removeItem('guitar.pauses.v1')");
 
+  // 7e) 压后不攒紧迫度：一个月没练的那条刚放出来，不该马上又被排到最前
+  js(
+    "(() => { const d = new Date(); const k = (n) => { const x = new Date(d); x.setDate(x.getDate() + n); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'rd-01': { bestBpm: 70, sessions: 2, minutes: 9, lastAt: k(-30) } })); localStorage.setItem('guitar.pauses.v1', JSON.stringify({ 'rd-01': k(-2) })); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(1400);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const frozenPick = Number(js("document.querySelectorAll('.today-item[data-pick=\"rd-01\"]').length"));
+  log(
+    frozenPick === 0,
+    "压后过的条目刚放出来不会马上又排进今日三条",
+    `rd-01 在三条里出现 ${frozenPick} 次`,
+  );
+  js("localStorage.removeItem('guitar.pauses.v1')");
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+
   const jumped = js(
     "(() => { window.scrollTo(0, 0); const b = document.querySelector('.today-item .btn:not(.today-swap)'); if (!b) return 'no'; b.click(); return 'ok'; })()",
   );

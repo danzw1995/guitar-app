@@ -1272,6 +1272,11 @@ export interface BuildOptions {
    * 挑的时候先跳过它们；某一块里全被跳过时退回整块，不会空手。
    */
   skip?: Set<string>;
+  /**
+   * 压后到哪天为止（`练习 id → 释放日`）：压后期间不算「多久没练」，
+   * 释放当天从 0 天重新算，免得刚放出来又排到最前面。
+   */
+  freeze?: Map<string, string>;
 }
 
 /**
@@ -1279,9 +1284,9 @@ export interface BuildOptions {
  *
  * 挑哪条：有练习记录时按「多久没练」挑（最久没碰的先回来，昨天练过的靠后），
  * 一样久时按日期轮换；没有记录就纯轮换。`boost` 里的练习会多算几天紧迫度，
- * `skip` 里的今天不出现。
+ * `skip` 里的今天不出现，`freeze` 里的压后期间时钟停住。
  */
-export function buildSession({ minutes, stage, date, log, boost, skip }: BuildOptions): Session {
+export function buildSession({ minutes, stage, date, log, boost, skip, freeze }: BuildOptions): Session {
   const stageDef = stageOf(stage);
   const weights = WEIGHTS[stageDef.id] ?? WEIGHTS[0];
   const effective = { ...weights };
@@ -1299,7 +1304,7 @@ export function buildSession({ minutes, stage, date, log, boost, skip }: BuildOp
   const lastAt = lastPracticed(log ?? {}, date);
   const sessionBlocks: SessionBlock[] = blocks.map((id, index) => {
     const pool = drillsFor(stageDef.id, id);
-    const picked = pickDue(pool, lastAt, date, day + index, { boost, exclude: skip });
+    const picked = pickDue(pool, lastAt, date, day + index, { boost, exclude: skip, freeze });
     return {
       block: id,
       drill: picked.item,

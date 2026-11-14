@@ -1863,6 +1863,30 @@ test("退步的加急：跟练最高 BPM 掉下来，挑选时排在更前面", 
   assert.equal(pickDue(pool, last, "2026-11-10", 0, { exclude: new Set(["a", "b"]) }).item.id, "a");
 });
 
+test("压后不攒紧迫度：刚放出来的那条从释放日重新算，不会一放出来就排最前", () => {
+  // a 一个月没练、b 五天前练过；没有压后时 a 先回来
+  const last = new Map([
+    ["a", "2026-10-11"],
+    ["b", "2026-11-05"],
+  ]);
+  const pool = [{ id: "a" }, { id: "b" }];
+  assert.equal(pickDue(pool, last, "2026-11-10", 0).item.id, "a", "没压过就按最久没练的来");
+
+  // a 被压后到 11-08 释放：那一个月里有一周不算数，释放当天从 0 天起算
+  const freeze = new Map([["a", "2026-11-08"]]);
+  const frozen = pickDue(pool, last, "2026-11-10", 0, { freeze });
+  assert.equal(frozen.item.id, "b", "压后过的 a 不该马上又被排上来");
+  assert.equal(frozen.days, 5, "b 还是五天前练的");
+
+  // 释放日比上次练更早时，仍然按上次练算（压后不能把时间往前推）
+  const stale = new Map([["a", "2026-10-01"]]);
+  assert.equal(pickDue(pool, last, "2026-11-10", 0, { freeze: stale }).item.id, "a");
+
+  // 当天释放、当天就挑：0 天，排最后
+  const today = new Map([["a", "2026-11-10"]]);
+  assert.equal(pickDue(pool, last, "2026-11-10", 0, { freeze: today }).item.id, "b");
+});
+
 test("今日计划：有练习记录时按「多久没练」挑，同一天同一份", () => {
   const date = "2026-11-10";
   const plain = buildSession({ minutes: 60, stage: 0, date });

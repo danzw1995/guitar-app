@@ -38,6 +38,7 @@ import {
   loadRhythm,
   loadSkips,
   pausedOf,
+  pauseUntilOf,
   removePause,
   removeSkip,
   savePauses,
@@ -85,6 +86,7 @@ function dailyPicks(
   records: RhythmRecords,
   boost: Map<string, number>,
   skip: Set<string>,
+  freeze: Map<string, string>,
 ): Pickable[] {
   const lastAt = new Map<string, string>();
   for (const [id, record] of Object.entries(records)) {
@@ -99,7 +101,7 @@ function dailyPicks(
   }
   const picked: Pickable[] = [];
   for (const list of groups.values()) {
-    picked.push(pickDue(list, lastAt, today, offset, { boost, exclude: skip }).item);
+    picked.push(pickDue(list, lastAt, today, offset, { boost, exclude: skip, freeze }).item);
   }
   return picked;
 }
@@ -237,8 +239,8 @@ export default function Rhythm() {
     [skips, pauses, today],
   );
   const picks = useMemo(
-    () => dailyPicks(RHYTHM_PICKS, today, records, boost, skip),
-    [today, records, boost, skip],
+    () => dailyPicks(RHYTHM_PICKS, today, records, boost, skip, pauseUntilOf(pauses)),
+    [today, records, boost, skip, pauses],
   );
   /** 「换一条」：把这条记进今天的跳过表，三条会重新挑一次（今天不再出现）。 */
   const swapPick = (id: string) => {

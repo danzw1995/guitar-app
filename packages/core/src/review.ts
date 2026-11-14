@@ -58,6 +58,11 @@ export interface DueOptions {
   boost?: Map<string, number>;
   /** 今天先不练的（手动「换一条」）；还有别的候选时跳过它。 */
   exclude?: Set<string>;
+  /**
+   * 压后到哪天为止（`id → 释放日`）：压后的那几天不算「多久没练」，
+   * 释放当天按 0 天算，免得一放出来就又被排到最前面。
+   */
+  freeze?: Map<string, string>;
 }
 
 /**
@@ -65,7 +70,8 @@ export interface DueOptions {
  * 保证「同一天刷新不跳、第二天换一条」，也不至于永远卡在第一条。
  *
  * `boost` 给某几条加几天紧迫度（退步了、或者上次卡住没练完）；
- * `exclude` 是「今天不想练这条」，但整池都被排除时忽略它，免得空手。
+ * `exclude` 是「今天不想练这条」，但整池都被排除时忽略它，免得空手；
+ * `freeze` 是压后到哪天——压后期间时钟停住，释放那天从 0 天重新算。
  */
 export function pickDue<T extends { id: string }>(
   pool: readonly T[],
@@ -83,12 +89,15 @@ export function pickDue<T extends { id: string }>(
 
   const ranked = usable.map((item) => {
     const seen = lastAt.get(item.id);
+    const released = options.freeze?.get(item.id);
+    // 压后过的条目从释放日重新算：`released` 比上次练更晚时以它为准
+    const anchor = released && (!seen || released > seen) ? released : seen;
     const boost = options.boost?.get(item.id) ?? 0;
     const index = pool.indexOf(item);
     return {
       item,
       lastAt: seen,
-      days: dueDaysOf(seen, today),
+      days: dueDaysOf(anchor, today),
       boost,
       // 同分时按 offset 轮换：offset 天天变，所以第二天会轮到下一条
       rank: (index - offset + pool.length * 8) % pool.length,
