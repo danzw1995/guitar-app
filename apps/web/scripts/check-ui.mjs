@@ -754,6 +754,31 @@ try {
     curveInfo,
   );
 
+  // 13f) 跳过小结：今天跳过的两条、最近一周最常跳过的
+  js(
+    "(() => { const k = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(); const old = (() => { const d = new Date(); d.setDate(d.getDate() - 2); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(); localStorage.setItem('guitar.skips.v1', JSON.stringify({ [k]: ['rd-01', 's0-crawl'], [old]: ['rd-01'] })); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(1400);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const skipInfo = String(
+    js(
+      "(() => [...document.querySelectorAll('.skip-line')].map(n => n.textContent.trim()).join(' | '))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    skipInfo.includes("今天跳过的") &&
+      skipInfo.includes("2 条") &&
+      skipInfo.includes("最常跳过") &&
+      skipInfo.includes("×2"),
+    "统计页：今天跳过的两条、最常跳过的都在",
+    skipInfo,
+  );
+  js("localStorage.removeItem('guitar.skips.v1')");
+
   // 13e) 退步加急：rd-01 练到过 96、5 天前只有 86 → 挤进今日三条并标「速度掉了」
   js(
     "(() => { const d = new Date(); d.setDate(d.getDate() - 5); const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'rd-01': { bestBpm: 96, sessions: 4, minutes: 20, lastAt: k, history: [{ date: '2026-10-01', bpm: 62 }, { date: '2026-10-20', bpm: 96 }, { date: k, bpm: 86 }] } })); return 'ok'; })()",

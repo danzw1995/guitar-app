@@ -14,7 +14,7 @@ import {
   weekdayIndex,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
-import { loadDaily, loadPractice, loadProgress, loadRhythm, type DailyMap } from "../lib/storage";
+import { loadDaily, loadPractice, loadProgress, loadRhythm, loadSkips, skipsOf, type DailyMap } from "../lib/storage";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { fmt, fmtSpan } from "../lib/format";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -36,6 +36,17 @@ export default function Stats() {
 
   // 点热力图里的一格 → 展开那天练了什么。键盘用方向键在格子间走（左右一周、上下一天）。
   const drillNames = useMemo(() => new Map(DRILLS.map((drill) => [drill.id, drill.name])), []);
+
+  // 跳过表：「今天跳过的」与「最近一周最常跳过的」（表里本来就只留 7 天）
+  const skips = loadSkips(today);
+  const skipName = (id: string) =>
+    drillNames.get(id.replace(/^p:/, "")) ?? rhythmItemById(id)?.label ?? id;
+  const todaySkips = [...skipsOf(skips, today)];
+  const skipCounts = new Map<string, number>();
+  for (const ids of Object.values(skips)) {
+    for (const id of ids) skipCounts.set(id, (skipCounts.get(id) ?? 0) + 1);
+  }
+  const topSkips = [...skipCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
   const [day, setDay] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -347,6 +358,22 @@ export default function Stats() {
           </div>
         ))}
       </div>
+
+      {(todaySkips.length > 0 || topSkips.length > 0) && (
+        <div className="skip-summary">
+          <p className="skip-line">
+            <b>今天跳过的</b>{" "}
+            {todaySkips.length === 0
+              ? "一条也没跳过"
+              : `${todaySkips.length} 条：${todaySkips.map(skipName).join("、")}`}
+          </p>
+          {topSkips.length > 0 && (
+            <p className="skip-line muted">
+              最近一周最常跳过：{topSkips.map(([id, count]) => `${skipName(id)} ×${count}`).join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
 
       <h3 className="stat-sub">节奏与伴奏</h3>
       <div className="stat-grid">

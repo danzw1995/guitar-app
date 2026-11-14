@@ -2824,6 +2824,22 @@ button, select, input { font: inherit; color: inherit; }
   }
 }
 
+/* 跳过表的小结（v0.53.0）：今天跳了哪几条、最近一周谁最常被跳 */
+.skip-summary {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+}
+
+.skip-line {
+  margin: 0;
+  font-size: 13px;
+}
+
+.skip-line.muted {
+  color: var(--muted);
+}
+
 /* 「换一条」的撤销提示（v0.52.0）：底部一条，6 秒后自己收掉 */
 .undo-toast {
   position: fixed;
