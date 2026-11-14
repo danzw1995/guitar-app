@@ -1089,6 +1089,36 @@ try {
     `${progState.first} → ${progState.second}`,
   );
 
+  // 16d) 统计页：和弦转换的成绩（练过哪组、最快多快）
+  js(
+    "(() => { localStorage.setItem('guitar.chords.v1', JSON.stringify({ 'pg-1645': { bestBpm: 96, sessions: 2, minutes: 2, lastAt: '2026-11-14' } })); return 'ok'; })()",
+  );
+  await sleep(100);
+  ab(["reload"]);
+  await sleep(800);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const chordStats = JSON.parse(
+    String(
+      js(
+        "(() => { const row = document.querySelector('[data-chord=\"pg-1645\"]'); const cards = [...document.querySelectorAll('.stat-card')].map(c => c.innerText.replace(/\\n/g, ' ')); return JSON.stringify({ row: row?.innerText?.replace(/\\n/g, ' ') ?? '', cards }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    chordStats.row.includes("C–Am–F–G") &&
+      chordStats.row.includes("96 BPM") &&
+      chordStats.cards.some((text) => text.includes("1/4")),
+    "统计页：和弦转换列出四组进行，练过的那组带最快速度",
+    chordStats.row,
+  );
+  js("localStorage.removeItem('guitar.chords.v1')");
+
+
   // 17) 新版本提示：触发后出现在底部，「稍后」能收掉
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",

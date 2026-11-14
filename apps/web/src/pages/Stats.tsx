@@ -6,6 +6,7 @@ import {
   heatmapOf,
   lastNDays,
   practiceStats,
+  PROGRESSIONS,
   sparklineOf,
   stageOf,
   streakOf,
@@ -14,7 +15,7 @@ import {
   weekdayIndex,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
-import { loadDaily, loadPauses, loadPractice, loadProgress, loadRhythm, loadSkips, removePause, savePauses, skipsOf, type DailyMap } from "../lib/storage";
+import { loadChords, loadDaily, loadPauses, loadPractice, loadProgress, loadRhythm, loadSkips, removePause, savePauses, skipsOf, type DailyMap } from "../lib/storage";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { fmt, fmtSpan } from "../lib/format";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -113,6 +114,12 @@ export default function Stats() {
     .map(([id, item]) => ({ id, ...item }))
     .sort((a, b) => b.bestBpm - a.bestBpm || b.sessions - a.sessions)
     .slice(0, 5);
+
+  // 和弦转换：四组进行各自练到多快（`guitar.chords.v1`，v0.59.0 起）
+  const chords = loadChords();
+  const chordDone = PROGRESSIONS.filter((progression) => chords[progression.id]).length;
+  const chordBest = Math.max(0, ...Object.values(chords).map((item) => item.bestBpm));
+  const chordMinutes = Math.round(Object.values(chords).reduce((sum, item) => sum + item.minutes, 0));
 
   // 跟练进步：只有两天以上记录的条目才画得出曲线（练习页的 p: 条目也算）
   const curves = Object.entries(rhythm)
@@ -497,6 +504,42 @@ export default function Stats() {
           </ul>
         </>
       )}
+
+      <h3 className="stat-sub">和弦转换</h3>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <b>
+            {chordDone}/{PROGRESSIONS.length}
+          </b>
+          <span>练过的进行</span>
+        </div>
+        <div className="stat-card">
+          <b>{chordBest > 0 ? `${chordBest} BPM` : "—"}</b>
+          <span>最快速度</span>
+        </div>
+        <div className="stat-card">
+          <b>{chordMinutes} 分钟</b>
+          <span>转换累计</span>
+        </div>
+      </div>
+      <ul className="stat-list">
+        {PROGRESSIONS.map((progression) => {
+          const record = chords[progression.id];
+          return (
+            <li key={progression.id} data-chord={progression.id}>
+              <span>{progression.name}</span>
+              <span className="muted">
+                {record
+                  ? `${record.bestBpm} BPM · 练 ${record.sessions} 次${record.lastAt ? ` · ${record.lastAt.slice(5)}` : ""}`
+                  : "还没练过"}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {chordDone === 0 ? (
+        <p className="hint">去和弦页最下面的「转换练习」，一分钟一局，练完点「记成绩」。</p>
+      ) : null}
 
       <h3 className="stat-sub">最近战绩</h3>
       {summary.perfectCount === 0 && summary.completed === 0 ? (
