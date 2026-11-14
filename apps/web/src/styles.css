@@ -2824,6 +2824,64 @@ button, select, input { font: inherit; color: inherit; }
   }
 }
 
+/* 「换一条」的撤销提示（v0.52.0）：底部一条，6 秒后自己收掉 */
+.undo-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(92vw, 520px);
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #161b22;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+
+.undo-toast-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.undo-toast-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  flex: none;
+  cursor: pointer;
+}
+
+.undo-toast-close {
+  min-width: 40px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  flex: none;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .undo-toast {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+}
+
 /* 手机底部导航（v0.39.0）：≤900px 才出现，桌面用顶部那排 Tab */
 .bottom-nav {
   display: none;

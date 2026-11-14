@@ -251,6 +251,15 @@ export function addSkip(log: SkipLog, date: string, id: string): SkipLog {
   return { ...log, [date]: [...ids, id] };
 }
 
+/** 撤掉一条跳过（「撤销」用），那天没别的了就整天空着。 */
+export function removeSkip(log: SkipLog, date: string, id: string): SkipLog {
+  const ids = (log[date] ?? []).filter((item) => item !== id);
+  const next = { ...log };
+  if (ids.length === 0) delete next[date];
+  else next[date] = ids;
+  return next;
+}
+
 /** 去掉 `today` 往前 7 天以外的记录。 */
 function pruneSkips(log: SkipLog, today: string): SkipLog {
   const keep = new Set<string>();

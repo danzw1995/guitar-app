@@ -24,6 +24,7 @@ import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
 import MyScores from "../components/MyScores";
+import UndoToast from "../components/UndoToast";
 import { useTone } from "../hooks/useTone";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RHYTHM_PICKS } from "../lib/rhythm-index";
@@ -34,6 +35,7 @@ import {
   loadProgress,
   loadRhythm,
   loadSkips,
+  removeSkip,
   savePractice,
   saveRhythm,
   saveSkips,
@@ -126,6 +128,8 @@ export default function Rhythm() {
   const [target, setTarget] = useState<FollowTarget | null>(null);
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   const [skips, setSkips] = useState<SkipLog>(() => loadSkips());
+  /** 刚跳过的哪一条（底部提示 + 撤销）。 */
+  const [undo, setUndo] = useState<{ id: string; label: string } | null>(null);
   /** 正在试听哪一条、播到第几拍（`null` = 没在播）。 */
   const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
   const narrow = useMediaQuery("(max-width: 900px)");
@@ -226,9 +230,19 @@ export default function Rhythm() {
   );
   /** 「换一条」：把这条记进今天的跳过表，三条会重新挑一次（今天不再出现）。 */
   const swapPick = (id: string) => {
+    const label = picks.find((pick) => pick.id === id)?.label ?? id;
     const next = addSkip(skips, today, id);
     saveSkips(next);
     setSkips(next);
+    setUndo({ id, label });
+  };
+  /** 点错了就撤销：把这条从今天的跳过表里拿掉，它马上回到三条里。 */
+  const undoSkip = () => {
+    if (!undo) return;
+    const next = removeSkip(skips, today, undo.id);
+    saveSkips(next);
+    setSkips(next);
+    setUndo(null);
   };
   const picksDone = picks.filter((pick) => records[pick.id]?.lastAt === today).length;
   const readingDone = doneRatio(READING_DRILLS.map((drill) => drill.id), records);
@@ -851,6 +865,14 @@ export default function Rhythm() {
         时值练不稳时只有一个办法：<b>把 BPM 降到能听见每一拍</b>，稳了再加 5。
         跟着这套顺序走：数拍词 → 60 BPM 单音 → 加到 80 → 再换到和弦上。
       </p>
+
+      {undo && (
+        <UndoToast
+          message={`已跳过「${undo.label}」`}
+          onUndo={undoSkip}
+          onClose={() => setUndo(null)}
+        />
+      )}
     </section>
   );
 }

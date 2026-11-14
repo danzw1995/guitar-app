@@ -279,6 +279,21 @@ try {
     "点「换一条」这条今天就不再出现",
     `${idsBefore} → ${idsAfter}`,
   );
+
+  // 7c) 撤销：底部那条提示里点「撤销」，刚跳过的那条马上回来
+  const swapToast = String(js("document.querySelector('.undo-toast')?.textContent ?? ''")).replace(
+    /^"|"$/g,
+    "",
+  );
+  log(swapToast.includes("已跳过"), "跳过后底部有「已跳过」的提示", swapToast.trim());
+  js("(() => { document.querySelector('.undo-toast-btn')?.click(); return 'ok'; })()");
+  await sleep(400);
+  const idsUndo = pickIds();
+  log(
+    idsUndo === idsBefore && Number(js("document.querySelectorAll('.undo-toast').length")) === 0,
+    "点「撤销」那条回来，提示收掉",
+    `${idsAfter} → ${idsUndo}`,
+  );
   // 清掉跳过表，免得影响后面的断言
   js("localStorage.removeItem('guitar.skips.v1')");
 
@@ -647,6 +662,20 @@ try {
       planAfter.split("|")[0] !== planBefore.split("|")[0],
     "练习页：点「换一条」这一块换人，块数不变",
     `${planBefore.split("|")[0]} → ${planAfter.split("|")[0]}`,
+  );
+
+  // 12e) 练习页：撤销把刚跳过的那块换回来
+  const planToast = String(
+    js("document.querySelector('.undo-toast')?.textContent ?? ''"),
+  ).replace(/^"|"$/g, "");
+  log(planToast.includes("已跳过"), "练习页跳过后也有「已跳过」的提示", planToast.trim());
+  js("(() => { document.querySelector('.undo-toast-btn')?.click(); return 'ok'; })()");
+  await sleep(500);
+  const planUndo = planNames();
+  log(
+    planUndo === planBefore && Number(js("document.querySelectorAll('.undo-toast').length")) === 0,
+    "练习页：点「撤销」这一块换回来",
+    `${planAfter.split("|")[0]} → ${planUndo.split("|")[0]}`,
   );
   js("localStorage.removeItem('guitar.skips.v1')");
 

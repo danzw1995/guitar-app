@@ -562,6 +562,21 @@ for (const selector of ["select", "input", "textarea"]) {
     `background = ${toastButton.get("background") ?? "未设置"}`,
   );
 
+  // 撤销提示（v0.52.0）：贴底固定，「撤销」按钮手指点得到
+  const undoToast = narrowDecls(".undo-toast");
+  expect(
+    "撤销提示固定在底部（position: fixed + bottom）",
+    (undoToast.get("position") ?? "") === "fixed" && Boolean(undoToast.get("bottom")),
+    `position = ${undoToast.get("position") ?? "未设置"}, bottom = ${undoToast.get("bottom") ?? "未设置"}`,
+  );
+  const undoButton = narrowDecls(".undo-toast-btn");
+  expect(
+    "撤销按钮高 40px、不折行",
+    (undoButton.get("min-height") ?? "") === "40px" &&
+      (undoButton.get("white-space") ?? "") === "nowrap",
+    `min-height = ${undoButton.get("min-height") ?? "未设置"}, white-space = ${undoButton.get("white-space") ?? "未设置"}`,
+  );
+
   // 乐理目录：12 节排成可换行的网格；手机上看单节时其余要收起来
   const tocList = narrowDecls(".lesson-toc-list");
   expect(

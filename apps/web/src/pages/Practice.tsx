@@ -26,6 +26,7 @@ import {
   loadProgress,
   loadRhythm,
   loadSkips,
+  removeSkip,
   savePractice,
   saveRhythm,
   saveSkips,
@@ -36,6 +37,7 @@ import {
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
+import UndoToast from "../components/UndoToast";
 import { useTone } from "../hooks/useTone";
 import { meterOfTab } from "../lib/meter";
 
@@ -73,6 +75,8 @@ export default function Practice() {
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   const [follow, setFollow] = useState<FollowTarget | null>(null);
   const [skips, setSkips] = useState<SkipLog>(() => loadSkips());
+  /** 刚跳过的哪一条（底部提示 + 撤销）。 */
+  const [undo, setUndo] = useState<{ id: string; label: string } | null>(null);
 
   /** 试听一条练习：谱面上会跟着走一条「当前拍」竖条，和节奏页同一套播放头。 */
   function audition(id: string, tab: (typeof library)[number]["tab"], bpm: number) {
@@ -105,9 +109,20 @@ export default function Practice() {
 
   /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */
   function swapBlock(id: string) {
+    const label = session.blocks.find((block) => block.drill.id === id)?.drill.name ?? id;
     const next = addSkip(skips, today, id);
     saveSkips(next);
     setSkips(next);
+    setUndo({ id, label });
+  }
+
+  /** 点错了就撤销：把这条从今天的跳过表里拿掉，计划马上回到原来那条。 */
+  function undoSkip() {
+    if (!undo) return;
+    const next = removeSkip(skips, today, undo.id);
+    saveSkips(next);
+    setSkips(next);
+    setUndo(null);
   }
 
   function recordFollow(result: { bpm: number; minutes: number }) {
@@ -515,6 +530,14 @@ export default function Practice() {
       <p className="practice-foot">
         练习和「音阶游戏」是两条线：这里练手，那里考音。两边都做，进度才完整。
       </p>
+
+      {undo && (
+        <UndoToast
+          message={`已跳过「${undo.label}」`}
+          onUndo={undoSkip}
+          onClose={() => setUndo(null)}
+        />
+      )}
     </section>
   );
 }
