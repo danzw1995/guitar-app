@@ -463,6 +463,16 @@ button, select, input { font: inherit; color: inherit; }
 /* 比上周多练了就绿一下；少了不标红——练少了不该像报错 */
 .stat-card b.stat-up { color: var(--green); }
 .week-hint { margin: 0 0 10px; }
+/* 本周目标：没设目标时不画进度条，只留一排可选分钟数 */
+.goal { display: grid; gap: 8px; margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; }
+.goal-head { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
+.goal-head b { font-size: 13px; }
+.goal-num { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.goal-bar { height: 8px; border-radius: 999px; background: #0d1117; overflow: hidden; }
+.goal-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 240ms ease; }
+.goal-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
+.goal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.goal-chips .chip { min-height: 40px; padding: 0 10px; font-size: 12px; }
 .stat-sub { margin: 22px 0 10px; font-size: 15px; }
 .stat-groups {
   margin: 14px 0 16px;

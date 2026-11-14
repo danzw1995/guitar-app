@@ -665,6 +665,20 @@ for (const selector of ["select", "input", "textarea"]) {
     px(heatNarrow.get("--heat-cell")) !== null && px(heatNarrow.get("--heat-cell")) < 13,
     `--heat-cell = ${heatNarrow.get("--heat-cell") ?? "未设置"}`,
   );
+
+  // 本周目标：进度条是细长圆角，填充条是强调色
+  const goalBar = narrowDecls(".goal-bar");
+  const goalFill = narrowDecls(".goal-bar span");
+  expect(
+    "本周目标的进度条是细长圆角",
+    px(goalBar.get("height")) !== null && px(goalBar.get("height")) <= 10 && /999px|50%/.test(goalBar.get("border-radius") ?? ""),
+    `height=${goalBar.get("height") ?? "未设置"} radius=${goalBar.get("border-radius") ?? "未设置"}`,
+  );
+  expect(
+    "本周目标的填充条是强调色",
+    goalFill.get("display") === "block" && (goalFill.get("background") ?? "").includes("var(--accent)"),
+    `display=${goalFill.get("display") ?? "未设置"} background=${goalFill.get("background") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

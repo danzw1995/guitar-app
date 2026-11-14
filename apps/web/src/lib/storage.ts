@@ -39,6 +39,8 @@ export interface Settings {
   labels: LabelMode;
   solfegeSystem: SolfegeSystem;
   solfegeStyle: SolfegeStyle;
+  /** 每周目标分钟数；0 = 不设目标（统计页就不画进度条）。 */
+  weeklyGoal: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -46,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   labels: "name",
   solfegeSystem: "movable",
   solfegeStyle: "number",
+  weeklyGoal: 0,
 };
 
 function readJson(key: string): unknown {
@@ -351,8 +354,10 @@ export function loadSettings(): Settings {
     v.labels === "solfege" || v.labels === "both" ? v.labels : "name";
   const solfegeSystem: SolfegeSystem = v.solfegeSystem === "fixed" ? "fixed" : "movable";
   const solfegeStyle: SolfegeStyle = v.solfegeStyle === "syllable" ? "syllable" : "number";
+  const goal = Number(v.weeklyGoal);
+  const weeklyGoal = Number.isFinite(goal) && goal > 0 ? Math.min(600, Math.round(goal)) : 0;
 
-  return { strictSpelling: v.strictSpelling === true, labels, solfegeSystem, solfegeStyle };
+  return { strictSpelling: v.strictSpelling === true, labels, solfegeSystem, solfegeStyle, weeklyGoal };
 }
 
 export function saveSettings(settings: Settings): void {
@@ -361,5 +366,6 @@ export function saveSettings(settings: Settings): void {
     labels: settings.labels,
     solfegeSystem: settings.solfegeSystem,
     solfegeStyle: settings.solfegeStyle,
+    weeklyGoal: settings.weeklyGoal,
   });
 }

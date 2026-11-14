@@ -853,6 +853,36 @@ try {
     `${weekInfo.up} · ${weekInfo.hint.slice(0, 40)}`,
   );
 
+  // 13b3) 统计页：本周目标——点一个分钟数就出进度条，点「不设」收回去
+  js(
+    "(() => { const chip = [...document.querySelectorAll('.goal-chips .chip')].find(c => c.textContent.trim() === '60 分钟'); chip?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const goalOn = JSON.parse(
+    String(
+      js(
+        "(() => { const bar = document.querySelector('.goal-bar'); const num = document.querySelector('.goal-num'); const s = JSON.parse(localStorage.getItem('guitar.settings.v1') || '{}'); return JSON.stringify({ bar: !!bar, now: bar?.getAttribute('aria-valuenow') ?? '', num: num?.textContent?.trim() ?? '', saved: s.weeklyGoal ?? 0 }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    goalOn.bar && Number(goalOn.now) >= 0 && goalOn.num.endsWith("/ 60 分钟") && goalOn.saved === 60,
+    "统计页：点「60 分钟」出本周目标进度条，并记进设置",
+    `${goalOn.num} · ${goalOn.now}% · saved=${goalOn.saved}`,
+  );
+  js(
+    "(() => { const chip = [...document.querySelectorAll('.goal-chips .chip')].find(c => c.textContent.trim() === '不设'); chip?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const goalOff = String(
+    js(
+      "(() => { const bar = document.querySelector('.goal-bar'); const num = document.querySelector('.goal-num'); return `${bar ? 'bar' : 'nobar'}|${num?.textContent?.trim() ?? ''}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(goalOff === "nobar|还没设", "统计页：点「不设」把进度条收回去", goalOff);
+
   // 13c) 统计页：点热力图的一格，展开那天练了什么；再点一次收起
   const heatDate = String(
     js(

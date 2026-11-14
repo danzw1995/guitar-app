@@ -30,6 +30,7 @@ import {
   isValidDateKey,
   mondayOf,
   weekSummaryOf,
+  goalProgress,
   lastNDays,
   nextDateKey,
   nextNoteQuery,
@@ -2284,6 +2285,27 @@ test("这一周：同一天只算一次，光打开没练的不算", () => {
   assert.equal(week.prevMinutes, 0);
   assert.equal(week.deltaMinutes, 40);
   assert.equal(week.deltaDays, 1);
+});
+
+test("本周目标：没设目标就不画进度，达成了不多算、没达成算出还差多少", () => {
+  const off = goalProgress(50, 0);
+  assert.deepEqual(off, { goal: 0, done: 50, percent: 0, remaining: 0, reached: false }, "没设目标");
+
+  const half = goalProgress(30, 60);
+  assert.equal(half.percent, 50);
+  assert.equal(half.remaining, 30);
+  assert.equal(half.reached, false);
+
+  const done = goalProgress(60, 60);
+  assert.deepEqual(done, { goal: 60, done: 60, percent: 100, remaining: 0, reached: true }, "刚好达成");
+
+  const over = goalProgress(90, 60);
+  assert.equal(over.percent, 100, "超了也只到 100，进度条别溢出");
+  assert.equal(over.remaining, 0);
+  assert.equal(over.reached, true);
+
+  assert.equal(goalProgress(-5, 60).done, 0, "负的分钟数按 0 算");
+  assert.equal(goalProgress(30, Number.NaN).goal, 0, "坏的目标值当成没设");
 });
 
 

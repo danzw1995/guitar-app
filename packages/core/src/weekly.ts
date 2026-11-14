@@ -67,3 +67,32 @@ export function weekSummaryOf(log: PracticeLog, today: string): WeekSummary {
     deltaDays: now.days - prev.days,
   };
 }
+
+export interface GoalProgress {
+  /** 每周目标分钟数；0 表示没设 */
+  goal: number;
+  done: number;
+  /** 0–100，超出也封顶在 100 */
+  percent: number;
+  /** 还差多少分钟；达成了就是 0 */
+  remaining: number;
+  reached: boolean;
+}
+
+/**
+ * 本周目标：把「这周练了多少」换算成进度条要的三个数。
+ * 没设目标（goal <= 0）时 percent / remaining 都是 0，页面据此不画进度条。
+ */
+export function goalProgress(done: number, goal: number): GoalProgress {
+  const total = Math.max(0, Math.round(done));
+  const target = Number.isFinite(goal) ? Math.max(0, Math.round(goal)) : 0;
+  if (target === 0) return { goal: 0, done: total, percent: 0, remaining: 0, reached: false };
+  const remaining = Math.max(0, target - total);
+  return {
+    goal: target,
+    done: total,
+    percent: Math.min(100, Math.round((total / target) * 100)),
+    remaining,
+    reached: remaining === 0,
+  };
+}
