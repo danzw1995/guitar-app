@@ -1016,6 +1016,38 @@ try {
     `${searchState} / 清掉后 ${clearedCards}`,
   );
 
+  // 16b) 只看没练过的：练过一条后打开筛选，它就不在列表里了
+  js(
+    "(() => { localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'rt-quarter-eighth': { bestBpm: 88, sessions: 1, minutes: 3, lastAt: '2026-11-12' } })); return 'ok'; })()",
+  );
+  await sleep(100);
+  ab(["reload"]);
+  await sleep(800);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  js("(() => { document.querySelector('.rhythm-search .chip')?.click(); return 'ok'; })()");
+  await sleep(500);
+  const onlyNewState = JSON.parse(
+    String(
+      js(
+        "(() => { const chip = document.querySelector('.rhythm-search .chip'); const note = document.querySelector('.rhythm-search-note'); return JSON.stringify({ on: chip?.getAttribute('aria-pressed'), text: chip?.textContent?.trim() ?? '', note: note?.textContent?.trim() ?? '', cards: document.querySelectorAll('.drill-card').length, gone: !document.body.textContent.includes('练习 1 · 2/4 四分音符') }); })()",
+      ),
+    ).replace(/^"|"$/g, "").replace(/\\"/g, '"'),
+  );
+  log(
+    onlyNewState.on === "true" &&
+      onlyNewState.text.includes("只看没练过的") &&
+      onlyNewState.cards === 102 &&
+      onlyNewState.note === "没练过的 102 条",
+    "节奏页：打开「只看没练过的」就只剩没练过的（练过那条不见了）",
+    `${onlyNewState.cards} 张 / ${onlyNewState.note}`,
+  );
+  js("(() => { document.querySelector('.rhythm-search .chip')?.click(); return 'ok'; })()");
+  await sleep(400);
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+
   // 17) 新版本提示：触发后出现在底部，「稍后」能收掉
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
@@ -1044,6 +1076,10 @@ try {
     `前 ${beforeToast} / ${toastText} / 后 ${afterToast}`,
   );
 
+} catch (error) {
+  // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
+  failed += 1;
+  console.error("\n检查脚本自己出错了：", error);
 } finally {
   ab(["close"]);
   console.log(
