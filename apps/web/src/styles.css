@@ -1688,6 +1688,9 @@ button, select, input { font: inherit; color: inherit; }
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 1px 7px;
+  /* 「扫弦」两个字不能被挤成两行 */
+  flex: none;
+  white-space: nowrap;
 }
 .today-label {
   color: var(--text);
@@ -1702,12 +1705,23 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
   white-space: nowrap;
 }
+.today-swap {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
 .today-item .btn {
   margin-left: 8px;
+  /* 按钮不跟着挤：挤窄了文字会折成两行（手机上量到过 40×66） */
+  flex: none;
+  white-space: nowrap;
 }
 @media (max-width: 720px) {
   .today-due {
     display: none;
+  }
+  .today-swap {
+    padding: 8px 6px;
   }
 }
 .today-hint {

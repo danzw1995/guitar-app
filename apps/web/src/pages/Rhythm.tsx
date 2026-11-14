@@ -29,12 +29,17 @@ import { useMediaQuery } from "../hooks/useMediaQuery";
 import { RHYTHM_PICKS } from "../lib/rhythm-index";
 import { meterOfTab } from "../lib/meter";
 import {
+  addSkip,
   loadPractice,
   loadProgress,
   loadRhythm,
+  loadSkips,
   savePractice,
   saveRhythm,
+  saveSkips,
+  skipsOf,
   type RhythmRecords,
+  type SkipLog,
 } from "../lib/storage";
 
 const LEVELS: Level[] = [1, 2, 3, 4, 5];
@@ -71,6 +76,7 @@ function dailyPicks(
   today: string,
   records: RhythmRecords,
   boost: Map<string, number>,
+  skip: Set<string>,
 ): Pickable[] {
   const lastAt = new Map<string, string>();
   for (const [id, record] of Object.entries(records)) {
@@ -85,7 +91,7 @@ function dailyPicks(
   }
   const picked: Pickable[] = [];
   for (const list of groups.values()) {
-    picked.push(pickDue(list, lastAt, today, offset, { boost }).item);
+    picked.push(pickDue(list, lastAt, today, offset, { boost, exclude: skip }).item);
   }
   return picked;
 }
@@ -119,6 +125,7 @@ export default function Rhythm() {
   const [query, setQuery] = useState("");
   const [target, setTarget] = useState<FollowTarget | null>(null);
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
+  const [skips, setSkips] = useState<SkipLog>(() => loadSkips());
   /** 正在试听哪一条、播到第几拍（`null` = 没在播）。 */
   const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
   const narrow = useMediaQuery("(max-width: 900px)");
@@ -214,9 +221,15 @@ export default function Rhythm() {
     return map;
   }, [records]);
   const picks = useMemo(
-    () => dailyPicks(RHYTHM_PICKS, today, records, boost),
-    [today, records, boost],
+    () => dailyPicks(RHYTHM_PICKS, today, records, boost, skipsOf(skips, today)),
+    [today, records, boost, skips],
   );
+  /** 「换一条」：把这条记进今天的跳过表，三条会重新挑一次（今天不再出现）。 */
+  const swapPick = (id: string) => {
+    const next = addSkip(skips, today, id);
+    saveSkips(next);
+    setSkips(next);
+  };
   const picksDone = picks.filter((pick) => records[pick.id]?.lastAt === today).length;
   const readingDone = doneRatio(READING_DRILLS.map((drill) => drill.id), records);
   const rhythmDone = doneRatio(RHYTHM_DRILLS.map((drill) => drill.id), records);
@@ -311,6 +324,15 @@ export default function Rhythm() {
                 </span>
                 <button
                   type="button"
+                  className="btn btn-quiet today-swap"
+                  onClick={() => swapPick(pick.id)}
+                  title="今天先不练这条，换一条"
+                  aria-label={`换一条：${pick.label}`}
+                >
+                  换一条
+                </button>
+                <button
+                  type="button"
                   className="btn btn-quiet"
                   onClick={() => jumpTo(pick.id)}
                 >
@@ -322,7 +344,7 @@ export default function Rhythm() {
         </ul>
         <p className="today-hint">
           三条按「多久没练」挑：最久没碰的先回来，练过的排后面（在跟练里点「记录成绩」就会打勾）。
-          不用按顺序——练不下去就换一条，比硬啃一条强。
+          今天不想练哪条就点「换一条」，它今天不会再出现。
         </p>
       </div>
 

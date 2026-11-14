@@ -1,4 +1,6 @@
 import {
+  addDays,
+  dateKeyOf,
   fromLegacyBest,
   isValidDateKey,
   parseProgress,
@@ -19,6 +21,8 @@ export const DAILY_KEY = "guitar.daily.v1";
 export const PRACTICE_KEY = "guitar.practice.v1";
 /** 跟练记录：练习 id -> 最高速度与次数。 */
 export const RHYTHM_KEY = "guitar.rhythm.v1";
+/** 今天先不练的条目：日期 -> id 列表（只留最近 7 天）。 */
+export const SKIPS_KEY = "guitar.skips.v1";
 /** v0.2.x 只存每关最佳时间，迁移时读一次。 */
 const LEGACY_BEST_PREFIX = "guitar.best.";
 
@@ -209,6 +213,53 @@ export function loadRhythm(): RhythmRecords {
 
 export function saveRhythm(records: RhythmRecords): void {
   writeJson(RHYTHM_KEY, records);
+}
+
+/** `日期 → 今天点了「换一条」的 id`。 */
+export type SkipLog = Record<string, string[]>;
+
+/** 只留最近 7 天：再早的跳过没有意义，也不需要一直占着存储。 */
+const SKIP_DAYS = 7;
+
+export function loadSkips(today = dateKeyOf(new Date())): SkipLog {
+  const raw = readJson(SKIPS_KEY);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+
+  const log: SkipLog = {};
+  for (const [date, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isValidDateKey(date) || !Array.isArray(value)) continue;
+    const ids = value.filter((id): id is string => typeof id === "string" && id !== "");
+    if (ids.length === 0) continue;
+    log[date] = ids;
+  }
+  return pruneSkips(log, today);
+}
+
+export function saveSkips(log: SkipLog): void {
+  writeJson(SKIPS_KEY, log);
+}
+
+/** 那天点了「换一条」的 id（没有就是空集合）。 */
+export function skipsOf(log: SkipLog, date: string): Set<string> {
+  return new Set(log[date] ?? []);
+}
+
+/** 加一条跳过，返回新的表（不改原对象）。 */
+export function addSkip(log: SkipLog, date: string, id: string): SkipLog {
+  const ids = log[date] ?? [];
+  if (ids.includes(id)) return log;
+  return { ...log, [date]: [...ids, id] };
+}
+
+/** 去掉 `today` 往前 7 天以外的记录。 */
+function pruneSkips(log: SkipLog, today: string): SkipLog {
+  const keep = new Set<string>();
+  for (let back = 0; back < SKIP_DAYS; back += 1) keep.add(addDays(today, -back));
+  const out: SkipLog = {};
+  for (const [date, ids] of Object.entries(log)) {
+    if (keep.has(date)) out[date] = ids;
+  }
+  return out;
 }
 
 export function loadSettings(): Settings {

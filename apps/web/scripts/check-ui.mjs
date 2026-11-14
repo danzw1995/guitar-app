@@ -262,8 +262,28 @@ try {
     today.meters.join(" / "),
   );
 
+  // 7b) 换一条：点完这条今天不再出现，三条还是三条
+  const pickIds = () =>
+    String(
+      js(
+        "(() => [...document.querySelectorAll('.today-item')].map(n => n.dataset.pick).join('|'))()",
+      ),
+    ).replace(/^"|"$/g, "");
+  const idsBefore = pickIds();
+  const firstId = idsBefore.split("|")[0];
+  js("(() => { document.querySelector('.today-item .today-swap')?.click(); return 'ok'; })()");
+  await sleep(400);
+  const idsAfter = pickIds();
+  log(
+    idsAfter.split("|").length === 3 && !idsAfter.split("|").includes(firstId),
+    "点「换一条」这条今天就不再出现",
+    `${idsBefore} → ${idsAfter}`,
+  );
+  // 清掉跳过表，免得影响后面的断言
+  js("localStorage.removeItem('guitar.skips.v1')");
+
   const jumped = js(
-    "(() => { window.scrollTo(0, 0); const b = document.querySelector('.today-item .btn'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+    "(() => { window.scrollTo(0, 0); const b = document.querySelector('.today-item .btn:not(.today-swap)'); if (!b) return 'no'; b.click(); return 'ok'; })()",
   );
   await sleep(700);
   const scrolledTo = Number(js("Math.round(window.scrollY)"));
