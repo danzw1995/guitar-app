@@ -2840,6 +2840,51 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
 }
 
+/* 先不练的（v0.55.0）：统计页列出来，点「恢复」提前放回来 */
+.pause-summary {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+
+.pause-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pause-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.pause-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pause-until {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pause-resume {
+  min-height: 40px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
 /* 「换一条」的撤销提示（v0.52.0）：底部一条，6 秒后自己收掉 */
 .undo-toast {
   position: fixed;

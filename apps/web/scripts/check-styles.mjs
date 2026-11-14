@@ -577,6 +577,24 @@ for (const selector of ["select", "input", "textarea"]) {
     `min-height = ${undoButton.get("min-height") ?? "未设置"}, white-space = ${undoButton.get("white-space") ?? "未设置"}`,
   );
 
+  // 先不练的（v0.55.0）：一行三格（名字 / 回来的日子 / 恢复），名字长了省略
+  const pauseItem = narrowDecls(".pause-item");
+  const pauseCols = pauseItem.get("grid-template-columns") ?? "";
+  expect(
+    "压后条目是一行三格（名字、日子、恢复）",
+    (pauseItem.get("display") ?? "") === "grid" &&
+      pauseCols.startsWith("minmax(0, 1fr)") &&
+      pauseCols.endsWith("auto auto"),
+    `display = ${pauseItem.get("display") ?? "未设置"}, columns = ${pauseCols || "未设置"}`,
+  );
+  const pauseName = narrowDecls(".pause-name");
+  expect(
+    "压后条目的名字长了省略，不把「恢复」挤出去",
+    (pauseName.get("min-width") ?? "") === "0" &&
+      (pauseName.get("text-overflow") ?? "") === "ellipsis",
+    `min-width = ${pauseName.get("min-width") ?? "未设置"}, text-overflow = ${pauseName.get("text-overflow") ?? "未设置"}`,
+  );
+
   // 乐理目录：12 节排成可换行的网格；手机上看单节时其余要收起来
   const tocList = narrowDecls(".lesson-toc-list");
   expect(

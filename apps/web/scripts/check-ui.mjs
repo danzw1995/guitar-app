@@ -809,6 +809,42 @@ try {
   );
   js("localStorage.removeItem('guitar.skips.v1')");
 
+  // 13g) 先不练的：统计页列出来，点「恢复」提前放回来
+  js(
+    "(() => { const d = new Date(); const k = (n) => { const x = new Date(d); x.setDate(x.getDate() + n); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; }; localStorage.setItem('guitar.pauses.v1', JSON.stringify({ 's0-crawl': k(6), 'rd-01': k(3) })); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(1400);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const pauseRows = String(
+    js(
+      "(() => [...document.querySelectorAll('.pause-item')].map(n => n.textContent.trim().replace(/\\s+/g, ' ')).join(' | '))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    Number(js("document.querySelectorAll('.pause-item').length")) === 2 &&
+      pauseRows.includes("单弦爬格子（1-2-3-4）") &&
+      pauseRows.includes("练习 1 · 2/4 四分音符") &&
+      !pauseRows.includes("s0-crawl"),
+    "统计页：先不练的两条按名字列出来（不是 id）",
+    pauseRows,
+  );
+  js("(() => { document.querySelector('.pause-item .pause-resume')?.click(); return 'ok'; })()");
+  await sleep(500);
+  const pausesLeft = String(
+    js("localStorage.getItem('guitar.pauses.v1') ?? ''"),
+  ).replace(/^"|"$/g, "");
+  log(
+    Number(js("document.querySelectorAll('.pause-item').length")) === 1 &&
+      !pausesLeft.includes("rd-01"),
+    "点「恢复」这条提前回来，压后表里也没了",
+    `${pausesLeft} · 剩 ${js("document.querySelectorAll('.pause-item').length")}`,
+  );
+  js("localStorage.removeItem('guitar.pauses.v1')");
+
   // 13e) 退步加急：rd-01 练到过 96、5 天前只有 86 → 挤进今日三条并标「速度掉了」
   js(
     "(() => { const d = new Date(); d.setDate(d.getDate() - 5); const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'rd-01': { bestBpm: 96, sessions: 4, minutes: 20, lastAt: k, history: [{ date: '2026-10-01', bpm: 62 }, { date: '2026-10-20', bpm: 96 }, { date: k, bpm: 86 }] } })); return 'ok'; })()",

@@ -14,7 +14,7 @@ import {
   weekdayIndex,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
-import { loadDaily, loadPractice, loadProgress, loadRhythm, loadSkips, skipsOf, type DailyMap } from "../lib/storage";
+import { loadDaily, loadPauses, loadPractice, loadProgress, loadRhythm, loadSkips, removePause, savePauses, skipsOf, type DailyMap } from "../lib/storage";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { fmt, fmtSpan } from "../lib/format";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -47,6 +47,17 @@ export default function Stats() {
     for (const id of ids) skipCounts.set(id, (skipCounts.get(id) ?? 0) + 1);
   }
   const topSkips = [...skipCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  // 压后表：「这一周先不练」的那几条，按回来的日子排；点「恢复」立刻放回来
+  const [pauses, setPauses] = useState(() => loadPauses(today));
+  const pausedItems = Object.entries(pauses)
+    .filter(([, until]) => until >= today)
+    .sort((a, b) => a[1].localeCompare(b[1]));
+  const resume = (id: string) => {
+    const next = removePause(pauses, id);
+    savePauses(next);
+    setPauses(next);
+  };
   const [day, setDay] = useState<string | null>(null);
   const [cursor, setCursor] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -372,6 +383,25 @@ export default function Stats() {
               最近一周最常跳过：{topSkips.map(([id, count]) => `${skipName(id)} ×${count}`).join(" · ")}
             </p>
           )}
+        </div>
+      )}
+
+      {pausedItems.length > 0 && (
+        <div className="pause-summary">
+          <p className="skip-line">
+            <b>先不练的</b> {pausedItems.length} 条：
+          </p>
+          <ul className="pause-list">
+            {pausedItems.map(([id, until]) => (
+              <li className="pause-item" key={id} data-pause={id}>
+                <span className="pause-name">{skipName(id)}</span>
+                <span className="pause-until">{until.slice(5).replace("-", "/")} 回来</span>
+                <button type="button" className="btn-quiet pause-resume" onClick={() => resume(id)}>
+                  恢复
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
