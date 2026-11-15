@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CHORD_BY_NAME, tabToAlphaTex, type Tab } from "@guitar/core";
+import { CHORD_BY_NAME, STANDARD_TUNING, tabToAlphaTex, type Tab } from "@guitar/core";
 import type { FollowTarget } from "./FollowAlong";
 import type { ScoreImage } from "../lib/score-image";
 import { renderScoreImage } from "../lib/score-image";
 import { useScoreImage } from "../hooks/useScoreImage";
+import { useTone } from "../hooks/useTone";
 import { goTo } from "../lib/nav";
 import ChordDiagram from "./ChordDiagram";
 import {
@@ -219,6 +220,22 @@ function ScoreCard({
     if (!stored || !stored.beats || stored.beats.length === 0) onImage(score.id, rendered.image);
   }, [rendered.image, stored, onImage, score.id]);
   const high = best(score.id);
+  const { play } = useTone();
+  // 和弦谱：按拍把音归回一个个和弦，点一下单独听那一个（v0.87.0）
+  const chordsOfTab = useMemo(() => {
+    if (storedSource !== "progression" || !tab) return [];
+    const labels = (tab.caption ?? "").split("–").filter(Boolean);
+    const byBeat = new Map<number, number[]>();
+    for (const note of tab.notes) {
+      const midi = STANDARD_TUNING.strings[note.s - 1] + note.f;
+      const list = byBeat.get(note.beat) ?? [];
+      list.push(midi);
+      byBeat.set(note.beat, list);
+    }
+    return [...byBeat.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([, midis], index) => ({ label: labels[index] ?? `第 ${index + 1} 个`, midis }));
+  }, [storedSource, tab]);
 
   return (
     <article className="drill-card my-card" ref={boxRef}>
@@ -267,6 +284,22 @@ function ScoreCard({
           bpm={bpm}
           beat={beatOf(score.id)}
         />
+      )}
+      {chordsOfTab.length > 0 && (
+        <div className="my-chord-chips" role="group" aria-label={`${score.title} 的和弦，点一下单独听`}>
+          <span className="my-chord-chips-label">单独听：</span>
+          {chordsOfTab.map((item, index) => (
+            <button
+              key={`${item.label}-${index}`}
+              type="button"
+              className="chip"
+              aria-label={`试听 ${item.label}`}
+              onClick={() => play(item.midis, 0.04)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       )}
       <div className="drill-actions">
         {tab && (

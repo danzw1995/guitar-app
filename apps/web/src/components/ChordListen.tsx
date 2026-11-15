@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CHORD_BY_NAME,
+  STANDARD_TUNING,
   chordMidis,
   chordVoicingTab,
   chromaOfSpectrum,
+  detectChord,
   detectChordFromChroma,
   noteNameOf,
   segmentChords,
@@ -80,6 +82,22 @@ export default function ChordListen() {
   const [saved, setSaved] = useState(false);
   const [seqSaved, setSeqSaved] = useState(false);
   const { play, stop: stopTone } = useTone();
+  // 改名字时能选的和弦：只列「和弦库里有、而且认得出性质」的那些，
+  // 免得选完名字变了、谱上还是老按法。
+  const nameOptions = useMemo(
+    () =>
+      [...CHORD_BY_NAME.values()]
+        .filter((shape) => {
+          const midis = shape.frets
+            .map((fret, spot) => ({ fret, string: 6 - spot }))
+            .filter((item) => item.fret >= 0)
+            .map((item) => STANDARD_TUNING.strings[item.string - 1] + item.fret);
+          return Boolean(detectChord(midis));
+        })
+        .map((shape) => shape.name)
+        .sort(),
+    [],
+  );
 
   const streamRef = useRef<MediaStream | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
@@ -173,6 +191,37 @@ export default function ChordListen() {
     stopTone();
     // 0.04 秒一个音：听感上就是「一下扫下去」，不是一个一个拨
     play(chordMidis(chord), 0.04);
+  }
+
+  /**
+   * 改一段的名字（v0.87.0）：认错了很正常，尤其是低把位。
+   *
+   * 选了和弦库里的哪个，就把那个和弦的按法还原成音、再走一遍 `detectChord()`，
+   * 这样谱上的按法和名字是同一套，不会出现「名字是 Am、谱按的是 C」。
+   */
+  function renameSegment(index: number, name: string) {
+    setSegments((current) => {
+      if (!current) return current;
+      const next = current.slice();
+      const shape = CHORD_BY_NAME.get(name);
+      if (!shape) return current;
+      const midis = shape.frets
+        .map((fret, spot) => ({ fret, string: 6 - spot }))
+        .filter((item) => item.fret >= 0)
+        .map((item) => STANDARD_TUNING.strings[item.string - 1] + item.fret);
+      const chord = detectChord(midis);
+      // 名字以用户选的为准：E 的按法里有大三度也有五度，检测器可能报成 E5，
+      // 但用户选的是「E」——谱子标题、caption 都跟着用户走。
+      next[index] = { ...next[index], chord: chord ? { ...chord, label: name } : null };
+      return next;
+    });
+    setSeqSaved(false);
+  }
+
+  /** 删掉一段（v0.87.0）：切多了、或者只是蹭到的一下。 */
+  function dropSegment(index: number) {
+    setSegments((current) => (current ? current.filter((_, spot) => spot !== index) : current));
+    setSeqSaved(false);
   }
 
   const start = useCallback(async () => {
@@ -356,15 +405,40 @@ export default function ChordListen() {
                 </span>
                 {segment.chord && <em>{QUALITY_TEXT[segment.chord.quality] ?? segment.chord.name}</em>}
                 {segment.chord && (
-                  <button
-                    type="button"
-                    className="btn-quiet cl-seq-play"
-                    onClick={() => playSegment(segment.chord as DetectedChord)}
-                    aria-label={`试听第 ${index + 1} 段 ${segment.chord.label}`}
-                  >
-                    试听
-                  </button>
+                  <>
+                    <select
+                      className="cl-seq-name"
+                      value={segment.chord.label}
+                      aria-label={`第 ${index + 1} 段的和弦名`}
+                      onChange={(event) => renameSegment(index, event.target.value)}
+                    >
+                      {!nameOptions.includes(segment.chord.label) && (
+                        <option value={segment.chord.label}>{segment.chord.label}</option>
+                      )}
+                      {nameOptions.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn-quiet cl-seq-play"
+                      onClick={() => playSegment(segment.chord as DetectedChord)}
+                      aria-label={`试听第 ${index + 1} 段 ${segment.chord.label}`}
+                    >
+                      试听
+                    </button>
+                  </>
                 )}
+                <button
+                  type="button"
+                  className="btn-quiet cl-seq-drop"
+                  aria-label={`删掉第 ${index + 1} 段`}
+                  onClick={() => dropSegment(index)}
+                >
+                  删掉
+                </button>
               </li>
             ))}
           </ol>

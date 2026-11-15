@@ -2258,6 +2258,23 @@ button, select, input { font: inherit; color: inherit; }
   width: 132px;
   height: auto;
 }
+/* 和弦谱：每个和弦一个 chip，点一下单独听（v0.87.0） */
+.my-chord-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.my-chord-chips-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.my-chord-chips .chip {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+}
 .my-chord-note {
   margin: 0;
   max-width: 42ch;
@@ -3875,13 +3892,31 @@ button, select, input { font: inherit; color: inherit; }
 }
 .cl-seq-item {
   display: grid;
-  grid-template-columns: minmax(64px, auto) auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(64px, auto) auto minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 10px;
   padding: 6px 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
   font-size: 13px;
+}
+/* 改名字的下拉：认错了直接选对的那个（v0.87.0） */
+.cl-seq-name {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.cl-seq-drop {
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--muted);
 }
 .cl-seq-play {
   min-height: 40px;
@@ -3920,6 +3955,17 @@ button, select, input { font: inherit; color: inherit; }
   justify-items: start;
   gap: 6px;
   margin: 4px 0 12px;
+}
+/* 扫弦 / 分解两个切换（v0.87.0） */
+.chord-voicing-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chord-voicing-modes .chip {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
 }
 .chord-sub {
   margin: 18px 0 8px;

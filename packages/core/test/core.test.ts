@@ -7,6 +7,7 @@ import {
   CHORDS,
   CHORD_BY_NAME,
   chordVoicingTab,
+  chordPatternTab,
   EMPTY_PROGRESS,
   FLAT_NAMES,
   KEY_BY_ID,
@@ -2982,6 +2983,31 @@ test("听和弦：把一个和弦的按法写成谱（不弹的弦不进谱，�
   const d = chordVoicingTab(CHORD_BY_NAME.get("D")!);
   assert.equal(d.notes.length, 4);
   assert.deepEqual(d.notes.map((note) => note.s).sort(), [1, 2, 3, 4]);
+});
+
+test("听和弦：同一个和弦能写成扫弦，也能写成一根弦一拍的分解", () => {
+  const c = CHORD_BY_NAME.get("C")!;
+  const strum = chordPatternTab(c, "strum");
+  assert.ok(strum.notes.every((note) => note.beat === 0));
+  assert.ok(strum.caption?.endsWith("扫弦"));
+
+  const arp = chordPatternTab(c, "arpeggio");
+  assert.equal(arp.notes.length, 5);
+  // 一根弦一拍，从低音往高音走
+  assert.deepEqual(
+    arp.notes.map((note) => note.beat),
+    [0, 1, 2, 3, 4],
+  );
+  assert.deepEqual(
+    arp.notes.map((note) => note.s),
+    [5, 4, 3, 2, 1],
+  );
+  assert.ok(arp.notes.every((note) => note.dur === 1));
+  // 五根弦超过 4/4 一小节的四拍，所以折成两小节
+  assert.equal(arp.bars, 2);
+  assert.ok(arp.caption?.endsWith("分解"));
+  // 默认还是扫弦
+  assert.ok(chordPatternTab(c).notes.every((note) => note.beat === 0));
 });
 
 test("听和弦：一段扫弦按时间切成几个和弦，空拍不算进去", () => {

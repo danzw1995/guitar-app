@@ -651,6 +651,30 @@ try {
   );
   js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
 
+  // 9a5) 和弦谱卡：每个和弦一个 chip，点一下单独听
+  js(
+    `(() => { localStorage.setItem('guitar.scores.v1', JSON.stringify([{ id: 'my-prog1', title: '和弦谱 · C–Am', ascii: '', source: 'progression', tab: { beatsPerBar: 4, bars: 1, caption: 'C–Am', notes: [{ s: 5, f: 3, beat: 0, dur: 2 }, { s: 4, f: 2, beat: 0, dur: 2 }, { s: 3, f: 0, beat: 0, dur: 2 }, { s: 3, f: 2, beat: 2, dur: 2 }, { s: 2, f: 1, beat: 2, dur: 2 }, { s: 1, f: 0, beat: 2, dur: 2 }] }, meter: '4/4', bpm: 70, createdAt: Date.now() }])); return 'ok'; })()`,
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js("(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(600);
+  const chordChips = String(
+    js(
+      "(() => { const chips = [...document.querySelectorAll('.my-chord-chips .chip')].map(n => n.textContent.trim()); const label = document.querySelector('.my-chord-chips-label')?.textContent?.trim() ?? ''; return [chips.join(','), label].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    chordChips === "C,Am|单独听：",
+    "我的谱：和弦谱卡每个和弦一个 chip，能单独听",
+    chordChips,
+  );
+  js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
+
 
   // 9b) 扒谱（v0.72.0 独立成页）：四节课、练听辨、录音工具都在
   js(
@@ -1579,6 +1603,34 @@ try {
     "和弦页：点第二组进行，选中态跟着走",
     `${progState.first} → ${progState.second}`,
   );
+
+  // 16c2) 和弦页的六线谱版：扫弦 / 分解两种弹法可切，切完图会重画
+  const voicingBefore = String(
+    js(
+      "(() => { const chips = [...document.querySelectorAll('.chord-voicing-modes .chip')].map(n => n.textContent.trim()); const img = document.querySelector('.chord-voicing-img'); return [chips.join(','), img?.getAttribute('alt') ?? 'none'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.chord-voicing-modes .chip')].find(n => n.textContent.trim() === '分解'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(1600);
+  const voicingAfter = String(
+    js(
+      "(() => { const on = document.querySelector('.chord-voicing-modes .chip[aria-pressed=\\'true\\']')?.textContent?.trim() ?? ''; const img = document.querySelector('.chord-voicing-img'); return [on, img?.getAttribute('alt') ?? 'none'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    voicingBefore.startsWith("扫弦,分解|") &&
+      voicingBefore.includes("（扫弦）") &&
+      voicingAfter.startsWith("分解|") &&
+      voicingAfter.includes("（分解）"),
+    "和弦页：六线谱版能切「扫弦 / 分解」，切完图跟着换",
+    `${voicingBefore.slice(-16)} → ${voicingAfter.slice(-16)}`,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.chord-voicing-modes .chip')].find(n => n.textContent.trim() === '扫弦'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
 
   // 16d) 统计页：和弦转换的成绩（练过哪组、最快多快）
   js(

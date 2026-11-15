@@ -119,6 +119,35 @@ export function chordVoicingTab(chord: ChordShape, beatsPerBar = 4): Tab {
   });
 }
 
+/** 同一个和弦的两种弹法（v0.87.0）：一下扫下去，还是把弦一根根拨出来。 */
+export type ChordPattern = "strum" | "arpeggio";
+
+/**
+ * 把一个和弦按两种弹法写成谱（v0.87.0）。
+ *
+ * - `strum`：所有弦落在同一拍上，全音符——谱面就是「一下扫过去」。
+ * - `arpeggio`：一根弦一拍，从低音往高音走，四分音符——「分解」的样子。
+ *   弦多于 4 根时会折到下一小节（4/4 一小节四拍），所以 `bars` 可能是 2。
+ */
+export function chordPatternTab(
+  chord: ChordShape,
+  pattern: ChordPattern = "strum",
+  beatsPerBar = 4,
+): Tab {
+  const spots = chord.frets
+    .map((fret, index) => ({ fret, string: 6 - index }))
+    .filter((item) => item.fret >= 0);
+  const notes =
+    pattern === "strum"
+      ? spots.map((item) => n(item.string, item.fret, 0, beatsPerBar))
+      : spots.map((item, index) => n(item.string, item.fret, index, 1));
+  return tabOf(notes, {
+    beatsPerBar,
+    bpm: [60, 80],
+    caption: `${chord.name} · ${fingeringOf(chord)} · ${pattern === "strum" ? "扫弦" : "分解"}`,
+  });
+}
+
 export const CHORDS: ChordShape[] = [
   { name: "C", frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0], level: "beginner" },
   { name: "G", frets: [3, 2, 0, 0, 0, 3], fingers: [3, 2, 0, 0, 0, 4], level: "beginner" },
