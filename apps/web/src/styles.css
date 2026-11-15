@@ -3778,6 +3778,15 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 12px;
   color: var(--muted);
 }
+.cl-missing {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text);
+}
+.cl-missing b {
+  color: var(--accent);
+  font-weight: 600;
+}
 .cl-diagram {
   width: 132px;
 }

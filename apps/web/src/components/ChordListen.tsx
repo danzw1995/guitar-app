@@ -37,6 +37,21 @@ const QUALITY_TEXT: Record<string, string> = {
 
 const INVERSION_TEXT = ["原位", "第一转位", "第二转位", "第三转位"];
 
+/** 和弦音在「缺了哪个」里怎么念：说「五度」比说「纯五度」更像人话。 */
+const STEP_TEXT: Record<number, string> = {
+  0: "根音",
+  2: "二度",
+  3: "小三度",
+  4: "大三度",
+  5: "四度",
+  6: "减五度",
+  7: "五度",
+  8: "增五度",
+  9: "六度",
+  10: "小七度",
+  11: "大七度",
+};
+
 /**
  * 听和弦（v0.76.0）：按住一个和弦，页面把频谱折成 12 个音级，再和和弦模板比。
  *
@@ -229,9 +244,24 @@ export default function ChordListen() {
               <li key={tone}>{tone}</li>
             ))}
           </ul>
+          {chord.missing.length > 0 && (
+            <p className="cl-missing">
+              少了
+              <b>
+                {chord.missing
+                  .map(
+                    (step) =>
+                      `${STEP_TEXT[step] ?? `${step} 个半音`}（${noteNameOf((chord.root + step) % 12)}）`,
+                  )
+                  .join("、")}
+              </b>
+              ——那根弦可能没按实，或者被别的指头闷住了。
+            </p>
+          )}
           {chord.extra.length > 0 && (
             <p className="cl-extra">
               还听到不属于它的音：{chord.extra.map((pc) => noteNameOf(pc)).join("、")}
+              ——多半是相邻的弦没闷住。
             </p>
           )}
           {library && (
@@ -240,8 +270,10 @@ export default function ChordListen() {
             </div>
           )}
           <p className="cl-tip">
-            置信 {Math.round(chord.score * 100)}%。听错多半是因为按得不实（有杂音）或者
-            扫得太快（前一个和弦还在响）。
+            置信 {Math.round(chord.score * 100)}%。
+            {chord.missing.length > 0 || chord.extra.length > 0
+              ? "先照上面缺的、多的音检查一遍手指，再听一次会准得多。"
+              : "听错多半是因为按得不实（有杂音）或者扫得太快（前一个和弦还在响）。"}
           </p>
         </div>
       )}

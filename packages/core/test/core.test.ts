@@ -2816,6 +2816,43 @@ test("听和弦：频谱折成 12 个音级，C 大三和弦认成 C", () => {
   assert.equal(detectChordFromChroma([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), null);
 });
 
+test("听和弦：缺了哪个音要说得出来，多出来的音也要点出来", () => {
+  // Cmaj7 的五度音很弱（0.2 < PRESENT 的 0.3）：三音和弦凑不齐（只剩 C/E 两个），
+  // 四音和弦听到三个就够认，于是认成 Cmaj7，并指出缺的是五度
+  const weakFifth = new Array<number>(12).fill(0);
+  weakFifth[0] = 1;
+  weakFifth[4] = 1;
+  weakFifth[11] = 1;
+  weakFifth[7] = 0.2;
+  const chord = detectChordFromChroma(weakFifth, 0);
+  assert.ok(chord);
+  assert.equal(chord.label, "Cmaj7");
+  assert.deepEqual(chord.missing, [7]);
+  assert.deepEqual(chord.extra, []);
+
+  // 多按了一个 F#（6）：和 C 大三和弦凑不成别的和弦，于是仍认 C，但把多出来的音报出来
+  const withExtra = new Array<number>(12).fill(0);
+  withExtra[0] = 1;
+  withExtra[4] = 1;
+  withExtra[7] = 1;
+  withExtra[6] = 0.8;
+  const noisy = detectChordFromChroma(withExtra, 0);
+  assert.ok(noisy);
+  assert.equal(noisy.label, "C");
+  assert.deepEqual(noisy.extra, [6]);
+  assert.ok(noisy.score < 0.5, "多出来的音要扣分");
+
+  // 什么都不缺时两个数组都是空的
+  const clean = new Array<number>(12).fill(0);
+  clean[0] = 1;
+  clean[4] = 1;
+  clean[7] = 1;
+  const full = detectChordFromChroma(clean, 0);
+  assert.ok(full);
+  assert.deepEqual(full.missing, []);
+  assert.deepEqual(full.extra, []);
+});
+
 test("听辨：和弦性质听的是三个音一起响，四种性质轮着出", () => {
   // 四种性质的三度叠法
   const byId = new Map(EAR_QUALITIES.map((item) => [item.id, item.intervals]));

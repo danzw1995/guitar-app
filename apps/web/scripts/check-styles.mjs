@@ -753,6 +753,13 @@ for (const selector of ["select", "input", "textarea"]) {
     (px(clName.get("font-size")) ?? 0) >= 28,
     `font-size=${clName.get("font-size") ?? "未设置"}`,
   );
+  // v0.82.0：缺了哪个音要显眼（强调色），不能和「多出来的音」一样灰
+  const clMissing = narrowDecls(".cl-missing b");
+  expect(
+    "听和弦「少了哪个音」用强调色，不和次要说明混在一起",
+    (clMissing.get("color") ?? "").includes("var(--accent)"),
+    `color=${clMissing.get("color") ?? "未设置"}`,
+  );
   const clBar = narrowDecls(".cl-progress");
   expect(
     "听和弦的进度是细长圆角条",
