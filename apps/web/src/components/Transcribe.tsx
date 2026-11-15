@@ -248,7 +248,11 @@ export default function Transcribe() {
           ? error
           : listening
             ? `在听… ${seconds} 秒 / 最多 ${MAX_SECONDS} 秒（收到 ${heard} 帧有声）· 一次弹一个音，别扫和弦。`
-            : "点「开始听」，然后弹一段单音旋律（比如小星星的开头），弹完点「停」。";
+            : fileBusy
+              ? "在读文件… 30 秒以内，几秒钟就好。"
+              : fileInfo
+                ? ""
+                : "点「开始听」，然后弹一段单音旋律（比如小星星的开头），弹完点「停」。";
 
   return (
     <section className="panel transcribe" id="transcribe">
@@ -309,9 +313,11 @@ export default function Transcribe() {
         </span>
       </div>
 
-      <p className={listening ? "tr-hint live" : "tr-hint"} role="status">
-        {hint}
-      </p>
+      {hint ? (
+        <p className={listening ? "tr-hint live" : "tr-hint"} role="status">
+          {hint}
+        </p>
+      ) : null}
 
       {result && result.tab.notes.length > 0 && (
         <div className="tr-result">
