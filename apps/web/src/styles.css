@@ -3661,3 +3661,105 @@ button, select, input { font: inherit; color: inherit; }
   min-height: 40px;
 }
 
+/* 听和弦（v0.76.0）：按住一个和弦，认出根音与性质 */
+.chord-listen {
+  margin-top: 12px;
+}
+.cl-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 0 0 10px;
+}
+.cl-progress {
+  display: block;
+  flex: 0 1 240px;
+  min-width: 80px;
+  height: 6px;
+  border-radius: 999px;
+  background: #0d1117;
+  overflow: hidden;
+}
+.cl-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 120ms linear;
+}
+.cl-frames {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.cl-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.cl-hint.live {
+  color: var(--accent);
+}
+.cl-result {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+.cl-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+.cl-name {
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent);
+}
+.cl-quality {
+  color: var(--muted);
+  font-size: 13px;
+}
+.cl-tones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cl-tones li {
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.cl-extra {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.cl-diagram {
+  width: 132px;
+}
+.cl-tip {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 62ch;
+}
+@media (max-width: 720px) {
+  .cl-controls .btn {
+    min-height: 40px;
+  }
+  .cl-name {
+    font-size: 34px;
+  }
+}
+

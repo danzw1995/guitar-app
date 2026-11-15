@@ -16,6 +16,9 @@ import {
   cellKey,
   centsOff,
   chordInfo,
+  chromaOfSpectrum,
+  detectChord,
+  detectChordFromChroma,
   completedCount,
   dailyPuzzle,
   dailySpecFor,
@@ -2705,6 +2708,71 @@ test("听辨：级数判断先给主音，第 3 级就是大三度", () => {
   }
   assert.deepEqual(earRound("degree", 9, 8), round);
   assert.notDeepEqual(earRound("degree", 10, 8), round);
+});
+
+test("听和弦：大三、小三、七和弦都认得，转位靠最低音", () => {
+  const c = detectChord([60, 64, 67]);
+  assert.ok(c);
+  assert.equal(c.label, "C");
+  assert.equal(c.name, "大三和弦");
+  assert.equal(c.inversion, 0);
+  assert.equal(c.bassName, "C");
+
+  // 第一转位：最低音是 E，根音还是 C
+  const first = detectChord([64, 67, 72]);
+  assert.ok(first);
+  assert.equal(first.label, "C");
+  assert.equal(first.inversion, 1);
+  assert.equal(first.bassName, "E");
+
+  assert.equal(detectChord([57, 60, 64])?.label, "Am");
+  assert.equal(detectChord([62, 65, 69])?.label, "Dm");
+  assert.equal(detectChord([55, 59, 62, 65])?.label, "G7");
+  assert.equal(detectChord([60, 64, 67, 71])?.label, "Cmaj7");
+  assert.equal(detectChord([57, 60, 64, 67])?.label, "Am7");
+
+  // 挂四、减三、强力和弦
+  assert.equal(detectChord([60, 65, 67])?.label, "Csus4");
+  assert.equal(detectChord([60, 63, 66])?.label, "Cdim");
+  assert.equal(detectChord([40, 47])?.label, "E5");
+
+  // 一个音不叫和弦；没听过的音级也认不出来
+  assert.equal(detectChord([60]), null);
+  assert.equal(detectChord([60, 61]), null);
+});
+
+test("听和弦：频谱折成 12 个音级，C 大三和弦认成 C", () => {
+  const sampleRate = 48000;
+  const fftSize = 4096;
+  const bins = fftSize / 2;
+  const spectrum = new Array<number>(bins).fill(0);
+  // C3 / E3 / G3 的基频与两个泛音
+  for (const freq of [130.81, 164.81, 196.0]) {
+    for (const multiple of [1, 2, 3]) {
+      const index = Math.round((freq * multiple * fftSize) / sampleRate);
+      spectrum[index] += 1 / multiple;
+    }
+  }
+  const chroma = chromaOfSpectrum(spectrum, sampleRate, fftSize);
+  assert.equal(chroma.length, 12);
+  assert.ok(Math.abs(Math.max(...chroma) - 1) < 1e-9);
+  // 12 个音级里 C(0) / E(4) / G(7) 最亮
+  const ranked = chroma
+    .map((value, pc) => ({ pc, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3)
+    .map((item) => item.pc)
+    .sort((a, b) => a - b);
+  assert.deepEqual(ranked, [0, 4, 7]);
+
+  const chord = detectChordFromChroma(chroma, 0);
+  assert.ok(chord);
+  assert.equal(chord.label, "C");
+  assert.equal(chord.inversion, 0);
+
+  // 静音：全 0 不能硬给一个和弦
+  assert.equal(detectChordFromChroma(new Array(12).fill(0)), null);
+  assert.equal(detectChordFromChroma([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), null);
 });
 
 

@@ -745,6 +745,26 @@ for (const selector of ["select", "input", "textarea"]) {
     (narrowDecls(".ear-lesson-body[hidden]").get("display") ?? "") === "none",
     `display=${narrowDecls(".ear-lesson-body[hidden]").get("display") ?? "未设置"}`,
   );
+
+  // 听和弦（v0.76.0）
+  const clName = narrowDecls(".cl-name");
+  expect(
+    "听和弦认出来的和弦名是大字（一眼看到）",
+    (px(clName.get("font-size")) ?? 0) >= 28,
+    `font-size=${clName.get("font-size") ?? "未设置"}`,
+  );
+  const clBar = narrowDecls(".cl-progress");
+  expect(
+    "听和弦的进度是细长圆角条",
+    (px(clBar.get("height")) ?? 99) <= 10 && (clBar.get("border-radius") ?? "").includes("999px"),
+    `height=${clBar.get("height") ?? "未设置"}`,
+  );
+  const clFill = narrowDecls(".cl-progress > span");
+  expect(
+    "听和弦的进度填充是强调色",
+    (clFill.get("background") ?? "").includes("var(--accent)"),
+    `background=${clFill.get("background") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

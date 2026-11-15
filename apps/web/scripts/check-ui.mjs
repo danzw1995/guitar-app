@@ -659,6 +659,18 @@ try {
   ).replace(/^"|"$/g, "");
   log(degreeInfo === "tonic|4|级数判断", "扒谱练习：级数判断会先让你听主音，四个选项", degreeInfo);
 
+  // 9f) 听和弦：面板在「用」区，有按钮和提示（v0.76.0）
+  const clInfo = String(
+    js(
+      "(() => { const panel = document.querySelector('.chord-listen'); if (!panel) return 'none'; const start = [...panel.querySelectorAll('button')].some(n => n.textContent.trim() === '听一个和弦'); const hint = panel.querySelector('.cl-hint')?.textContent ?? ''; const name = panel.querySelector('.cl-name'); return [start ? 'start' : 'nostart', hint.includes('按住一个和弦') ? 'hint' : 'nohint', name ? 'result' : 'noresult'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    clInfo === "start|hint|noresult",
+    "扒谱页：有「听和弦」，没听过时只显示一句提示",
+    clInfo,
+  );
+
   // 10) 乐理页：12 节课各配一张示范谱，滚完整页都加载出来
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '乐理'); b?.click(); return 'ok'; })()",

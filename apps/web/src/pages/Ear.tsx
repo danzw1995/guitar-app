@@ -8,6 +8,7 @@ import {
   type EarQuestion,
 } from "@guitar/core";
 import Transcribe from "../components/Transcribe";
+import ChordListen from "../components/ChordListen";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useTone } from "../hooks/useTone";
 import { loadEar, saveEar, type EarStats } from "../lib/storage";
@@ -517,6 +518,9 @@ export default function Ear() {
 
       <h3 className="stat-sub">用 · 录音扒谱</h3>
       <Transcribe />
+
+      <h3 className="stat-sub">用 · 听和弦</h3>
+      <ChordListen />
     </section>
   );
 }
