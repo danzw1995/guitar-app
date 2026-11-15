@@ -14,21 +14,28 @@ import {
   STANDARD_TUNING,
   applyAttempt,
   cellKey,
+  centsOff,
   chordInfo,
   completedCount,
   dailyPuzzle,
   dailySpecFor,
   dateKeyOf,
   dayNumberOf,
+  detectPitch,
   diatonicNames,
   expectedNameMap,
   fingeringOf,
+  frequencyOfMidi,
   fromLegacyBest,
   generatePuzzle,
   isPerfect,
   isUnlocked,
   isValidDateKey,
+  midiOfFrequency,
   mondayOf,
+  nearestString,
+  smoothFreqs,
+  tunerReading,
   weekSummaryOf,
   goalProgress,
   weekPace,
@@ -2406,6 +2413,88 @@ test("周报：这周练了几天、最勤哪天、哪块落下了", () => {
   assert.equal(allDone.missed.length, 0);
   assert.equal(allDone.busiest?.date, "2026-11-09");
 });
+
+/* ---------- 调音器 ---------- */
+
+/** 造一段正弦波，当作麦克风采样（检测算法的输入） */
+function sine(freq: number, sampleRate: number, seconds = 0.2, amplitude = 0.3): Float32Array {
+  const size = Math.floor(sampleRate * seconds);
+  const out = new Float32Array(size);
+  for (let i = 0; i < size; i++) out[i] = amplitude * Math.sin((2 * Math.PI * freq * i) / sampleRate);
+  return out;
+}
+
+test("调音器：频率、音分、最近的空弦", () => {
+  assert.equal(Math.round(frequencyOfMidi(69)), 440, "A4 = 440");
+  assert.equal(Math.round(frequencyOfMidi(40) * 100) / 100, 82.41, "6 弦 E2");
+  assert.equal(Math.round(frequencyOfMidi(64) * 100) / 100, 329.63, "1 弦 E4");
+  assert.equal(Math.round(midiOfFrequency(440)), 69);
+  assert.equal(Math.round(centsOff(frequencyOfMidi(41), frequencyOfMidi(40))), 100, "半音 = 100 音分");
+
+  const e2 = nearestString(frequencyOfMidi(40));
+  assert.equal(e2?.string, 6);
+  assert.equal(e2?.name, "E");
+  assert.equal(e2?.octave, 2);
+  assert.equal(e2?.cents, 0);
+
+  // 高 12 音分的 6 弦，最近的仍然是 6 弦（不是 5 弦 A2）
+  const sharp = nearestString(frequencyOfMidi(40) * Math.pow(2, 12 / 1200));
+  assert.equal(sharp?.string, 6);
+  assert.equal(sharp?.cents, 12);
+});
+
+test("调音器：读数以弦为准，音名只兜底", () => {
+  const exact = tunerReading(frequencyOfMidi(40));
+  assert.equal(exact?.string?.string, 6);
+  assert.equal(exact?.inTune, true, "正好准");
+  assert.equal(exact?.hint, "6 弦 E2 准了");
+
+  // E2 高 60 音分：最近的音名已经是 F2，但要调的仍然是 6 弦
+  const high = tunerReading(frequencyOfMidi(40) * Math.pow(2, 60 / 1200));
+  assert.equal(high?.note, "F", "音名是 F2");
+  assert.equal(high?.octave, 2);
+  assert.equal(high?.string?.string, 6, "还是按 6 弦提示");
+  assert.equal(high?.string?.cents, 60);
+  assert.equal(high?.inTune, false);
+  assert.equal(high?.hint, "6 弦 E2 偏高 60 音分，松一点");
+
+  const low = tunerReading(frequencyOfMidi(45) * Math.pow(2, -30 / 1200));
+  assert.equal(low?.string?.string, 5);
+  assert.equal(low?.hint, "5 弦 A2 偏低 30 音分，拧紧一点");
+
+  // 六根空弦之外（B1，离 6 弦 500 音分）就不硬说是哪根弦
+  const between = tunerReading(frequencyOfMidi(30));
+  assert.equal(between?.string, null);
+  assert.ok(between?.hint.includes("弹单根空弦"));
+
+  assert.equal(tunerReading(0), null);
+  assert.equal(tunerReading(Number.NaN), null);
+});
+
+test("调音器：从采样里找基频（静音不硬给一个音）", () => {
+  const rate = 8000;
+  const e2 = detectPitch(sine(frequencyOfMidi(40), rate), rate);
+  assert.ok(Math.abs(e2 - 82.4) < 1.5, `6 弦 E2 读到 ${e2}`);
+
+  const e4 = detectPitch(sine(frequencyOfMidi(64), rate), rate);
+  assert.ok(Math.abs(e4 - 329.6) < 3, `1 弦 E4 读到 ${e4}`);
+
+  const silent = new Float32Array(2048);
+  assert.equal(detectPitch(silent, rate), 0, "静音返回 0");
+
+  const dc = new Float32Array(2048).fill(0.5);
+  assert.equal(detectPitch(dc, rate), 0, "纯直流不算音高");
+
+  // 太短的缓冲不猜
+  assert.equal(detectPitch(new Float32Array(32), rate), 0);
+
+  // 平滑：取中位数，去掉拨弦瞬间的跳变
+  assert.equal(smoothFreqs([82, 500, 83, 82.5]), 82.8);
+  assert.equal(smoothFreqs([82, 500, 83]), 83);
+  assert.equal(smoothFreqs([0, 0, 110]), 110);
+  assert.equal(smoothFreqs([]), 0);
+});
+
 
 
 

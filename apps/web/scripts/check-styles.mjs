@@ -701,6 +701,25 @@ for (const selector of ["select", "input", "textarea"]) {
       (weekFill.get("background") ?? "").includes("var(--accent)"),
     `height=${narrowDecls(".week-goal-bar").get("height") ?? "未设置"}`,
   );
+
+  // 调音器：指针是按音分百分比定位的，轨道得能当定位基准；六根弦的按钮要够手指点
+  const needle = narrowDecls(".tuner-needle");
+  expect(
+    "调音器的指针浮在轨道上（按音分定位）",
+    (needle.get("position") ?? "") === "absolute" && needle.get("left") === undefined,
+    `position=${needle.get("position") ?? "未设置"} left=${needle.get("left") ?? "(运行时给)"}`,
+  );
+  expect(
+    "调音器的轨道是定位容器",
+    (narrowDecls(".tuner-track").get("position") ?? "") === "relative",
+    `position=${narrowDecls(".tuner-track").get("position") ?? "未设置"}`,
+  );
+  const tunerString = narrowDecls(".tuner-string");
+  expect(
+    "调音器六根弦的按钮不小于 40 高",
+    (px(tunerString.get("min-height")) ?? 0) >= 40,
+    `min-height=${tunerString.get("min-height") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

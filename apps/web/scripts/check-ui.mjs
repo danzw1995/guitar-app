@@ -113,9 +113,9 @@ try {
     landing === '"练习|今日练习"' ? "" : String(landing),
   );
 
-  // 2) 主导航 8 个 Tab，能切到「节奏」
+  // 2) 主导航 9 个 Tab，能切到「节奏」
   const tabs = js("document.querySelectorAll('nav.tabs button').length");
-  log(tabs === "8", `主导航有 8 个 Tab（读到 ${tabs}）`);
+  log(tabs === "9", `主导航有 9 个 Tab（读到 ${tabs}）`);
 
   const switched = js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); if (!b) return 'no'; b.click(); return 'ok'; })()",
@@ -1343,6 +1343,49 @@ try {
     chordStats.row,
   );
   js("localStorage.removeItem('guitar.chords.v1')");
+
+  // 16e) 调音页：六根空弦都在、点「开始」拿不到麦克风时要有一句人话
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '调音'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const tunerInfo = JSON.parse(
+    String(
+      js(
+        "(() => { const btns = [...document.querySelectorAll('.tuner-string')]; const head = document.querySelector('.panel-head h2')?.textContent ?? ''; const hint = document.querySelector('.tuner-hint')?.textContent ?? ''; return JSON.stringify({ head, strings: btns.length, labels: btns.map(b => b.getAttribute('aria-label')), hint }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    tunerInfo.head === "调音器" &&
+      tunerInfo.strings === 6 &&
+      tunerInfo.labels[0].includes("6 弦 E2") &&
+      tunerInfo.hint.includes("拨一根空弦"),
+    "调音页：六根空弦都在，先教你怎么用",
+    `${tunerInfo.strings} 根 · ${tunerInfo.hint}`,
+  );
+
+  // 无头浏览器没有麦克风：点「开始」之后必须落到一句解释上，而不是一直转圈
+  js(
+    "(() => { const b = [...document.querySelectorAll('.tuner-actions button')].find(n => n.textContent.trim() === '开始'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(1200);
+  const tunerAfter = String(
+    js(
+      "(() => { const tip = document.querySelector('.tuner-tip')?.textContent ?? ''; const hint = document.querySelector('.tuner-hint')?.textContent ?? ''; return JSON.stringify({ tip, hint }); })()",
+    ),
+  )
+    .replace(/^"|"$/g, "")
+    .replace(/\\"/g, '"');
+  const tunerState = JSON.parse(tunerAfter);
+  log(
+    tunerState.tip.includes("麦克风") || tunerState.hint.includes("在听"),
+    "调音页：点「开始」后要么在听，要么说清为什么听不了",
+    tunerState.tip.slice(0, 40) || tunerState.hint,
+  );
+
 
 
   // 17) 新版本提示：触发后出现在底部，「稍后」能收掉

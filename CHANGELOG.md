@@ -8,6 +8,15 @@
 - v1.0.0：真机验收（iOS / Android）、首屏性能实测、40 关难度复核
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.70.0] - 2026-11-15
+
+### Added
+- 新的「调音」Tab（手机上收在「更多」里）：麦克风听音高，大号弦号 + 音名、±50 音分的指针条、
+  「偏低 12 音分，拧紧一点」这种人话提示，六根空弦点一下还能听标准音（响三遍）。
+- core 的 `tuner.ts`：`detectPitch()`（McLeod NSDF，取第一个够高的峰，不会低八度）、
+  `tunerReading()`（先找最近的空弦，音名只兜底）、`nearestString()`、`smoothFreqs()`、
+  `frequencyOfMidi()` / `midiOfFrequency()` / `centsOff()`。
+
 ## [0.69.0] - 2026-11-15
 
 ### Added

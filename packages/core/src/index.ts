@@ -19,6 +19,7 @@ export * from "./heatmap.ts";
 export * from "./history.ts";
 export * from "./review.ts";
 export * from "./weekly.ts";
+export * from "./tuner.ts";
 export * from "./rhythm-drills.ts";
 export * from "./reading-drills.ts";
 export * from "./strum-drills.ts";

@@ -18,7 +18,7 @@ mkdirSync(join(OUT, "playwright"), { recursive: true });
 process.env.TMPDIR = join(OUT, "playwright");
 process.env.TMP = process.env.TMPDIR;
 process.env.TEMP = process.env.TMPDIR;
-const TABS = ["练习", "节奏", "和弦", "音阶", "乐理", "音阶游戏", "统计", "设置"];
+const TABS = ["练习", "节奏", "和弦", "音阶", "乐理", "音阶游戏", "调音", "统计", "设置"];
 const VIEWPORTS = [
   { name: "iPhone 15", ...devices["iPhone 15"] },
   { name: "Pixel 9", ...devices["Pixel 9"] },
@@ -97,7 +97,7 @@ for (const device of VIEWPORTS) {
   await page.locator(".bottom-nav button", { hasText: "更多" }).first().click();
   await page.waitForTimeout(250);
   const sheetItems = await page.locator(".more-sheet .more-item").count();
-  check(sheetItems === 4, "「更多」里 4 个入口", `实际 ${sheetItems} 个`);
+  check(sheetItems === 5, "「更多」里 5 个入口", `实际 ${sheetItems} 个`);
   await page.locator(".more-sheet .more-item", { hasText: "设置" }).first().click();
   await page.waitForTimeout(600);
   check((await page.locator(".more-sheet").count()) === 0, "从「更多」选完会关掉浮层", "浮层还在");
@@ -207,4 +207,4 @@ if (failures.length) {
   for (const failure of failures) console.log(`  - ${failure}`);
   process.exit(1);
 }
-console.log("\n手机端检查全部通过（WebKit，三个尺寸 × 8 个页面）");
+console.log("\n手机端检查全部通过（WebKit，三个尺寸 × 9 个页面）");

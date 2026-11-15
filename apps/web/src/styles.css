@@ -469,6 +469,115 @@ button, select, input { font: inherit; color: inherit; }
 .speed-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 0; }
 .speed-label { color: var(--muted); font-size: 12px; }
 .speed-row .chip { min-height: 40px; padding: 0 10px; font-size: 12px; }
+
+/* 调音器 */
+.tuner-stage {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin: 0 0 14px;
+  padding: 18px 16px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel-2);
+}
+.tuner-note { display: flex; align-items: center; gap: 12px; min-height: 64px; }
+.tuner-string-no { font-size: 16px; color: var(--muted); }
+.tuner-string-name {
+  display: flex;
+  align-items: flex-start;
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text);
+}
+.tuner-string-name.muted { font-size: 32px; font-weight: 600; letter-spacing: 0.12em; color: var(--muted); }
+.tuner-oct { margin: 6px 0 0 4px; font-size: 20px; font-weight: 600; color: var(--muted); }
+.tuner-scale { width: min(100%, 420px); }
+.tuner-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.tuner-track { position: relative; height: 10px; border-radius: 999px; background: #0d1117; }
+.tuner-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 45%;
+  width: 10%;
+  border-radius: 999px;
+  background: rgba(63, 185, 80, 0.22);
+}
+.tuner-center {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--line);
+}
+.tuner-needle {
+  position: absolute;
+  top: -6px;
+  width: 4px;
+  height: 22px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: left 90ms linear;
+}
+.tuner-scale.in-tune .tuner-needle { background: var(--green); }
+.tuner-hint { min-height: 22px; margin: 0; font-size: 15px; color: var(--text); }
+.tuner-hint.ok { color: var(--green); font-weight: 600; }
+.tuner-cents {
+  min-height: 16px;
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tuner-level {
+  width: min(100%, 420px);
+  height: 4px;
+  border-radius: 999px;
+  background: #0d1117;
+  overflow: hidden;
+}
+.tuner-level span {
+  display: block;
+  height: 100%;
+  background: var(--muted);
+  transition: width 90ms linear;
+}
+.tuner-strings {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+.tuner-string {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  min-height: 56px;
+  padding: 8px 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0d1117;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.tuner-string b { font-size: 18px; }
+.tuner-string span { font-size: 11px; color: var(--muted); }
+.tuner-string.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tuner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.tuner-tip { font-size: 12px; color: var(--muted); }
+.tuner-foot { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
 /* 本周目标：没设目标时不画进度条，只留一排可选分钟数 */
 .goal { display: grid; gap: 8px; margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; }
 .goal-head { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
