@@ -313,6 +313,17 @@ export default function Rhythm() {
 
   const beatOf = (id: string) => (playhead?.id === id ? playhead.beat : null);
 
+  /** 变速三档：五小节的进行先慢下来把换和弦走顺，再回原速。 */
+  const speedSteps = (bpm: number) =>
+    [
+      { label: "慢速", factor: 0.7 },
+      { label: "原速", factor: 1 },
+      { label: "快一点", factor: 1.2 },
+    ].map(({ label, factor }) => ({
+      label,
+      bpm: Math.max(40, Math.round((bpm * factor) / 5) * 5),
+    }));
+
   return (
     <section className="panel">
       <div className="panel-head">
@@ -782,6 +793,29 @@ export default function Rhythm() {
               {best(item.id) !== undefined && (
                 <span className="best-badge">最高 {best(item.id)} BPM</span>
               )}
+            </div>
+            <div className="speed-row" role="group" aria-label={`练习 ${item.no} 变速跟练`}>
+              <span className="speed-label">变速</span>
+              {speedSteps(item.bpm).map((step) => (
+                <button
+                  key={step.label}
+                  type="button"
+                  className="chip"
+                  aria-label={`${step.label} ${step.bpm} BPM 跟练 练习 ${item.no}`}
+                  onClick={() => {
+                    setTarget({
+                      id: item.id,
+                      name: `练习 ${item.no} · ${item.name}`,
+                      bpm: [step.bpm, step.bpm + 30],
+                      tab: item.tab,
+                      meter: item.meter,
+                    });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  {step.label} {step.bpm}
+                </button>
+              ))}
             </div>
             {item.tip && <p className="pb-line">{item.tip}</p>}
             {item.inferred && (

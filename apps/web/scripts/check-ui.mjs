@@ -141,6 +141,22 @@ try {
     firstText,
   );
 
+  // 3a) 伴奏型 17 条：每条都有「变速」三档（慢速 / 原速 / 快一点），点一下直接开跟练
+  const speedInfo = JSON.parse(
+    String(
+      js(
+        "(() => { const g = [...document.querySelectorAll('.drill-grid')][3]; if (!g) return JSON.stringify({ rows: -1 }); const cards = [...g.querySelectorAll('.drill-card')]; const rows = cards.filter(c => c.querySelectorAll('.speed-row .chip').length === 3).length; const first = cards[0]?.querySelectorAll('.speed-row .chip'); const labels = first ? [...first].map(b => b.textContent.trim()) : []; return JSON.stringify({ cards: cards.length, rows, labels }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    speedInfo.cards === 17 && speedInfo.rows === 17 && speedInfo.labels.length === 3,
+    "伴奏型 17 条每条都有变速三档",
+    `${speedInfo.rows}/${speedInfo.cards} · ${(speedInfo.labels || []).join(" / ")}`,
+  );
+
   // 谱是懒加载的图片（进视口才请求），这里先数占位，滚完整页再验有没有真的加载出来。
   const boxes = js(
     "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('.tab-score').length : -1; })()",
