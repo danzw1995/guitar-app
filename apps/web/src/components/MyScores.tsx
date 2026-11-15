@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Tab } from "@guitar/core";
+import { tabToAlphaTex, type Tab } from "@guitar/core";
 import type { FollowTarget } from "./FollowAlong";
 import { renderScoreImage, type ScoreImage } from "../lib/score-image";
 import {
@@ -180,7 +180,13 @@ function ScoreCard({
   onEdit: (score: MyScore) => void;
   onImage: (id: string, image: ScoreImage) => void;
 }) {
-  const parsed = useMemo(() => parseScore(score.ascii), [score.ascii]);
+  const earTab = score.source === "transcribe" && score.tab ? score.tab : null;
+  const parsed = useMemo(() => (earTab ? null : parseScore(score.ascii)), [earTab, score.ascii]);
+  // 扒谱存下的没有 ASCII 原文，音符和拍号直接存在记录里。
+  const tab = earTab ?? parsed?.tab ?? null;
+  const meter = earTab ? (score.meter ?? `${earTab.beatsPerBar}/4`) : (parsed?.meter ?? "4/4");
+  const bpm = earTab ? (score.bpm ?? 90) : (parsed?.bpm ?? 80);
+  const tex = earTab ? tabToAlphaTex(earTab) : (parsed?.tex ?? "");
   const stored = useMemo<ScoreImage | undefined>(
     () =>
       score.image
@@ -217,8 +223,8 @@ function ScoreCard({
   }, []);
   // 旧记录没有存图、或者存图时还没有拍位（v0.29.2 之前）：进视口后现画一张，
   // 画完把图和拍位一起写回 localStorage，之后打开就只显示图。
-  const needsRender = visible && (!stored || !stored.beats || stored.beats.length === 0) && Boolean(parsed.tab);
-  const rendered = useScoreImage(needsRender ? parsed.tex : null);
+  const needsRender = visible && (!stored || !stored.beats || stored.beats.length === 0) && Boolean(tab);
+  const rendered = useScoreImage(needsRender ? tex : null);
   const image = stored ?? rendered.image;
   useEffect(() => {
     // 没存图，或存了图但没有拍位（旧记录）：把新画出来的图和拍位一起写回去。
@@ -232,29 +238,30 @@ function ScoreCard({
       <header className="drill-head">
         <h4>{score.title}</h4>
         <span className="rhythm-bpm">
-          {parsed.meter} · {parsed.bpm} BPM
+          {meter} · {bpm} BPM
         </span>
       </header>
-      {parsed.error ? (
+      {earTab && <p className="my-source">扒出来的 · 只能试听、导出，不能编辑</p>}
+      {parsed?.error ? (
         <p className="my-error">{parsed.error}</p>
       ) : (
         <ScoreFigure
           image={image}
           error={rendered.error}
           title={score.title}
-          meter={parsed.meter}
-          bpm={parsed.bpm}
+          meter={meter}
+          bpm={bpm}
           beat={beatOf(score.id)}
         />
       )}
       <div className="drill-actions">
-        {parsed.tab && (
+        {tab && (
           <>
             <button
               type="button"
               className="btn"
               aria-label={`试听 ${score.title}`}
-              onClick={() => audition(score.id, parsed.tab as Tab, parsed.bpm)}
+              onClick={() => audition(score.id, tab as Tab, bpm)}
             >
               试听
             </button>
@@ -265,9 +272,9 @@ function ScoreCard({
                 follow({
                   id: score.id,
                   name: score.title,
-                  bpm: [parsed.bpm, parsed.bpm + 40],
-                  tab: parsed.tab as Tab,
-                  meter: parsed.meter,
+                  bpm: [bpm, bpm + 40],
+                  tab: tab as Tab,
+                  meter,
                 });
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
@@ -277,14 +284,16 @@ function ScoreCard({
             {high !== undefined && <span className="best-badge">最高 {high} BPM</span>}
           </>
         )}
-        <button
-          type="button"
-          className="btn btn-quiet"
-          onClick={() => onEdit(score)}
-          aria-label={`编辑 ${score.title}`}
-        >
-          编辑
-        </button>
+        {!earTab && (
+          <button
+            type="button"
+            className="btn btn-quiet"
+            onClick={() => onEdit(score)}
+            aria-label={`编辑 ${score.title}`}
+          >
+            编辑
+          </button>
+        )}
         {image && (
           <a
             className="btn btn-quiet"
@@ -323,8 +332,16 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
     setScores(setScoreImage(id, image));
   }, []);
 
+  // 扒谱那边存下一条时发事件过来，这里立刻重读，不用刷新页面。
+  useEffect(() => {
+    const reload = (): void => setScores(loadScores());
+    window.addEventListener("guitar:scores", reload);
+    return () => window.removeEventListener("guitar:scores", reload);
+  }, []);
+
   /** 把存下的谱放回编辑区，改完再存回同一条。 */
   function startEdit(score: MyScore) {
+    if (score.source === "transcribe") return;
     setEditingId(score.id);
     setText(score.ascii);
     setParsed(null);

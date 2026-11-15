@@ -572,6 +572,43 @@ try {
   );
   log(removed === '"ok"' && leftCards === 0, "我的谱：删掉之后卡片消失", `还剩 ${leftCards} 条`);
 
+  // 9a2) 我的谱：扒谱存下的谱也在这里（只读，带「扒出来的」说明，没有「编辑」）
+  js(
+    `(() => { localStorage.setItem('guitar.scores.v1', JSON.stringify([{ id: 'my-ear1', title: '扒谱 · 测试', ascii: '', source: 'transcribe', tab: { beatsPerBar: 4, bars: 1, notes: [{ s: 2, f: 1, beat: 0, dur: 1 }, { s: 1, f: 0, beat: 1, dur: 1 }, { s: 1, f: 3, beat: 2, dur: 1 }] }, meter: '4/4', bpm: 90, createdAt: Date.now() }])); return 'ok'; })()`,
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js(
+    "(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()",
+  );
+  let earCard = "";
+  for (let i = 0; i < 14; i++) {
+    await sleep(400);
+    js(
+      "(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()",
+    );
+    earCard = String(
+      js(
+        "(() => { const card = document.querySelector('.my-card'); if (!card) return 'none'; const src = card.querySelector('.my-source')?.textContent ?? ''; const btns = [...card.querySelectorAll('.drill-actions button, .drill-actions a')].map(n => n.textContent.trim()).join(','); const img = Boolean(card.querySelector('img.tab-score')); return [src.includes('扒出来的') ? 'ear' : 'plain', img ? 'img' : 'noimg', btns].join('|'); })()",
+      ),
+    ).replace(/^"|"$/g, "");
+    if (earCard !== "none" && earCard.includes("img")) break;
+  }
+  log(
+    earCard.startsWith("ear|img|") &&
+      earCard.includes("试听") &&
+      earCard.includes("导出 PNG") &&
+      !earCard.includes("编辑"),
+    "我的谱：扒出来的谱也在列表里，只读（没有「编辑」）",
+    earCard,
+  );
+  js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
+
+
   // 9b) 扒谱（v0.72.0 独立成页）：四节课、练听辨、录音工具都在
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '扒谱'); b?.click(); return 'ok'; })()",

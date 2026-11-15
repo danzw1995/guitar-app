@@ -2216,6 +2216,11 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
   font-size: 13px;
 }
+.my-source {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -3447,6 +3452,11 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 12px;
   color: var(--muted);
   max-width: 68ch;
+}
+.tr-saved {
+  margin: 0;
+  font-size: 13px;
+  color: var(--green);
 }
 @media (max-width: 720px) {
   .tr-controls .btn,

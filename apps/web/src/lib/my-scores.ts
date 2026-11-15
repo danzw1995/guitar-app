@@ -10,6 +10,12 @@ export interface MyScore {
   title: string;
   ascii: string;
   createdAt: number;
+  /** `manual` = 手写/粘贴的（能编辑）；`transcribe` = 扒谱扒出来的（只读，靠 `tab` 重画）。 */
+  source?: "manual" | "transcribe";
+  /** 扒谱存下的谱：没有 ASCII 原文，留着音符才能重画、试听、跟练。 */
+  tab?: Tab;
+  meter?: string;
+  bpm?: number;
   /** `data:image/png;base64,…`；旧记录可能没有，遇到时现画一张补上。 */
   image?: string;
   imageWidth?: number;
@@ -130,7 +136,13 @@ export function loadScores(): MyScore[] {
     const parsed = JSON.parse(raw) as MyScore[];
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .filter((item) => typeof item?.id === "string" && typeof item.ascii === "string")
+      .filter(
+        (item) =>
+          typeof item?.id === "string" &&
+          // 手写的要有原文；扒谱的没有原文，得留着音符才画得出来。
+          (typeof item.ascii === "string" || (item.source === "transcribe" && item.tab)),
+      )
+      .map((item) => ({ ...item, ascii: typeof item.ascii === "string" ? item.ascii : "" }))
       .sort((a, b) => b.createdAt - a.createdAt);
   } catch {
     return [];
@@ -165,6 +177,10 @@ function persist(scores: MyScore[]): MyScore[] {
 export function addScore(input: {
   title: string;
   ascii: string;
+  source?: "manual" | "transcribe";
+  tab?: Tab;
+  meter?: string;
+  bpm?: number;
   image?: string;
   imageWidth?: number;
   imageHeight?: number;
@@ -175,12 +191,20 @@ export function addScore(input: {
     title: input.title.trim() || "我的谱",
     ascii: input.ascii,
     createdAt: Date.now(),
+    source: input.source,
+    tab: input.tab,
+    meter: input.meter,
+    bpm: input.bpm,
     image: input.image,
     imageWidth: input.imageWidth,
     imageHeight: input.imageHeight,
     beats: input.beats,
   };
-  return persist([score, ...loadScores().filter((item) => item.ascii !== input.ascii)]);
+  // 手写谱按原文去重（同一段别存两遍）；扒谱的没有原文，不去重（每次扒的都不一样）。
+  const rest = loadScores().filter((item) =>
+    input.source === "transcribe" ? item.id !== score.id : item.ascii !== input.ascii,
+  );
+  return persist([score, ...rest]);
 }
 
 /** 旧记录（v0.26.0 存下的没有图）第一次画出来时把图补回去，下次打开就不用再渲染。 */

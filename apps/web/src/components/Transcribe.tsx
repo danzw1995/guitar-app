@@ -7,6 +7,7 @@ import {
   type TranscribeResult,
 } from "@guitar/core";
 import { renderScoreImage, type ScoreImage } from "../lib/score-image";
+import { addScore } from "../lib/my-scores";
 import { useTone } from "../hooks/useTone";
 
 const MAX_SECONDS = 20;
@@ -31,6 +32,7 @@ export default function Transcribe() {
   const [error, setError] = useState("");
   const [frameCount, setFrameCount] = useState(0);
   const [heard, setHeard] = useState(0);
+  const [saved, setSaved] = useState(false);
 
   const streamRef = useRef<MediaStream | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
@@ -67,6 +69,7 @@ export default function Transcribe() {
     setImage(null);
     setFrameCount(0);
     setHeard(0);
+    setSaved(false);
     framesRef.current = [];
 
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -151,6 +154,28 @@ export default function Transcribe() {
     };
   }, [result]);
 
+  /** 把这一遍扒出来的谱存进「我的谱」（图 + 音符一起存，之后能试听、导出、跟练）。 */
+  const saveToScores = useCallback(() => {
+    if (!result || !image) return;
+    const now = new Date();
+    const pad = (value: number): string => String(value).padStart(2, "0");
+    const title = `扒谱 · ${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    addScore({
+      title,
+      ascii: "",
+      source: "transcribe",
+      tab: result.tab,
+      meter: `${result.tab.beatsPerBar}/4`,
+      bpm,
+      image: image.dataUrl,
+      imageWidth: image.width,
+      imageHeight: image.height,
+      beats: image.beats,
+    });
+    setSaved(true);
+    window.dispatchEvent(new Event("guitar:scores"));
+  }, [result, image, bpm]);
+
   const listening = phase === "listening";
   const hint =
     phase === "denied"
@@ -229,7 +254,16 @@ export default function Transcribe() {
             <button type="button" className="btn-quiet" onClick={() => stopTone()}>
               停
             </button>
+            <button
+              type="button"
+              className={saved ? "btn-quiet" : "btn"}
+              onClick={saveToScores}
+              disabled={!image || saved}
+            >
+              {saved ? "已存进「我的谱」" : "存进「我的谱」"}
+            </button>
           </div>
+          {saved && <p className="tr-saved">存好了，往下翻「我的谱」最上面就是它——那里能试听、跟练、导出 PNG。</p>}
           {result.warnings.length > 0 && (
             <ul className="tr-warnings">
               {result.warnings.map((line) => (
