@@ -16,6 +16,7 @@ import {
   weekSummaryOf,
   goalProgress,
   weekPace,
+  weekReportOf,
   weekStreak,
   mondayOf,
 } from "@guitar/core";
@@ -28,6 +29,7 @@ import Stars from "../components/Stars";
 
 /** 统计页：全部来自本机 localStorage，没有账号也没有上报。 */
 const WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+const WEEK_KIND_LABEL = { practice: "练习页的关卡", follow: "跟练", rhythm: "节奏页的条目" } as const;
 
 export default function Stats() {
   const progress = loadProgress();
@@ -37,6 +39,8 @@ export default function Stats() {
   const today = dateKeyOf(new Date());
   // 这一周 vs 上周同期（周一起算，core 的 weekSummaryOf）
   const weekStats = weekSummaryOf(practiceLog, today);
+  // 周报：这周练了几天、最勤哪天、哪块落下了（只读练习日志）
+  const weekReport = weekReportOf(practiceLog, today);
   // 每周目标：存在设置里，0 = 不设（进度条不出现）
   const [goal, setGoal] = useState(() => loadSettings().weeklyGoal);
   const goalState = goalProgress(weekStats.minutes, goal);
@@ -305,6 +309,11 @@ export default function Stats() {
           {goal > 0 && goalStreak.weeks >= 2 && (
             <span className="goal-streak">连续 {goalStreak.weeks} 周达成</span>
           )}
+          {goal > 0 && goalStreak.weeks === 0 && goalStreak.lastWeeks >= 2 && (
+            <span className="goal-last" title={`上一串到 ${goalStreak.lastUntil}`}>
+              上次连续 {goalStreak.lastWeeks} 周
+            </span>
+          )}
           <span className="goal-num">
             {goal > 0 ? `${goalState.done} / ${goalState.goal} 分钟` : "还没设"}
           </span>
@@ -464,6 +473,39 @@ export default function Stats() {
             <span className="practice-day-label">{minutes > 0 ? `${minutes}` : "—"}</span>
           </div>
         ))}
+      </div>
+
+      <h3 className="stat-sub">这周</h3>
+      <div className="report">
+        <p className="report-line">
+          <b>
+            练了 {weekReport.days} 天 · {weekReport.minutes} 分钟 · {weekReport.items} 条
+          </b>{" "}
+          <span className={weekReport.deltaMinutes >= 0 ? "muted" : "muted"}>
+            比上周同期 {weekReport.deltaMinutes >= 0 ? "+" : ""}
+            {weekReport.deltaMinutes} 分钟
+          </span>
+        </p>
+        <p className="report-line">
+          {weekReport.busiest
+            ? `最勤的是${WEEKDAYS[weekdayIndex(weekReport.busiest.date)]}（${weekReport.busiest.minutes} 分钟）`
+            : "这周还没有练习记录"}
+        </p>
+        <p className="report-line">
+          练习 {weekReport.kinds.practice} 条 · 跟练 {weekReport.kinds.follow} 条 · 节奏{" "}
+          {weekReport.kinds.rhythm} 条
+        </p>
+        {weekReport.weak && (
+          <p className="report-line report-next">
+            下周先补：{WEEK_KIND_LABEL[weekReport.weak]}
+          </p>
+        )}
+        {weekReport.missed.length > 0 && (
+          <p className="report-line muted">
+            这周还没练：
+            {weekReport.missed.map((date) => WEEKDAYS[weekdayIndex(date)]).join("、")}
+          </p>
+        )}
       </div>
 
       {(todaySkips.length > 0 || topSkips.length > 0) && (

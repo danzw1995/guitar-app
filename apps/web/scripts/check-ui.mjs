@@ -949,6 +949,51 @@ try {
     "(() => { localStorage.removeItem('guitar.goals.v1'); localStorage.removeItem('guitar.practice.v1'); localStorage.removeItem('guitar.settings.v1'); return 'ok'; })()",
   );
 
+  // 13b5) 统计页：这串断了，也要把上一串说出来（「上次连续 3 周」）
+  js(
+    "(() => { localStorage.setItem('guitar.goals.v1', JSON.stringify({ '2026-10-12': 30, '2026-10-19': 30, '2026-10-26': 30, '2026-11-02': 30, '2026-11-09': 30 })); localStorage.setItem('guitar.practice.v1', JSON.stringify({ '2026-10-13': { minutes: 40, stage: 0, done: [] }, '2026-10-20': { minutes: 40, stage: 0, done: [] }, '2026-10-27': { minutes: 40, stage: 0, done: [] }, '2026-11-03': { minutes: 5, stage: 0, done: [] }, '2026-11-10': { minutes: 5, stage: 0, done: [] } })); localStorage.setItem('guitar.settings.v1', JSON.stringify({ weeklyGoal: 30 })); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const lastStreak = String(
+    js("(() => { const el = document.querySelector('.goal-last'); return el ? el.textContent.trim() : ''; })()"),
+  ).replace(/^"|"$/g, "");
+  log(
+    lastStreak.includes("上次连续 3 周"),
+    "统计页：这串断了，也要把「上次连续 3 周」说出来",
+    lastStreak || "(没有)",
+  );
+  js(
+    "(() => { localStorage.removeItem('guitar.goals.v1'); localStorage.removeItem('guitar.practice.v1'); localStorage.removeItem('guitar.settings.v1'); return 'ok'; })()",
+  );
+
+  // 13b6) 统计页：周报——这周练了几天、最勤哪天、哪块落下了
+  js(
+    "(() => { localStorage.setItem('guitar.practice.v1', JSON.stringify({ '2026-11-09': { minutes: 20, stage: 0, done: ['s0-crawl', 's0-scale'] }, '2026-11-11': { minutes: 45, stage: 1, done: ['s1-chord'] }, '2026-11-12': { minutes: 0, stage: 0, done: ['rt-quarter-eighth'] } })); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const reportText = String(
+    js("(() => document.querySelector('.report')?.innerText?.replace(/\\n/g, ' | ') ?? '')()"),
+  ).replace(/^"|"$/g, "");
+  log(
+    reportText.includes("练了 3 天") &&
+      reportText.includes("65 分钟") &&
+      reportText.includes("最勤的是周三") &&
+      reportText.includes("下周先补：跟练"),
+    "统计页：周报说清这周练了几天、最勤哪天、哪块落下了",
+    reportText,
+  );
+  js("(() => { localStorage.removeItem('guitar.practice.v1'); return 'ok'; })()");
+
   // 13c) 统计页：点热力图的一格，展开那天练了什么；再点一次收起
   const heatDate = String(
     js(

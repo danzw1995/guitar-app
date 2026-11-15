@@ -135,11 +135,16 @@ export function weekPace(week: WeekSummary, today: string, goal: number): WeekPa
   };
 }
 
-export interface WeekStreak {
-  /** 连续达成的周数（含这一周，如果已经达成） */
+export interface WeekStreak {  /** 连续达成的周数（含这一周，如果已经达成） */
   weeks: number;
   /** 这一周本身达成了没有 */
   currentDone: boolean;
+  /** 历史最长连续（含当前这串） */
+  best: number;
+  /** 这串断了之后，上一串有几周；没断过就是 0 */
+  lastWeeks: number;
+  /** 上一串最后一周的周一；没断过就是空串 */
+  lastUntil: string;
 }
 
 function minutesOfWeek(log: PracticeLog, monday: string): number {
@@ -153,6 +158,9 @@ function minutesOfWeek(log: PracticeLog, monday: string): number {
  * 上个月 30 分钟算达成，这个月改成 90，回头就说你没达成，这不讲理。
  * 这一周还没练够不算断（周中当然还没够）；再往前遇到没记目标的周就停——那时候的
  * 目标不知道，不能瞎猜。
+ *
+ * 断了的时候（这周和上周都没练够）把上一串也带出来（`lastWeeks` / `lastUntil`），
+ * 页面上写「上次连续 4 周」，别让记录凭空消失。
  */
 export function weekStreak(
   log: PracticeLog,
@@ -161,8 +169,7 @@ export function weekStreak(
   maxWeeks = 52,
 ): WeekStreak {
   const monday = mondayOf(today);
-  let weeks = 0;
-  let currentDone = false;
+  const runs: { monday: string; reached: boolean }[] = [];
   for (let i = 0; i < maxWeeks; i++) {
     const start = addDays(monday, -7 * i);
     const goal = Math.max(0, Math.round(Number(goalsByWeek[start]) || 0));
@@ -170,14 +177,131 @@ export function weekStreak(
       if (i === 0) continue;
       break;
     }
-    const reached = minutesOfWeek(log, start) >= goal;
-    if (i === 0) {
-      currentDone = reached;
-      if (reached) weeks += 1;
-      continue;
-    }
-    if (!reached) break;
-    weeks += 1;
+    runs.push({ monday: start, reached: minutesOfWeek(log, start) >= goal });
   }
-  return { weeks, currentDone };
+
+  // 这周达成了就从这周开始数；没达成不算断，从上周开始数
+  let currentDone = false;
+  let index = 0;
+  if (runs.length > 0 && runs[0].monday === monday) {
+    currentDone = runs[0].reached;
+    if (!runs[0].reached) index = 1;
+  }
+  let weeks = 0;
+  while (index < runs.length && runs[index].reached) {
+    weeks += 1;
+    index += 1;
+  }
+
+  // 断在这一周（index 指向第一个没达成的周），后面那串就是「上次连续」
+  let lastWeeks = 0;
+  let lastUntil = "";
+  if (index < runs.length) {
+    let j = index + 1;
+    while (j < runs.length && runs[j].reached) {
+      lastWeeks += 1;
+      j += 1;
+    }
+    if (lastWeeks > 0) lastUntil = runs[index + 1].monday;
+  }
+
+  let best = 0;
+  let run = 0;
+  for (let i = runs.length - 1; i >= 0; i--) {
+    if (runs[i].reached) {
+      run += 1;
+      best = Math.max(best, run);
+    } else {
+      run = 0;
+    }
+  }
+
+  return { weeks, currentDone, best, lastWeeks, lastUntil };
+}
+
+/** 周报里按块分的三堆：练习页的关卡、练习页的跟练（`p:` 前缀）、节奏页的条目。 */
+export type WeekKind = "practice" | "follow" | "rhythm";
+
+export interface WeekReport {
+  from: string;
+  to: string;
+  /** 这周练了几天 */
+  days: number;
+  minutes: number;
+  /** 这周完成过的条目（按 id 去重） */
+  items: number;
+  prevMinutes: number;
+  deltaMinutes: number;
+  /** 这周练得最久的那天 */
+  busiest: { date: string; minutes: number } | null;
+  /** 这周过去的日子里一条都没练的（含今天；只到 7 个） */
+  missed: string[];
+  kinds: Record<WeekKind, number>;
+  /** 哪一块这周最少；三块都练过就是空串 */
+  weak: WeekKind | "";
+}
+
+function kindOf(id: string): WeekKind {
+  if (id.startsWith("p:")) return "follow";
+  // 练习页的关卡 id 是 s0-crawl、s1-chord 这种；其余（rd-/rt-/sd-/ac-/sn-、节奏型名字）算节奏
+  return /^s\d/.test(id) ? "practice" : "rhythm";
+}
+
+/**
+ * 周报：这周练了几天、最勤的是哪天、哪一块落下了。
+ *
+ * 只读 `guitar.practice.v1`——跟练、节奏页的条目练完都会往当天的 `done` 里写一条，
+ * 所以这三堆能在一个地方数清楚，不用再去翻别的表。
+ */
+export function weekReportOf(log: PracticeLog, today: string): WeekReport {
+  const from = mondayOf(today);
+  const week = weekSummaryOf(log, today);
+  const kinds: Record<WeekKind, number> = { practice: 0, follow: 0, rhythm: 0 };
+  const seen = new Set<string>();
+  const byDate = new Map<string, number>();
+  for (const [date, entry] of Object.entries(log)) {
+    const day = dayNumberOf(date);
+    if (!Number.isFinite(day) || day < dayNumberOf(from) || day > dayNumberOf(today)) continue;
+    byDate.set(date, Math.max(0, Math.round(entry.minutes ?? 0)));
+    for (const id of entry.done ?? []) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      kinds[kindOf(id)] += 1;
+    }
+  }
+
+  let busiest: { date: string; minutes: number } | null = null;
+  for (const [date, minutes] of byDate) {
+    if (!busiest || minutes > busiest.minutes) busiest = { date, minutes };
+  }
+
+  const missed: string[] = [];
+  for (let d = from; d <= today && missed.length < 7; d = addDays(d, 1)) {
+    if (!byDate.has(d)) missed.push(d);
+  }
+
+  let weak: WeekKind | "" = "";
+  const order: WeekKind[] = ["practice", "follow", "rhythm"];
+  let least = Number.POSITIVE_INFINITY;
+  for (const kind of order) {
+    if (kinds[kind] < least) {
+      least = kinds[kind];
+      weak = kind;
+    }
+  }
+  if (least > 0) weak = "";
+
+  return {
+    from,
+    to: today,
+    days: week.days,
+    minutes: week.minutes,
+    items: week.items,
+    prevMinutes: week.prevMinutes,
+    deltaMinutes: week.deltaMinutes,
+    busiest,
+    missed,
+    kinds,
+    weak,
+  };
 }

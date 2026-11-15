@@ -33,6 +33,7 @@ import {
   goalProgress,
   weekPace,
   weekStreak,
+  weekReportOf,
   lastNDays,
   nextDateKey,
   nextNoteQuery,
@@ -2353,6 +2354,57 @@ test("连续达成：从这周往回数，周中还没练够不算断，没记�
   const skipped = weekStreak({ ...log, "2026-11-09": { minutes: 5, stage: 0, done: [] } }, { "2026-11-02": 60 }, "2026-11-11");
   assert.equal(skipped.weeks, 1, "这周没设目标：跳过这周，从上周算");
   assert.equal(skipped.currentDone, false);
+
+  // 断了以后，上一串还要数得出来（页面写「上次连续 N 周」）
+  const broken = weekStreak(
+    {
+      "2026-11-10": { minutes: 5, stage: 0, done: [] },
+      "2026-11-03": { minutes: 5, stage: 0, done: [] },
+      "2026-10-27": { minutes: 70, stage: 0, done: [] },
+      "2026-10-20": { minutes: 70, stage: 0, done: [] },
+      "2026-10-13": { minutes: 70, stage: 0, done: [] },
+    },
+    { "2026-11-09": 60, "2026-11-02": 60, "2026-10-26": 60, "2026-10-19": 60, "2026-10-12": 60 },
+    "2026-11-11",
+  );
+  assert.equal(broken.weeks, 0, "这周和上周都没练够：当前这串是 0");
+  assert.equal(broken.lastWeeks, 3, "上一串是 10-12 起那三周");
+  assert.equal(broken.lastUntil, "2026-10-26", "上一串最后一根是 10-26 那周");
+  assert.equal(broken.best, 3, "历史最长也是 3 周");
+
+  const ongoing = weekStreak(log, goals, "2026-11-11");
+  assert.equal(ongoing.lastWeeks, 0, "还没断的时候不显示「上次连续」");
+  assert.equal(ongoing.lastUntil, "");
+  assert.equal(ongoing.best, 2);
+});
+
+test("周报：这周练了几天、最勤哪天、哪块落下了", () => {
+  const report = weekReportOf(
+    {
+      "2026-11-09": { minutes: 20, stage: 0, done: ["s0-crawl", "s0-scale"] },
+      "2026-11-11": { minutes: 45, stage: 1, done: ["s1-chord"] },
+      "2026-11-12": { minutes: 0, stage: 0, done: ["rt-quarter-eighth"] },
+      "2026-11-08": { minutes: 99, stage: 0, done: ["s9-old"] },
+      "2026-11-16": { minutes: 99, stage: 0, done: ["s9-future"] },
+    },
+    "2026-11-13",
+  );
+  assert.equal(report.from, "2026-11-09");
+  assert.equal(report.days, 3, "有分钟或有条目都算练过");
+  assert.equal(report.minutes, 65, "上周和下周的记录不算");
+  assert.equal(report.items, 4, "四个 id 去重");
+  assert.deepEqual(report.busiest, { date: "2026-11-11", minutes: 45 });
+  assert.deepEqual(report.missed, ["2026-11-10", "2026-11-13"], "这周还没练的两天");
+  assert.deepEqual(report.kinds, { practice: 3, follow: 0, rhythm: 1 });
+  assert.equal(report.weak, "follow", "跟练一条都没练，下周先补它");
+
+  const allDone = weekReportOf(
+    { "2026-11-09": { minutes: 10, stage: 0, done: ["s0-crawl", "p:s0-crawl", "rt-quarter-eighth"] } },
+    "2026-11-09",
+  );
+  assert.equal(allDone.weak, "", "三块都练过就不催了");
+  assert.equal(allDone.missed.length, 0);
+  assert.equal(allDone.busiest?.date, "2026-11-09");
 });
 
 
