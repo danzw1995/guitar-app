@@ -572,6 +572,18 @@ try {
   );
   log(removed === '"ok"' && leftCards === 0, "我的谱：删掉之后卡片消失", `还剩 ${leftCards} 条`);
 
+  // 9b) 扒谱：面板在节奏页最下面，有开始按钮和三个控件（麦克风在无头浏览器里没有，只验结构）
+  const trInfo = String(
+    js(
+      "(() => { const panel = document.querySelector('.transcribe'); if (!panel) return 'none'; const start = [...panel.querySelectorAll('button')].find(n => n.textContent.trim() === '开始听'); const bpm = panel.querySelector('.tr-field input'); const grid = panel.querySelector('.tr-field select'); const hint = panel.querySelector('.tr-hint'); return [start ? 'start' : 'nostart', bpm ? bpm.value : 'nobpm', grid ? grid.options.length : 'nogrid', (hint?.textContent || '').includes('开始听') ? 'hint' : 'nohint'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    trInfo.startsWith("start|90|") && trInfo.endsWith("|hint"),
+    "扒谱：节奏页最下面有面板，速度默认 90、网格三档、有提示",
+    trInfo,
+  );
+
   // 10) 乐理页：12 节课各配一张示范谱，滚完整页都加载出来
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '乐理'); b?.click(); return 'ok'; })()",

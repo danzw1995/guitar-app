@@ -24,6 +24,7 @@ import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
 import MyScores from "../components/MyScores";
+import Transcribe from "../components/Transcribe";
 import UndoToast from "../components/UndoToast";
 import { useTone } from "../hooks/useTone";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -955,6 +956,8 @@ export default function Rhythm() {
       </div>
 
       <MyScores audition={audition} best={best} follow={setTarget} beatOf={beatOf} />
+
+      <Transcribe />
 
       <p className="practice-foot">
         时值练不稳时只有一个办法：<b>把 BPM 降到能听见每一拍</b>，稳了再加 5。

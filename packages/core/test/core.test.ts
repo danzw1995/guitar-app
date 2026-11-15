@@ -41,6 +41,12 @@ import {
   weekPace,
   weekStreak,
   weekReportOf,
+  detectNotes,
+  quantizeNotes,
+  positionsFor,
+  pickPosition,
+  tabFromNotes,
+  transcribeFrames,
   lastNDays,
   nextDateKey,
   nextNoteQuery,
@@ -2493,6 +2499,116 @@ test("调音器：从采样里找基频（静音不硬给一个音）", () => {
   assert.equal(smoothFreqs([82, 500, 83]), 83);
   assert.equal(smoothFreqs([0, 0, 110]), 110);
   assert.equal(smoothFreqs([]), 0);
+});
+
+/** 造一段「同一个音持续 from→to 秒」的帧。 */
+function held(freq: number, from: number, to: number, step = 0.055) {
+  const frames: { time: number; freq: number }[] = [];
+  for (let t = from; t <= to + 1e-9; t += step) frames.push({ time: Math.round(t * 1000) / 1000, freq });
+  return frames;
+}
+
+test("扒谱：一串频率切成音，抖动不拆、静音断开", () => {
+  const frames = [
+    ...held(440, 0, 0.44),
+    { time: 0.5, freq: 0 },
+    ...held(659.25, 0.55, 1.1),
+  ];
+  const notes = detectNotes(frames);
+  assert.equal(notes.length, 2);
+  assert.equal(notes[0].midi, 69, "A4");
+  assert.equal(notes[1].midi, 76, "E5");
+  assert.ok(Math.abs(notes[0].cents) < 1);
+  assert.ok(notes[0].frames >= 3);
+
+  // 同一段里 ±20 音分的抖动算一个音（不拆）
+  const jitter = [
+    ...held(440, 0, 0.22),
+    ...held(445, 0.22, 0.44),
+  ];
+  assert.equal(detectNotes(jitter).length, 1);
+
+  // 差得太远（纯五度）就断开
+  const jump = [...held(440, 0, 0.22), ...held(660, 0.22, 0.44)];
+  assert.equal(detectNotes(jump).length, 2);
+
+  // 太短的不算（默认 3 帧）
+  assert.equal(detectNotes(held(440, 0, 0.05)).length, 0);
+
+  // 超出 E2–E6 的音不算
+  assert.equal(detectNotes(held(frequencyOfMidi(30), 0, 0.4)).length, 0);
+});
+
+test("扒谱：秒换成拍，第一个音落在 0 拍", () => {
+  const notes = [
+    { start: 0, end: 0.2, midi: 64, cents: 0, frames: 5 },
+    { start: 0.5, end: 0.7, midi: 67, cents: 0, frames: 5 },
+    { start: 1.0, end: 1.2, midi: 60, cents: 0, frames: 5 },
+  ];
+  // 120 BPM：一拍 0.5 秒，所以正好落在 0 / 1 / 2 拍
+  const quantized = quantizeNotes(notes, { bpm: 120, subdivision: 2 });
+  assert.deepEqual(
+    quantized.map((note) => note.startBeat),
+    [0, 1, 2],
+  );
+
+  // 没踩在网格上：0.26 秒 = 0.52 拍，吸到 0.5 拍
+  const off = quantizeNotes([{ start: 0, end: 0.2, midi: 64, cents: 0, frames: 5 }, { start: 0.26, end: 0.4, midi: 67, cents: 0, frames: 5 }], {
+    bpm: 120,
+    subdivision: 2,
+  });
+  assert.equal(off[1].startBeat, 0.5);
+
+  // 挤进同一格的两个音只留一个，不会叠在同一拍上
+  const crowd = quantizeNotes(
+    [
+      { start: 0, end: 0.2, midi: 64, cents: 0, frames: 5 },
+      { start: 0.02, end: 0.3, midi: 67, cents: 0, frames: 5 },
+    ],
+    { bpm: 120, subdivision: 1 },
+  );
+  assert.equal(crowd.length, 1);
+
+  assert.deepEqual(quantizeNotes([], { bpm: 120 }), []);
+});
+
+test("扒谱：MIDI 落到弦和品上，优先低把位", () => {
+  assert.deepEqual(positionsFor(64)[0], { s: 1, f: 0 }, "E4 最低的按法是 1 弦空弦");
+  assert.equal(positionsFor(64).length, 4, "E4 在 15 品内有四种按法");
+  const c4 = positionsFor(60);
+  assert.deepEqual(c4[0], { s: 2, f: 1 }, "C4 最低的按法是 2 弦 1 品");
+  assert.deepEqual(pickPosition(60, 3), { s: 2, f: 1 }, "低把位优先于「离上一根弦近」");
+  assert.equal(pickPosition(100, 0, 15), null, "超出品域就没有按法");
+  assert.deepEqual(pickPosition(67, 2), { s: 1, f: 3 }, "G4 是 1 弦 3 品");
+});
+
+test("扒谱：整条链路出一张谱，没听清会说出来", () => {
+  const frames = [
+    ...held(frequencyOfMidi(60), 0, 0.2),
+    { time: 0.25, freq: 0 },
+    ...held(frequencyOfMidi(64), 0.3, 0.5),
+    { time: 0.55, freq: 0 },
+    ...held(frequencyOfMidi(67), 0.6, 0.8),
+  ];
+  const result = transcribeFrames(frames, { bpm: 120, subdivision: 2 });
+  assert.equal(result.notes.length, 3);
+  assert.equal(result.tab.notes.length, 3);
+  assert.deepEqual(
+    result.tab.notes.map((note) => `${note.s}:${note.f}`),
+    ["2:1", "1:0", "1:3"],
+  );
+  assert.equal(result.tab.beatsPerBar, 4);
+  assert.ok(result.tab.bars >= 1);
+  assert.equal(result.warnings.length, 0);
+
+  // 什么都没听到：谱是空的，但话要说清楚
+  const empty = transcribeFrames([{ time: 0, freq: 0 }], { bpm: 120 });
+  assert.equal(empty.tab.notes.length, 0);
+  assert.ok(empty.warnings[0].includes("没听到清楚的音"));
+
+  // 偏得厉害的音会被提醒
+  const off = transcribeFrames(held(440 * Math.pow(2, 40 / 1200), 0, 0.4), { bpm: 120 });
+  assert.ok(off.warnings.some((line) => line.includes("音分")));
 });
 
 
