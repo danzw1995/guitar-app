@@ -87,11 +87,92 @@ const LESSONS: Lesson[] = [
       hint: "C 到 G 是 7 个半音：C D E F G，数白键正好五个音级。",
     },
   },
+  {
+    no: 5,
+    title: "先找主音：它决定了一切",
+    body: [
+      "一段旋律听起来「完了」「落地了」的那个音，通常就是主音。它最稳，别的音都想回到它。",
+      "另一个办法：看这段用了哪几个音，把它们排成音阶，最像「家」的那个就是主音。",
+      "主音没定，级数就没法算——同一个 G，在 C 调里是 5 级，在 G 调里是 1 级。",
+    ],
+    example: {
+      caption: "C 大调走一遍，最后回到 C——听着就「落地」了",
+      play: [midiOf("C4"), midiOf("D4"), midiOf("E4"), midiOf("F4"), midiOf("G4"), midiOf("A4"), midiOf("B4"), midiOf("C5")],
+      step: 0.34,
+    },
+    check: {
+      prompt: "一段旋律最后停在 G，听起来很稳，它最可能是什么调？",
+      options: ["G 调", "C 调", "D 调"],
+      answer: "G 调",
+      hint: "旋律最后停下来的音通常就是主音；停在 G，就是 G 调。",
+    },
+  },
+  {
+    no: 6,
+    title: "级数：把音换成数字",
+    body: [
+      "级数是「相对主音的位置」，用 1–7 表示：C 调里 C=1、D=2、E=3……G 调里 G=1、A=2、B=3。",
+      "用级数记和弦走向，换调时不用改：1–5–6–4 在 C 调是 C–G–Am–F，在 G 调是 G–D–Em–C，听起来是同一件事。",
+      "所以扒歌的顺序是：先定调 → 把听到的音换成级数 → 最后才落回具体的和弦。",
+    ],
+    example: {
+      caption: "C 调：1 2 3 4 5 6 7（C D E F G A B）",
+      play: [midiOf("C4"), midiOf("D4"), midiOf("E4"), midiOf("F4"), midiOf("G4"), midiOf("A4"), midiOf("B4")],
+      step: 0.38,
+    },
+    check: {
+      prompt: "C 调里的 5 级是哪个音？",
+      options: ["G", "F", "A"],
+      answer: "G",
+      hint: "C 是 1，往上数：D=2、E=3、F=4、G=5。",
+    },
+  },
+  {
+    no: 7,
+    title: "三和弦：三个音，两种颜色",
+    body: [
+      "三和弦是三个音：根音、三度、五度。**大三和弦**是根音 + 4 个半音 + 3 个半音（C–E–G）；**小三和弦**是 + 3 + 4（C–E♭–G）。",
+      "差别只在中间那个音：大三度听起来亮，小三度听起来暗。先听这一个音，比听整个和弦容易得多。",
+      "吉他上最常用的开放和弦：C、G、D、A、E 是大三，Am、Em、Dm 是小三。",
+    ],
+    example: {
+      caption: "C 大三（C–E–G）→ C 小三（C–E♭–G），只差中间那个音",
+      play: [midiOf("C4"), midiOf("E4"), midiOf("G4"), midiOf("C4"), midiOf("Eb4"), midiOf("G4")],
+      step: 0.42,
+    },
+    check: {
+      prompt: "C–E♭–G 是什么和弦？",
+      options: ["C 小三和弦", "C 大三和弦", "C 减三和弦"],
+      answer: "C 小三和弦",
+      hint: "根音到三度 3 个半音（C→E♭），三度到五度 4 个半音——这是小三和弦。",
+    },
+  },
+  {
+    no: 8,
+    title: "听根音：先抓最低那个音",
+    body: [
+      "听一个和弦，先抓最低的音——通常就是根音。扒和弦的顺序：先定低音，再听它是大三还是小三。",
+      "吉他上低音常在 6、5、4 弦：C 的根音在 5 弦 3 品，G 在 6 弦 3 品，F 在 4 弦 3 品。",
+      "低音听错，整个和弦名就错了：C/E 和 C 只差一个低音，功能却不一样。",
+    ],
+    example: {
+      caption: "C 和弦从低到高：根音 C3 在最下面",
+      play: [midiOf("C3"), midiOf("E3"), midiOf("G3"), midiOf("C4"), midiOf("E4"), midiOf("G4")],
+      step: 0.4,
+    },
+    check: {
+      prompt: "低音是 A，上面是小三度，最可能是什么和弦？",
+      options: ["Am", "A", "F"],
+      answer: "Am",
+      hint: "低音 A 是根音，上面是小三度 → 小三和弦 Am。",
+    },
+  },
 ];
 
 const KIND_LABEL: Record<EarKind, string> = {
   position: "听音辨位",
   interval: "音程判断",
+  degree: "级数判断",
 };
 
 function percentOf(correct: number, total: number): string {
@@ -209,11 +290,11 @@ export default function Ear() {
       <header className="panel-head">
         <h2>扒谱</h2>
         <p>
-          听到一段，把它写下来。这一页分三块：先学怎么听（四节），再练听辨（两种题型），最后用录音扒一段真的。
+          听到一段，把它写下来。这一页分三块：先学怎么听（八节），再练听辨（三种题型），最后用录音扒一段真的。
         </p>
       </header>
 
-      <h3 className="stat-sub">学 · 四节</h3>
+      <h3 className="stat-sub">学 · 八节</h3>
       <ol className="ear-lessons">
         {LESSONS.map((lesson) => (
           <li className="ear-lesson" key={lesson.no} data-lesson={lesson.no}>

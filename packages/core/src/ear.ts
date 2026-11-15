@@ -10,7 +10,10 @@ import { positionsFor } from "./transcribe.ts";
  * 同一个种子出同一套题）。
  */
 
-export type EarKind = "position" | "interval";
+export type EarKind = "position" | "interval" | "degree";
+
+/** 大调音阶里 1–7 级相对主音的半音数。 */
+export const MAJOR_DEGREES = [0, 2, 4, 5, 7, 9, 11] as const;
 
 export interface EarOption {
   id: string;
@@ -137,8 +140,40 @@ export function earIntervalQuestion(root: number, semitones: number, seed = 1): 
   };
 }
 
-/** 一组题：`kind` 决定题型，`seed` 决定具体是哪些音。 */
-export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] {
+/** 级数的说法：`第 3 级`。 */
+export function degreeLabel(degree: number): string {
+  return `第 ${degree} 级`;
+}
+
+/**
+ * 级数判断：先给主音（第 1 级），再给一个音，问它是第几级。
+ *
+ * 主音单独播一遍是刻意的——级数是「相对主音的位置」，不给参照就没法判断；
+ * 真扒歌时参照是整个调，练习里先把它缩成两个音。
+ */
+export function earDegreeQuestion(root: number, degree: number, seed = 1): EarQuestion {
+  if (degree < 1 || degree > 7) {
+    throw new Error(`earDegreeQuestion: 级数要 1–7，收到 ${degree}`);
+  }
+  const semitones = MAJOR_DEGREES[degree - 1];
+  const target = root + semitones;
+  const correct = degreeLabel(degree);
+  const random = rng(seed);
+  const pool = [1, 2, 3, 4, 5, 6, 7].filter((item) => item !== degree).map(degreeLabel);
+  const distractors = shuffle(pool, random).slice(0, 3);
+
+  return {
+    id: `deg-${root}-${degree}-${seed}`,
+    kind: "degree",
+    prompt: "先听主音（第 1 级），再听一个音——它是第几级？",
+    play: [root, target],
+    options: shuffle([correct, ...distractors], random).map((label) => ({ id: label, label })),
+    answer: correct,
+    hint: `${noteName(target)} 比主音 ${noteName(root)} 高 ${semitones} 个半音，是${correct}。`,
+  };
+}
+
+/** 一组题：`kind` 决定题型，`seed` 决定具体是哪些音。 */export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] {
   const random = rng(seed);
   const out: EarQuestion[] = [];
 
@@ -151,6 +186,20 @@ export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] 
     const picked = shuffle(pool, random);
     for (let i = 0; i < count; i += 1) {
       out.push(earPositionQuestion(picked[i % picked.length], seed * 31 + i, 5));
+    }
+    return out;
+  }
+
+  if (kind === "degree") {
+    // 主音落在 C3–G3：够低，两个音都在中音区，听起来是同一条线。
+    const keys = [48, 50, 52, 53, 55];
+    let last = 0;
+    for (let i = 0; i < count; i += 1) {
+      const root = keys[Math.floor(random() * keys.length)];
+      let degree = 1 + Math.floor(random() * 7);
+      if (degree === last) degree = (degree % 7) + 1;
+      last = degree;
+      out.push(earDegreeQuestion(root, degree, seed * 31 + i));
     }
     return out;
   }

@@ -583,8 +583,8 @@ try {
     ),
   ).replace(/^"|"$/g, "");
   log(
-    earInfo.startsWith("4|2|4|play|tr"),
-    "扒谱页：四节课 + 两种题型 + 四个选项 + 录音工具",
+    earInfo.startsWith("8|3|4|play|tr"),
+    "扒谱页：八节课 + 三种题型 + 四个选项 + 录音工具",
     earInfo,
   );
 
@@ -609,6 +609,18 @@ try {
     "扒谱页的录音工具：速度默认 90、网格三档、有提示",
     trInfo,
   );
+
+  // 9e) 换成「级数判断」：题干会先让你听主音
+  js(
+    "(() => { const b = [...document.querySelectorAll('.ear-kinds .chip')].find(n => n.textContent.trim() === '级数判断'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const degreeInfo = String(
+    js(
+      "(() => { const prompt = document.querySelector('.ear-prompt')?.textContent ?? ''; const options = document.querySelectorAll('.ear-option').length; const on = [...document.querySelectorAll('.ear-kinds .chip')].find(n => n.getAttribute('aria-pressed') === 'true')?.textContent ?? ''; return [prompt.includes('主音') ? 'tonic' : 'notonic', options, on].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(degreeInfo === "tonic|4|级数判断", "扒谱练习：级数判断会先让你听主音，四个选项", degreeInfo);
 
   // 10) 乐理页：12 节课各配一张示范谱，滚完整页都加载出来
   js(

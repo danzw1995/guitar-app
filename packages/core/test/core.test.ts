@@ -48,6 +48,9 @@ import {
   tabFromNotes,
   transcribeFrames,
   earRound,
+  earDegreeQuestion,
+  degreeLabel,
+  MAJOR_DEGREES,
   intervalName,
   earIntervalQuestion,
   midiOf,
@@ -2664,6 +2667,44 @@ test("听辨：同一组题两次一模一样，相邻两题不重样", () => {
 
   // 换种子就换一套题
   assert.notDeepEqual(earRound("interval", 1, 4), earRound("interval", 2, 4));
+});
+
+test("听辨：级数判断先给主音，第 3 级就是大三度", () => {
+  assert.equal(degreeLabel(1), "第 1 级");
+  assert.equal(degreeLabel(7), "第 7 级");
+  assert.deepEqual([...MAJOR_DEGREES], [0, 2, 4, 5, 7, 9, 11]);
+
+  // C4 主音，第 3 级是 E4（4 个半音）
+  const third = earDegreeQuestion(60, 3, 2);
+  assert.equal(third.kind, "degree");
+  assert.equal(third.answer, "第 3 级");
+  assert.deepEqual(third.play, [60, 64]);
+  assert.equal(third.options.length, 4);
+  assert.ok(third.options.some((option) => option.id === "第 3 级"));
+  assert.equal(new Set(third.options.map((option) => option.id)).size, 4);
+  assert.ok(third.hint.includes("E4"));
+  assert.ok(third.hint.includes("4 个半音"));
+
+  // 第 7 级是 B4（11 个半音），主音自己也在选项里能出现，但答案不会是 1 级
+  const seventh = earDegreeQuestion(60, 7, 2);
+  assert.deepEqual(seventh.play, [60, 71]);
+  assert.equal(seventh.answer, "第 7 级");
+  assert.ok(!seventh.options.some((option) => option.id === "第 7 级" && option.id !== seventh.answer));
+
+  assert.throws(() => earDegreeQuestion(60, 8), /级数要 1–7/);
+
+  const round = earRound("degree", 9, 8);
+  assert.equal(round.length, 8);
+  assert.ok(round.every((question) => question.kind === "degree" && question.play.length === 2));
+  assert.ok(round.every((question) => question.play[1] > question.play[0]));
+  assert.ok(round.every((question) => question.play[1] - question.play[0] <= 11));
+  assert.ok(round.every((question) => question.options.some((option) => option.id === question.answer)));
+  // 相邻两题的级数不重复
+  for (let i = 1; i < round.length; i += 1) {
+    assert.notEqual(round[i].answer, round[i - 1].answer);
+  }
+  assert.deepEqual(earRound("degree", 9, 8), round);
+  assert.notDeepEqual(earRound("degree", 10, 8), round);
 });
 
 
