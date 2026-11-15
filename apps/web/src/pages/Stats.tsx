@@ -15,6 +15,7 @@ import {
   weekdayIndex,
   weekSummaryOf,
   goalProgress,
+  weekPace,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
@@ -37,6 +38,7 @@ export default function Stats() {
   // 每周目标：存在设置里，0 = 不设（进度条不出现）
   const [goal, setGoal] = useState(() => loadSettings().weeklyGoal);
   const goalState = goalProgress(weekStats.minutes, goal);
+  const pace = weekPace(weekStats, today, goal);
   const setGoalTo = (minutes: number) => {
     saveSettings({ ...loadSettings(), weeklyGoal: minutes });
     setGoal(minutes);
@@ -308,10 +310,14 @@ export default function Stats() {
         <div className="goal-foot">
           <span className="muted">
             {goal === 0
-              ? "设一个数，进度条就出来了"
+              ? weekStats.minutes > 0
+                ? `按现在的节奏，这周大约 ${pace.projected} 分钟 · 设一个数，进度条就出来了`
+                : "设一个数，进度条就出来了"
               : goalState.reached
                 ? "这周目标达成了"
-                : `还差 ${goalState.remaining} 分钟`}
+                : pace.left === 0
+                  ? `这周就剩今天了，还差 ${goalState.remaining} 分钟`
+                  : `还差 ${goalState.remaining} 分钟 · 接下来每天 ${pace.perDayNeeded} 分钟就够`}
           </span>
           <div className="goal-chips">
             {[30, 60, 90, 120].map((minutes) => (

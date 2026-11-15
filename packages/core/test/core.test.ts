@@ -31,6 +31,7 @@ import {
   mondayOf,
   weekSummaryOf,
   goalProgress,
+  weekPace,
   lastNDays,
   nextDateKey,
   nextNoteQuery,
@@ -2306,6 +2307,29 @@ test("本周目标：没设目标就不画进度，达成了不多算、没达�
 
   assert.equal(goalProgress(-5, 60).done, 0, "负的分钟数按 0 算");
   assert.equal(goalProgress(30, Number.NaN).goal, 0, "坏的目标值当成没设");
+});
+
+test("本周节奏：还差多少换成「剩下几天、每天几分钟」", () => {
+  const log = { "2026-11-11": { minutes: 30, stage: 0, done: ["s0-crawl"] } };
+  const midweek = weekPace(weekSummaryOf(log, "2026-11-11"), "2026-11-11", 60);
+  assert.equal(midweek.elapsed, 3, "周三 = 这周第 3 天");
+  assert.equal(midweek.left, 4, "今天之后还有 4 天");
+  assert.equal(midweek.perDay, 10);
+  assert.equal(midweek.projected, 70, "按这个节奏一周 70 分钟");
+  assert.equal(midweek.perDayNeeded, 6, "还差 30 分钟，剩下 5 天（含今天）每天 6 分钟");
+  assert.equal(midweek.reached, false);
+
+  const sunday = weekPace(weekSummaryOf({ "2026-11-11": { minutes: 55, stage: 0, done: [] } }, "2026-11-15"), "2026-11-15", 60);
+  assert.equal(sunday.elapsed, 7, "周日是最后一天");
+  assert.equal(sunday.left, 0);
+  assert.equal(sunday.perDayNeeded, 5, "只剩今天，还差 5 分钟就练 5 分钟");
+
+  const reached = weekPace(weekSummaryOf({ "2026-11-11": { minutes: 80, stage: 0, done: [] } }, "2026-11-11"), "2026-11-11", 60);
+  assert.equal(reached.reached, true);
+  assert.equal(reached.perDayNeeded, 0, "达成了就不用再摊到每天");
+
+  const noGoal = weekPace(weekSummaryOf(log, "2026-11-11"), "2026-11-11", 0);
+  assert.equal(noGoal.perDayNeeded, 0, "没设目标就没有「每天还要练多少」");
 });
 
 

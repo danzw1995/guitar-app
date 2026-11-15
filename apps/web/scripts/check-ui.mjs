@@ -897,7 +897,7 @@ try {
   const goalOn = JSON.parse(
     String(
       js(
-        "(() => { const bar = document.querySelector('.goal-bar'); const num = document.querySelector('.goal-num'); const s = JSON.parse(localStorage.getItem('guitar.settings.v1') || '{}'); return JSON.stringify({ bar: !!bar, now: bar?.getAttribute('aria-valuenow') ?? '', num: num?.textContent?.trim() ?? '', saved: s.weeklyGoal ?? 0 }); })()",
+        "(() => { const bar = document.querySelector('.goal-bar'); const num = document.querySelector('.goal-num'); const s = JSON.parse(localStorage.getItem('guitar.settings.v1') || '{}'); return JSON.stringify({ bar: !!bar, now: bar?.getAttribute('aria-valuenow') ?? '', num: num?.textContent?.trim() ?? '', foot: document.querySelector('.goal-foot .muted')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '', saved: s.weeklyGoal ?? 0 }); })()",
       ),
     )
       .replace(/^"|"$/g, "")
@@ -907,6 +907,12 @@ try {
     goalOn.bar && Number(goalOn.now) >= 0 && goalOn.num.endsWith("/ 60 分钟") && goalOn.saved === 60,
     "统计页：点「60 分钟」出本周目标进度条，并记进设置",
     `${goalOn.num} · ${goalOn.now}% · saved=${goalOn.saved}`,
+  );
+  // 「还差 30 分钟」后面要跟一句「接下来每天 X 分钟」（周日则换成「这周就剩今天了」）
+  log(
+    /(接下来每天 \d+ 分钟就够|这周就剩今天了|这周目标达成了)/.test(goalOn.foot),
+    "统计页：还差多少会摊到每天（不是只报一个总数）",
+    goalOn.foot,
   );
   js(
     "(() => { const chip = [...document.querySelectorAll('.goal-chips .chip')].find(c => c.textContent.trim() === '不设'); chip?.click(); return 'ok'; })()",

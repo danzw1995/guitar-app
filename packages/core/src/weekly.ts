@@ -96,3 +96,41 @@ export function goalProgress(done: number, goal: number): GoalProgress {
     reached: remaining === 0,
   };
 }
+
+export interface WeekPace {
+  /** 这周已经过去几天（周一 = 1 … 周日 = 7，含今天） */
+  elapsed: number;
+  /** 今天之后还剩几天 */
+  left: number;
+  /** 这周到目前为止平均每天练了多少分钟 */
+  perDay: number;
+  /** 按现在的节奏，这周大概能练到多少分钟 */
+  projected: number;
+  /** 要达成目标，剩下每天（含今天）还得练多少分钟；已达成或没设目标为 0 */
+  perDayNeeded: number;
+  reached: boolean;
+}
+
+/**
+ * 「还差 5 分钟」不好判断今天要不要加练，换成「剩下 3 天，每天 2 分钟」。
+ * 周从周一起算，今天也算进去（周日就是最后一天）。
+ */
+export function weekPace(week: WeekSummary, today: string, goal: number): WeekPace {
+  const weekday = (((dayNumberOf(today) + 3) % 7) + 7) % 7;
+  const elapsed = Math.min(7, weekday + 1);
+  const left = 7 - elapsed;
+  const minutes = Math.max(0, Math.round(week.minutes));
+  const perDay = Math.round((minutes / elapsed) * 10) / 10;
+  const state = goalProgress(minutes, goal);
+  const daysIncludingToday = left + 1;
+  const perDayNeeded =
+    state.goal === 0 || state.reached ? 0 : Math.ceil(state.remaining / daysIncludingToday);
+  return {
+    elapsed,
+    left,
+    perDay,
+    projected: Math.round(perDay * 7),
+    perDayNeeded,
+    reached: state.reached,
+  };
+}
