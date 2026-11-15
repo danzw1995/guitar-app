@@ -810,15 +810,21 @@ try {
   // 11c) 深链接进来也能定位（练习页那条在别的阶段，得先切阶段）
   ab(["open", `${URL}#practice/drill-s1-cycle`]);
   await sleep(1000);
-  const deep = JSON.parse(
-    String(
-      js(
-        "(() => { const el = document.getElementById('drill-s1-cycle'); const r = el?.getBoundingClientRect(); return JSON.stringify({ found: Boolean(el), inView: r ? r.top >= 0 && r.bottom <= window.innerHeight : false }); })()",
-      ),
-    )
-      .replace(/^"|"$/g, "")
-      .replace(/\\"/g, '"'),
-  );
+  // 平滑滚动不一定在 1 秒内停稳（图还在加载时页面还会长高），轮询到稳定为止
+  let deep = { found: false, inView: false };
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    deep = JSON.parse(
+      String(
+        js(
+          "(() => { const el = document.getElementById('drill-s1-cycle'); const r = el?.getBoundingClientRect(); return JSON.stringify({ found: Boolean(el), inView: r ? r.top >= 0 && r.bottom <= window.innerHeight : false }); })()",
+        ),
+      )
+        .replace(/^"|"$/g, "")
+        .replace(/\\"/g, '"'),
+    );
+    if (deep.found && deep.inView) break;
+    await sleep(200);
+  }
   log(
     deep.found && deep.inView,
     "深链接 #practice/drill-s1-cycle 直接落在那一条练习上",
@@ -1504,9 +1510,9 @@ try {
   );
   js("localStorage.removeItem('guitar.chords.v1')");
 
-  // 16d2) 统计页：扒谱的听辨成绩（四种题型各自的正确率，v0.78.0）
+  // 16d2) 统计页：扒谱的听辨成绩（五种题型各自的正确率 + 正确率曲线，v0.78.0 / v0.83.0）
   js(
-    "(() => { localStorage.setItem('guitar.ear.v1', JSON.stringify({ rounds: 6, best: 7, lastAt: '2026-11-14', byKind: { position: { correct: 20, total: 24 }, interval: { correct: 12, total: 16 }, degree: { correct: 9, total: 16 }, progression: { correct: 3, total: 8 } } })); return 'ok'; })()",
+    "(() => { localStorage.setItem('guitar.ear.v1', JSON.stringify({ rounds: 6, best: 7, lastAt: '2026-11-14', days: { '2026-11-10': { correct: 4, total: 8 }, '2026-11-12': { correct: 5, total: 8 }, '2026-11-14': { correct: 7, total: 8 } }, byKind: { position: { correct: 20, total: 24 }, interval: { correct: 12, total: 16 }, degree: { correct: 9, total: 16 }, progression: { correct: 3, total: 8 } } })); return 'ok'; })()",
   );
   await sleep(100);
   ab(["reload"]);
@@ -1518,7 +1524,7 @@ try {
   const earStats = JSON.parse(
     String(
       js(
-        "(() => { const rows = [...document.querySelectorAll('[data-ear]')].map(li => li.innerText.replace(/\\n/g, ' ')); const cards = [...document.querySelectorAll('.stat-card')].map(c => c.innerText.replace(/\\n/g, ' ')); const jump = !!document.querySelector('.btn-quiet'); return JSON.stringify({ rows, cards, jump }); })()",
+        "(() => { const rows = [...document.querySelectorAll('[data-ear]')].map(li => li.innerText.replace(/\\n/g, ' ')); const cards = [...document.querySelectorAll('.stat-card')].map(c => c.innerText.replace(/\\n/g, ' ')); const trend = document.querySelector('.ear-trend'); const trendText = trend ? trend.innerText.replace(/\\n/g, ' ') : ''; const path = trend ? (trend.querySelector('path')?.getAttribute('d') ?? '') : ''; return JSON.stringify({ rows, cards, trendText, path }); })()",
       ),
     )
       .replace(/^"|"$/g, "")
@@ -1532,6 +1538,13 @@ try {
       earStats.cards.some((text) => text.includes("69%")),
     "统计页：听辨成绩列出五种题型，带总正确率",
     earStats.rows.join(" | "),
+  );
+  log(
+    earStats.trendText.includes("3 个练习日") &&
+      earStats.trendText.includes("50% → 88%") &&
+      earStats.path.startsWith("M"),
+    "统计页：听辨正确率按天画成一条曲线",
+    earStats.trendText,
   );
   js("localStorage.removeItem('guitar.ear.v1')");
 

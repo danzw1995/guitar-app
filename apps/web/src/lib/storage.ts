@@ -408,6 +408,8 @@ export interface EarStats {
   best: number;
   /** 最后一次练的日期。 */
   lastAt: string;
+  /** 按天记的对错（v0.83.0 起），统计页用它画正确率曲线。 */
+  days?: Record<string, EarKindStats>;
   byKind: Record<string, EarKindStats>;
 }
 
@@ -429,10 +431,29 @@ export function loadEar(): EarStats {
     byKind[kind] = { correct: Math.min(correct, total), total };
   }
 
+  // 按天记的那份：坏日期、坏数字直接跳过；只留最近 60 天
+  const days: Record<string, EarKindStats> = {};
+  const rawDays = v.days && typeof v.days === "object" && !Array.isArray(v.days) ? (v.days as Record<string, unknown>) : {};
+  for (const [date, value] of Object.entries(rawDays)) {
+    if (!isValidDateKey(date) || !value || typeof value !== "object") continue;
+    const entry = value as Record<string, unknown>;
+    const correct = Math.max(0, Math.round(Number(entry.correct) || 0));
+    const total = Math.max(0, Math.round(Number(entry.total) || 0));
+    if (total === 0) continue;
+    days[date] = { correct: Math.min(correct, total), total };
+  }
+  const keptDays = Object.keys(days)
+    .sort()
+    .slice(-60)
+    .reduce<Record<string, EarKindStats>>((acc, date) => {
+      acc[date] = days[date];
+      return acc;
+    }, {});
+
   const rounds = Math.max(0, Math.round(Number(v.rounds) || 0));
   const best = Math.max(0, Math.round(Number(v.best) || 0));
   const lastAt = typeof v.lastAt === "string" && isValidDateKey(v.lastAt) ? v.lastAt : "";
-  return { rounds, best, lastAt, byKind };
+  return { rounds, best, lastAt, days: keptDays, byKind };
 }
 
 export function saveEar(stats: EarStats): void {

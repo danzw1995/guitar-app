@@ -772,6 +772,17 @@ for (const selector of ["select", "input", "textarea"]) {
     (clFill.get("background") ?? "").includes("var(--accent)"),
     `background=${clFill.get("background") ?? "未设置"}`,
   );
+
+  // v0.83.0：听辨正确率曲线是个小图，别占满整行
+  const earTrend = narrowDecls(".ear-trend");
+  const earTrendSvg = narrowDecls(".ear-trend .curve-svg");
+  expect(
+    "听辨正确率曲线是一行「小图 + 一句话」，图不撑满",
+    (earTrend.get("display") ?? "") === "flex" &&
+      (px(earTrendSvg.get("width")) ?? 999) <= 140 &&
+      (px(earTrendSvg.get("height")) ?? 999) <= 40,
+    `width=${earTrendSvg.get("width") ?? "未设置"} height=${earTrendSvg.get("height") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

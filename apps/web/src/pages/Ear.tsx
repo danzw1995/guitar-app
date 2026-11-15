@@ -378,10 +378,19 @@ export default function Ear() {
     }
     // 最后一题的对错已经在 choose() 里计进 correct 了
     const total = correct;
+    // 按天记一份，统计页才画得出「正确率这半个月怎么走」
+    const day = stats.days?.[today];
     const nextStats: EarStats = {
       rounds: stats.rounds + 1,
       best: Math.max(stats.best, total),
       lastAt: today,
+      days: {
+        ...stats.days,
+        [today]: {
+          correct: (day?.correct ?? 0) + total,
+          total: (day?.total ?? 0) + questions.length,
+        },
+      },
       byKind: {
         ...stats.byKind,
         [kind]: {

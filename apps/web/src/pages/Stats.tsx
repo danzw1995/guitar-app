@@ -182,6 +182,14 @@ export default function Stats() {
   const earCorrect = earKinds.reduce((sum, item) => sum + item.correct, 0);
   const earRate = earTotal > 0 ? Math.round((earCorrect / earTotal) * 100) : null;
 
+  // 正确率按天记的那份：只画最近 14 个练过的日子（有空档就跳过，不补 0）
+  const earDays = Object.entries(ear.days ?? {})
+    .filter(([, item]) => item.total > 0)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(-14);
+  const earRates = earDays.map(([, item]) => Math.round((item.correct / item.total) * 100));
+  const earSpark = earRates.length >= 2 ? sparklineOf(earRates, 120, 30) : null;
+
   const summary = summarizeProgress(LEVEL_IDS, progress);
   const theory = summarizeProgress(THEORY_LEVEL_IDS, progress);
   const streak = streakOf(Object.keys(daily), today);
@@ -724,7 +732,7 @@ export default function Stats() {
         ))}
       </ul>
       {ear.rounds === 0 ? (
-        <p className="hint">去扒谱页的「练 · 听辨」，一轮 8 题，四种题型挑一种就能开始。</p>
+        <p className="hint">去扒谱页的「练 · 听辨」，一轮 8 题，五种题型挑一种就能开始。</p>
       ) : (
         <p className="hint">
           上次练是 {ear.lastAt ? ear.lastAt.slice(5).replace("-", "/") : "—"}
@@ -733,6 +741,23 @@ export default function Stats() {
             再去练一轮
           </button>
         </p>
+      )}
+      {earSpark && (
+        <div className="ear-trend">
+          <svg
+            className="curve-svg"
+            viewBox="0 0 120 30"
+            role="img"
+            aria-label={`最近 ${earDays.length} 个练习日的正确率：从 ${earRates[0]}% 到 ${earRates[earRates.length - 1]}%`}
+          >
+            <path d={earSpark.d} />
+            <circle cx={earSpark.dots[earSpark.dots.length - 1].x} cy={earSpark.dots[earSpark.dots.length - 1].y} r={2} />
+          </svg>
+          <span className="muted">
+            最近 {earDays.length} 个练习日正确率 {earRates[0]}% → {earRates[earRates.length - 1]}%
+            （{earDays[0][0].slice(5).replace("-", "/")} → {earDays[earDays.length - 1][0].slice(5).replace("-", "/")}）
+          </span>
+        </div>
       )}
 
       <h3 className="stat-sub">最近战绩</h3>
