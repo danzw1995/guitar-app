@@ -8,6 +8,7 @@ import {
   buildSession,
   dateKeyOf,
   drillsOfStage,
+  goalProgress,
   practiceStats,
   pushBpmPoint,
   recordBlock,
@@ -16,6 +17,7 @@ import {
   stageForCompleted,
   stageOf,
   techniquesOf,
+  weekSummaryOf,
   type DayLog,
   type Drill,
   type Feel,
@@ -29,6 +31,7 @@ import {
   loadPractice,
   loadProgress,
   loadRhythm,
+  loadSettings,
   loadSkips,
   pausedOf,
   removePause,
@@ -216,6 +219,12 @@ export default function Practice() {
     [minutes, stage, today, log, boost, skip, pauses],
   );
   const stats = useMemo(() => practiceStats(log, today), [log, today]);
+  // 本周目标（统计页设的）：练的时候也看得见，不然目标只在统计页当摆设
+  const weekGoal = loadSettings().weeklyGoal;
+  const weekGoalState = useMemo(
+    () => goalProgress(weekSummaryOf(log, today).minutes, weekGoal),
+    [log, weekGoal],
+  );
 
   const day: DayLog | undefined = log[today];
   const done = new Set(day?.done ?? []);
@@ -283,6 +292,27 @@ export default function Practice() {
           每条练习都配六线谱——先看谱，再上手。
         </p>
       </div>
+
+      {weekGoal > 0 && (
+        <div className="week-goal">
+          <span className="week-goal-text">
+            本周 {weekGoalState.done} / {weekGoalState.goal} 分钟
+          </span>
+          <div
+            className="week-goal-bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={weekGoalState.percent}
+            aria-label={`本周目标 ${weekGoalState.goal} 分钟，已完成 ${weekGoalState.percent}%`}
+          >
+            <span style={{ width: `${weekGoalState.percent}%` }} />
+          </div>
+          <span className="week-goal-note">
+            {weekGoalState.reached ? "这周目标达成了" : `还差 ${weekGoalState.remaining} 分钟`}
+          </span>
+        </div>
+      )}
 
       {follow && (
         <FollowAlong

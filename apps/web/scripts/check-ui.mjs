@@ -799,6 +799,33 @@ try {
   );
   js("localStorage.removeItem('guitar.practice.v1')");
 
+  // 12g) 练习页顶部：设了本周目标才出现那条进度，没设就不占地方
+  const goalBefore = String(
+    js("document.querySelectorAll('.week-goal').length"),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const s = JSON.parse(localStorage.getItem('guitar.settings.v1') || '{}'); s.weeklyGoal = 60; localStorage.setItem('guitar.settings.v1', JSON.stringify(s)); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(900);
+  const practiceGoal = JSON.parse(
+    String(
+      js(
+        "(() => { const g = document.querySelector('.week-goal'); const bar = document.querySelector('.week-goal-bar'); return JSON.stringify({ present: !!g, text: document.querySelector('.week-goal-text')?.textContent?.trim() ?? '', now: bar?.getAttribute('aria-valuenow') ?? '', note: document.querySelector('.week-goal-note')?.textContent?.trim() ?? '' }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    goalBefore === "0" && practiceGoal.present && practiceGoal.text.endsWith("/ 60 分钟") && Number(practiceGoal.now) >= 0,
+    "练习页：设了本周目标，顶部就有那条进度",
+    `设之前 ${goalBefore} 条 · 现在「${practiceGoal.text}」${practiceGoal.now}% · ${practiceGoal.note}`,
+  );
+  js(
+    "(() => { const s = JSON.parse(localStorage.getItem('guitar.settings.v1') || '{}'); s.weeklyGoal = 0; localStorage.setItem('guitar.settings.v1', JSON.stringify(s)); return 'ok'; })()",
+  );
+
   // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",

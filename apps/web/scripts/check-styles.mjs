@@ -679,6 +679,22 @@ for (const selector of ["select", "input", "textarea"]) {
     goalFill.get("display") === "block" && (goalFill.get("background") ?? "").includes("var(--accent)"),
     `display=${goalFill.get("display") ?? "未设置"} background=${goalFill.get("background") ?? "未设置"}`,
   );
+
+  // 练习页顶部那条：比统计页的更细，一行放得下「本周 x / y 分钟」+ 进度 + 「还差 z 分钟」
+  const weekGoal = narrowDecls(".week-goal");
+  const weekFill = narrowDecls(".week-goal-bar span");
+  expect(
+    "练习页的本周目标是一行三格",
+    (weekGoal.get("display") ?? "") === "grid" && (weekGoal.get("grid-template-columns") ?? "").startsWith("auto "),
+    `display=${weekGoal.get("display") ?? "未设置"} columns=${weekGoal.get("grid-template-columns") ?? "未设置"}`,
+  );
+  expect(
+    "练习页的本周目标进度条更细",
+    px(narrowDecls(".week-goal-bar").get("height")) !== null &&
+      px(narrowDecls(".week-goal-bar").get("height")) <= 8 &&
+      (weekFill.get("background") ?? "").includes("var(--accent)"),
+    `height=${narrowDecls(".week-goal-bar").get("height") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
