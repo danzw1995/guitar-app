@@ -260,6 +260,7 @@ const KIND_LABEL: Record<EarKind, string> = {
   position: "听音辨位",
   interval: "音程判断",
   degree: "级数判断",
+  progression: "级数走向",
 };
 
 function percentOf(correct: number, total: number): string {
@@ -320,14 +321,20 @@ export default function Ear() {
   const answered = picked !== null;
   const today = useMemo(() => dateKeyOf(new Date()), []);
 
-  const heard = useMemo(
-    () => (question ? question.play.map((midi) => noteName(midi)).join(" → ") : ""),
-    [question],
-  );
+  const heard = useMemo(() => {
+    if (!question) return "";
+    // 走向题 12 个音，逐个念出来像报菜名；只报每个和弦的根音，那才是「走向」本身
+    if (question.kind === "progression") {
+      const roots = question.play.filter((_, i) => i % 3 === 0).map((midi) => noteName(midi));
+      return `根音 ${roots.join(" → ")}`;
+    }
+    return question.play.map((midi) => noteName(midi)).join(" → ");
+  }, [question]);
 
   useEffect(() => {
     if (!question || finished) return;
-    play(question.play, question.play.length > 1 ? 0.6 : 0.7);
+    // 走向题是 12 个音（四个和弦各三个），拍子要短，不然一题要听七八秒
+    play(question.play, question.kind === "progression" ? 0.28 : question.play.length > 1 ? 0.6 : 0.7);
     // 只在换题时播一次：play 每次渲染都是新函数，放进依赖会一直重播
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question?.id]);

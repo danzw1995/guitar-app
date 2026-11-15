@@ -53,6 +53,9 @@ import {
   earRound,
   earDegreeQuestion,
   degreeLabel,
+  degreeChord,
+  earProgressionQuestion,
+  DEGREE_PROGRESSIONS,
   MAJOR_DEGREES,
   intervalName,
   earIntervalQuestion,
@@ -2708,6 +2711,41 @@ test("听辨：级数判断先给主音，第 3 级就是大三度", () => {
   }
   assert.deepEqual(earRound("degree", 9, 8), round);
   assert.notDeepEqual(earRound("degree", 10, 8), round);
+});
+
+test("听辨：级数走向把和弦拆成三个音，1 级大三、6 级小三", () => {
+  // 1 级是大三（C–E–G），6 级是小三（A–C–E）
+  assert.deepEqual(degreeChord(48, 1), [48, 52, 55]);
+  assert.deepEqual(degreeChord(48, 6), [57, 60, 64]);
+  // 7 级是减三（B–D–F）
+  assert.deepEqual(degreeChord(48, 7), [59, 62, 65]);
+
+  const question = earProgressionQuestion(48, [1, 5, 6, 4], 3);
+  assert.equal(question.kind, "progression");
+  assert.equal(question.answer, "1–5–6–4");
+  assert.equal(question.play.length, 12);
+  assert.deepEqual(question.play.slice(0, 3), [48, 52, 55]);
+  assert.deepEqual(question.play.slice(3, 6), [55, 59, 62]);
+  assert.equal(question.options.length, 4);
+  assert.equal(new Set(question.options.map((option) => option.id)).size, 4);
+  assert.ok(question.options.some((option) => option.id === "1–5–6–4"));
+  assert.ok(question.hint.includes("1–5–6–4"));
+
+  assert.throws(() => earProgressionQuestion(48, [1]), /至少要两个和弦/);
+
+  // 一轮八题：每题的答案都在选项里、走向都来自表里、相邻两题不重样
+  const round = earRound("progression", 11, 8);
+  assert.equal(round.length, 8);
+  assert.ok(round.every((item) => item.kind === "progression" && item.play.length % 3 === 0));
+  assert.ok(
+    round.every((item) => DEGREE_PROGRESSIONS.some((progression) => progression.label === item.answer)),
+  );
+  assert.ok(round.every((item) => item.options.some((option) => option.id === item.answer)));
+  for (let i = 1; i < round.length; i += 1) {
+    assert.notEqual(round[i].answer, round[i - 1].answer);
+  }
+  assert.deepEqual(earRound("progression", 11, 8), round);
+  assert.notDeepEqual(earRound("progression", 12, 8), round);
 });
 
 test("听和弦：大三、小三、七和弦都认得，转位靠最低音", () => {

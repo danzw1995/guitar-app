@@ -10,7 +10,7 @@ import { positionsFor } from "./transcribe.ts";
  * 同一个种子出同一套题）。
  */
 
-export type EarKind = "position" | "interval" | "degree";
+export type EarKind = "position" | "interval" | "degree" | "progression";
 
 /** 大调音阶里 1–7 级相对主音的半音数。 */
 export const MAJOR_DEGREES = [0, 2, 4, 5, 7, 9, 11] as const;
@@ -173,7 +173,68 @@ export function earDegreeQuestion(root: number, degree: number, seed = 1): EarQu
   };
 }
 
-/** 一组题：`kind` 决定题型，`seed` 决定具体是哪些音。 */export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] {
+/** 一条级数走向：`label` 用乐理课的写法（`1–5–6–4`），`degrees` 是 1–7 的序列。 */
+export interface DegreeProgression {
+  id: string;
+  label: string;
+  degrees: number[];
+}
+
+export const DEGREE_PROGRESSIONS: DegreeProgression[] = [
+  { id: "pg-1564", label: "1–5–6–4", degrees: [1, 5, 6, 4] },
+  { id: "pg-6415", label: "6–4–1–5", degrees: [6, 4, 1, 5] },
+  { id: "pg-1645", label: "1–6–4–5", degrees: [1, 6, 4, 5] },
+  { id: "pg-251", label: "2–5–1", degrees: [2, 5, 1] },
+];
+
+/**
+ * 大调里第 `degree` 级上的三和弦（根音、三音、五音）。
+ *
+ * 1、4、5 级是大三（三音 +4），2、3、6 级是小三（+3），7 级是减三（+3 与 +6）——
+ * 这是大调音阶自己长出来的性质，不是随便配的。
+ */
+export function degreeChord(root: number, degree: number): number[] {
+  const semitones = MAJOR_DEGREES[degree - 1];
+  const base = root + semitones;
+  const third = degree === 7 ? 3 : [1, 4, 5].includes(degree) ? 4 : 3;
+  const fifth = degree === 7 ? 6 : 7;
+  return [base, base + third, base + fifth];
+}
+
+/**
+ * 级数走向：播一串和弦（每个和弦拆成三个音依次弹），问它是哪个走向。
+ *
+ * 用琶音而不是同时按响，是为了让「最低那个音」听得清——走向听的就是低音的移动；
+ * 同时按响时五个音的泛音会盖住根音，初学反而更难。
+ */
+export function earProgressionQuestion(root: number, degrees: number[], seed = 1): EarQuestion {
+  if (degrees.length < 2) {
+    throw new Error(`earProgressionQuestion: 至少要两个和弦，收到 ${degrees.length}`);
+  }
+  const play = degrees.flatMap((degree) => degreeChord(root, degree));
+  const match = DEGREE_PROGRESSIONS.find(
+    (item) => item.degrees.length === degrees.length && item.degrees.every((d, i) => d === degrees[i]),
+  );
+  const correct = match?.label ?? degrees.join("–");
+  const random = rng(seed);
+  const pool = DEGREE_PROGRESSIONS.filter((item) => item.label !== correct).map((item) => item.label);
+  const distractors = shuffle(pool, random).slice(0, 3);
+
+  return {
+    id: `prog-${root}-${degrees.join("")}-${seed}`,
+    kind: "progression",
+    prompt: "听这一串和弦，它们是哪个级数走向？",
+    play,
+    options: shuffle([correct, ...distractors], random).map((label) => ({ id: label, label })),
+    answer: correct,
+    hint: `走向是 ${correct}：每个和弦拆成三个音依次弹，第一个音就是它的根音，跟着最低那条线走就听出来了。`,
+  };
+}
+
+/**
+ * 一组题：`kind` 决定题型，`seed` 决定具体是哪些音。
+ */
+export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] {
   const random = rng(seed);
   const out: EarQuestion[] = [];
 
@@ -200,6 +261,20 @@ export function earDegreeQuestion(root: number, degree: number, seed = 1): EarQu
       if (degree === last) degree = (degree % 7) + 1;
       last = degree;
       out.push(earDegreeQuestion(root, degree, seed * 31 + i));
+    }
+    return out;
+  }
+
+  if (kind === "progression") {
+    // 主音落在 C3–G3，和级数判断同一个音区；相邻两题不弹同一个走向。
+    const keys = [48, 50, 52, 53, 55];
+    let last = "";
+    for (let i = 0; i < count; i += 1) {
+      const root = keys[Math.floor(random() * keys.length)];
+      let pick = DEGREE_PROGRESSIONS[Math.floor(random() * DEGREE_PROGRESSIONS.length)];
+      if (pick.id === last) pick = DEGREE_PROGRESSIONS[(DEGREE_PROGRESSIONS.indexOf(pick) + 1) % DEGREE_PROGRESSIONS.length];
+      last = pick.id;
+      out.push(earProgressionQuestion(root, pick.degrees, seed * 31 + i));
     }
     return out;
   }

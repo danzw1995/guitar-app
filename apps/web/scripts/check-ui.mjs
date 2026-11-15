@@ -620,8 +620,8 @@ try {
     ),
   ).replace(/^"|"$/g, "");
   log(
-    earInfo.startsWith("12|3|4|play|tr"),
-    "扒谱页：十二节课 + 三种题型 + 四个选项 + 录音工具",
+    earInfo.startsWith("12|4|4|play|tr"),
+    "扒谱页：十二节课 + 四种题型 + 四个选项 + 录音工具",
     earInfo,
   );
 
@@ -670,6 +670,18 @@ try {
     "扒谱页：有「听和弦」，没听过时只显示一句提示",
     clInfo,
   );
+
+  // 9g) 级数走向：题干问「走向」，四个选项都是「1–5–6–4」这种写法（v0.77.0）
+  js(
+    "(() => { const b = [...document.querySelectorAll('.ear-kinds .chip')].find(n => n.textContent.trim() === '级数走向'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const progInfo = String(
+    js(
+      "(() => { const prompt = document.querySelector('.ear-prompt')?.textContent ?? ''; const options = [...document.querySelectorAll('.ear-option')].map(n => n.textContent.trim()); const dashed = options.every(t => /\\d–\\d/.test(t)); return [prompt.includes('走向') ? 'prog' : 'noprog', options.length, dashed ? 'dash' : 'nodash'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(progInfo === "prog|4|dash", "扒谱练习：级数走向的选项是「1–5–6–4」这种写法", progInfo);
 
   // 10) 乐理页：12 节课各配一张示范谱，滚完整页都加载出来
   js(
