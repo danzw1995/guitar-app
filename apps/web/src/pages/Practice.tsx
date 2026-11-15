@@ -28,6 +28,7 @@ import {
   addSkip,
   loadPauses,
   pauseUntilOf,
+  loadEar,
   loadPractice,
   loadProgress,
   loadRhythm,
@@ -46,6 +47,7 @@ import {
   type SkipLog,
 } from "../lib/storage";
 import { goTo, parseHash } from "../lib/nav";
+import { earTrendOf } from "../lib/ear-trend";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
@@ -225,6 +227,8 @@ export default function Practice() {
     () => goalProgress(weekSummaryOf(log, today).minutes, weekGoal),
     [log, weekGoal],
   );
+  // 听辨正确率的走向：练习页也放一条，省得为了看趋势切到统计页
+  const earTrend = earTrendOf(loadEar());
 
   const day: DayLog | undefined = log[today];
   const done = new Set(day?.done ?? []);
@@ -319,6 +323,31 @@ export default function Practice() {
             {weekGoalState.reached ? "这周目标达成了" : `还差 ${weekGoalState.remaining} 分钟`}
           </span>
         </button>
+      )}
+
+      {earTrend.spark && (
+        <div className="ear-trend ear-trend-compact">
+          <svg
+            className="curve-svg"
+            viewBox="0 0 120 30"
+            role="img"
+            aria-label={`听辨最近 ${earTrend.days.length} 个练习日的正确率：从 ${earTrend.rates[0]}% 到 ${earTrend.rates[earTrend.rates.length - 1]}%`}
+          >
+            <path d={earTrend.spark.d} />
+            <circle
+              cx={earTrend.spark.dots[earTrend.spark.dots.length - 1].x}
+              cy={earTrend.spark.dots[earTrend.spark.dots.length - 1].y}
+              r={2}
+            />
+          </svg>
+          <span className="muted">
+            听辨 最近 {earTrend.days.length} 个练习日 {earTrend.rates[0]}% →{" "}
+            {earTrend.rates[earTrend.rates.length - 1]}%
+          </span>
+          <button type="button" className="btn-quiet" onClick={() => goTo("ear")}>
+            去练听辨
+          </button>
+        </div>
       )}
 
       {follow && (

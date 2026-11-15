@@ -481,7 +481,7 @@ export default function Ear() {
         {kind === "quality" && (
           <div className="ear-sets" role="group" aria-label="和弦性质的档位">
             <span className="ear-sets-label">听几种音</span>
-            {(["triad", "seventh"] as QualitySet[]).map((id) => (
+            {(["triad", "seventh", "open"] as QualitySet[]).map((id) => (
               <button
                 key={id}
                 type="button"
@@ -492,7 +492,7 @@ export default function Ear() {
                   startRound("quality", seed, id);
                 }}
               >
-                {id === "triad" ? "三和弦（4 种）" : "七和弦（3 种）"}
+                {id === "triad" ? "三和弦（4 种）" : id === "seventh" ? "七和弦（3 种）" : "挂留与强力（3 种）"}
               </button>
             ))}
           </div>

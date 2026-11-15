@@ -180,9 +180,10 @@ function ScoreCard({
   onEdit: (score: MyScore) => void;
   onImage: (id: string, image: ScoreImage) => void;
 }) {
-  const earTab = score.source === "transcribe" && score.tab ? score.tab : null;
+  const storedSource = score.source === "transcribe" || score.source === "chord" ? score.source : null;
+  const earTab = storedSource && score.tab ? score.tab : null;
   const parsed = useMemo(() => (earTab ? null : parseScore(score.ascii)), [earTab, score.ascii]);
-  // 扒谱存下的没有 ASCII 原文，音符和拍号直接存在记录里。
+  // 扒谱 / 听和弦存下的没有 ASCII 原文，音符和拍号直接存在记录里。
   const tab = earTab ?? parsed?.tab ?? null;
   const meter = earTab ? (score.meter ?? `${earTab.beatsPerBar}/4`) : (parsed?.meter ?? "4/4");
   const bpm = earTab ? (score.bpm ?? 90) : (parsed?.bpm ?? 80);
@@ -241,7 +242,13 @@ function ScoreCard({
           {meter} · {bpm} BPM
         </span>
       </header>
-      {earTab && <p className="my-source">扒出来的 · 只能试听、导出，不能编辑</p>}
+      {earTab && (
+        <p className="my-source">
+          {storedSource === "chord"
+            ? "从听和弦存下的 · 只能试听、导出，不能编辑"
+            : "扒出来的 · 只能试听、导出，不能编辑"}
+        </p>
+      )}
       {parsed?.error ? (
         <p className="my-error">{parsed.error}</p>
       ) : (
@@ -341,7 +348,7 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
 
   /** 把存下的谱放回编辑区，改完再存回同一条。 */
   function startEdit(score: MyScore) {
-    if (score.source === "transcribe") return;
+    if (score.source === "transcribe" || score.source === "chord") return;
     setEditingId(score.id);
     setText(score.ascii);
     setParsed(null);

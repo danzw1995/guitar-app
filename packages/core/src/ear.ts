@@ -233,7 +233,17 @@ export function earProgressionQuestion(root: number, degrees: number[], seed = 1
 
 /** 和弦性质：三和弦四种 + 七和弦三种。 */
 export interface EarQuality {
-  id: "major" | "minor" | "dim" | "aug" | "major7" | "minor7" | "dominant7";
+  id:
+    | "major"
+    | "minor"
+    | "dim"
+    | "aug"
+    | "major7"
+    | "minor7"
+    | "dominant7"
+    | "sus2"
+    | "sus4"
+    | "power";
   label: string;
   intervals: number[];
   hint: string;
@@ -247,14 +257,18 @@ export const EAR_QUALITIES: EarQuality[] = [
   { id: "major7", label: "大七和弦", intervals: [0, 4, 7, 11], hint: "大三和弦再加一个大七度，亮得有点扎" },
   { id: "minor7", label: "小七和弦", intervals: [0, 3, 7, 10], hint: "小三和弦再加一个小七度，圆、暗、松" },
   { id: "dominant7", label: "属七和弦", intervals: [0, 4, 7, 10], hint: "大三和弦加小七度，绷着、想解决" },
+  { id: "sus2", label: "挂二和弦", intervals: [0, 2, 7], hint: "二度顶替三度，空、没大小之分" },
+  { id: "sus4", label: "挂四和弦", intervals: [0, 5, 7], hint: "四度顶替三度，悬着等解决" },
+  { id: "power", label: "强力和弦", intervals: [0, 7], hint: "只有根音和五度，最干净、最硬" },
 ];
 
-/** 和弦性质分两档：先认三和弦，再认七和弦。 */
-export type QualitySet = "triad" | "seventh";
+/** 和弦性质分三档：三和弦、七和弦、挂留与强力（没有三度，听不出大小）。 */
+export type QualitySet = "triad" | "seventh" | "open";
 
 export const QUALITY_SETS: Record<QualitySet, EarQuality[]> = {
-  triad: EAR_QUALITIES.filter((item) => item.intervals.length === 3),
+  triad: EAR_QUALITIES.filter((item) => item.intervals.length === 3 && item.id !== "sus2" && item.id !== "sus4"),
   seventh: EAR_QUALITIES.filter((item) => item.intervals.length === 4),
+  open: EAR_QUALITIES.filter((item) => item.id === "sus2" || item.id === "sus4" || item.id === "power"),
 };
 
 /**

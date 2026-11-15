@@ -1,4 +1,5 @@
 import { LETTERS, LETTER_PC, accidentalToString } from "./theory.ts";
+import { n, tabOf, type Tab } from "./tab.ts";
 
 export interface ChordShape {
   name: string;
@@ -98,6 +99,24 @@ export function chordInfo(chord: ChordShape): ChordInfo {
 /** 六线谱式的指法串：`x32010`，从 6 弦到 1 弦，`x` 表示不弹。 */
 export function fingeringOf(chord: ChordShape): string {
   return chord.frets.map((f) => (f < 0 ? "x" : String(f))).join("");
+}
+
+/**
+ * 把一个和弦的按法写成一张谱：一整小节一个全音符和弦。
+ *
+ * `frets[0]` 是低音 E（6 弦），`TabNote.s` 反过来是 1 = 高音 e，所以要 `6 - index`。
+ * 不弹的弦（`-1`）不进谱。
+ */
+export function chordVoicingTab(chord: ChordShape, beatsPerBar = 4): Tab {
+  const notes = chord.frets
+    .map((fret, index) => ({ fret, string: 6 - index }))
+    .filter((item) => item.fret >= 0)
+    .map((item) => n(item.string, item.fret, 0, beatsPerBar));
+  return tabOf(notes, {
+    beatsPerBar,
+    bpm: [60, 80],
+    caption: `${chord.name} · ${fingeringOf(chord)}`,
+  });
 }
 
 export const CHORDS: ChordShape[] = [

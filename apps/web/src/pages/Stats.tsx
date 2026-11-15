@@ -24,6 +24,7 @@ import {
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
 import { goTo } from "../lib/nav";
+import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { fmt, fmtSpan } from "../lib/format";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -183,12 +184,10 @@ export default function Stats() {
   const earRate = earTotal > 0 ? Math.round((earCorrect / earTotal) * 100) : null;
 
   // 正确率按天记的那份：只画最近 14 个练过的日子（有空档就跳过，不补 0）
-  const earDays = Object.entries(ear.days ?? {})
-    .filter(([, item]) => item.total > 0)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .slice(-14);
-  const earRates = earDays.map(([, item]) => Math.round((item.correct / item.total) * 100));
-  const earSpark = earRates.length >= 2 ? sparklineOf(earRates, 120, 30) : null;
+  const earTrend = earTrendOf(ear);
+  const earDays = earTrend.days;
+  const earRates = earTrend.rates;
+  const earSpark = earTrend.spark;
 
   const summary = summarizeProgress(LEVEL_IDS, progress);
   const theory = summarizeProgress(THEORY_LEVEL_IDS, progress);

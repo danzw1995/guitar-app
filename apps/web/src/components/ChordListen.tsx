@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CHORD_BY_NAME,
+  chordVoicingTab,
   chromaOfSpectrum,
   detectChordFromChroma,
-  fingeringOf,
   noteNameOf,
+  type ChordShape,
   type DetectedChord,
 } from "@guitar/core";
 import ChordDiagram from "./ChordDiagram";
+import { addScore } from "../lib/my-scores";
 
 const FFT_SIZE = 4096;
 const LISTEN_MS = 2400;
@@ -64,6 +66,7 @@ export default function ChordListen() {
   const [reading, setReading] = useState<ChordReading | null>(null);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
+  const [saved, setSaved] = useState(false);
 
   const streamRef = useRef<MediaStream | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
@@ -103,10 +106,29 @@ export default function ChordListen() {
     setProgress(0);
   }, []);
 
+  /**
+   * 把这个和弦的按法存进「我的谱」：一整小节一个全音符和弦，
+   * 六条弦按 `frets` 摆上去（`frets[0]` 是 6 弦，`TabNote.s` 反过来是 1 弦）。
+   */
+  function saveAsScore(shape: ChordShape) {
+    const tab = chordVoicingTab(shape);
+    addScore({
+      title: `和弦 · ${shape.name}`,
+      ascii: "",
+      source: "chord",
+      tab,
+      meter: "4/4",
+      bpm: 70,
+    });
+    window.dispatchEvent(new Event("guitar:scores"));
+    setSaved(true);
+  }
+
   const start = useCallback(async () => {
     setError("");
     setReading(null);
     setProgress(0);
+    setSaved(false);
     setPhase("starting");
     accRef.current = new Array(12).fill(0);
     framesRef.current = 0;
@@ -275,6 +297,18 @@ export default function ChordListen() {
               ? "先照上面缺的、多的音检查一遍手指，再听一次会准得多。"
               : "听错多半是因为按得不实（有杂音）或者扫得太快（前一个和弦还在响）。"}
           </p>
+          <div className="cl-save">
+            {library ? (
+              <button type="button" className="btn btn-quiet" onClick={() => saveAsScore(library)} disabled={saved}>
+                {saved ? "已存进「我的谱」" : "存成练习"}
+              </button>
+            ) : (
+              <span className="cl-save-note">和弦库里没有「{chord.label}」，按它的组成音自己找位置吧。</span>
+            )}
+            {saved && (
+              <span className="cl-save-note">去「节奏」页最下面的「我的谱」找它——那里能试听、跟练、导出 PNG。</span>
+            )}
+          </div>
         </div>
       )}
     </section>

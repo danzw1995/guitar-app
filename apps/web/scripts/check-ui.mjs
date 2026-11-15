@@ -656,6 +656,17 @@ try {
     "扒谱练习：和弦性质第二档是七和弦（三个选项都是七和弦）",
     seventhInfo,
   );
+  // 9b4) 第三档「挂留与强力」：选项是挂二 / 挂四 / 强力，没有大小之分
+  js(
+    "(() => { const b = [...document.querySelectorAll('.ear-sets .chip')].find(n => n.textContent.includes('挂留')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const openInfo = String(
+    js(
+      "(() => { const panel = document.querySelector('.ear'); if (!panel) return 'none'; const chips = [...panel.querySelectorAll('.ear-sets .chip')].length; const options = [...panel.querySelectorAll('.ear-option')].map(n => n.textContent.trim()); const on = [...panel.querySelectorAll('.ear-sets .chip')].find(n => n.getAttribute('aria-pressed') === 'true')?.textContent ?? ''; const kinds = options.every(n => /挂二|挂四|强力/.test(n)) ? 'open' : 'mixed'; return [chips, options.length, kinds, on.includes('挂留') ? 'on' : 'off'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(openInfo === "3|3|open|on", "扒谱练习：和弦性质第三档是挂留与强力（挂二 / 挂四 / 强力）", openInfo);
   // 切回三和弦，免得影响后面的断言
   js(
     "(() => { const b = [...document.querySelectorAll('.ear-sets .chip')].find(n => n.textContent.includes('三和弦')); b?.click(); return 'ok'; })()",
@@ -1016,6 +1027,28 @@ try {
   js(
     "(() => { const s = JSON.parse(localStorage.getItem('guitar.settings.v1') || '{}'); s.weeklyGoal = 0; localStorage.setItem('guitar.settings.v1', JSON.stringify(s)); return 'ok'; })()",
   );
+
+  // 12h) 练习页也放一条听辨正确率（省得为了看趋势切到统计页）
+  js(
+    "(() => { localStorage.setItem('guitar.ear.v1', JSON.stringify({ rounds: 4, best: 6, lastAt: '2026-11-14', days: { '2026-11-09': { correct: 3, total: 8 }, '2026-11-14': { correct: 6, total: 8 } }, byKind: { position: { correct: 9, total: 16 } } })); return 'ok'; })()",
+  );
+  ab(["open", `${URL}#practice`]);
+  await sleep(900);
+  const practiceTrend = JSON.parse(
+    String(
+      js(
+        "(() => { const t = document.querySelector('.ear-trend-compact'); if (!t) return JSON.stringify({ present: false }); return JSON.stringify({ present: true, text: t.innerText.replace(/\\s+/g, ' ').trim(), path: t.querySelector('path')?.getAttribute('d')?.slice(0, 1) ?? '', jump: !!t.querySelector('button') }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    practiceTrend.present && practiceTrend.text.includes("38% → 75%") && practiceTrend.path === "M" && practiceTrend.jump,
+    "练习页：顶部也有一条听辨正确率（还带「去练听辨」）",
+    practiceTrend.text,
+  );
+  js("localStorage.removeItem('guitar.ear.v1')");
 
   // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）
   js(

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import {
   CHORDS,
   CHORD_BY_NAME,
+  chordVoicingTab,
   EMPTY_PROGRESS,
   FLAT_NAMES,
   KEY_BY_ID,
@@ -2919,6 +2920,63 @@ test("听辨：和弦性质第二档换成七和弦，四个音一起响", () =>
   for (let i = 1; i < round.length; i += 1) {
     assert.notEqual(round[i].answer, round[i - 1].answer);
   }
+});
+
+test("听辨：和弦性质第三档是挂留与强力，没有三度所以听不出大小", () => {
+  // 挂二、挂四是三度被顶替，强力干脆只有根音和五度
+  const byId = new Map(EAR_QUALITIES.map((item) => [item.id, item.intervals]));
+  assert.deepEqual(byId.get("sus2"), [0, 2, 7]);
+  assert.deepEqual(byId.get("sus4"), [0, 5, 7]);
+  assert.deepEqual(byId.get("power"), [0, 7]);
+
+  assert.deepEqual(
+    QUALITY_SETS.open.map((item) => item.id),
+    ["sus2", "sus4", "power"],
+  );
+  // 挂留不属于三和弦那档（它们不是三度叠起来的）
+  assert.ok(!QUALITY_SETS.triad.some((item) => item.id === "sus4"));
+
+  // C4 上的挂四：三个音一起给，选项只从这一档里出
+  const sus = earQualityQuestion(60, "sus4", 5, "open");
+  assert.deepEqual(sus.play, [60, 65, 67]);
+  assert.equal(sus.answer, "挂四和弦");
+  assert.equal(sus.options.length, 3);
+  assert.ok(sus.options.every((option) => ["挂二和弦", "挂四和弦", "强力和弦"].includes(option.id)));
+
+  // 强力只有两个音
+  const power = earQualityQuestion(52, "power", 2, "open");
+  assert.deepEqual(power.play, [52, 59]);
+
+  const round = earRound("quality", 9, 8, { qualitySet: "open" });
+  assert.equal(round.length, 8);
+  assert.ok(round.every((question) => question.play.length === 2 || question.play.length === 3));
+  assert.ok(round.every((question) => question.options.length === 3));
+  for (let i = 1; i < round.length; i += 1) {
+    assert.notEqual(round[i].answer, round[i - 1].answer);
+  }
+});
+
+test("听和弦：把一个和弦的按法写成谱（不弹的弦不进谱，弦号是反的）", () => {
+  const c = CHORD_BY_NAME.get("C")!;
+  const tab = chordVoicingTab(c);
+  // C 的按法是 x32010：6 弦不弹，所以谱上只有五根弦
+  assert.equal(tab.notes.length, 5);
+  assert.equal(tab.beatsPerBar, 4);
+  assert.equal(tab.bars, 1);
+  assert.ok(tab.notes.every((note) => note.beat === 0 && note.dur === 4));
+  // frets[1] = 3（5 弦 3 品）→ TabNote.s 是 5
+  const fifth = tab.notes.find((note) => note.s === 5);
+  assert.equal(fifth?.f, 3);
+  // 1 弦空弦（frets[5] = 0）→ s = 1、f = 0
+  const first = tab.notes.find((note) => note.s === 1);
+  assert.equal(first?.f, 0);
+  // 谱子下面那句话带按法
+  assert.ok(tab.caption?.includes("x32010"));
+
+  // D 的按法是 xx0232：只有四根弦
+  const d = chordVoicingTab(CHORD_BY_NAME.get("D")!);
+  assert.equal(d.notes.length, 4);
+  assert.deepEqual(d.notes.map((note) => note.s).sort(), [1, 2, 3, 4]);
 });
 
 
