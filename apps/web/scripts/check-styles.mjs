@@ -780,6 +780,22 @@ for (const selector of ["select", "input", "textarea"]) {
     (seqItem.get("display") ?? "") === "grid" && seqCols.includes("1fr") && seqCols.includes("auto"),
     `display=${seqItem.get("display") ?? "未设置"} columns=${seqCols || "未设置"}`,
   );
+  // v0.88.0：调顺序的两个箭头也是手指点的，得够 40×40
+  const seqMove = narrowDecls(".cl-seq-move-btn");
+  const moveH = parseFloat(seqMove.get("min-height") ?? "0");
+  const moveW = parseFloat(seqMove.get("min-width") ?? "0");
+  expect(
+    "切段调顺序的箭头按钮不小于 40×40",
+    moveH >= 40 && moveW >= 40,
+    `min-height=${seqMove.get("min-height") ?? "未设置"} min-width=${seqMove.get("min-width") ?? "未设置"}`,
+  );
+  // v0.88.0：存谱时的速度 / 拍号输入框也得够高
+  const saveField = narrowDecls(".cl-save-field input");
+  expect(
+    "存和弦谱的速度 / 拍号输入框不小于 40px 高",
+    parseFloat(saveField.get("min-height") ?? "0") >= 40,
+    `min-height=${saveField.get("min-height") ?? "未设置"}`,
+  );
   const voicingImg = narrowDecls(".chord-voicing-img");
   expect(
     "和弦页的六线谱图按原尺寸显示，不拉宽也不超出",

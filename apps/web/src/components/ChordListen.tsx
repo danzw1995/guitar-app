@@ -21,12 +21,15 @@ import { useTone } from "../hooks/useTone";
 const FFT_SIZE = 4096;
 const LISTEN_MS = 2400;
 const SEQUENCE_MS = 15000;
+const HOLD_MS = 30000;
+/** 长音模式看最近多少帧（12 帧 × 80ms ≈ 1 秒的滑窗）。 */
+const HOLD_WINDOW = 12;
 const FRAME_MS = 80;
 
 type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
 
-/** 一次听一个和弦，还是一段扫弦里切出好几个。 */
-type Mode = "single" | "sequence";
+/** 一次听一个和弦、一段扫弦里切出好几个，或者按住不放一直跟着认。 */
+type Mode = "single" | "sequence" | "hold";
 
 interface ChordReading {
   chord: DetectedChord | null;
@@ -81,6 +84,9 @@ export default function ChordListen() {
   const [progress, setProgress] = useState(0);
   const [saved, setSaved] = useState(false);
   const [seqSaved, setSeqSaved] = useState(false);
+  /** 存和弦谱时用的速度和拍号：谱头按这个画 ♩=bpm（v0.88.0）。 */
+  const [saveBpm, setSaveBpm] = useState(70);
+  const [saveBeats, setSaveBeats] = useState(4);
   const { play, stop: stopTone } = useTone();
   // 改名字时能选的和弦：只列「和弦库里有、而且认得出性质」的那些，
   // 免得选完名字变了、谱上还是老按法。
@@ -134,6 +140,14 @@ export default function ChordListen() {
       setProgress(0);
       return;
     }
+    if (mode === "hold") {
+      // 长音模式：最后一秒的滑窗就是「你现在按着的那个和弦」
+      const recent = chromasRef.current.slice(-HOLD_WINDOW);
+      setReading(readChroma(recent, frames));
+      setPhase("idle");
+      setProgress(0);
+      return;
+    }
     const chroma = accRef.current;
     const peak = Math.max(...chroma);
     if (peak <= 0) {
@@ -166,8 +180,9 @@ export default function ChordListen() {
   }
 
   /**
-   * 切出来的几个和弦存成一张「和弦谱」：一个和弦一小节，整小节按满。
+   * 切出来的几个和弦存成一张「和弦谱」：一小节两个和弦、各占两拍。
    * 认不出来的段（`chord` 是 null）直接跳过——谱上不能有一格空着。
+   * 速度和拍号按上面那两个控件写进谱头（v0.88.0）。
    */
   function saveSequence() {
     if (!segments) return;
@@ -179,9 +194,9 @@ export default function ChordListen() {
       title: `和弦谱 · ${chords.map((chord) => chord.label).join("–")}`,
       ascii: "",
       source: "progression",
-      tab: sequenceTabOf(chords),
-      meter: "4/4",
-      bpm: 70,
+      tab: sequenceTabOf(chords, saveBeats, saveBpm),
+      meter: `${saveBeats}/4`,
+      bpm: saveBpm,
     });
     window.dispatchEvent(new Event("guitar:scores"));
     setSeqSaved(true);
@@ -224,6 +239,46 @@ export default function ChordListen() {
     setSeqSaved(false);
   }
 
+  /**
+   * 调顺序（v0.88.0）：切出来的先后不一定就是你要弹的顺序，
+   * 尤其是先随手扫了两下再弹正题的时候。
+   */
+  function moveSegment(index: number, delta: number) {
+    setSegments((current) => {
+      if (!current) return current;
+      const target = index + delta;
+      if (target < 0 || target >= current.length) return current;
+      const next = current.slice();
+      const [item] = next.splice(index, 1);
+      next.splice(target, 0, item);
+      return next;
+    });
+    setSeqSaved(false);
+  }
+
+  /**
+   * 把这一段并进下一段（v0.88.0）：同一个和弦按了两下、被切成两段时用。
+   * 时值取两段合起来的，和弦取先认出来的那个（认不出来的就往后借）。
+   */
+  function mergeWithNext(index: number) {
+    setSegments((current) => {
+      if (!current || index >= current.length - 1) return current;
+      const first = current[index];
+      const second = current[index + 1];
+      const merged: ChordSegment = {
+        // 调过顺序之后两段的先后可能反了，取区间并集才不会出现「2.0–2.0 秒」
+        start: Math.min(first.start, second.start),
+        end: Math.max(first.end, second.end),
+        chord: first.chord ?? second.chord,
+        frames: first.frames + second.frames,
+      };
+      const next = current.slice();
+      next.splice(index, 2, merged);
+      return next;
+    });
+    setSeqSaved(false);
+  }
+
   const start = useCallback(async () => {
     setError("");
     setReading(null);
@@ -236,7 +291,7 @@ export default function ChordListen() {
     chromasRef.current = [];
     framesRef.current = 0;
     doneRef.current = false;
-    const limit = mode === "sequence" ? SEQUENCE_MS : LISTEN_MS;
+    const limit = mode === "sequence" ? SEQUENCE_MS : mode === "hold" ? HOLD_MS : LISTEN_MS;
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setPhase("unsupported");
@@ -295,6 +350,10 @@ export default function ChordListen() {
             for (let pc = 0; pc < 12; pc += 1) accRef.current[pc] += chroma[pc];
             chromasRef.current.push(chroma);
             framesRef.current += 1;
+            // 长音模式：每两帧刷一次「最近一秒是什么和弦」，换和弦立刻跟上
+            if (mode === "hold" && framesRef.current % 2 === 0) {
+              setReading(readChroma(chromasRef.current.slice(-HOLD_WINDOW), framesRef.current));
+            }
           }
         }
         rafRef.current = requestAnimationFrame(tick);
@@ -324,16 +383,22 @@ export default function ChordListen() {
           : listening
             ? mode === "sequence"
               ? "在听… 把一段扫弦弹完（最多 15 秒），中途换和弦也没关系。"
-              : "在听… 按住一个和弦别动，两秒后出结果。"
+              : mode === "hold"
+                ? "在听… 按住一个和弦别动，结果会一直跟着变；按「停」结束。"
+                : "在听… 按住一个和弦别动，两秒后出结果。"
             : reading && !chord
               ? "没听清。一次只按一个和弦、每根弦都按实，别扫得太快。"
               : reading && chord
-                ? "认出来了。再点一次就换下一个——这个结果会被替换掉。"
+                ? mode === "hold"
+                  ? "认出来了。按住不放的时候结果会一直跟着你，按「停」结束。"
+                  : "认出来了。再点一次就换下一个——这个结果会被替换掉。"
                 : segments && segments.length > 0
                   ? `切出 ${segments.length} 段。再点一次就重录——这次的结果会被替换掉。`
                   : mode === "sequence"
                     ? "点「听一段」，弹一小段（C → Am → F → G 都行），十五秒后告诉你中间换了哪几个和弦。"
-                    : "点「听一个和弦」，按住一个和弦（比如 C），两秒后告诉你它是什么。";
+                    : mode === "hold"
+                      ? "点「开始听」，按住一个和弦别动——画面一直跟着你，换和弦就跟着换。"
+                      : "点「听一个和弦」，按住一个和弦（比如 C），两秒后告诉你它是什么。";
 
   return (
     <section className="panel chord-listen" id="chord-listen">
@@ -345,7 +410,7 @@ export default function ChordListen() {
         </p>
       </div>
 
-      <div className="cl-modes" role="group" aria-label="听一个和弦还是一段">
+      <div className="cl-modes" role="group" aria-label="听一个和弦、一段扫弦，还是按住不放">
         <button
           type="button"
           className={mode === "single" ? "chip on" : "chip"}
@@ -368,6 +433,17 @@ export default function ChordListen() {
         >
           一段扫弦
         </button>
+        <button
+          type="button"
+          className={mode === "hold" ? "chip on" : "chip"}
+          aria-pressed={mode === "hold"}
+          onClick={() => {
+            if (listening) finish();
+            setMode("hold");
+          }}
+        >
+          按住不放
+        </button>
       </div>
 
       <div className="cl-controls">
@@ -376,7 +452,7 @@ export default function ChordListen() {
           className={listening ? "btn" : "btn primary"}
           onClick={listening ? finish : start}
         >
-          {listening ? "停" : mode === "sequence" ? "听一段（15 秒）" : "听一个和弦"}
+          {listening ? "停" : mode === "sequence" ? "听一段（15 秒）" : mode === "hold" ? "按住不放，开始听" : "听一个和弦"}
         </button>
         <span className="cl-progress" aria-hidden="true">
           <span style={{ width: `${Math.round(progress * 100)}%` }} />
@@ -405,6 +481,26 @@ export default function ChordListen() {
                 </span>
                 {segment.chord && <em>{QUALITY_TEXT[segment.chord.quality] ?? segment.chord.name}</em>}
                 <div className="cl-seq-actions">
+                  <div className="cl-seq-move">
+                    <button
+                      type="button"
+                      className="btn-quiet cl-seq-move-btn"
+                      aria-label={`第 ${index + 1} 段往前挪`}
+                      disabled={index === 0}
+                      onClick={() => moveSegment(index, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-quiet cl-seq-move-btn"
+                      aria-label={`第 ${index + 1} 段往后挪`}
+                      disabled={index === segments.length - 1}
+                      onClick={() => moveSegment(index, 1)}
+                    >
+                      ↓
+                    </button>
+                  </div>
                   {segment.chord && (
                     <>
                       <select
@@ -432,6 +528,16 @@ export default function ChordListen() {
                       </button>
                     </>
                   )}
+                  {index < segments.length - 1 && (
+                    <button
+                      type="button"
+                      className="btn-quiet cl-seq-merge"
+                      aria-label={`把第 ${index + 1} 段并进下一段`}
+                      onClick={() => mergeWithNext(index)}
+                    >
+                      并下一段
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="btn-quiet cl-seq-drop"
@@ -445,6 +551,37 @@ export default function ChordListen() {
             ))}
           </ol>
           <div className="cl-save">
+            <label className="cl-save-field">
+              速度
+              <input
+                type="number"
+                min={40}
+                max={200}
+                value={saveBpm}
+                aria-label="和弦谱的速度"
+                onChange={(event) => {
+                  const next = Number(event.target.value);
+                  setSaveBpm(Number.isFinite(next) ? Math.min(200, Math.max(40, Math.round(next))) : 70);
+                  setSeqSaved(false);
+                }}
+              />
+              BPM
+            </label>
+            <label className="cl-save-field">
+              拍号
+              <select
+                value={saveBeats}
+                aria-label="和弦谱的拍号"
+                onChange={(event) => {
+                  setSaveBeats(Number(event.target.value));
+                  setSeqSaved(false);
+                }}
+              >
+                <option value={4}>4/4</option>
+                <option value={3}>3/4</option>
+                <option value={2}>2/4</option>
+              </select>
+            </label>
             <button
               type="button"
               className="btn btn-quiet"
@@ -459,6 +596,7 @@ export default function ChordListen() {
           </div>
           <p className="cl-tip">
             切段靠的是「音级分布变了没有」，所以换和弦要弹清楚；同一个和弦按住不放会被算成一段。
+            速度和拍号会写进谱头（`♩=速度`），「我的谱」里的跟练也从这里起步。
           </p>
         </div>
       )}
@@ -524,6 +662,24 @@ export default function ChordListen() {
       )}
     </section>
   );
+}
+
+/**
+ * 把一串帧平均成一个和弦读数（v0.88.0）。
+ *
+ * 长音模式用它：按住不放的时候，画面一直显示「最近一秒是什么和弦」，
+ * 换和弦了结果就跟着换——不用等一轮结束。
+ */
+function readChroma(chromas: number[][], frames: number): ChordReading {
+  if (chromas.length === 0) return { chord: null, frames, bassPc: null };
+  const sum = new Array(12).fill(0);
+  for (const chroma of chromas) {
+    for (let pc = 0; pc < 12; pc += 1) sum[pc] += chroma[pc];
+  }
+  const peak = Math.max(...sum);
+  if (peak <= 0) return { chord: null, frames, bassPc: null };
+  const normalized = sum.map((value) => value / peak);
+  return { chord: detectChordFromChroma(normalized), frames, bassPc: null };
 }
 
 /** 和弦里听到的音：按根音往上排。 */

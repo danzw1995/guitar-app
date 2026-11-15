@@ -3085,6 +3085,11 @@ test("听和弦：认出来的和弦能还原成音，一串和弦能写成一�
   assert.ok(secondBar.some((note) => note.s === 3 && note.f === 2));
   // 没有和弦就不给谱
   assert.throws(() => sequenceTabOf([]), /没有和弦/);
+  // 速度可以定：谱头按这个画 ♩=96，跟练也从这里起步（v0.88.0）
+  const timed = sequenceTabOf([c, am], 4, 96);
+  assert.deepEqual(timed.bpm, [96, 96]);
+  assert.deepEqual(sequenceTabOf([c, am]).bpm, [70, 70]);
+  assert.equal(sequenceTabOf([c, am], 3, 84).beatsPerBar, 3);
 });
 
 test("听和弦：一串和弦按成谱时，一根弦不会按两个品", () => {

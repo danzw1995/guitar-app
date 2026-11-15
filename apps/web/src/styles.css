@@ -3867,6 +3867,28 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 12px;
   color: var(--muted);
 }
+/* 存谱时的速度 / 拍号（v0.88.0）：写进谱头，跟练也从这里起步 */
+.cl-save-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.cl-save-field input,
+.cl-save-field select {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.cl-save-field input {
+  width: 68px;
+}
 .cl-modes {
   display: flex;
   flex-wrap: wrap;
@@ -3905,6 +3927,28 @@ button, select, input { font: inherit; color: inherit; }
   display: flex;
   align-items: center;
   gap: 6px;
+}
+/* 调顺序（v0.88.0）：两个 40×40 的小方块并排，行高不会被撑高 */
+.cl-seq-move {
+  display: flex;
+  gap: 4px;
+}
+.cl-seq-move-btn {
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+.cl-seq-move-btn:disabled {
+  opacity: 0.35;
+}
+.cl-seq-merge {
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--muted);
 }
 /* 改名字的下拉：认错了直接选对的那个（v0.87.0） */
 .cl-seq-name {

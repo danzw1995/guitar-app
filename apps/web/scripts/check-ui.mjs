@@ -753,9 +753,25 @@ try {
     ),
   ).replace(/^"|"$/g, "");
   log(
-    seqInfo === "2|听一个和弦" && seqAfter.includes("听一段") && seqAfter.endsWith("|on"),
+    seqInfo === "3|听一个和弦" && seqAfter.includes("听一段") && seqAfter.endsWith("|on"),
     "听和弦：能切成「一段扫弦」，按钮跟着变成「听一段（15 秒）」",
     `${seqInfo} → ${seqAfter}`,
+  );
+
+  // 9b6) 第三种模式「按住不放」：结果一直跟着变，按钮文案跟着换
+  js(
+    "(() => { const b = [...document.querySelectorAll('.cl-modes .chip')].find(n => n.textContent.includes('按住不放')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+  const holdInfo = String(
+    js(
+      "(() => { const panel = document.querySelector('.chord-listen'); const btn = [...panel.querySelectorAll('.cl-controls button')][0]?.textContent.trim() ?? ''; const on = [...panel.querySelectorAll('.cl-modes .chip')].find(n => n.getAttribute('aria-pressed') === 'true')?.textContent ?? ''; const hint = panel.querySelector('.cl-hint')?.textContent?.trim() ?? ''; return [btn, on.includes('按住不放') ? 'on' : 'off', hint.includes('按住') ? 'hint' : 'nohint'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    holdInfo.includes("按住不放") && holdInfo.endsWith("|on|hint"),
+    "听和弦：有第三种模式「按住不放」，提示也跟着换",
+    holdInfo,
   );
   // 切回「一个和弦」
   js(

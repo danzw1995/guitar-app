@@ -415,7 +415,7 @@ export function voicingOf(midis: number[], maxFret = 15): { s: number; f: number
  * 所以改成「半小节一个和弦」——和弦落在每小节的第一拍和第三拍上，一眼能数出走向。
  * 按法是 `voicingOf()` 挑出来的，所以同一根弦不会撞车。
  */
-export function sequenceTabOf(chords: DetectedChord[], beatsPerBar = 4): Tab {
+export function sequenceTabOf(chords: DetectedChord[], beatsPerBar = 4, bpm = 70): Tab {
   if (chords.length === 0) throw new Error("sequenceTabOf: 没有和弦");
   const notes: TabNote[] = [];
   const perBar = 2;
@@ -429,7 +429,8 @@ export function sequenceTabOf(chords: DetectedChord[], beatsPerBar = 4): Tab {
   });
   return tabOf(notes, {
     beatsPerBar,
-    bpm: [60, 80],
+    // 速度定死一个值（不是区间）：谱头会画出 ♩=bpm，跟练也从这里起步
+    bpm: [bpm, bpm],
     caption: chords.map((chord) => chord.label).join("–"),
   });
 }
