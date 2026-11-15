@@ -1,4 +1,6 @@
 import { SHARP_NAMES } from "./theory.ts";
+import { n, tabOf, type Tab, type TabNote } from "./tab.ts";
+import { positionsFor } from "./transcribe.ts";
 
 /**
  * 听和弦（v0.76.0）：把「一堆音」认成「一个和弦」。
@@ -341,4 +343,93 @@ export function segmentChords(
     segments.push({ start, end, chord, frames: run.to - run.from + 1 });
   }
   return segments;
+}
+﻿
+/** 某种和弦性质相对根音的半音数（认和弦用的那套模板）。 */
+export function qualityIntervals(quality: DetectQuality): number[] {
+  const found = TEMPLATES.find((item) => item.quality === quality);
+  return found ? [...found.intervals] : [0, 4, 7];
+}
+
+/**
+ * 把认出来的和弦还原成一组 MIDI：根音落在 `octave` 这一层。
+ *
+ * 转位时把最低那个音挪到根音下面——不然 `C/E` 会被还原成原位 C，
+ * 听起来就不像你刚才按的那个。
+ */
+export function chordMidis(chord: DetectedChord, octave = 3): number[] {
+  const root = ((chord.root % 12) + 12) % 12;
+  const base = 12 * (octave + 1) + root;
+  const steps = qualityIntervals(chord.quality);
+  // 转位：低音以上的音留在原位，低音以下的音抬高八度，最低那个音就成了低音
+  const bassStep = chord.inversion > 0 ? (((chord.bass - root) % 12) + 12) % 12 : 0;
+  const midis = steps.map((step) => base + step + (bassStep > 0 && step < bassStep ? 12 : 0));
+  return midis.sort((a, b) => a - b);
+}
+
+/**
+ * 一个和弦在指板上怎么按（v0.86.0）。
+ *
+ * 逐个音取「最低品」会出两种事故：两个音抢同一根弦（同一拍按不了两个品），
+ * 或者落成 `3:0 2:0 4:12` 这种手指张不开的形状。所以这里把每个音的所有按法
+ * 摆在一起穷举（最多 4⁴ 种），挑**品格跨度最小、整体位置最低**的那一组，
+ * 而且保证一根弦只出一个音。认出来的和弦就是这么变成谱的。
+ */
+export function voicingOf(midis: number[], maxFret = 15): { s: number; f: number }[] {
+  const options = midis.map((midi) => positionsFor(midi, maxFret));
+  if (options.some((list) => list.length === 0)) return [];
+  let best: { s: number; f: number }[] | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+  const picked: { s: number; f: number }[] = [];
+  const used = new Set<number>();
+  const walk = (index: number) => {
+    if (index === options.length) {
+      const frets = picked.map((item) => item.f);
+      const span = Math.max(...frets) - Math.min(...frets);
+      const sum = frets.reduce((total, fret) => total + fret, 0);
+      // 跨度最要紧（手指张得开），其次整体别太高。
+      const score = span * 3 + sum + Math.min(...frets) * 0.5;
+      if (score < bestScore) {
+        bestScore = score;
+        best = picked.slice();
+      }
+      return;
+    }
+    for (const option of options[index]) {
+      if (used.has(option.s)) continue;
+      used.add(option.s);
+      picked.push(option);
+      walk(index + 1);
+      picked.pop();
+      used.delete(option.s);
+    }
+  };
+  walk(0);
+  return best ?? [];
+}
+
+/**
+ * 把一串认出来的和弦写成一页谱（v0.86.0）：一小节两个和弦，各占半小节。
+ *
+ * 一个小节只放一个全音符时，alphaTab 会把那个音画在小节中间（看着像空了一大截），
+ * 所以改成「半小节一个和弦」——和弦落在每小节的第一拍和第三拍上，一眼能数出走向。
+ * 按法是 `voicingOf()` 挑出来的，所以同一根弦不会撞车。
+ */
+export function sequenceTabOf(chords: DetectedChord[], beatsPerBar = 4): Tab {
+  if (chords.length === 0) throw new Error("sequenceTabOf: 没有和弦");
+  const notes: TabNote[] = [];
+  const perBar = 2;
+  const span = beatsPerBar / perBar;
+  chords.forEach((chord, index) => {
+    const bar = Math.floor(index / perBar);
+    const beat = bar * beatsPerBar + (index % perBar) * span;
+    for (const spot of voicingOf(chordMidis(chord), 15)) {
+      notes.push(n(spot.s, spot.f, beat, span));
+    }
+  });
+  return tabOf(notes, {
+    beatsPerBar,
+    bpm: [60, 80],
+    caption: chords.map((chord) => chord.label).join("–"),
+  });
 }

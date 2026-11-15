@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { tabToAlphaTex, type Tab } from "@guitar/core";
+import { CHORD_BY_NAME, tabToAlphaTex, type Tab } from "@guitar/core";
 import type { FollowTarget } from "./FollowAlong";
 import type { ScoreImage } from "../lib/score-image";
 import { renderScoreImage } from "../lib/score-image";
 import { useScoreImage } from "../hooks/useScoreImage";
 import { goTo } from "../lib/nav";
+import ChordDiagram from "./ChordDiagram";
 import {
   addScore,
   loadScores,
@@ -159,8 +160,14 @@ function ScoreCard({
   onEdit: (score: MyScore) => void;
   onImage: (id: string, image: ScoreImage) => void;
 }) {
-  const storedSource = score.source === "transcribe" || score.source === "chord" ? score.source : null;
+  const storedSource =
+    score.source === "transcribe" || score.source === "chord" || score.source === "progression"
+      ? score.source
+      : null;
   const earTab = storedSource && score.tab ? score.tab : null;
+  // 和弦卡（听和弦存下来的）：顺手把指法图也画出来，不用再跳页去看
+  const chordShape =
+    storedSource === "chord" && score.chordName ? CHORD_BY_NAME.get(score.chordName) : undefined;
   const parsed = useMemo(() => (earTab ? null : parseScore(score.ascii)), [earTab, score.ascii]);
   // 扒谱 / 听和弦存下的没有 ASCII 原文，音符和拍号直接存在记录里。
   const tab = earTab ?? parsed?.tab ?? null;
@@ -225,7 +232,9 @@ function ScoreCard({
         <p className="my-source">
           {storedSource === "chord"
             ? "从听和弦存下的 · 只能试听、导出，不能编辑"
-            : "扒出来的 · 只能试听、导出，不能编辑"}
+            : storedSource === "progression"
+              ? "从一段扫弦切出来的和弦谱 · 只能试听、导出，不能编辑"
+              : "扒出来的 · 只能试听、导出，不能编辑"}
         </p>
       )}
       {storedSource === "chord" && score.chordName ? (
@@ -239,6 +248,14 @@ function ScoreCard({
           </button>
         </p>
       ) : null}
+      {chordShape && (
+        <div className="my-chord-diagram">
+          <ChordDiagram chord={chordShape} />
+          <p className="my-chord-note">
+            同一个和弦的两种说法：上面是手指放哪，下面是这几根弦同时响是什么样。
+          </p>
+        </div>
+      )}
       {parsed?.error ? (
         <p className="my-error">{parsed.error}</p>
       ) : (

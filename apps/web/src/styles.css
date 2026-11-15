@@ -2246,6 +2246,24 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
   font-size: 12px;
 }
+/* 和弦卡：指法图 + 谱并排（图在上、谱在下，窄屏自动折） */
+.my-chord-diagram {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 10px;
+}
+.my-chord-diagram .chord-svg {
+  width: 132px;
+  height: auto;
+}
+.my-chord-note {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--muted);
+  font-size: 12px;
+}
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -3857,13 +3875,19 @@ button, select, input { font: inherit; color: inherit; }
 }
 .cl-seq-item {
   display: grid;
-  grid-template-columns: minmax(64px, auto) auto minmax(0, 1fr);
-  align-items: baseline;
+  grid-template-columns: minmax(64px, auto) auto minmax(0, 1fr) auto;
+  align-items: center;
   gap: 10px;
   padding: 6px 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
   font-size: 13px;
+}
+.cl-seq-play {
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 .cl-seq-item b {
   font-size: 16px;

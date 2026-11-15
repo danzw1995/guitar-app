@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CHORD_BY_NAME,
+  chordMidis,
   chordVoicingTab,
   chromaOfSpectrum,
   detectChordFromChroma,
   noteNameOf,
   segmentChords,
+  sequenceTabOf,
   type ChordSegment,
   type ChordShape,
   type DetectedChord,
 } from "@guitar/core";
 import ChordDiagram from "./ChordDiagram";
 import { addScore } from "../lib/my-scores";
+import { useTone } from "../hooks/useTone";
 
 const FFT_SIZE = 4096;
 const LISTEN_MS = 2400;
@@ -75,6 +78,8 @@ export default function ChordListen() {
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [seqSaved, setSeqSaved] = useState(false);
+  const { play, stop: stopTone } = useTone();
 
   const streamRef = useRef<MediaStream | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
@@ -142,12 +147,41 @@ export default function ChordListen() {
     setSaved(true);
   }
 
+  /**
+   * 切出来的几个和弦存成一张「和弦谱」：一个和弦一小节，整小节按满。
+   * 认不出来的段（`chord` 是 null）直接跳过——谱上不能有一格空着。
+   */
+  function saveSequence() {
+    if (!segments) return;
+    const chords = segments
+      .map((segment) => segment.chord)
+      .filter((chord): chord is DetectedChord => Boolean(chord));
+    if (chords.length === 0) return;
+    addScore({
+      title: `和弦谱 · ${chords.map((chord) => chord.label).join("–")}`,
+      ascii: "",
+      source: "progression",
+      tab: sequenceTabOf(chords),
+      meter: "4/4",
+      bpm: 70,
+    });
+    window.dispatchEvent(new Event("guitar:scores"));
+    setSeqSaved(true);
+  }
+
+  function playSegment(chord: DetectedChord) {
+    stopTone();
+    // 0.04 秒一个音：听感上就是「一下扫下去」，不是一个一个拨
+    play(chordMidis(chord), 0.04);
+  }
+
   const start = useCallback(async () => {
     setError("");
     setReading(null);
     setSegments(null);
     setProgress(0);
     setSaved(false);
+    setSeqSaved(false);
     setPhase("starting");
     accRef.current = new Array(12).fill(0);
     chromasRef.current = [];
@@ -321,9 +355,32 @@ export default function ChordListen() {
                   {segment.start.toFixed(1)}–{segment.end.toFixed(1)} 秒
                 </span>
                 {segment.chord && <em>{QUALITY_TEXT[segment.chord.quality] ?? segment.chord.name}</em>}
+                {segment.chord && (
+                  <button
+                    type="button"
+                    className="btn-quiet cl-seq-play"
+                    onClick={() => playSegment(segment.chord as DetectedChord)}
+                    aria-label={`试听第 ${index + 1} 段 ${segment.chord.label}`}
+                  >
+                    试听
+                  </button>
+                )}
               </li>
             ))}
           </ol>
+          <div className="cl-save">
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={saveSequence}
+              disabled={seqSaved || !segments.some((segment) => segment.chord)}
+            >
+              {seqSaved ? "已存进「我的谱」" : "存成和弦谱"}
+            </button>
+            {seqSaved && (
+              <span className="cl-save-note">去「节奏」页最下面的「我的谱」找它——能试听、跟练、导出 PNG。</span>
+            )}
+          </div>
           <p className="cl-tip">
             切段靠的是「音级分布变了没有」，所以换和弦要弹清楚；同一个和弦按住不放会被算成一段。
           </p>

@@ -627,6 +627,16 @@ try {
       "(() => { const btn = document.querySelector('.my-chord-jump'); return btn ? btn.textContent.trim() : 'none'; })()",
     ),
   ).replace(/^"|"$/g, "");
+  const chordDiagram = String(
+    js(
+      "(() => { const svg = document.querySelector('.my-chord-diagram svg'); const note = document.querySelector('.my-chord-note')?.textContent ?? ''; return [svg ? 'svg' : 'none', svg?.getAttribute('aria-label') ?? '', note.includes('两种说法') ? 'note' : 'nonote'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    chordDiagram.startsWith("svg|") && chordDiagram.includes("和弦图") && chordDiagram.endsWith("note"),
+    "我的谱：和弦卡直接画出指法图（跟六线谱并排）",
+    chordDiagram,
+  );
   js("(() => { document.querySelector('.my-chord-jump')?.click(); return 'ok'; })()");
   await sleep(1000);
   const jumpLanding = String(

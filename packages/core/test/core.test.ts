@@ -21,6 +21,10 @@ import {
   detectChord,
   detectChordFromChroma,
   segmentChords,
+  chordMidis,
+  qualityIntervals,
+  sequenceTabOf,
+  voicingOf,
   completedCount,
   dailyPuzzle,
   dailySpecFor,
@@ -3022,6 +3026,67 @@ test("听和弦：一段扫弦按时间切成几个和弦，空拍不算进去",
   // 帧率不合法 / 没有帧
   assert.deepEqual(segmentChords([], 0.1), []);
   assert.deepEqual(segmentChords([C], 0), []);
+});
+
+test("听和弦：认出来的和弦能还原成音，一串和弦能写成一页谱", () => {
+  const c = detectChord([48, 52, 55])!;
+  // C 大三：根音落在第 3 八度（C3 = 48）
+  assert.deepEqual(chordMidis(c), [48, 52, 55]);
+  // 换一个八度整体上移 12
+  assert.deepEqual(chordMidis(c, 4), [60, 64, 67]);
+  // 第一转位（最低音是 E）：低音要挪到根音下面
+  const first = detectChord([52, 55, 60])!;
+  assert.equal(first.inversion, 1);
+  assert.deepEqual(chordMidis(first), [52, 55, 60]);
+  // 小三 / 属七的模板
+  assert.deepEqual(qualityIntervals("minor"), [0, 3, 7]);
+  assert.deepEqual(qualityIntervals("dominant7"), [0, 4, 7, 10]);
+  assert.deepEqual(qualityIntervals("power"), [0, 7]);
+
+  // 两个和弦 → 一小节两个半音符（第一拍、第三拍各一个）
+  const am = detectChord([45, 48, 52])!;
+  const tab = sequenceTabOf([c, am]);
+  assert.equal(tab.beatsPerBar, 4);
+  assert.equal(tab.bars, 1);
+  assert.equal(tab.caption, "C–Am");
+  const firstBar = tab.notes.filter((note) => note.beat === 0);
+  const secondBar = tab.notes.filter((note) => note.beat === 2);
+  assert.equal(firstBar.length, 3);
+  assert.equal(secondBar.length, 3);
+  assert.ok(firstBar.every((note) => note.dur === 2));
+  // 根音落位：C 的根音在 5 弦 3 品，Am 的根音（A3）落在 3 弦 2 品
+  assert.ok(firstBar.some((note) => note.s === 5 && note.f === 3));
+  assert.ok(secondBar.some((note) => note.s === 3 && note.f === 2));
+  // 没有和弦就不给谱
+  assert.throws(() => sequenceTabOf([]), /没有和弦/);
+});
+
+test("听和弦：一串和弦按成谱时，一根弦不会按两个品", () => {
+  const c = detectChord([48, 52, 55])!;
+  const am = detectChord([45, 48, 52])!;
+  const g = detectChord([43, 47, 50])!;
+  const tab = sequenceTabOf([c, am, g]);
+  assert.equal(tab.bars, 2);
+  // 每一小节里弦号不能重复（同一根弦同一拍按不了两个品）
+  for (const beat of [0, 2, 4]) {
+    const notes = tab.notes.filter((note) => note.beat === beat);
+    const strings = notes.map((note) => note.s);
+    assert.equal(new Set(strings).size, strings.length, `第 ${beat} 拍有重复的弦`);
+    assert.ok(notes.length >= 3);
+  }
+  // C 和 Am 都该是「手不用张开」的常用按法：品格跨度不超过 3
+  for (const beat of [0, 2]) {
+    const frets = tab.notes.filter((note) => note.beat === beat).map((note) => note.f);
+    assert.ok(Math.max(...frets) - Math.min(...frets) <= 3);
+  }
+  // voicingOf 也能单独用：C 大三落在 5:3 / 4:2 / 3:0
+  assert.deepEqual(voicingOf([48, 52, 55]), [
+    { s: 5, f: 3 },
+    { s: 4, f: 2 },
+    { s: 3, f: 0 },
+  ]);
+  // 超出品域的音就没有按法
+  assert.deepEqual(voicingOf([20]), []);
 });
 
 

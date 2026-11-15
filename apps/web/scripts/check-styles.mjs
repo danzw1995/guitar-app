@@ -786,6 +786,20 @@ for (const selector of ["select", "input", "textarea"]) {
     (voicingImg.get("width") ?? "") === "auto" && (voicingImg.get("max-width") ?? "") === "100%",
     `width=${voicingImg.get("width") ?? "未设置"} max=${voicingImg.get("max-width") ?? "未设置"}`,
   );
+  // v0.86.0：切段结果里每段一个「试听」，按钮不能小于 40 高
+  const seqPlay = narrowDecls(".cl-seq-play");
+  expect(
+    "听和弦每一段的「试听」按钮够大",
+    Number.parseInt(seqPlay.get("min-height") ?? "0", 10) >= 40,
+    `min-height=${seqPlay.get("min-height") ?? "未设置"}`,
+  );
+  // v0.86.0：我的谱里和弦卡的指法图是固定小图，别跟谱抢地方
+  const chordDiagram = narrowDecls(".my-chord-diagram .chord-svg");
+  expect(
+    "我的谱和弦卡的指法图是 132px 的小图",
+    Number.parseInt(chordDiagram.get("width") ?? "0", 10) === 132,
+    `width=${chordDiagram.get("width") ?? "未设置"}`,
+  );
 
   // v0.83.0：听辨正确率曲线是个小图，别占满整行
   const earTrend = narrowDecls(".ear-trend");
