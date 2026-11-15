@@ -3498,6 +3498,33 @@ button, select, input { font: inherit; color: inherit; }
   line-height: 1.7;
   color: var(--text);
 }
+/* 手机上先看目录：标题都露着，点一节展开那一节（v0.74.0） */
+.ear-lesson-body[hidden] {
+  display: none;
+}
+.ear-lesson-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.ear-lesson-toggle:hover {
+  color: var(--accent);
+}
+.ear-back {
+  min-height: 40px;
+  margin: 0 0 10px;
+}
 .ear-example {
   display: flex;
   flex-wrap: wrap;

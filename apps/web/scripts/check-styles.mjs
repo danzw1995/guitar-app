@@ -740,6 +740,11 @@ for (const selector of ["select", "input", "textarea"]) {
     (earPractice.get("background") ?? "").includes("var(--panel-2)"),
     `background=${earPractice.get("background") ?? "未设置"}`,
   );
+  expect(
+    "手机上收起的课真的不占位置",
+    (narrowDecls(".ear-lesson-body[hidden]").get("display") ?? "") === "none",
+    `display=${narrowDecls(".ear-lesson-body[hidden]").get("display") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

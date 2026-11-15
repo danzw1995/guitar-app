@@ -583,8 +583,8 @@ try {
     ),
   ).replace(/^"|"$/g, "");
   log(
-    earInfo.startsWith("8|3|4|play|tr"),
-    "扒谱页：八节课 + 三种题型 + 四个选项 + 录音工具",
+    earInfo.startsWith("12|3|4|play|tr"),
+    "扒谱页：十二节课 + 三种题型 + 四个选项 + 录音工具",
     earInfo,
   );
 

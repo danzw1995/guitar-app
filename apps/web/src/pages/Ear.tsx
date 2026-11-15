@@ -8,6 +8,7 @@ import {
   type EarQuestion,
 } from "@guitar/core";
 import Transcribe from "../components/Transcribe";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useTone } from "../hooks/useTone";
 import { loadEar, saveEar, type EarStats } from "../lib/storage";
 
@@ -167,6 +168,91 @@ const LESSONS: Lesson[] = [
       hint: "低音 A 是根音，上面是小三度 → 小三和弦 Am。",
     },
   },
+  {
+    no: 9,
+    title: "和弦性质：大、小、减",
+    body: [
+      "三和弦按「两个三度」叠起来分三种：**大三**（4+3 个半音）、**小三**（3+4）、**减三**（3+3）。",
+      "根音到五度都是 7 个半音（纯五度），所以区别全在中间那个三度——听性质就盯这一个音。",
+      "C 调里的七级和弦：1 C 大三、2 Dm、3 Em、4 F 大三、5 G 大三、6 Am、7 Bdim 减三。",
+    ],
+    example: {
+      caption: "C 大三 → C 小三 → C 减三：中间那个音一路往下压",
+      play: [midiOf("C4"), midiOf("E4"), midiOf("G4"), midiOf("C4"), midiOf("Eb4"), midiOf("G4"), midiOf("C4"), midiOf("Eb4"), midiOf("Gb4")],
+      step: 0.34,
+    },
+    check: {
+      prompt: "C–E–G♭ 是什么和弦？",
+      options: ["C 减三和弦", "C 小三和弦", "C 大三和弦"],
+      answer: "C 减三和弦",
+      hint: "C 到 E 是 4 个半音，E 到 G♭ 是 3 个半音——两个小三度叠起来就是减三和弦。",
+    },
+  },
+  {
+    no: 10,
+    title: "级数走向：四个和弦的故事",
+    body: [
+      "流行歌最常见的走向是 **1–5–6–4**（C–G–Am–F），听起来「往前推、再回到原点」。",
+      "**6–4–1–5**（Am–F–C–G）更抒情；**1–6–4–5** 是老派甜歌的套路。走向一样，换调只换主音。",
+      "听走向别听具体和弦名，先听「哪个亮、哪个暗」：1、4、5 级是大三（亮），2、3、6 级是小三（暗）。",
+    ],
+    example: {
+      caption: "C 调 1–5–6–4：C–G–Am–F，每个和弦从低到高拆开弹",
+      play: [
+        midiOf("C4"), midiOf("E4"), midiOf("G4"),
+        midiOf("G3"), midiOf("B3"), midiOf("D4"),
+        midiOf("A3"), midiOf("C4"), midiOf("E4"),
+        midiOf("F3"), midiOf("A3"), midiOf("C4"),
+      ],
+      step: 0.26,
+    },
+    check: {
+      prompt: "C 调里的 1–5–6–4 是哪四个和弦？",
+      options: ["C–G–Am–F", "C–F–G–Am", "Am–F–C–G"],
+      answer: "C–G–Am–F",
+      hint: "1 级 C、5 级 G、6 级 Am、4 级 F。",
+    },
+  },
+  {
+    no: 11,
+    title: "节奏拍点：什么时候响",
+    body: [
+      "扒谱不只有音高，还有时间：一个音在第几拍、占多长。先数拍子（1 2 3 4），再看重音落在哪。",
+      "4/4 里第 1 拍最重、第 3 拍次重；重音落在 2、4 拍就是「反拍」，听起来会往前推。",
+      "吉他上最好用的判断：右手下扫通常落在正拍，上扫落在反拍。",
+    ],
+    example: {
+      caption: "一拍一个，四拍走一遍——第 1 拍最重",
+      play: [midiOf("C3"), midiOf("C3"), midiOf("C3"), midiOf("C3")],
+      step: 0.5,
+    },
+    check: {
+      prompt: "4/4 拍里，重音通常落在哪几拍？",
+      options: ["第 1 拍和第 3 拍", "第 2 拍和第 4 拍", "每拍一样重"],
+      answer: "第 1 拍和第 3 拍",
+      hint: "第 1 拍最重、第 3 拍次重；重音落在 2、4 拍就是反拍。",
+    },
+  },
+  {
+    no: 12,
+    title: "完整扒一段：四步串起来",
+    body: [
+      "完整流程：① 数清有几个音 → ② 定主音 → ③ 把音换成级数 → ④ 对齐拍子，最后按小节写下来。",
+      "先扒一句（两小节），扒对了再往下；一句一句接起来，比一次听一整段可靠得多。",
+      "扒完唱一遍：唱得出来，说明真听清了；唱不出来，多半是猜的。",
+    ],
+    example: {
+      caption: "一句旋律：C D E G E D C（扒完唱一遍）",
+      play: [midiOf("C4"), midiOf("D4"), midiOf("E4"), midiOf("G4"), midiOf("E4"), midiOf("D4"), midiOf("C4")],
+      step: 0.36,
+    },
+    check: {
+      prompt: "扒完一句，最该做的一件事是？",
+      options: ["唱一遍，确认自己听清了", "马上扒下一句", "先把和弦写上"],
+      answer: "唱一遍，确认自己听清了",
+      hint: "唱得出来才是真听清；唱不出来，写下的谱多半是猜的。",
+    },
+  },
 ];
 
 const KIND_LABEL: Record<EarKind, string> = {
@@ -218,6 +304,8 @@ function LessonCheck({ check }: { check: Lesson["check"] }) {
 
 export default function Ear() {
   const { play } = useTone();
+  const narrow = useMediaQuery("(max-width: 900px)");
+  const [openLesson, setOpenLesson] = useState<number | null>(null);
   const [kind, setKind] = useState<EarKind>("position");
   const [stats, setStats] = useState<EarStats>(() => loadEar());
   const [seed, setSeed] = useState(1);
@@ -290,28 +378,46 @@ export default function Ear() {
       <header className="panel-head">
         <h2>扒谱</h2>
         <p>
-          听到一段，把它写下来。这一页分三块：先学怎么听（八节），再练听辨（三种题型），最后用录音扒一段真的。
+          听到一段，把它写下来。这一页分三块：先学怎么听（十二节），再练听辨（三种题型），最后用录音扒一段真的。
         </p>
       </header>
 
-      <h3 className="stat-sub">学 · 八节</h3>
+      <h3 className="stat-sub">学 · 十二节</h3>
+      {narrow && openLesson !== null && (
+        <button type="button" className="btn-quiet ear-back" onClick={() => setOpenLesson(null)}>
+          ← 回到十二节课的目录
+        </button>
+      )}
       <ol className="ear-lessons">
         {LESSONS.map((lesson) => (
-          <li className="ear-lesson" key={lesson.no} data-lesson={lesson.no}>
+          <li
+            className="ear-lesson"
+            key={lesson.no}
+            data-lesson={lesson.no}
+          >
             <h4>
-              <span className="ear-no">{lesson.no}</span>
-              {lesson.title}
-            </h4>
-            {lesson.body.map((line) => (
-              <p key={line}>{emphasize(line)}</p>
-            ))}
-            <div className="ear-example">
-              <button type="button" className="btn-quiet" onClick={() => play(lesson.example.play, lesson.example.step ?? 0.45)}>
-                听一下
+              <button
+                type="button"
+                className="ear-lesson-toggle"
+                aria-expanded={!narrow || openLesson === lesson.no}
+                onClick={() => setOpenLesson(openLesson === lesson.no ? null : lesson.no)}
+              >
+                <span className="ear-no">{lesson.no}</span>
+                {lesson.title}
               </button>
-              <span className="ear-caption">{lesson.example.caption}</span>
+            </h4>
+            <div className="ear-lesson-body" hidden={narrow && openLesson !== lesson.no}>
+              {lesson.body.map((line) => (
+                <p key={line}>{emphasize(line)}</p>
+              ))}
+              <div className="ear-example">
+                <button type="button" className="btn-quiet" onClick={() => play(lesson.example.play, lesson.example.step ?? 0.45)}>
+                  听一下
+                </button>
+                <span className="ear-caption">{lesson.example.caption}</span>
+              </div>
+              <LessonCheck check={lesson.check} />
             </div>
-            <LessonCheck check={lesson.check} />
           </li>
         ))}
       </ol>
