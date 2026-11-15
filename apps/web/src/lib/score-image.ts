@@ -57,7 +57,7 @@ function inkBounds(data: Uint8ClampedArray, width: number, height: number): Ink 
   return { x: left, y: top, w: right - left + 1, h: bottom - top + 1 };
 }
 
-async function rasterize(tex: string): Promise<ScoreImage> {
+async function rasterize(tex: string, minWidth: number): Promise<ScoreImage> {
   const composed = await renderTexToSvg(tex);
   const image = await loadSvg(composed.svg);
   const width = Math.max(1, Math.round(image.naturalWidth || image.width));
@@ -77,7 +77,7 @@ async function rasterize(tex: string): Promise<ScoreImage> {
   const padX = PADDING * PIXEL_RATIO;
   const padTop = PADDING * PIXEL_RATIO;
   const padBottom = PADDING_BOTTOM * PIXEL_RATIO;
-  const outputWidth = Math.max(ink.w + padX * 2, MIN_WIDTH * PIXEL_RATIO + padX * 2);
+  const outputWidth = Math.max(ink.w + padX * 2, minWidth * PIXEL_RATIO + padX * 2);
   const outputHeight = ink.h + padTop + padBottom;
   const offsetX = Math.round((outputWidth - ink.w) / 2);
 
@@ -119,14 +119,21 @@ async function rasterize(tex: string): Promise<ScoreImage> {
   };
 }
 
-/** 一份 alphaTex → 一张 PNG（同一份 tex 只画一次，失败不缓存）。 */
-export function renderScoreImage(tex: string): Promise<ScoreImage> {
-  const hit = cache.get(tex);
+/**
+ * 一份 alphaTex → 一张 PNG（同一份 tex 只画一次，失败不缓存）。
+ *
+ * `minWidth` 是一倍像素下的最小宽度：整段的谱留 420 才不会一截一截；
+ * 单个和弦那种一格的谱用 `200`，省得两边空一大片。
+ */
+export function renderScoreImage(tex: string, options: { minWidth?: number } = {}): Promise<ScoreImage> {
+  const minWidth = options.minWidth ?? MIN_WIDTH;
+  const key = `${minWidth}\u0000${tex}`;
+  const hit = cache.get(key);
   if (hit) return hit;
-  const run = rasterize(tex).catch((error: unknown) => {
-    cache.delete(tex);
+  const run = rasterize(tex, minWidth).catch((error: unknown) => {
+    cache.delete(key);
     throw error;
   });
-  cache.set(tex, run);
+  cache.set(key, run);
   return run;
 }

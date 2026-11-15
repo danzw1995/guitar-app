@@ -772,6 +772,20 @@ for (const selector of ["select", "input", "textarea"]) {
     (clFill.get("background") ?? "").includes("var(--accent)"),
     `background=${clFill.get("background") ?? "未设置"}`,
   );
+  // v0.85.0：一段扫弦切出来的和弦，一行三段（名字 / 时间 / 性质），不能挤成一坨
+  const seqItem = narrowDecls(".cl-seq-item");
+  const seqCols = seqItem.get("grid-template-columns") ?? "";
+  expect(
+    "听和弦切出来的每一段是「名字 / 时间 / 性质」三格",
+    (seqItem.get("display") ?? "") === "grid" && seqCols.includes("1fr") && seqCols.includes("auto"),
+    `display=${seqItem.get("display") ?? "未设置"} columns=${seqCols || "未设置"}`,
+  );
+  const voicingImg = narrowDecls(".chord-voicing-img");
+  expect(
+    "和弦页的六线谱图按原尺寸显示，不拉宽也不超出",
+    (voicingImg.get("width") ?? "") === "auto" && (voicingImg.get("max-width") ?? "") === "100%",
+    `width=${voicingImg.get("width") ?? "未设置"} max=${voicingImg.get("max-width") ?? "未设置"}`,
+  );
 
   // v0.83.0：听辨正确率曲线是个小图，别占满整行
   const earTrend = narrowDecls(".ear-trend");

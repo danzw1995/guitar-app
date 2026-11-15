@@ -608,6 +608,39 @@ try {
   );
   js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
 
+  // 9a3) 我的谱里的和弦卡能跳回和弦页看指法（#chords/chord-Am）
+  js(
+    `(() => { localStorage.setItem('guitar.scores.v1', JSON.stringify([{ id: 'my-chord1', title: '和弦 · Am', ascii: '', source: 'chord', chordName: 'Am', tab: { beatsPerBar: 4, bars: 1, notes: [{ s: 5, f: 0, beat: 0, dur: 4 }, { s: 4, f: 2, beat: 0, dur: 4 }, { s: 3, f: 2, beat: 0, dur: 4 }, { s: 2, f: 1, beat: 0, dur: 4 }, { s: 1, f: 0, beat: 0, dur: 4 }] }, meter: '4/4', bpm: 70, createdAt: Date.now() }])); return 'ok'; })()`,
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js(
+    "(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()",
+  );
+  await sleep(600);
+  const jumpText = String(
+    js(
+      "(() => { const btn = document.querySelector('.my-chord-jump'); return btn ? btn.textContent.trim() : 'none'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("(() => { document.querySelector('.my-chord-jump')?.click(); return 'ok'; })()");
+  await sleep(1000);
+  const jumpLanding = String(
+    js(
+      "(() => { const name = document.querySelector('.chord-detail h3')?.textContent?.trim() ?? ''; const active = document.querySelector('.chord-tile.active .chord-tile-name')?.textContent?.trim() ?? ''; return [location.hash, name, active].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    jumpText.includes("Am") && jumpLanding.startsWith("#chords/chord-Am|Am"),
+    "我的谱：和弦卡能跳回和弦页看同一个和弦的指法",
+    `${jumpText} · ${jumpLanding}`,
+  );
+  js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
+
 
   // 9b) 扒谱（v0.72.0 独立成页）：四节课、练听辨、录音工具都在
   js(
@@ -670,6 +703,29 @@ try {
   // 切回三和弦，免得影响后面的断言
   js(
     "(() => { const b = [...document.querySelectorAll('.ear-sets .chip')].find(n => n.textContent.includes('三和弦')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+
+  // 9b5) 听和弦能切到「一段扫弦」模式（按钮文案跟着变）
+  const seqInfo = String(
+    js(
+      "(() => { const panel = document.querySelector('.chord-listen'); if (!panel) return 'none'; const chips = [...panel.querySelectorAll('.cl-modes .chip')]; const before = [...panel.querySelectorAll('.cl-controls button')][0]?.textContent.trim() ?? ''; chips.find(n => n.textContent.includes('一段'))?.click(); return [chips.length, before].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await sleep(400);
+  const seqAfter = String(
+    js(
+      "(() => { const panel = document.querySelector('.chord-listen'); if (!panel) return 'none'; const btn = [...panel.querySelectorAll('.cl-controls button')][0]?.textContent.trim() ?? ''; const on = [...panel.querySelectorAll('.cl-modes .chip')].find(n => n.getAttribute('aria-pressed') === 'true')?.textContent ?? ''; return [btn, on.includes('一段') ? 'on' : 'off'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    seqInfo === "2|听一个和弦" && seqAfter.includes("听一段") && seqAfter.endsWith("|on"),
+    "听和弦：能切成「一段扫弦」，按钮跟着变成「听一段（15 秒）」",
+    `${seqInfo} → ${seqAfter}`,
+  );
+  // 切回「一个和弦」
+  js(
+    "(() => { const b = [...document.querySelectorAll('.cl-modes .chip')].find(n => n.textContent.includes('一个和弦')); b?.click(); return 'ok'; })()",
   );
   await sleep(300);
 

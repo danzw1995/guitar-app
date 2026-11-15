@@ -219,3 +219,126 @@ export function detectChordFromChroma(chroma: number[], bassPc?: number): Detect
   const normalized = peak > 0 ? chroma.map((value) => Math.max(0, value) / peak) : chroma;
   return pickBest(normalized, typeof bassPc === "number" ? ((bassPc % 12) + 12) % 12 : null);
 }
+
+/** 一段录音里的一个和弦：从第几秒到第几秒、认成了什么。 */
+export interface ChordSegment {
+  start: number;
+  end: number;
+  chord: DetectedChord | null;
+  /** 这个和弦占了几帧（帧率越高越准）。 */
+  frames: number;
+}
+
+export interface SegmentOptions {
+  /** 相邻两帧的相似度低于它就算「换和弦了」（0–1，越大越敏感）。 */
+  threshold?: number;
+  /** 一个和弦至少撑这么久才算数——换把位时那几帧过渡声音不像任何和弦。 */
+  minSeconds?: number;
+  /** 连续几帧都判成换才真的切（防抖，单帧噪声不该切）。 */
+  holdFrames?: number;
+}
+
+/** 把一帧 chroma 归一成单位向量，之后用点积当余弦相似度。 */
+function unit(chroma: number[]): number[] {
+  let sum = 0;
+  for (const value of chroma) sum += value * value;
+  const length = Math.sqrt(sum);
+  if (!(length > 0)) return chroma.map(() => 0);
+  return chroma.map((value) => value / length);
+}
+
+function dot(a: number[], b: number[]): number {
+  let sum = 0;
+  for (let i = 0; i < a.length; i += 1) sum += a[i] * b[i];
+  return sum;
+}
+
+function meanOf(frames: number[][]): number[] {
+  const out = new Array(12).fill(0);
+  for (const frame of frames) for (let i = 0; i < 12; i += 1) out[i] += frame[i];
+  return out.map((value) => value / Math.max(1, frames.length));
+}
+
+/**
+ * 把一串按时间排好的 chroma 帧切成「一个和弦一段」。
+ *
+ * 做法：当前段维护一个平均向量，新帧和它的余弦相似度够高就并进来；连续
+ * `holdFrames` 帧都不像了才真的切——扫弦一上一下、拨片换弦都会让单帧失真，
+ * 只看一帧会切出满屏碎片。切完再把短于 `minSeconds` 的段丢掉（换把位的过渡），
+ * 最后把认成同一个和弦的相邻段合起来。
+ *
+ * 帧里的全 0（没声音）直接断开：两段扫弦之间的空拍不该被算进任何一个和弦。
+ */
+export function segmentChords(
+  chromas: number[][],
+  frameSeconds: number,
+  options: SegmentOptions = {},
+): ChordSegment[] {
+  const threshold = options.threshold ?? 0.86;
+  const minSeconds = options.minSeconds ?? 0.35;
+  const holdFrames = Math.max(1, Math.round(options.holdFrames ?? 2));
+  if (!(frameSeconds > 0) || chromas.length === 0) return [];
+
+  interface Run {
+    from: number;
+    to: number;
+    frames: number[][];
+  }
+  const runs: Run[] = [];
+  let current: Run | null = null;
+  /** 已经不像当前段、但还没攒够帧数的那几帧；真切换时它们归到新的一段。 */
+  let pending: number[][] = [];
+  let divergeFrom = 0;
+
+  for (let index = 0; index < chromas.length; index += 1) {
+    const frame = chromas[index];
+    const loud = frame.length === 12 && frame.some((value) => value > 0);
+    if (!loud) {
+      if (current) {
+        runs.push(current);
+        current = null;
+      }
+      pending = [];
+      continue;
+    }
+    const vector = unit(frame);
+    if (!current) {
+      current = { from: index, to: index, frames: [vector] };
+      pending = [];
+      continue;
+    }
+    const center = unit(meanOf(current.frames));
+    if (dot(center, vector) >= threshold) {
+      current.frames.push(vector);
+      current.to = index;
+      pending = [];
+      continue;
+    }
+    if (pending.length === 0) divergeFrom = index;
+    pending.push(vector);
+    if (pending.length < holdFrames) continue;
+    // 切换点回到第一帧「不像」的地方：那几帧本来就属于新和弦
+    current.to = divergeFrom - 1;
+    if (current.to >= current.from) runs.push(current);
+    current = { from: divergeFrom, to: index, frames: pending.slice() };
+    pending = [];
+  }
+  if (current) runs.push(current);
+
+  const segments: ChordSegment[] = [];
+  for (const run of runs) {
+    const seconds = (run.to - run.from + 1) * frameSeconds;
+    if (seconds + 1e-9 < minSeconds) continue;
+    const chord = detectChordFromChroma(meanOf(run.frames));
+    const start = Number((run.from * frameSeconds).toFixed(2));
+    const end = Number(((run.to + 1) * frameSeconds).toFixed(2));
+    const previous = segments[segments.length - 1];
+    if (previous && previous.chord?.label === chord?.label) {
+      previous.end = end;
+      previous.frames += run.to - run.from + 1;
+      continue;
+    }
+    segments.push({ start, end, chord, frames: run.to - run.from + 1 });
+  }
+  return segments;
+}

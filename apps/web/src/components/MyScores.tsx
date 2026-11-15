@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { tabToAlphaTex, type Tab } from "@guitar/core";
 import type { FollowTarget } from "./FollowAlong";
-import { renderScoreImage, type ScoreImage } from "../lib/score-image";
+import type { ScoreImage } from "../lib/score-image";
+import { renderScoreImage } from "../lib/score-image";
+import { useScoreImage } from "../hooks/useScoreImage";
+import { goTo } from "../lib/nav";
 import {
   addScore,
   loadScores,
@@ -84,30 +87,6 @@ interface Props {
 interface ImageState {
   image?: ScoreImage;
   error?: string;
-}
-
-/** 一份 tex → 一张 PNG（失败只记错误，不抛）。 */
-function useScoreImage(tex: string | null): ImageState {
-  const [state, setState] = useState<ImageState>({});
-  useEffect(() => {
-    if (!tex) {
-      setState({});
-      return;
-    }
-    let alive = true;
-    setState({});
-    renderScoreImage(tex)
-      .then((image) => {
-        if (alive) setState({ image });
-      })
-      .catch((error: unknown) => {
-        if (alive) setState({ error: (error as Error).message });
-      });
-    return () => {
-      alive = false;
-    };
-  }, [tex]);
-  return state;
 }
 
 function ScoreFigure({
@@ -249,6 +228,17 @@ function ScoreCard({
             : "扒出来的 · 只能试听、导出，不能编辑"}
         </p>
       )}
+      {storedSource === "chord" && score.chordName ? (
+        <p className="my-source">
+          <button
+            type="button"
+            className="btn-quiet my-chord-jump"
+            onClick={() => goTo("chords", `chord-${score.chordName}`)}
+          >
+            去和弦页看 {score.chordName} 的指法
+          </button>
+        </p>
+      ) : null}
       {parsed?.error ? (
         <p className="my-error">{parsed.error}</p>
       ) : (

@@ -10,7 +10,9 @@ import {
 } from "@guitar/core";
 import ChordDiagram from "../components/ChordDiagram";
 import ChordDrill from "../components/ChordDrill";
+import ChordVoicing from "../components/ChordVoicing";
 import { arpeggioPattern, useTone } from "../hooks/useTone";
+import { parseHash } from "../lib/nav";
 
 /** 指法数字的含义（1=食指 … 4=小指）。 */
 const FINGER_LEGEND = "1 食指 · 2 中指 · 3 无名指 · 4 小指";
@@ -18,8 +20,16 @@ const FINGER_LEGEND = "1 食指 · 2 中指 · 3 无名指 · 4 小指";
 /** 只有大调才用来算级数（小调的关系大调与它共用一套音）。 */
 const MAJOR_KEYS = KEYS.filter((key) => key.mode === "major");
 
+/** `#chords/chord-Am` 里的和弦名；认不出就回 C。 */
+function chordFromHash(): string {
+  const route = parseHash(window.location.hash);
+  if (route?.tab !== "chords" || !route.target?.startsWith("chord-")) return "C";
+  const name = route.target.slice("chord-".length);
+  return CHORD_BY_NAME.has(name) ? name : "C";
+}
+
 export default function Chords() {
-  const [selected, setSelected] = useState("C");
+  const [selected, setSelected] = useState(chordFromHash);
   const [keyId, setKeyId] = useState("C");
   const chord = CHORD_BY_NAME.get(selected)!;
   const info = chordInfo(chord);
@@ -46,6 +56,13 @@ export default function Chords() {
     [],
   );
 
+  // 从「我的谱」里的和弦卡跳过来（#chords/chord-Am）：换到那个和弦
+  useEffect(() => {
+    const onHash = () => setSelected(chordFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
   return (
     <>
       <section className="panel">
@@ -62,6 +79,7 @@ export default function Chords() {
           {CHORDS.map((c) => (
             <button
               key={c.name}
+              id={`chord-${c.name}`}
               className={c.name === selected ? "chord-tile active" : "chord-tile"}
               onClick={() => setSelected(c.name)}
             >
@@ -164,6 +182,9 @@ export default function Chords() {
           </p>
         </div>
       </div>
+
+      <h3 className="chord-sub">{chord.name} 的六线谱版</h3>
+      <ChordVoicing name={chord.name} />
       </section>
 
       <ChordDrill />

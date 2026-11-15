@@ -15,6 +15,8 @@ export interface MyScore {
    * `chord` = 听和弦认出来之后存下的和弦按法（只读）。
    */
   source?: "manual" | "transcribe" | "chord";
+  /** `chord` 存下的和弦名（`C` / `Am`），用来跳回和弦页看指法。 */
+  chordName?: string;
   /** 扒谱存下的谱：没有 ASCII 原文，留着音符才能重画、试听、跟练。 */
   tab?: Tab;
   meter?: string;
@@ -182,6 +184,7 @@ export function addScore(input: {
   title: string;
   ascii: string;
   source?: "manual" | "transcribe" | "chord";
+  chordName?: string;
   tab?: Tab;
   meter?: string;
   bpm?: number;
@@ -196,6 +199,7 @@ export function addScore(input: {
     ascii: input.ascii,
     createdAt: Date.now(),
     source: input.source,
+    chordName: input.chordName,
     tab: input.tab,
     meter: input.meter,
     bpm: input.bpm,
@@ -204,9 +208,12 @@ export function addScore(input: {
     imageHeight: input.imageHeight,
     beats: input.beats,
   };
-  // 手写谱按原文去重（同一段别存两遍）；扒谱的没有原文，不去重（每次扒的都不一样）。
+  // 只有手写谱能按原文去重（同一段别存两遍）；扒谱与和弦卡没有原文（`ascii` 都是空串），
+  // 一律按 id 保留——否则存第二个和弦时会把第一个挤掉。
   const rest = loadScores().filter((item) =>
-    input.source === "transcribe" ? item.id !== score.id : item.ascii !== input.ascii,
+    input.source === "manual" || input.source === undefined
+      ? item.ascii !== input.ascii
+      : item.id !== score.id,
   );
   return persist([score, ...rest]);
 }

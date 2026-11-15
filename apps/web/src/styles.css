@@ -3832,6 +3832,87 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 12px;
   color: var(--muted);
 }
+.cl-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.cl-modes .chip {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.cl-seq-head {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.cl-seq-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cl-seq-item {
+  display: grid;
+  grid-template-columns: minmax(64px, auto) auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.cl-seq-item b {
+  font-size: 16px;
+  color: var(--accent);
+}
+.cl-seq-item span {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cl-seq-item em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 12px;
+}
+.my-chord-jump {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.chord-voicing {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+.chord-sub {
+  margin: 18px 0 8px;
+  font-size: 15px;
+}
+.chord-voicing-img {
+  /* 按画出来的尺寸显示：图已经是 2 倍像素，再拉宽就糊了 */
+  width: auto;
+  max-width: 100%;
+  height: auto;
+}
+.chord-voicing-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 64ch;
+}
 @media (max-width: 720px) {
   .cl-controls .btn {
     min-height: 40px;

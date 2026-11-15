@@ -5,6 +5,8 @@ import {
   chromaOfSpectrum,
   detectChordFromChroma,
   noteNameOf,
+  segmentChords,
+  type ChordSegment,
   type ChordShape,
   type DetectedChord,
 } from "@guitar/core";
@@ -13,9 +15,13 @@ import { addScore } from "../lib/my-scores";
 
 const FFT_SIZE = 4096;
 const LISTEN_MS = 2400;
+const SEQUENCE_MS = 15000;
 const FRAME_MS = 80;
 
 type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
+
+/** 一次听一个和弦，还是一段扫弦里切出好几个。 */
+type Mode = "single" | "sequence";
 
 interface ChordReading {
   chord: DetectedChord | null;
@@ -63,7 +69,9 @@ const STEP_TEXT: Record<number, string> = {
  */
 export default function ChordListen() {
   const [phase, setPhase] = useState<Phase>("idle");
+  const [mode, setMode] = useState<Mode>("single");
   const [reading, setReading] = useState<ChordReading | null>(null);
+  const [segments, setSegments] = useState<ChordSegment[] | null>(null);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
   const [saved, setSaved] = useState(false);
@@ -72,6 +80,8 @@ export default function ChordListen() {
   const ctxRef = useRef<AudioContext | null>(null);
   const rafRef = useRef(0);
   const accRef = useRef<number[]>(new Array(12).fill(0));
+  /** 一段模式的原始帧：每一帧 12 个音级，按时间顺序排。 */
+  const chromasRef = useRef<number[][]>([]);
   const framesRef = useRef(0);
   const startedAtRef = useRef(0);
   const lastFrameRef = useRef(0);
@@ -93,8 +103,15 @@ export default function ChordListen() {
     cancelAnimationFrame(rafRef.current);
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
-    const chroma = accRef.current;
     const frames = framesRef.current;
+    if (mode === "sequence") {
+      // 一段模式：交给 core 按「像不像上一个和弦」切开，页面不自己判断
+      setSegments(segmentChords(chromasRef.current, FRAME_MS / 1000));
+      setPhase("idle");
+      setProgress(0);
+      return;
+    }
+    const chroma = accRef.current;
     const peak = Math.max(...chroma);
     if (peak <= 0) {
       setReading({ chord: null, frames, bassPc: null });
@@ -104,7 +121,7 @@ export default function ChordListen() {
     }
     setPhase("idle");
     setProgress(0);
-  }, []);
+  }, [mode]);
 
   /**
    * 把这个和弦的按法存进「我的谱」：一整小节一个全音符和弦，
@@ -116,6 +133,7 @@ export default function ChordListen() {
       title: `和弦 · ${shape.name}`,
       ascii: "",
       source: "chord",
+      chordName: shape.name,
       tab,
       meter: "4/4",
       bpm: 70,
@@ -127,12 +145,15 @@ export default function ChordListen() {
   const start = useCallback(async () => {
     setError("");
     setReading(null);
+    setSegments(null);
     setProgress(0);
     setSaved(false);
     setPhase("starting");
     accRef.current = new Array(12).fill(0);
+    chromasRef.current = [];
     framesRef.current = 0;
     doneRef.current = false;
+    const limit = mode === "sequence" ? SEQUENCE_MS : LISTEN_MS;
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setPhase("unsupported");
@@ -168,8 +189,8 @@ export default function ChordListen() {
       const tick = (): void => {
         const now = performance.now();
         const elapsed = now - startedAtRef.current;
-        setProgress(Math.min(1, elapsed / LISTEN_MS));
-        if (elapsed >= LISTEN_MS) {
+        setProgress(Math.min(1, elapsed / limit));
+        if (elapsed >= limit) {
           finish();
           return;
         }
@@ -189,6 +210,7 @@ export default function ChordListen() {
             }
             const chroma = chromaOfSpectrum(linear, ctx.sampleRate, FFT_SIZE);
             for (let pc = 0; pc < 12; pc += 1) accRef.current[pc] += chroma[pc];
+            chromasRef.current.push(chroma);
             framesRef.current += 1;
           }
         }
@@ -211,18 +233,24 @@ export default function ChordListen() {
   const library = chord ? CHORD_BY_NAME.get(chord.label) : undefined;
   const hint =
     phase === "denied"
-      ? "麦克风被拒绝了。地址栏左边把权限打开，再点一次「听一个和弦」。"
+      ? "麦克风被拒绝了。地址栏左边把权限打开，再点一次。"
       : phase === "unsupported"
         ? "这个浏览器不给用麦克风（或者不是 https）。换 Chrome / Safari 试试。"
         : phase === "error"
           ? error
           : listening
-            ? "在听… 按住一个和弦别动，两秒后出结果。"
+            ? mode === "sequence"
+              ? "在听… 把一段扫弦弹完（最多 15 秒），中途换和弦也没关系。"
+              : "在听… 按住一个和弦别动，两秒后出结果。"
             : reading && !chord
               ? "没听清。一次只按一个和弦、每根弦都按实，别扫得太快。"
               : reading && chord
-                ? "认出来了。再点一次「听一个和弦」就换下一个——这个结果会被替换掉。"
-                : "点「听一个和弦」，按住一个和弦（比如 C），两秒后告诉你它是什么。";
+                ? "认出来了。再点一次就换下一个——这个结果会被替换掉。"
+                : segments && segments.length > 0
+                  ? `切出 ${segments.length} 段。再点一次就重录——这次的结果会被替换掉。`
+                  : mode === "sequence"
+                    ? "点「听一段」，弹一小段（C → Am → F → G 都行），十五秒后告诉你中间换了哪几个和弦。"
+                    : "点「听一个和弦」，按住一个和弦（比如 C），两秒后告诉你它是什么。";
 
   return (
     <section className="panel chord-listen" id="chord-listen">
@@ -230,8 +258,33 @@ export default function ChordListen() {
         <h2>听和弦</h2>
         <p>
           按住一个和弦，这里把频谱折成 12 个音级，再和和弦模板比。认的是「哪几个音一起响」，
-          所以扫弦、分解都行；单音听不出和弦。
+          所以扫弦、分解都行；单音听不出和弦。切到「一段扫弦」还能听出这一串里换了哪几个。
         </p>
+      </div>
+
+      <div className="cl-modes" role="group" aria-label="听一个和弦还是一段">
+        <button
+          type="button"
+          className={mode === "single" ? "chip on" : "chip"}
+          aria-pressed={mode === "single"}
+          onClick={() => {
+            if (listening) finish();
+            setMode("single");
+          }}
+        >
+          一个和弦
+        </button>
+        <button
+          type="button"
+          className={mode === "sequence" ? "chip on" : "chip"}
+          aria-pressed={mode === "sequence"}
+          onClick={() => {
+            if (listening) finish();
+            setMode("sequence");
+          }}
+        >
+          一段扫弦
+        </button>
       </div>
 
       <div className="cl-controls">
@@ -240,17 +293,42 @@ export default function ChordListen() {
           className={listening ? "btn" : "btn primary"}
           onClick={listening ? finish : start}
         >
-          {listening ? "停" : "听一个和弦"}
+          {listening ? "停" : mode === "sequence" ? "听一段（15 秒）" : "听一个和弦"}
         </button>
         <span className="cl-progress" aria-hidden="true">
           <span style={{ width: `${Math.round(progress * 100)}%` }} />
         </span>
         {reading && <span className="cl-frames">收了 {reading.frames} 帧</span>}
+        {segments && segments.length > 0 && <span className="cl-frames">切出 {segments.length} 段</span>}
       </div>
 
       <p className={listening ? "cl-hint live" : "cl-hint"} role="status">
         {hint}
       </p>
+
+      {segments && segments.length === 0 && (
+        <p className="cl-hint">这一段里没听出完整的和弦——弹得再实一点，或者每段多按一会儿。</p>
+      )}
+
+      {segments && segments.length > 0 && (
+        <div className="cl-result cl-sequence">
+          <p className="cl-seq-head">这一段里听到 {segments.length} 个和弦：</p>
+          <ol className="cl-seq-list">
+            {segments.map((segment, index) => (
+              <li key={`${segment.start}-${index}`} className="cl-seq-item">
+                <b>{segment.chord?.label ?? "没认出来"}</b>
+                <span>
+                  {segment.start.toFixed(1)}–{segment.end.toFixed(1)} 秒
+                </span>
+                {segment.chord && <em>{QUALITY_TEXT[segment.chord.quality] ?? segment.chord.name}</em>}
+              </li>
+            ))}
+          </ol>
+          <p className="cl-tip">
+            切段靠的是「音级分布变了没有」，所以换和弦要弹清楚；同一个和弦按住不放会被算成一段。
+          </p>
+        </div>
+      )}
 
       {chord && (
         <div className="cl-result">

@@ -20,6 +20,7 @@ import {
   chromaOfSpectrum,
   detectChord,
   detectChordFromChroma,
+  segmentChords,
   completedCount,
   dailyPuzzle,
   dailySpecFor,
@@ -2977,6 +2978,50 @@ test("听和弦：把一个和弦的按法写成谱（不弹的弦不进谱，�
   const d = chordVoicingTab(CHORD_BY_NAME.get("D")!);
   assert.equal(d.notes.length, 4);
   assert.deepEqual(d.notes.map((note) => note.s).sort(), [1, 2, 3, 4]);
+});
+
+test("听和弦：一段扫弦按时间切成几个和弦，空拍不算进去", () => {
+  // 一帧 = 一个和弦的组成音，值都是 1（页面里是归一化之后的频谱强度）
+  const frame = (pcs: number[]) => {
+    const out = new Array(12).fill(0);
+    for (const pc of pcs) out[((pc % 12) + 12) % 12] = 1;
+    return out;
+  };
+  const silent = new Array(12).fill(0);
+  const C = frame([0, 4, 7]);
+  const Am = frame([9, 0, 4]);
+  const G = frame([7, 11, 2]);
+
+  // 6 帧 C、1 帧过渡（两半混着）、6 帧 Am、3 帧静音、6 帧 G
+  const mixed = C.map((value, index) => (value + Am[index]) / 2);
+  const chromas = [
+    ...Array.from({ length: 6 }, () => C),
+    mixed,
+    ...Array.from({ length: 6 }, () => Am),
+    ...Array.from({ length: 3 }, () => silent),
+    ...Array.from({ length: 6 }, () => G),
+  ];
+  const segments = segmentChords(chromas, 0.1);
+  assert.deepEqual(
+    segments.map((segment) => segment.chord?.label ?? "?"),
+    ["C", "Am", "G"],
+  );
+  // 时间轴按帧算：C 从 0 到 0.7（那帧「过渡」两半混着，还是更像 C，被并进来），
+  // Am 从 0.7 到 1.3
+  assert.equal(segments[0].start, 0);
+  assert.equal(segments[0].end, 0.7);
+  assert.equal(segments[1].start, 0.7);
+  assert.equal(segments[1].end, 1.3);
+  // 静音那三帧之后才开始 G
+  assert.ok(segments[2].start >= 1.6);
+
+  // 太短的段不算：只有 2 帧（0.2 秒）的 Am 被丢掉
+  const short = segmentChords([...Array.from({ length: 6 }, () => C), ...Array.from({ length: 2 }, () => Am)], 0.1);
+  assert.deepEqual(short.map((segment) => segment.chord?.label), ["C"]);
+
+  // 帧率不合法 / 没有帧
+  assert.deepEqual(segmentChords([], 0.1), []);
+  assert.deepEqual(segmentChords([C], 0), []);
 });
 
 
