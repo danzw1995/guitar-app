@@ -473,10 +473,16 @@ button, select, input { font: inherit; color: inherit; }
 .goal-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }
 .goal-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
 .goal-chips .chip { min-height: 40px; padding: 0 10px; font-size: 12px; }
-/* 练习页顶部那条：把「本周目标」从统计页搬到每天看得到的地方 */
-.week-goal { display: grid; grid-template-columns: auto minmax(60px, 1fr) auto; align-items: center; gap: 10px; margin: 8px 0 12px; font-size: 12px; color: var(--muted); }
+/* 练习页顶部那条：把「本周目标」从统计页搬到每天看得到的地方；整行是个按钮，点一下去统计页改 */
+.week-goal {
+  display: grid; grid-template-columns: auto minmax(60px, 1fr) auto; align-items: center; gap: 10px;
+  width: 100%; min-height: 40px; margin: 4px 0 10px; padding: 0;
+  border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12px;
+  text-align: left; cursor: pointer;
+}
+.week-goal:hover .week-goal-note, .week-goal:focus-visible .week-goal-note { color: var(--text); }
 .week-goal-text { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.week-goal-bar { height: 6px; border-radius: 999px; background: #0d1117; overflow: hidden; }
+.week-goal-bar { display: block; height: 6px; border-radius: 999px; background: #0d1117; overflow: hidden; }
 .week-goal-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 240ms ease; }
 .week-goal-note { white-space: nowrap; }
 .stat-sub { margin: 22px 0 10px; font-size: 15px; }

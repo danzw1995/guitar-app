@@ -811,17 +811,26 @@ try {
   const practiceGoal = JSON.parse(
     String(
       js(
-        "(() => { const g = document.querySelector('.week-goal'); const bar = document.querySelector('.week-goal-bar'); return JSON.stringify({ present: !!g, text: document.querySelector('.week-goal-text')?.textContent?.trim() ?? '', now: bar?.getAttribute('aria-valuenow') ?? '', note: document.querySelector('.week-goal-note')?.textContent?.trim() ?? '' }); })()",
+        "(() => { const g = document.querySelector('.week-goal'); const bar = document.querySelector('.week-goal-bar'); return JSON.stringify({ present: !!g, text: document.querySelector('.week-goal-text')?.textContent?.trim() ?? '', percent: bar?.getAttribute('data-percent') ?? '', label: g?.getAttribute('aria-label') ?? '', note: document.querySelector('.week-goal-note')?.textContent?.trim() ?? '' }); })()",
       ),
     )
       .replace(/^"|"$/g, "")
       .replace(/\\"/g, '"'),
   );
   log(
-    goalBefore === "0" && practiceGoal.present && practiceGoal.text.endsWith("/ 60 分钟") && Number(practiceGoal.now) >= 0,
+    goalBefore === "0" && practiceGoal.present && practiceGoal.text.endsWith("/ 60 分钟") && Number(practiceGoal.percent) >= 0,
     "练习页：设了本周目标，顶部就有那条进度",
-    `设之前 ${goalBefore} 条 · 现在「${practiceGoal.text}」${practiceGoal.now}% · ${practiceGoal.note}`,
+    `设之前 ${goalBefore} 条 · 现在「${practiceGoal.text}」${practiceGoal.percent}% · ${practiceGoal.note}`,
   );
+  // 点这一行能去统计页（改目标）
+  js("(() => { document.querySelector('.week-goal')?.click(); return 'ok'; })()");
+  await sleep(600);
+  const goalJump = String(
+    js(
+      "(() => { const cur = document.querySelector('nav.tabs button[aria-current=\"page\"]'); return `${location.hash}|${cur?.textContent?.trim() ?? ''}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(goalJump === "#stats|统计", "练习页：点那条本周目标会跳到统计页", goalJump);
   js(
     "(() => { const s = JSON.parse(localStorage.getItem('guitar.settings.v1') || '{}'); s.weeklyGoal = 0; localStorage.setItem('guitar.settings.v1', JSON.stringify(s)); return 'ok'; })()",
   );

@@ -45,7 +45,7 @@ import {
   type RhythmRecords,
   type SkipLog,
 } from "../lib/storage";
-import { parseHash } from "../lib/nav";
+import { goTo, parseHash } from "../lib/nav";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
@@ -294,24 +294,31 @@ export default function Practice() {
       </div>
 
       {weekGoal > 0 && (
-        <div className="week-goal">
+        <button
+          type="button"
+          className="week-goal"
+          onClick={() => goTo("stats")}
+          title="去统计页改本周目标"
+          aria-label={
+            weekGoalState.reached
+              ? `本周目标 ${weekGoalState.goal} 分钟已达成；点一下去统计页改`
+              : `本周目标 ${weekGoalState.goal} 分钟，已完成 ${weekGoalState.percent}%，还差 ${weekGoalState.remaining} 分钟；点一下去统计页改`
+          }
+        >
           <span className="week-goal-text">
             本周 {weekGoalState.done} / {weekGoalState.goal} 分钟
           </span>
-          <div
+          <span
             className="week-goal-bar"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={weekGoalState.percent}
-            aria-label={`本周目标 ${weekGoalState.goal} 分钟，已完成 ${weekGoalState.percent}%`}
+            aria-hidden="true"
+            data-percent={weekGoalState.percent}
           >
             <span style={{ width: `${weekGoalState.percent}%` }} />
-          </div>
+          </span>
           <span className="week-goal-note">
             {weekGoalState.reached ? "这周目标达成了" : `还差 ${weekGoalState.remaining} 分钟`}
           </span>
-        </div>
+        </button>
       )}
 
       {follow && (
@@ -429,7 +436,7 @@ export default function Practice() {
 
       {doneCount === session.blocks.length && session.blocks.length > 0 && (
         <p className="practice-all-done">
-          今天的计划做完了。想再练一会儿，就去下面练习库里挑一条——明天的计划会按今天练过的重新排。
+          今天的计划做完了{weekGoalState.reached ? "，本周目标也达成了" : ""}。想再练一会儿，就去下面练习库里挑一条——明天的计划会按今天练过的重新排。
         </p>
       )}
 
