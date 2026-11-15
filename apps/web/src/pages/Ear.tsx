@@ -261,11 +261,19 @@ const KIND_LABEL: Record<EarKind, string> = {
   interval: "音程判断",
   degree: "级数判断",
   progression: "级数走向",
+  quality: "和弦性质",
 };
 
 function percentOf(correct: number, total: number): string {
   if (total === 0) return "—";
   return `${Math.round((correct / total) * 100)}%`;
+}
+
+/** 播放间隔：走向题 12 个音要快；和弦性质要「一起响」；其余一音一拍。 */
+function stepOf(question: EarQuestion): number {
+  if (question.kind === "progression") return 0.28;
+  if (question.kind === "quality") return 0.02;
+  return question.play.length > 1 ? 0.6 : 0.7;
 }
 
 /** 正文里用 **…** 标重点，渲染成 <strong>（不引 markdown 库）。 */
@@ -328,13 +336,18 @@ export default function Ear() {
       const roots = question.play.filter((_, i) => i % 3 === 0).map((midi) => noteName(midi));
       return `根音 ${roots.join(" → ")}`;
     }
+    // 和弦性质是三个音一起响，用「+」而不是「→」
+    if (question.kind === "quality") {
+      return question.play.map((midi) => noteName(midi)).join(" + ");
+    }
     return question.play.map((midi) => noteName(midi)).join(" → ");
   }, [question]);
 
   useEffect(() => {
     if (!question || finished) return;
-    // 走向题是 12 个音（四个和弦各三个），拍子要短，不然一题要听七八秒
-    play(question.play, question.kind === "progression" ? 0.28 : question.play.length > 1 ? 0.6 : 0.7);
+    // 走向题是 12 个音（四个和弦各三个），拍子要短，不然一题要听七八秒；
+    // 和弦性质反过来，三个音要「一起」响（20ms 间隔听感上就是一下扫下去）
+    play(question.play, stepOf(question));
     // 只在换题时播一次：play 每次渲染都是新函数，放进依赖会一直重播
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question?.id]);
@@ -386,7 +399,7 @@ export default function Ear() {
       <header className="panel-head">
         <h2>扒谱</h2>
         <p>
-          听到一段，把它写下来。这一页分三块：先学怎么听（十二节），再练听辨（三种题型），最后用录音扒一段真的。
+          听到一段，把它写下来。这一页分三块：先学怎么听（十二节），再练听辨（五种题型），最后用录音扒一段真的。
         </p>
       </header>
 
@@ -483,7 +496,7 @@ export default function Ear() {
             </p>
             <p className="ear-prompt">{question.prompt}</p>
             <div className="ear-actions">
-              <button type="button" className="btn" onClick={() => play(question.play, question.play.length > 1 ? 0.6 : 0.7)}>
+              <button type="button" className="btn" onClick={() => play(question.play, stepOf(question))}>
                 再听一遍
               </button>
               {answered && <span className="ear-heard">听到的是 {heard}</span>}

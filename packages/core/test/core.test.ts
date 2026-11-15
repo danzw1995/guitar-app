@@ -56,6 +56,8 @@ import {
   degreeChord,
   earProgressionQuestion,
   DEGREE_PROGRESSIONS,
+  earQualityQuestion,
+  EAR_QUALITIES,
   MAJOR_DEGREES,
   intervalName,
   earIntervalQuestion,
@@ -2811,6 +2813,39 @@ test("听和弦：频谱折成 12 个音级，C 大三和弦认成 C", () => {
   // 静音：全 0 不能硬给一个和弦
   assert.equal(detectChordFromChroma(new Array(12).fill(0)), null);
   assert.equal(detectChordFromChroma([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), null);
+});
+
+test("听辨：和弦性质听的是三个音一起响，四种性质轮着出", () => {
+  // 四种性质的三度叠法
+  const byId = new Map(EAR_QUALITIES.map((item) => [item.id, item.intervals]));
+  assert.deepEqual(byId.get("major"), [0, 4, 7]);
+  assert.deepEqual(byId.get("minor"), [0, 3, 7]);
+  assert.deepEqual(byId.get("dim"), [0, 3, 6]);
+  assert.deepEqual(byId.get("aug"), [0, 4, 8]);
+
+  // C4 上的小三和弦：三个音一起给，选项是四种性质
+  const minor = earQualityQuestion(60, "minor", 3);
+  assert.equal(minor.kind, "quality");
+  assert.deepEqual(minor.play, [60, 63, 67]);
+  assert.equal(minor.answer, "小三和弦");
+  assert.equal(minor.options.length, 4);
+  assert.equal(new Set(minor.options.map((option) => option.id)).size, 4);
+  assert.ok(minor.options.some((option) => option.id === "小三和弦"));
+  assert.ok(minor.hint.includes("3 + 4"));
+
+  // 同一个种子两次一模一样，换种子换选项顺序
+  assert.deepEqual(earQualityQuestion(60, "dim", 5), earQualityQuestion(60, "dim", 5));
+
+  assert.throws(() => earQualityQuestion(60, "whatever" as never), /没有这种性质/);
+
+  // 一轮 8 题：都是三音、相邻两题不是同一种性质
+  const round = earRound("quality", 11, 8);
+  assert.equal(round.length, 8);
+  assert.ok(round.every((question) => question.kind === "quality" && question.play.length === 3));
+  assert.ok(round.every((question) => question.options.some((option) => option.id === question.answer)));
+  for (let i = 1; i < round.length; i += 1) {
+    assert.notEqual(round[i].answer, round[i - 1].answer);
+  }
 });
 
 

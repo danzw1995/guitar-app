@@ -10,7 +10,7 @@ import { positionsFor } from "./transcribe.ts";
  * 同一个种子出同一套题）。
  */
 
-export type EarKind = "position" | "interval" | "degree" | "progression";
+export type EarKind = "position" | "interval" | "degree" | "progression" | "quality";
 
 /** 大调音阶里 1–7 级相对主音的半音数。 */
 export const MAJOR_DEGREES = [0, 2, 4, 5, 7, 9, 11] as const;
@@ -231,11 +231,51 @@ export function earProgressionQuestion(root: number, degrees: number[], seed = 1
   };
 }
 
+/** 四种三和弦的性质，以及它们「听起来像什么」。 */
+export interface EarQuality {
+  id: "major" | "minor" | "dim" | "aug";
+  label: string;
+  intervals: number[];
+  hint: string;
+}
+
+export const EAR_QUALITIES: EarQuality[] = [
+  { id: "major", label: "大三和弦", intervals: [0, 4, 7], hint: "根音 + 4 + 3 个半音，最稳、最亮" },
+  { id: "minor", label: "小三和弦", intervals: [0, 3, 7], hint: "根音 + 3 + 4 个半音，比大三暗一点" },
+  { id: "dim", label: "减三和弦", intervals: [0, 3, 6], hint: "两个小三度叠起来，悬着、不落地" },
+  { id: "aug", label: "增三和弦", intervals: [0, 4, 8], hint: "两个大三度叠起来，往外撑、飘着" },
+];
+
+/**
+ * 和弦性质：同时给三个音，问它是大三 / 小三 / 减 / 增。
+ *
+ * 三个音一起响（不是琶音）——性质听的是「三度叠起来是什么味道」，
+ * 拆开一个个弹反而会变成音程判断。
+ */
+export function earQualityQuestion(
+  root: number,
+  qualityId: EarQuality["id"],
+  seed = 1,
+): EarQuestion {
+  const quality = EAR_QUALITIES.find((item) => item.id === qualityId);
+  if (!quality) throw new Error(`earQualityQuestion: 没有这种性质 ${qualityId}`);
+  const random = rng(seed);
+
+  return {
+    id: `quality-${root}-${quality.id}-${seed}`,
+    kind: "quality",
+    prompt: "听这个和弦，它是哪一种？",
+    play: quality.intervals.map((semitones) => root + semitones),
+    options: shuffle([...EAR_QUALITIES], random).map((item) => ({ id: item.label, label: item.label })),
+    answer: quality.label,
+    hint: `这是${quality.label}：${quality.hint}。`,
+  };
+}
+
 /**
  * 一组题：`kind` 决定题型，`seed` 决定具体是哪些音。
  */
-export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] {
-  const random = rng(seed);
+export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] {  const random = rng(seed);
   const out: EarQuestion[] = [];
 
   if (kind === "position") {
@@ -275,6 +315,22 @@ export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] 
       if (pick.id === last) pick = DEGREE_PROGRESSIONS[(DEGREE_PROGRESSIONS.indexOf(pick) + 1) % DEGREE_PROGRESSIONS.length];
       last = pick.id;
       out.push(earProgressionQuestion(root, pick.degrees, seed * 31 + i));
+    }
+    return out;
+  }
+
+  if (kind === "quality") {
+    // 主音落在 C3–G3，和别的题型同一个音区；相邻两题不考同一种性质。
+    const keys = [48, 50, 52, 53, 55];
+    let last = "";
+    for (let i = 0; i < count; i += 1) {
+      const root = keys[Math.floor(random() * keys.length)];
+      let pick = EAR_QUALITIES[Math.floor(random() * EAR_QUALITIES.length)];
+      if (pick.id === last) {
+        pick = EAR_QUALITIES[(EAR_QUALITIES.indexOf(pick) + 1) % EAR_QUALITIES.length];
+      }
+      last = pick.id;
+      out.push(earQualityQuestion(root, pick.id, seed * 31 + i));
     }
     return out;
   }

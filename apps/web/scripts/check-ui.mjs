@@ -620,9 +620,25 @@ try {
     ),
   ).replace(/^"|"$/g, "");
   log(
-    earInfo.startsWith("12|4|4|play|tr"),
-    "扒谱页：十二节课 + 四种题型 + 四个选项 + 录音工具",
+    earInfo.startsWith("12|5|4|play|tr"),
+    "扒谱页：十二节课 + 五种题型 + 四个选项 + 录音工具",
     earInfo,
+  );
+
+  // 9b2) 第五种题型「和弦性质」：点它换一套题，三个音一起响、四个选项是四种性质
+  js(
+    "(() => { const b = [...document.querySelectorAll('.ear-kinds .chip')].find(n => n.textContent.trim() === '和弦性质'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const qualityInfo = String(
+    js(
+      "(() => { const panel = document.querySelector('.ear'); if (!panel) return 'none'; const prompt = panel.querySelector('.ear-prompt')?.textContent ?? ''; const options = [...panel.querySelectorAll('.ear-option')].map(n => n.textContent.trim()); const kinds = [...panel.querySelectorAll('.ear-kinds .chip')].map(n => n.textContent.trim()); return [prompt.includes('哪一种') ? 'prompt' : 'noprompt', options.length, kinds.includes('和弦性质') ? 'kind' : 'nokind', options.filter(n => /和弦$/.test(n)).length].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    qualityInfo === "prompt|4|kind|4",
+    "扒谱练习：和弦性质问「哪一种」，四个选项都是和弦名",
+    qualityInfo,
   );
 
   // 9c) 扒谱练习：答一题，对错都有反馈，答完能进下一题
@@ -1488,11 +1504,12 @@ try {
       .replace(/\\"/g, '"'),
   );
   log(
-    earStats.rows.length === 4 &&
+    earStats.rows.length === 5 &&
       earStats.rows.some((text) => text.includes("级数走向") && text.includes("3/8")) &&
+      earStats.rows.some((text) => text.includes("和弦性质")) &&
       earStats.cards.some((text) => text.includes("7/8")) &&
       earStats.cards.some((text) => text.includes("69%")),
-    "统计页：听辨成绩列出四种题型，带总正确率",
+    "统计页：听辨成绩列出五种题型，带总正确率",
     earStats.rows.join(" | "),
   );
   js("localStorage.removeItem('guitar.ear.v1')");

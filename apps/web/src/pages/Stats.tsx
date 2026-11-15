@@ -37,6 +37,7 @@ const EAR_KINDS: { id: EarKind; label: string }[] = [
   { id: "interval", label: "音程判断" },
   { id: "degree", label: "级数判断" },
   { id: "progression", label: "级数走向" },
+  { id: "quality", label: "和弦性质" },
 ];
 /** 一轮听辨有几题（和扒谱页的 `ROUND` 保持一致）。 */
 const EAR_ROUND = 8;
