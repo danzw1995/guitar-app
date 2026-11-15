@@ -29,6 +29,7 @@ export const BACKUP_KEYS = [
   "guitar.pauses.v1",
   "guitar.chords.v1",
   "guitar.goals.v1",
+  "guitar.ear.v1",
 ] as const;
 
 export type BackupKey = (typeof BACKUP_KEYS)[number];
@@ -237,6 +238,40 @@ function mergeGoals(a: unknown, b: unknown): Record<string, number> {
   return out;
 }
 
+/** 听辨记录：轮数、最好成绩取大的；两种题型取练得多的那一份（对错数不累加，否则会超过总题数）。 */
+function mergeEar(a: unknown, b: unknown): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  const left = isDict(a) ? a : {};
+  const right = isDict(b) ? b : {};
+
+  const rounds = Math.max(Number(left.rounds) || 0, Number(right.rounds) || 0);
+  const best = Math.max(Number(left.best) || 0, Number(right.best) || 0);
+  const lastAt = [left.lastAt, right.lastAt]
+    .filter((value): value is string => typeof value === "string" && isValidDateKey(value))
+    .sort()
+    .pop();
+
+  const byKind: Record<string, { correct: number; total: number }> = {};
+  for (const source of [left.byKind, right.byKind]) {
+    if (!isDict(source)) continue;
+    for (const [kind, value] of Object.entries(source)) {
+      if (!isDict(value)) continue;
+      const correct = Math.max(0, Math.round(Number(value.correct) || 0));
+      const total = Math.max(0, Math.round(Number(value.total) || 0));
+      if (total === 0) continue;
+      const prev = byKind[kind];
+      // 同一题型两边都有：取练得多的那一份，不把对错数加起来（加起来会超过总题数）
+      if (!prev || total > prev.total) byKind[kind] = { correct: Math.min(correct, total), total };
+    }
+  }
+
+  if (rounds > 0) out.rounds = Math.round(rounds);
+  if (best > 0) out.best = Math.round(best);
+  if (lastAt) out.lastAt = lastAt;
+  if (Object.keys(byKind).length) out.byKind = byKind;
+  return out;
+}
+
 /** 纯函数：把导入的备份合进当前的，返回合并后的备份与摘要。 */
 export function mergeBackup(
   current: BackupFile,
@@ -274,6 +309,10 @@ export function mergeBackup(
   // 每周目标：同一周以导入的为准（改目标多半是最近一次说了算）
   const goals = mergeGoals(a["guitar.goals.v1"], b["guitar.goals.v1"]);
   if (Object.keys(goals).length) data["guitar.goals.v1"] = goals;
+
+  // 听辨记录：取两边更全的那一份
+  const ear = mergeEar(a["guitar.ear.v1"], b["guitar.ear.v1"]);
+  if (Object.keys(ear).length) data["guitar.ear.v1"] = ear;
 
   for (const key of ["guitar.settings.v1", "guitar.audio.v1", "guitar.onboarded.v1"] as const) {
     if (b[key] !== undefined) data[key] = b[key];

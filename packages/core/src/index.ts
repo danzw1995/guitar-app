@@ -21,6 +21,7 @@ export * from "./review.ts";
 export * from "./weekly.ts";
 export * from "./tuner.ts";
 export * from "./transcribe.ts";
+export * from "./ear.ts";
 export * from "./rhythm-drills.ts";
 export * from "./reading-drills.ts";
 export * from "./strum-drills.ts";

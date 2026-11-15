@@ -27,6 +27,8 @@ export const SKIPS_KEY = "guitar.skips.v1";
 export const PAUSES_KEY = "guitar.pauses.v1";
 /** 每周目标的历史：周一 -> 那一周的分钟目标（改目标不会重判过去的周）。 */
 export const GOALS_KEY = "guitar.goals.v1";
+/** 听辨练习的记录：练了几轮、最好一轮对几道、两种题型各自的对错数。 */
+export const EAR_KEY = "guitar.ear.v1";
 /** v0.2.x 只存每关最佳时间，迁移时读一次。 */
 const LEGACY_BEST_PREFIX = "guitar.best.";
 
@@ -391,4 +393,48 @@ export function saveSettings(settings: Settings): void {
     solfegeStyle: settings.solfegeStyle,
     weeklyGoal: settings.weeklyGoal,
   });
+}
+
+/** 一种题型的累计对错。 */
+export interface EarKindStats {
+  correct: number;
+  total: number;
+}
+
+export interface EarStats {
+  /** 练过几轮。 */
+  rounds: number;
+  /** 一轮里最多对几道（每轮 8 道）。 */
+  best: number;
+  /** 最后一次练的日期。 */
+  lastAt: string;
+  byKind: Record<string, EarKindStats>;
+}
+
+const EMPTY_EAR: EarStats = { rounds: 0, best: 0, lastAt: "", byKind: {} };
+
+export function loadEar(): EarStats {
+  const raw = readJson(EAR_KEY);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ...EMPTY_EAR, byKind: {} };
+  const v = raw as Record<string, unknown>;
+
+  const byKind: Record<string, EarKindStats> = {};
+  const kinds = v.byKind && typeof v.byKind === "object" && !Array.isArray(v.byKind) ? (v.byKind as Record<string, unknown>) : {};
+  for (const [kind, value] of Object.entries(kinds)) {
+    if (kind === "" || !value || typeof value !== "object") continue;
+    const entry = value as Record<string, unknown>;
+    const correct = Math.max(0, Math.round(Number(entry.correct) || 0));
+    const total = Math.max(0, Math.round(Number(entry.total) || 0));
+    if (total === 0) continue;
+    byKind[kind] = { correct: Math.min(correct, total), total };
+  }
+
+  const rounds = Math.max(0, Math.round(Number(v.rounds) || 0));
+  const best = Math.max(0, Math.round(Number(v.best) || 0));
+  const lastAt = typeof v.lastAt === "string" && isValidDateKey(v.lastAt) ? v.lastAt : "";
+  return { rounds, best, lastAt, byKind };
+}
+
+export function saveEar(stats: EarStats): void {
+  writeJson(EAR_KEY, stats);
 }

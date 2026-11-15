@@ -47,6 +47,12 @@ import {
   pickPosition,
   tabFromNotes,
   transcribeFrames,
+  earRound,
+  intervalName,
+  earIntervalQuestion,
+  midiOf,
+  noteName,
+  earPositionQuestion,
   lastNDays,
   nextDateKey,
   nextNoteQuery,
@@ -2610,6 +2616,56 @@ test("扒谱：整条链路出一张谱，没听清会说出来", () => {
   const off = transcribeFrames(held(440 * Math.pow(2, 40 / 1200), 0, 0.4), { bpm: 120 });
   assert.ok(off.warnings.some((line) => line.includes("音分")));
 });
+
+test("听辨：音名、音程名、题目里一定有正确答案", () => {
+  assert.equal(noteName(64), "E4");
+  assert.equal(noteName(40), "E2");
+  assert.equal(noteName(61), "C#4");
+  assert.equal(midiOf("C4"), 60);
+  assert.equal(midiOf("E2"), 40);
+  assert.equal(midiOf("Bb3"), 58);
+  assert.equal(intervalName(7), "纯五度");
+  assert.equal(intervalName(3), "小三度");
+  assert.equal(intervalName(13), "13 个半音");
+
+  // 听音辨位：E4 最省手是 1 弦空弦，选项里必须有它、且不重复
+  const position = earPositionQuestion(64, 3);
+  assert.equal(position.answer, "1 弦空弦");
+  assert.equal(position.play[0], 64);
+  assert.ok(position.options.some((option) => option.id === position.answer));
+  assert.equal(new Set(position.options.map((option) => option.id)).size, position.options.length);
+  assert.equal(position.options.length, 4);
+  assert.ok(position.hint.includes("E4"));
+
+  // 音程：C4 到 G4 是纯五度
+  const interval = earIntervalQuestion(60, 7, 5);
+  assert.equal(interval.answer, "纯五度");
+  assert.deepEqual(interval.play, [60, 67]);
+  assert.ok(interval.options.some((option) => option.id === "纯五度"));
+  assert.equal(new Set(interval.options.map((option) => option.id)).size, 4);
+
+  // 5 品内按不出来的音要直接报错，不能悄悄给个错的
+  assert.throws(() => earPositionQuestion(36, 1), /按不出来/);
+});
+
+test("听辨：同一组题两次一模一样，相邻两题不重样", () => {
+  const a = earRound("interval", 42, 6);
+  const b = earRound("interval", 42, 6);
+  assert.deepEqual(a, b);
+  assert.equal(a.length, 6);
+  assert.ok(a.every((question) => question.options.some((option) => option.id === question.answer)));
+
+  const positions = earRound("position", 7, 8);
+  assert.equal(positions.length, 8);
+  assert.ok(positions.every((question) => question.kind === "position" && question.play.length === 1));
+  // 打乱后相邻题不是同一个音（同一套题里不重复出同一个位置）
+  const ids = positions.map((question) => question.id);
+  assert.equal(new Set(ids).size, ids.length);
+
+  // 换种子就换一套题
+  assert.notDeepEqual(earRound("interval", 1, 4), earRound("interval", 2, 4));
+});
+
 
 
 

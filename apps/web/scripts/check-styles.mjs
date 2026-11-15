@@ -720,6 +720,26 @@ for (const selector of ["select", "input", "textarea"]) {
     (px(tunerString.get("min-height")) ?? 0) >= 40,
     `min-height=${tunerString.get("min-height") ?? "未设置"}`,
   );
+
+  // 扒谱页：四节课是网格卡片，练习的四个选项要够手指点
+  const earLessons = narrowDecls(".ear-lessons");
+  expect(
+    "扒谱页的课程是网格排列",
+    (earLessons.get("display") ?? "") === "grid",
+    `display=${earLessons.get("display") ?? "未设置"}`,
+  );
+  const earOption = narrowDecls(".ear-option");
+  expect(
+    "扒谱练习的选项不小于 44 高（手指点得准）",
+    (px(earOption.get("min-height")) ?? 0) >= 44,
+    `min-height=${earOption.get("min-height") ?? "未设置"}`,
+  );
+  const earPractice = narrowDecls(".ear-practice");
+  expect(
+    "扒谱练习区有底色，和课程卡片分得开",
+    (earPractice.get("background") ?? "").includes("var(--panel-2)"),
+    `background=${earPractice.get("background") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

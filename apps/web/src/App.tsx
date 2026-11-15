@@ -8,6 +8,7 @@ import Rhythm from "./pages/Rhythm";
 import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
 import Tuner from "./pages/Tuner";
+import Ear from "./pages/Ear";
 import OfflineBanner from "./components/OfflineBanner";
 import Onboarding from "./components/Onboarding";
 import UpdateToast from "./components/UpdateToast";
@@ -21,13 +22,14 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "theory", label: "乐理" },
   { id: "game", label: "音阶游戏" },
   { id: "tuner", label: "调音" },
+  { id: "ear", label: "扒谱" },
   { id: "stats", label: "统计" },
   { id: "settings", label: "设置" },
 ];
 
 // 手机上只放四个最常用的入口，其余收进「更多」——八个 Tab 排一行在 390 的屏上点不准
 const PRIMARY: Tab[] = ["practice", "rhythm", "theory", "stats"];
-const SECONDARY: Tab[] = ["chords", "scales", "game", "tuner", "settings"];
+const SECONDARY: Tab[] = ["chords", "scales", "game", "tuner", "ear", "settings"];
 
 const labelOf = (id: Tab) => TABS.find((t) => t.id === id)?.label ?? id;
 
@@ -116,6 +118,7 @@ export default function App() {
         {tab === "practice" && <Practice />}
         {tab === "rhythm" && <Rhythm />}
         {tab === "tuner" && <Tuner />}
+        {tab === "ear" && <Ear />}
         {tab === "stats" && <Stats />}
         {tab === "settings" && <Settings />}
       </main>

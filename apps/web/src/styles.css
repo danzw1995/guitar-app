@@ -3380,7 +3380,7 @@ button, select, input { font: inherit; color: inherit; }
   display: none;
 }
 
-/* ���ף�v0.71.0����¼�� �� �� */
+/* 扒谱（v0.71.0）：录音变成谱 */
 .transcribe .panel-head p {
   max-width: 60ch;
 }
@@ -3458,3 +3458,169 @@ button, select, input { font: inherit; color: inherit; }
     min-height: 40px;
   }
 }
+
+/* 扒谱模块（v0.72.0）：学（四节课）、练（听辨）、用（录音） */
+.ear-lessons {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+}
+.ear-lesson {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+.ear-lesson h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.ear-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(232, 176, 75, 0.14);
+  color: var(--accent);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ear-lesson p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.ear-example {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+.ear-caption {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ear-check {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+.ear-check-q {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.ear-check-options,
+.ear-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ear-check-options .chip {
+  min-height: 40px;
+  padding: 0 12px;
+}
+.chip.wrong {
+  border-color: #d1685f;
+  background: rgba(209, 104, 95, 0.16);
+  color: #ffb4ac;
+}
+.ear-practice {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel-2);
+}
+.ear-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.ear-kinds .chip {
+  min-height: 40px;
+  padding: 0 14px;
+}
+.ear-new {
+  margin-left: auto;
+  min-height: 40px;
+}
+.ear-stats {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ear-progress {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ear-prompt {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.ear-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.ear-heard {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ear-option {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.ear-after {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.ear-after .btn {
+  min-height: 40px;
+}
+.ear-feedback {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ear-feedback.ok {
+  color: var(--green);
+}
+.ear-feedback.bad {
+  color: #ffb4ac;
+}
+.ear-result {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.ear-score {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.ear-result .btn {
+  min-height: 40px;
+}
+

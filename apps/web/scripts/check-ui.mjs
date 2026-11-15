@@ -113,9 +113,9 @@ try {
     landing === '"练习|今日练习"' ? "" : String(landing),
   );
 
-  // 2) 主导航 9 个 Tab，能切到「节奏」
+  // 2) 主导航 10 个 Tab，能切到「节奏」
   const tabs = js("document.querySelectorAll('nav.tabs button').length");
-  log(tabs === "9", `主导航有 9 个 Tab（读到 ${tabs}）`);
+  log(tabs === "10", `主导航有 10 个 Tab（读到 ${tabs}）`);
 
   const switched = js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); if (!b) return 'no'; b.click(); return 'ok'; })()",
@@ -572,7 +572,33 @@ try {
   );
   log(removed === '"ok"' && leftCards === 0, "我的谱：删掉之后卡片消失", `还剩 ${leftCards} 条`);
 
-  // 9b) 扒谱：面板在节奏页最下面，有开始按钮和三个控件（麦克风在无头浏览器里没有，只验结构）
+  // 9b) 扒谱（v0.72.0 独立成页）：四节课、练听辨、录音工具都在
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '扒谱'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const earInfo = String(
+    js(
+      "(() => { const panel = document.querySelector('.ear'); if (!panel) return 'none'; const lessons = panel.querySelectorAll('.ear-lesson').length; const kinds = panel.querySelectorAll('.ear-kinds .chip').length; const options = panel.querySelectorAll('.ear-option').length; const play = [...panel.querySelectorAll('button')].some(n => n.textContent.trim() === '再听一遍'); const tr = panel.querySelector('.transcribe'); const start = tr ? [...tr.querySelectorAll('button')].some(n => n.textContent.trim() === '开始听') : false; return [lessons, kinds, options, play ? 'play' : 'noplay', start ? 'tr' : 'notr'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    earInfo.startsWith("4|2|4|play|tr"),
+    "扒谱页：四节课 + 两种题型 + 四个选项 + 录音工具",
+    earInfo,
+  );
+
+  // 9c) 扒谱练习：答一题，对错都有反馈，答完能进下一题
+  js("(() => { [...document.querySelectorAll('.ear-option')][0]?.click(); return 'ok'; })()");
+  await sleep(400);
+  const earAnswer = String(
+    js(
+      "(() => { const feedback = document.querySelector('.ear-after .ear-feedback'); const nextBtn = [...document.querySelectorAll('.ear-after button')].find(n => n.textContent.includes('下一题') || n.textContent.includes('看结果')); return [feedback ? (feedback.className.includes('ok') ? 'ok' : 'bad') : 'nofeedback', nextBtn ? 'next' : 'nonext'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(earAnswer === "ok|next" || earAnswer === "bad|next", "扒谱练习：点一个选项立刻给对错，并出现「下一题」", earAnswer);
+
+  // 9d) 扒谱页的录音工具：速度默认 90、网格三档、有提示
   const trInfo = String(
     js(
       "(() => { const panel = document.querySelector('.transcribe'); if (!panel) return 'none'; const start = [...panel.querySelectorAll('button')].find(n => n.textContent.trim() === '开始听'); const bpm = panel.querySelector('.tr-field input'); const grid = panel.querySelector('.tr-field select'); const hint = panel.querySelector('.tr-hint'); return [start ? 'start' : 'nostart', bpm ? bpm.value : 'nobpm', grid ? grid.options.length : 'nogrid', (hint?.textContent || '').includes('开始听') ? 'hint' : 'nohint'].join('|'); })()",
@@ -580,7 +606,7 @@ try {
   ).replace(/^"|"$/g, "");
   log(
     trInfo.startsWith("start|90|") && trInfo.endsWith("|hint"),
-    "扒谱：节奏页最下面有面板，速度默认 90、网格三档、有提示",
+    "扒谱页的录音工具：速度默认 90、网格三档、有提示",
     trInfo,
   );
 

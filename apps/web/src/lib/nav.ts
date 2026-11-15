@@ -14,6 +14,7 @@ export type Tab =
   | "practice"
   | "rhythm"
   | "tuner"
+  | "ear"
   | "stats"
   | "settings";
 
@@ -25,6 +26,7 @@ export const TAB_IDS: Tab[] = [
   "theory",
   "game",
   "tuner",
+  "ear",
   "stats",
   "settings",
 ];

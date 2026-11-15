@@ -8,6 +8,22 @@
 - v1.0.0：真机验收（iOS / Android）、首屏性能实测、40 关难度复核
 - 桌面 / 安卓壳（不排期，需先装工具链）
 
+## [0.72.0] - 2026-11-15
+
+### Added
+- 新增第 10 个 Tab「扒谱」：独立成页，分三块——学（四节课：扒谱在扒什么、一个音的三件事、
+  指板上找音、音程，每节配示范音与一道小题）、练（两种题型各一轮 8 题：听音辨位 / 音程判断，
+  种子固定、相邻不重样，成绩存 `guitar.ear.v1`）、用（录音工具搬到这一页最下面）。
+- core 的 `ear.ts`：`earPositionQuestion()` / `earIntervalQuestion()` / `earRound()` 出题库，
+  `intervalName()` / `noteName()` / `positionLabel()` / `midiOf()` 做展示。
+
+### Changed
+- 节奏页最下面的「扒谱」面板搬进「扒谱」Tab（一个功能一个入口），节奏页只留 103 张卡。
+
+### Fixed
+- `apps/web/src/styles.css` 里有一处注释是 GBK 字节（v0.71.0 追加时留下的），整份文件不是合法 UTF-8；
+  已按字节修回 UTF-8。
+
 ## [0.71.0] - 2026-11-15
 
 ### Added
