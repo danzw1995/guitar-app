@@ -1455,6 +1455,36 @@ try {
   );
   js("localStorage.removeItem('guitar.chords.v1')");
 
+  // 16d2) 统计页：扒谱的听辨成绩（四种题型各自的正确率，v0.78.0）
+  js(
+    "(() => { localStorage.setItem('guitar.ear.v1', JSON.stringify({ rounds: 6, best: 7, lastAt: '2026-11-14', byKind: { position: { correct: 20, total: 24 }, interval: { correct: 12, total: 16 }, degree: { correct: 9, total: 16 }, progression: { correct: 3, total: 8 } } })); return 'ok'; })()",
+  );
+  await sleep(100);
+  ab(["reload"]);
+  await sleep(800);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const earStats = JSON.parse(
+    String(
+      js(
+        "(() => { const rows = [...document.querySelectorAll('[data-ear]')].map(li => li.innerText.replace(/\\n/g, ' ')); const cards = [...document.querySelectorAll('.stat-card')].map(c => c.innerText.replace(/\\n/g, ' ')); const jump = !!document.querySelector('.btn-quiet'); return JSON.stringify({ rows, cards, jump }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    earStats.rows.length === 4 &&
+      earStats.rows.some((text) => text.includes("级数走向") && text.includes("3/8")) &&
+      earStats.cards.some((text) => text.includes("7/8")) &&
+      earStats.cards.some((text) => text.includes("69%")),
+    "统计页：听辨成绩列出四种题型，带总正确率",
+    earStats.rows.join(" | "),
+  );
+  js("localStorage.removeItem('guitar.ear.v1')");
+
   // 16e) 调音页：六根空弦都在、点「开始」拿不到麦克风时要有一句人话
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '调音'); b?.click(); return 'ok'; })()",

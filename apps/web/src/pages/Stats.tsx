@@ -19,9 +19,11 @@ import {
   weekReportOf,
   weekStreak,
   mondayOf,
+  type EarKind,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
-import { loadChords, loadDaily, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
+import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
+import { goTo } from "../lib/nav";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { fmt, fmtSpan } from "../lib/format";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -30,6 +32,14 @@ import Stars from "../components/Stars";
 /** 统计页：全部来自本机 localStorage，没有账号也没有上报。 */
 const WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 const WEEK_KIND_LABEL = { practice: "练习页的关卡", follow: "跟练", rhythm: "节奏页的条目" } as const;
+const EAR_KINDS: { id: EarKind; label: string }[] = [
+  { id: "position", label: "听音辨位" },
+  { id: "interval", label: "音程判断" },
+  { id: "degree", label: "级数判断" },
+  { id: "progression", label: "级数走向" },
+];
+/** 一轮听辨有几题（和扒谱页的 `ROUND` 保持一致）。 */
+const EAR_ROUND = 8;
 
 export default function Stats() {
   const progress = loadProgress();
@@ -155,6 +165,21 @@ export default function Stats() {
     .filter((item) => item.points.length >= 2)
     .sort((a, b) => b.points.length - a.points.length)
     .slice(0, 6);
+
+  // 听辨（扒谱页「练」）：`guitar.ear.v1` 存最好成绩、轮数与四种题型各自的正确率
+  const ear = loadEar();
+  const earKinds = EAR_KINDS.map((kind) => {
+    const item = ear.byKind[kind.id];
+    return {
+      ...kind,
+      correct: item?.correct ?? 0,
+      total: item?.total ?? 0,
+      rate: item && item.total > 0 ? Math.round((item.correct / item.total) * 100) : null,
+    };
+  });
+  const earTotal = earKinds.reduce((sum, item) => sum + item.total, 0);
+  const earCorrect = earKinds.reduce((sum, item) => sum + item.correct, 0);
+  const earRate = earTotal > 0 ? Math.round((earCorrect / earTotal) * 100) : null;
 
   const summary = summarizeProgress(LEVEL_IDS, progress);
   const theory = summarizeProgress(THEORY_LEVEL_IDS, progress);
@@ -671,6 +696,43 @@ export default function Stats() {
       {chordDone === 0 ? (
         <p className="hint">去和弦页最下面的「转换练习」，一分钟一局，练完点「记成绩」。</p>
       ) : null}
+
+      <h3 className="stat-sub">扒谱 · 听辨</h3>
+      <div className="stat-grid">
+        <div className="stat-card">
+          <b>{ear.rounds > 0 ? `${ear.best}/${EAR_ROUND}` : "—"}</b>
+          <span>最好成绩</span>
+        </div>
+        <div className="stat-card">
+          <b>{ear.rounds} 轮</b>
+          <span>练过的轮数</span>
+        </div>
+        <div className="stat-card">
+          <b>{earRate === null ? "—" : `${earRate}%`}</b>
+          <span>总正确率（{earCorrect}/{earTotal} 题）</span>
+        </div>
+      </div>
+      <ul className="stat-list">
+        {earKinds.map((kind) => (
+          <li key={kind.id} data-ear={kind.id}>
+            <span>{kind.label}</span>
+            <span className="muted">
+              {kind.total > 0 ? `${kind.correct}/${kind.total} · ${kind.rate}%` : "还没练过"}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {ear.rounds === 0 ? (
+        <p className="hint">去扒谱页的「练 · 听辨」，一轮 8 题，四种题型挑一种就能开始。</p>
+      ) : (
+        <p className="hint">
+          上次练是 {ear.lastAt ? ear.lastAt.slice(5).replace("-", "/") : "—"}
+          {" · "}
+          <button type="button" className="btn-quiet" onClick={() => goTo("ear")}>
+            再去练一轮
+          </button>
+        </p>
+      )}
 
       <h3 className="stat-sub">最近战绩</h3>
       {summary.perfectCount === 0 && summary.completed === 0 ? (
