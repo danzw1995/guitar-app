@@ -531,6 +531,9 @@ button, select, input { font: inherit; color: inherit; }
   transition: left 90ms linear;
 }
 .tuner-scale.in-tune .tuner-needle { background: var(--green); }
+/* 还没开始听的时候指针淡下去：停在中间会让人以为「已经准了」 */
+.tuner-stage:not(.live) .tuner-needle { opacity: 0.25; }
+.tuner-stage:not(.live) .tuner-zone { opacity: 0.5; }
 .tuner-hint { min-height: 22px; margin: 0; font-size: 15px; color: var(--text); }
 .tuner-hint.ok { color: var(--green); font-weight: 600; }
 .tuner-cents {
