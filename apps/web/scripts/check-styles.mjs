@@ -679,6 +679,12 @@ for (const selector of ["select", "input", "textarea"]) {
     goalFill.get("display") === "block" && (goalFill.get("background") ?? "").includes("var(--accent)"),
     `display=${goalFill.get("display") ?? "未设置"} background=${goalFill.get("background") ?? "未设置"}`,
   );
+  const goalStreak = narrowDecls(".goal-streak");
+  expect(
+    "「连续 N 周达成」是圆角小标签，不抢进度条的视线",
+    /999px|50%/.test(goalStreak.get("border-radius") ?? "") && (px(goalStreak.get("font-size")) ?? 99) <= 12,
+    `radius=${goalStreak.get("border-radius") ?? "未设置"} size=${goalStreak.get("font-size") ?? "未设置"}`,
+  );
 
   // 练习页顶部那条：比统计页的更细，一行放得下「本周 x / y 分钟」+ 进度 + 「还差 z 分钟」
   const weekGoal = narrowDecls(".week-goal");

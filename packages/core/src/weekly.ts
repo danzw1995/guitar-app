@@ -134,3 +134,50 @@ export function weekPace(week: WeekSummary, today: string, goal: number): WeekPa
     reached: state.reached,
   };
 }
+
+export interface WeekStreak {
+  /** 连续达成的周数（含这一周，如果已经达成） */
+  weeks: number;
+  /** 这一周本身达成了没有 */
+  currentDone: boolean;
+}
+
+function minutesOfWeek(log: PracticeLog, monday: string): number {
+  return windowOf(log, monday, addDays(monday, 6)).minutes;
+}
+
+/**
+ * 连续达成：从这周往回数，连着几周都练够了当时的目标。
+ *
+ * 目标按周记（`guitar.goals.v1` 里 `周一 → 分钟`），不然改了目标以后历史会被重新判一遍：
+ * 上个月 30 分钟算达成，这个月改成 90，回头就说你没达成，这不讲理。
+ * 这一周还没练够不算断（周中当然还没够）；再往前遇到没记目标的周就停——那时候的
+ * 目标不知道，不能瞎猜。
+ */
+export function weekStreak(
+  log: PracticeLog,
+  goalsByWeek: Record<string, number>,
+  today: string,
+  maxWeeks = 52,
+): WeekStreak {
+  const monday = mondayOf(today);
+  let weeks = 0;
+  let currentDone = false;
+  for (let i = 0; i < maxWeeks; i++) {
+    const start = addDays(monday, -7 * i);
+    const goal = Math.max(0, Math.round(Number(goalsByWeek[start]) || 0));
+    if (goal === 0) {
+      if (i === 0) continue;
+      break;
+    }
+    const reached = minutesOfWeek(log, start) >= goal;
+    if (i === 0) {
+      currentDone = reached;
+      if (reached) weeks += 1;
+      continue;
+    }
+    if (!reached) break;
+    weeks += 1;
+  }
+  return { weeks, currentDone };
+}

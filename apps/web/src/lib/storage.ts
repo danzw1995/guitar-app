@@ -25,6 +25,8 @@ export const RHYTHM_KEY = "guitar.rhythm.v1";
 export const SKIPS_KEY = "guitar.skips.v1";
 /** 这一周先不练：id -> 到哪天为止（含当天）。 */
 export const PAUSES_KEY = "guitar.pauses.v1";
+/** 每周目标的历史：周一 -> 那一周的分钟目标（改目标不会重判过去的周）。 */
+export const GOALS_KEY = "guitar.goals.v1";
 /** v0.2.x 只存每关最佳时间，迁移时读一次。 */
 const LEGACY_BEST_PREFIX = "guitar.best.";
 
@@ -293,6 +295,27 @@ function pruneSkips(log: SkipLog, today: string): SkipLog {
 
 /** `id → 到哪天为止先不练`（含当天，日期格式 YYYY-MM-DD）。 */
 export type PauseLog = Record<string, string>;
+
+/** `周一 → 那一周的分钟目标`；只记设过目标的周，最早那周之前不算。 */
+export type GoalLog = Record<string, number>;
+
+export function loadGoals(): GoalLog {
+  const raw = readJson(GOALS_KEY);
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+
+  const log: GoalLog = {};
+  for (const [week, minutes] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isValidDateKey(week)) continue;
+    const value = Number(minutes);
+    if (!Number.isFinite(value) || value <= 0) continue;
+    log[week] = Math.min(600, Math.round(value));
+  }
+  return log;
+}
+
+export function saveGoals(log: GoalLog): void {
+  writeJson(GOALS_KEY, log);
+}
 
 /** 「这一周先不练」默认压后 7 天（含今天）。 */
 const PAUSE_DAYS = 7;

@@ -468,6 +468,7 @@ button, select, input { font: inherit; color: inherit; }
 .goal-head { display: flex; align-items: baseline; gap: 10px; font-size: 13px; }
 .goal-head b { font-size: 13px; }
 .goal-num { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.goal-streak { padding: 2px 8px; border-radius: 999px; background: rgba(63, 185, 80, 0.12); color: var(--green); font-size: 11px; white-space: nowrap; }
 .goal-bar { height: 8px; border-radius: 999px; background: #0d1117; overflow: hidden; }
 .goal-bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width 240ms ease; }
 .goal-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; }

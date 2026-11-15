@@ -925,6 +925,30 @@ try {
   ).replace(/^"|"$/g, "");
   log(goalOff === "nobar|还没设", "统计页：点「不设」把进度条收回去", goalOff);
 
+  // 13b4) 统计页：连着两周都练够，头上挂一个「连续 2 周达成」
+  js(
+    "(() => { localStorage.setItem('guitar.goals.v1', JSON.stringify({ '2026-11-02': 30, '2026-11-09': 30 })); localStorage.setItem('guitar.practice.v1', JSON.stringify({ '2026-11-05': { minutes: 40, stage: 0, done: ['s0-crawl'] }, '2026-11-13': { minutes: 40, stage: 0, done: ['s0-scale'] } })); localStorage.setItem('guitar.settings.v1', JSON.stringify({ weeklyGoal: 30 })); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const streakText = String(
+    js(
+      "(() => { const el = document.querySelector('.goal-streak'); return el ? el.textContent.trim() : ''; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    streakText.includes("连续 2 周达成"),
+    "统计页：连着两周都练够，头上挂「连续 2 周达成」",
+    streakText || "(没有)",
+  );
+  js(
+    "(() => { localStorage.removeItem('guitar.goals.v1'); localStorage.removeItem('guitar.practice.v1'); localStorage.removeItem('guitar.settings.v1'); return 'ok'; })()",
+  );
+
   // 13c) 统计页：点热力图的一格，展开那天练了什么；再点一次收起
   const heatDate = String(
     js(

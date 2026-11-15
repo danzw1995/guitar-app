@@ -16,9 +16,11 @@ import {
   weekSummaryOf,
   goalProgress,
   weekPace,
+  weekStreak,
+  mondayOf,
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
-import { loadChords, loadDaily, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
+import { loadChords, loadDaily, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { fmt, fmtSpan } from "../lib/format";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -39,9 +41,18 @@ export default function Stats() {
   const [goal, setGoal] = useState(() => loadSettings().weeklyGoal);
   const goalState = goalProgress(weekStats.minutes, goal);
   const pace = weekPace(weekStats, today, goal);
+  // 每周目标的历史（周一 → 分钟）：改目标不重判过去几周，连续达成才数得对
+  const [goalLog, setGoalLog] = useState(() => loadGoals());
+  const goalStreak = weekStreak(practiceLog, goalLog, today);
   const setGoalTo = (minutes: number) => {
     saveSettings({ ...loadSettings(), weeklyGoal: minutes });
     setGoal(minutes);
+    const next = { ...goalLog };
+    const week = mondayOf(today);
+    if (minutes > 0) next[week] = minutes;
+    else delete next[week];
+    saveGoals(next);
+    setGoalLog(next);
   };
   // 热力图：宽屏放一整年（52 周），中等屏幕半年，手机上 18 周，免得横向塞不下
   const narrow = useMediaQuery("(max-width: 900px)");
@@ -291,6 +302,9 @@ export default function Stats() {
       <div className="goal">
         <div className="goal-head">
           <b>本周目标</b>
+          {goal > 0 && goalStreak.weeks >= 2 && (
+            <span className="goal-streak">连续 {goalStreak.weeks} 周达成</span>
+          )}
           <span className="goal-num">
             {goal > 0 ? `${goalState.done} / ${goalState.goal} 分钟` : "还没设"}
           </span>

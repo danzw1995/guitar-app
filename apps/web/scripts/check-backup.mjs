@@ -128,6 +128,31 @@ test("合并跳过表：同一天取并集，坏日期不进", () => {
   assert.equal(skips["2026-11-11"], undefined, "不是数组的不进");
 });
 
+test("合并每周目标：同一周以导入的为准，坏周次不进", () => {
+  const current = {
+    ...empty(),
+    data: { "guitar.goals.v1": { "2026-11-09": 60, "2026-11-02": 30 } },
+  };
+  const incoming = {
+    ...empty(),
+    data: {
+      "guitar.goals.v1": {
+        "2026-11-09": 90,
+        "2026-10-26": 45,
+        "不是周": 60,
+        "2026-10-19": 0,
+      },
+    },
+  };
+  const { next } = mergeBackup(current, incoming);
+  const goals = next.data["guitar.goals.v1"];
+  assert.equal(goals["2026-11-09"], 90, "同一周以导入的为准");
+  assert.equal(goals["2026-11-02"], 30, "本机有、备份没有的周要留着");
+  assert.equal(goals["2026-10-26"], 45, "备份里多出来的周要进来");
+  assert.equal(goals["不是周"], undefined, "坏周次不进");
+  assert.equal(goals["2026-10-19"], undefined, "0 分钟不算目标");
+});
+
 test("合并压后表：同一条取更晚的截止日，坏日期不进", () => {
   const current = {
     ...empty(),

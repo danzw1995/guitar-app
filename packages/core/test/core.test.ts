@@ -32,6 +32,7 @@ import {
   weekSummaryOf,
   goalProgress,
   weekPace,
+  weekStreak,
   lastNDays,
   nextDateKey,
   nextNoteQuery,
@@ -2330,6 +2331,28 @@ test("本周节奏：还差多少换成「剩下几天、每天几分钟」", ()
 
   const noGoal = weekPace(weekSummaryOf(log, "2026-11-11"), "2026-11-11", 0);
   assert.equal(noGoal.perDayNeeded, 0, "没设目标就没有「每天还要练多少」");
+});
+
+test("连续达成：从这周往回数，周中还没练够不算断，没记目标就停", () => {
+  const goals = { "2026-11-09": 60, "2026-11-02": 60, "2026-10-26": 60 };
+  const log = {
+    "2026-11-09": { minutes: 70, stage: 0, done: [] },
+    "2026-11-03": { minutes: 80, stage: 0, done: [] },
+    "2026-10-27": { minutes: 10, stage: 0, done: [] },
+  };
+  const two = weekStreak(log, goals, "2026-11-11");
+  assert.equal(two.weeks, 2, "这周 + 上周达成，上上周只练了 10 分钟就断了");
+  assert.equal(two.currentDone, true);
+
+  const midweek = weekStreak({ ...log, "2026-11-09": { minutes: 30, stage: 0, done: [] } }, goals, "2026-11-11");
+  assert.equal(midweek.currentDone, false);
+  assert.equal(midweek.weeks, 1, "这周才周三，还没够不算断，只数上周");
+
+  assert.equal(weekStreak(log, {}, "2026-11-11").weeks, 0, "没记过目标就谈不上连续");
+
+  const skipped = weekStreak({ ...log, "2026-11-09": { minutes: 5, stage: 0, done: [] } }, { "2026-11-02": 60 }, "2026-11-11");
+  assert.equal(skipped.weeks, 1, "这周没设目标：跳过这周，从上周算");
+  assert.equal(skipped.currentDone, false);
 });
 
 

@@ -28,6 +28,7 @@ export const BACKUP_KEYS = [
   "guitar.skips.v1",
   "guitar.pauses.v1",
   "guitar.chords.v1",
+  "guitar.goals.v1",
 ] as const;
 
 export type BackupKey = (typeof BACKUP_KEYS)[number];
@@ -221,6 +222,21 @@ function mergePauses(a: unknown, b: unknown): Record<string, string> {
   return out;
 }
 
+/** 每周目标：同一周以导入的为准（改目标多半是最近一次说了算），坏周次与坏数字跳过。 */
+function mergeGoals(a: unknown, b: unknown): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const source of [a, b]) {
+    if (!isDict(source)) continue;
+    for (const [week, minutes] of Object.entries(source)) {
+      if (!isValidDateKey(week)) continue;
+      const value = Number(minutes);
+      if (!Number.isFinite(value) || value <= 0) continue;
+      out[week] = Math.min(600, Math.round(value));
+    }
+  }
+  return out;
+}
+
 /** 纯函数：把导入的备份合进当前的，返回合并后的备份与摘要。 */
 export function mergeBackup(
   current: BackupFile,
@@ -254,6 +270,10 @@ export function mergeBackup(
   // 和弦转换跟跟练同一套形状：最快速度取高的，日期取晚的
   const chords = mergeRhythm(a["guitar.chords.v1"], b["guitar.chords.v1"]);
   if (Object.keys(chords).length) data["guitar.chords.v1"] = chords;
+
+  // 每周目标：同一周以导入的为准（改目标多半是最近一次说了算）
+  const goals = mergeGoals(a["guitar.goals.v1"], b["guitar.goals.v1"]);
+  if (Object.keys(goals).length) data["guitar.goals.v1"] = goals;
 
   for (const key of ["guitar.settings.v1", "guitar.audio.v1", "guitar.onboarded.v1"] as const) {
     if (b[key] !== undefined) data[key] = b[key];
