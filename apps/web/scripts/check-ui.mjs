@@ -586,8 +586,8 @@ try {
     "(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()",
   );
   let earCard = "";
-  for (let i = 0; i < 14; i++) {
-    await sleep(400);
+  for (let i = 0; i < 30; i++) {
+    await sleep(500);
     js(
       "(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()",
     );
@@ -645,6 +645,18 @@ try {
     trInfo.startsWith("start|90|") && trInfo.endsWith("|hint"),
     "扒谱页的录音工具：速度默认 90、网格三档、有提示",
     trInfo,
+  );
+
+  // 9d2) 扒谱页能从音频文件导入（v0.79.0）：按钮是个 label，里面藏着 file input
+  const fileInfo = String(
+    js(
+      "(() => { const panel = document.querySelector('.transcribe'); if (!panel) return 'none'; const label = panel.querySelector('.tr-file label'); const input = panel.querySelector('.tr-file input[type=file]'); const note = panel.querySelector('.tr-file-note'); return [label ? label.textContent.trim() : 'nolabel', input ? input.accept : 'noinput', (note?.textContent || '').includes('前 30 秒') ? 'note' : 'nonote'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    fileInfo === "导入音频文件|audio/*|note",
+    "扒谱页：能从音频文件导入（只取前 30 秒）",
+    fileInfo,
   );
 
   // 9e) 换成「级数判断」：题干会先让你听主音

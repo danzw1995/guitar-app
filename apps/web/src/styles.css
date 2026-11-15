@@ -3458,6 +3458,23 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 13px;
   color: var(--green);
 }
+/* 导入音频文件（v0.79.0）：按钮是个 <label>，里面藏着 file input */
+.tr-file {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 10px 0 0;
+}
+.tr-file label {
+  cursor: pointer;
+  min-height: 40px;
+}
+.tr-file-note {
+  color: var(--muted);
+  font-size: 12px;
+  max-width: 62ch;
+}
 @media (max-width: 720px) {
   .tr-controls .btn,
   .tr-controls .btn.primary {

@@ -12,6 +12,10 @@ import { useTone } from "../hooks/useTone";
 
 const MAX_SECONDS = 20;
 const DETECT_MS = 55;
+/** 导入文件时最多分析这么多秒：一首歌三五分钟，整首跑完要几十秒，也没人扒整首。 */
+const MAX_FILE_SECONDS = 30;
+/** 文件分析时每次取样的窗口长度（采样点）。 */
+const WINDOW = 4096;
 
 type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
 
@@ -33,6 +37,10 @@ export default function Transcribe() {
   const [frameCount, setFrameCount] = useState(0);
   const [heard, setHeard] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [fileBusy, setFileBusy] = useState(false);
+  const [fileProgress, setFileProgress] = useState(0);
+  const [fileInfo, setFileInfo] = useState<{ name: string; seconds: number } | null>(null);
+  const [fileError, setFileError] = useState("");
 
   const streamRef = useRef<MediaStream | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
@@ -62,6 +70,60 @@ export default function Transcribe() {
     setPhase("idle");
     setFrameCount(frames.filter((frame) => frame.freq > 0).length);
   }, [bpm, subdivision]);
+
+  /**
+   * 从音频文件扒（v0.79.0）：解码 → 降成单声道 → 每 55ms 算一帧基频 → 走同一条流水线。
+   *
+   * 和麦克风那条路唯一的区别是「帧从哪来」：那边实时收，这边一次算完，所以中途要让出
+   * 主线程（每 16 帧一次）——不然一个 30 秒的文件会把页面卡住好几秒，进度条也动不了。
+   */
+  const importFile = useCallback(
+    async (file: File) => {
+      setFileError("");
+      setFileInfo(null);
+      setFileBusy(true);
+      setFileProgress(0);
+      setResult(null);
+      setImage(null);
+      setSaved(false);
+      stopTone();
+      try {
+        const Ctor =
+          window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctor) throw new Error("这个浏览器不支持解码音频");
+        const ctx = new Ctor();
+        const audio = await ctx.decodeAudioData(await file.arrayBuffer());
+        const limit = Math.min(audio.length, Math.round(audio.sampleRate * MAX_FILE_SECONDS));
+        const mono = new Float32Array(limit);
+        for (let channel = 0; channel < audio.numberOfChannels; channel += 1) {
+          const data = audio.getChannelData(channel);
+          for (let i = 0; i < limit; i += 1) mono[i] += data[i] / audio.numberOfChannels;
+        }
+        setFileInfo({ name: file.name, seconds: Math.round((limit / audio.sampleRate) * 10) / 10 });
+        const hop = Math.max(1, Math.round((audio.sampleRate * DETECT_MS) / 1000));
+        const frames: PitchFrame[] = [];
+        const slice = new Float32Array(WINDOW);
+        for (let start = 0; start + WINDOW <= limit; start += hop) {
+          slice.set(mono.subarray(start, start + WINDOW));
+          frames.push({ time: start / audio.sampleRate, freq: detectPitch(slice, audio.sampleRate) });
+          if (frames.length % 16 === 0) {
+            setFileProgress(Math.min(0.99, (start + WINDOW) / limit));
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+        }
+        setFileProgress(1);
+        setResult(transcribeFrames(frames, { bpm, subdivision }));
+        setFrameCount(frames.filter((frame) => frame.freq > 0).length);
+        void ctx.close().catch(() => undefined);
+      } catch (err) {
+        setFileError((err as Error)?.message ?? "这个文件读不出来");
+      } finally {
+        setFileBusy(false);
+      }
+    },
+    [bpm, subdivision, stopTone],
+  );
 
   const start = useCallback(async () => {
     setError("");
@@ -221,6 +283,30 @@ export default function Transcribe() {
             <option value={4}>十六分音符</option>
           </select>
         </label>
+      </div>
+
+      <div className="tr-file">
+        <label className={fileBusy ? "btn" : "btn-quiet"}>
+          {fileBusy ? `分析中 ${Math.round(fileProgress * 100)}%` : "导入音频文件"}
+          <input
+            type="file"
+            accept="audio/*"
+            hidden
+            disabled={fileBusy || listening}
+            onChange={(event) => {
+              const picked = event.target.files?.[0];
+              if (picked) void importFile(picked);
+              event.target.value = "";
+            }}
+          />
+        </label>
+        <span className="tr-file-note">
+          {fileError
+            ? fileError
+            : fileInfo
+              ? `${fileInfo.name} · 分析前 ${fileInfo.seconds} 秒`
+              : `mp3 / wav / m4a，只取前 ${MAX_FILE_SECONDS} 秒；单音旋律才认得出`}
+        </span>
       </div>
 
       <p className={listening ? "tr-hint live" : "tr-hint"} role="status">
