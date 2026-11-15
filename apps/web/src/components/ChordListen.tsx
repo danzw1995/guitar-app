@@ -404,41 +404,43 @@ export default function ChordListen() {
                   {segment.start.toFixed(1)}–{segment.end.toFixed(1)} 秒
                 </span>
                 {segment.chord && <em>{QUALITY_TEXT[segment.chord.quality] ?? segment.chord.name}</em>}
-                {segment.chord && (
-                  <>
-                    <select
-                      className="cl-seq-name"
-                      value={segment.chord.label}
-                      aria-label={`第 ${index + 1} 段的和弦名`}
-                      onChange={(event) => renameSegment(index, event.target.value)}
-                    >
-                      {!nameOptions.includes(segment.chord.label) && (
-                        <option value={segment.chord.label}>{segment.chord.label}</option>
-                      )}
-                      {nameOptions.map((name) => (
-                        <option key={name} value={name}>
-                          {name}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="btn-quiet cl-seq-play"
-                      onClick={() => playSegment(segment.chord as DetectedChord)}
-                      aria-label={`试听第 ${index + 1} 段 ${segment.chord.label}`}
-                    >
-                      试听
-                    </button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  className="btn-quiet cl-seq-drop"
-                  aria-label={`删掉第 ${index + 1} 段`}
-                  onClick={() => dropSegment(index)}
-                >
-                  删掉
-                </button>
+                <div className="cl-seq-actions">
+                  {segment.chord && (
+                    <>
+                      <select
+                        className="cl-seq-name"
+                        value={segment.chord.label}
+                        aria-label={`第 ${index + 1} 段的和弦名`}
+                        onChange={(event) => renameSegment(index, event.target.value)}
+                      >
+                        {!nameOptions.includes(segment.chord.label) && (
+                          <option value={segment.chord.label}>{segment.chord.label}</option>
+                        )}
+                        {nameOptions.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn-quiet cl-seq-play"
+                        onClick={() => playSegment(segment.chord as DetectedChord)}
+                        aria-label={`试听第 ${index + 1} 段 ${segment.chord.label}`}
+                      >
+                        试听
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-quiet cl-seq-drop"
+                    aria-label={`删掉第 ${index + 1} 段`}
+                    onClick={() => dropSegment(index)}
+                  >
+                    删掉
+                  </button>
+                </div>
               </li>
             ))}
           </ol>

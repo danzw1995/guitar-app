@@ -3892,13 +3892,19 @@ button, select, input { font: inherit; color: inherit; }
 }
 .cl-seq-item {
   display: grid;
-  grid-template-columns: minmax(64px, auto) auto minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(56px, auto) auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 6px 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
   font-size: 13px;
+}
+/* 改名 / 试听 / 删掉：挤在一列里，手机上整行也放得下（v0.87.0） */
+.cl-seq-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 /* 改名字的下拉：认错了直接选对的那个（v0.87.0） */
 .cl-seq-name {
