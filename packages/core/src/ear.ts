@@ -231,9 +231,9 @@ export function earProgressionQuestion(root: number, degrees: number[], seed = 1
   };
 }
 
-/** 四种三和弦的性质，以及它们「听起来像什么」。 */
+/** 和弦性质：三和弦四种 + 七和弦三种。 */
 export interface EarQuality {
-  id: "major" | "minor" | "dim" | "aug";
+  id: "major" | "minor" | "dim" | "aug" | "major7" | "minor7" | "dominant7";
   label: string;
   intervals: number[];
   hint: string;
@@ -244,20 +244,33 @@ export const EAR_QUALITIES: EarQuality[] = [
   { id: "minor", label: "小三和弦", intervals: [0, 3, 7], hint: "根音 + 3 + 4 个半音，比大三暗一点" },
   { id: "dim", label: "减三和弦", intervals: [0, 3, 6], hint: "两个小三度叠起来，悬着、不落地" },
   { id: "aug", label: "增三和弦", intervals: [0, 4, 8], hint: "两个大三度叠起来，往外撑、飘着" },
+  { id: "major7", label: "大七和弦", intervals: [0, 4, 7, 11], hint: "大三和弦再加一个大七度，亮得有点扎" },
+  { id: "minor7", label: "小七和弦", intervals: [0, 3, 7, 10], hint: "小三和弦再加一个小七度，圆、暗、松" },
+  { id: "dominant7", label: "属七和弦", intervals: [0, 4, 7, 10], hint: "大三和弦加小七度，绷着、想解决" },
 ];
 
+/** 和弦性质分两档：先认三和弦，再认七和弦。 */
+export type QualitySet = "triad" | "seventh";
+
+export const QUALITY_SETS: Record<QualitySet, EarQuality[]> = {
+  triad: EAR_QUALITIES.filter((item) => item.intervals.length === 3),
+  seventh: EAR_QUALITIES.filter((item) => item.intervals.length === 4),
+};
+
 /**
- * 和弦性质：同时给三个音，问它是大三 / 小三 / 减 / 增。
+ * 和弦性质：同时给三个（或四个）音，问它是哪一种。
  *
- * 三个音一起响（不是琶音）——性质听的是「三度叠起来是什么味道」，
+ * 音一起响（不是琶音）——性质听的是「三度叠起来是什么味道」，
  * 拆开一个个弹反而会变成音程判断。
  */
 export function earQualityQuestion(
   root: number,
   qualityId: EarQuality["id"],
   seed = 1,
+  set: QualitySet = "triad",
 ): EarQuestion {
-  const quality = EAR_QUALITIES.find((item) => item.id === qualityId);
+  const pool = QUALITY_SETS[set];
+  const quality = pool.find((item) => item.id === qualityId);
   if (!quality) throw new Error(`earQualityQuestion: 没有这种性质 ${qualityId}`);
   const random = rng(seed);
 
@@ -266,7 +279,7 @@ export function earQualityQuestion(
     kind: "quality",
     prompt: "听这个和弦，它是哪一种？",
     play: quality.intervals.map((semitones) => root + semitones),
-    options: shuffle([...EAR_QUALITIES], random).map((item) => ({ id: item.label, label: item.label })),
+    options: shuffle([...pool], random).map((item) => ({ id: item.label, label: item.label })),
     answer: quality.label,
     hint: `这是${quality.label}：${quality.hint}。`,
   };
@@ -275,7 +288,13 @@ export function earQualityQuestion(
 /**
  * 一组题：`kind` 决定题型，`seed` 决定具体是哪些音。
  */
-export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] {  const random = rng(seed);
+export function earRound(
+  kind: EarKind,
+  seed: number,
+  count = 8,
+  options: { qualitySet?: QualitySet } = {},
+): EarQuestion[] {
+  const random = rng(seed);
   const out: EarQuestion[] = [];
 
   if (kind === "position") {
@@ -321,16 +340,18 @@ export function earRound(kind: EarKind, seed: number, count = 8): EarQuestion[] 
 
   if (kind === "quality") {
     // 主音落在 C3–G3，和别的题型同一个音区；相邻两题不考同一种性质。
+    const set = options.qualitySet ?? "triad";
+    const pool = QUALITY_SETS[set];
     const keys = [48, 50, 52, 53, 55];
     let last = "";
     for (let i = 0; i < count; i += 1) {
       const root = keys[Math.floor(random() * keys.length)];
-      let pick = EAR_QUALITIES[Math.floor(random() * EAR_QUALITIES.length)];
+      let pick = pool[Math.floor(random() * pool.length)];
       if (pick.id === last) {
-        pick = EAR_QUALITIES[(EAR_QUALITIES.indexOf(pick) + 1) % EAR_QUALITIES.length];
+        pick = pool[(pool.indexOf(pick) + 1) % pool.length];
       }
       last = pick.id;
-      out.push(earQualityQuestion(root, pick.id, seed * 31 + i));
+      out.push(earQualityQuestion(root, pick.id, seed * 31 + i, set));
     }
     return out;
   }

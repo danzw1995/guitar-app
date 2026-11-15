@@ -6,6 +6,7 @@ import {
   noteName,
   type EarKind,
   type EarQuestion,
+  type QualitySet,
 } from "@guitar/core";
 import Transcribe from "../components/Transcribe";
 import ChordListen from "../components/ChordListen";
@@ -317,6 +318,7 @@ export default function Ear() {
   const narrow = useMediaQuery("(max-width: 900px)");
   const [openLesson, setOpenLesson] = useState<number | null>(null);
   const [kind, setKind] = useState<EarKind>("position");
+  const [qualitySet, setQualitySet] = useState<QualitySet>("triad");
   const [stats, setStats] = useState<EarStats>(() => loadEar());
   const [seed, setSeed] = useState(1);
   const [questions, setQuestions] = useState<EarQuestion[]>(() => earRound("position", 1, ROUND));
@@ -352,9 +354,10 @@ export default function Ear() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question?.id]);
 
-  function startRound(nextKind: EarKind = kind, nextSeed = seed) {
+  function startRound(nextKind: EarKind = kind, nextSeed = seed, nextSet: QualitySet = qualitySet) {
     setKind(nextKind);
-    setQuestions(earRound(nextKind, nextSeed, ROUND));
+    setQualitySet(nextSet);
+    setQuestions(earRound(nextKind, nextSeed, ROUND, { qualitySet: nextSet }));
     setIndex(0);
     setPicked(null);
     setCorrect(0);
@@ -465,6 +468,26 @@ export default function Ear() {
             换一套题
           </button>
         </div>
+
+        {kind === "quality" && (
+          <div className="ear-sets" role="group" aria-label="和弦性质的档位">
+            <span className="ear-sets-label">听几种音</span>
+            {(["triad", "seventh"] as QualitySet[]).map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`chip${qualitySet === id ? " on" : ""}`}
+                aria-pressed={qualitySet === id}
+                onClick={() => {
+                  setQualitySet(id);
+                  startRound("quality", seed, id);
+                }}
+              >
+                {id === "triad" ? "三和弦（4 种）" : "七和弦（3 种）"}
+              </button>
+            ))}
+          </div>
+        )}
 
         <p className="ear-stats">
           {stats.rounds === 0

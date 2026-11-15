@@ -641,6 +641,27 @@ try {
     qualityInfo,
   );
 
+  // 9b3) 和弦性质分两档：切到七和弦，选项换成三种七和弦，题干不变
+  js(
+    "(() => { const b = [...document.querySelectorAll('.ear-sets .chip')].find(n => n.textContent.includes('七和弦')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const seventhInfo = String(
+    js(
+      "(() => { const panel = document.querySelector('.ear'); if (!panel) return 'none'; const prompt = panel.querySelector('.ear-prompt')?.textContent ?? ''; const options = [...panel.querySelectorAll('.ear-option')].map(n => n.textContent.trim()); const on = [...panel.querySelectorAll('.ear-sets .chip')].find(n => n.getAttribute('aria-pressed') === 'true')?.textContent ?? ''; return [prompt.includes('哪一种') ? 'prompt' : 'noprompt', options.length, options.every(n => /七和弦$/.test(n)) ? 'seventh' : 'mixed', on.includes('七和弦') ? 'on' : 'off'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    seventhInfo === "prompt|3|seventh|on",
+    "扒谱练习：和弦性质第二档是七和弦（三个选项都是七和弦）",
+    seventhInfo,
+  );
+  // 切回三和弦，免得影响后面的断言
+  js(
+    "(() => { const b = [...document.querySelectorAll('.ear-sets .chip')].find(n => n.textContent.includes('三和弦')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+
   // 9c) 扒谱练习：答一题，对错都有反馈，答完能进下一题
   js("(() => { [...document.querySelectorAll('.ear-option')][0]?.click(); return 'ok'; })()");
   await sleep(400);

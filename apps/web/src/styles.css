@@ -3609,6 +3609,22 @@ button, select, input { font: inherit; color: inherit; }
   margin-left: auto;
   min-height: 40px;
 }
+.ear-sets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: -4px 0 12px;
+}
+.ear-sets-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ear-sets .chip {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 12px;
+}
 .ear-stats {
   margin: 0 0 12px;
   font-size: 12px;

@@ -58,6 +58,7 @@ import {
   DEGREE_PROGRESSIONS,
   earQualityQuestion,
   EAR_QUALITIES,
+  QUALITY_SETS,
   MAJOR_DEGREES,
   intervalName,
   earIntervalQuestion,
@@ -2842,6 +2843,41 @@ test("听辨：和弦性质听的是三个音一起响，四种性质轮着出",
   const round = earRound("quality", 11, 8);
   assert.equal(round.length, 8);
   assert.ok(round.every((question) => question.kind === "quality" && question.play.length === 3));
+  assert.ok(round.every((question) => question.options.some((option) => option.id === question.answer)));
+  for (let i = 1; i < round.length; i += 1) {
+    assert.notEqual(round[i].answer, round[i - 1].answer);
+  }
+});
+
+test("听辨：和弦性质第二档换成七和弦，四个音一起响", () => {
+  // 七和弦的叠法：大三/小三 + 小七度或大七度
+  const byId = new Map(EAR_QUALITIES.map((item) => [item.id, item.intervals]));
+  assert.deepEqual(byId.get("major7"), [0, 4, 7, 11]);
+  assert.deepEqual(byId.get("minor7"), [0, 3, 7, 10]);
+  assert.deepEqual(byId.get("dominant7"), [0, 4, 7, 10]);
+
+  // 两档互不串味：三和弦那档不会出七和弦，七和弦那档也不会出三和弦
+  assert.deepEqual(
+    QUALITY_SETS.triad.map((item) => item.id),
+    ["major", "minor", "dim", "aug"],
+  );
+  assert.deepEqual(
+    QUALITY_SETS.seventh.map((item) => item.id),
+    ["major7", "minor7", "dominant7"],
+  );
+
+  // C4 上的属七：四个音一起给，选项只从七和弦里出
+  const dominant = earQualityQuestion(60, "dominant7", 3, "seventh");
+  assert.deepEqual(dominant.play, [60, 64, 67, 70]);
+  assert.equal(dominant.answer, "属七和弦");
+  assert.equal(dominant.options.length, 3);
+  assert.ok(dominant.options.every((option) => /七和弦$/.test(option.id)));
+  assert.ok(dominant.hint.includes("想解决"));
+
+  // 一轮 8 题全是四个音，且相邻两题不考同一种
+  const round = earRound("quality", 7, 8, { qualitySet: "seventh" });
+  assert.equal(round.length, 8);
+  assert.ok(round.every((question) => question.play.length === 4));
   assert.ok(round.every((question) => question.options.some((option) => option.id === question.answer)));
   for (let i = 1; i < round.length; i += 1) {
     assert.notEqual(round[i].answer, round[i - 1].answer);
