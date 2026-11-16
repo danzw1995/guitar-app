@@ -3856,6 +3856,11 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
   max-width: 62ch;
 }
+.cl-bass {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text);
+}
 .cl-save {
   display: flex;
   flex-wrap: wrap;

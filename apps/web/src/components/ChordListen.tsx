@@ -8,14 +8,20 @@ import {
   detectChord,
   detectChordFromChroma,
   noteNameOf,
+  positionsFor,
   segmentChords,
   sequenceTabOf,
+  tabToAlphaTex,
+  dateKeyOf,
   type ChordSegment,
   type ChordShape,
   type DetectedChord,
 } from "@guitar/core";
 import ChordDiagram from "./ChordDiagram";
-import { addScore } from "../lib/my-scores";
+import FollowAlong, { type FollowTarget } from "./FollowAlong";
+import { addScore, scoreFileName } from "../lib/my-scores";
+import { loadRhythm, saveRhythm, type RhythmRecords } from "../lib/storage";
+import { renderScoreImage } from "../lib/score-image";
 import { useTone } from "../hooks/useTone";
 
 const FFT_SIZE = 4096;
@@ -87,6 +93,11 @@ export default function ChordListen() {
   /** 存和弦谱时用的速度和拍号：谱头按这个画 ♩=bpm（v0.88.0）。 */
   const [saveBpm, setSaveBpm] = useState(70);
   const [saveBeats, setSaveBeats] = useState(4);
+  /** 切出来的和弦谱直接跟练（v0.89.0）：不用先存进「我的谱」。 */
+  const [follow, setFollow] = useState<FollowTarget | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   const { play, stop: stopTone } = useTone();
   // 改名字时能选的和弦：只列「和弦库里有、而且认得出性质」的那些，
   // 免得选完名字变了、谱上还是老按法。
@@ -111,6 +122,11 @@ export default function ChordListen() {
   const accRef = useRef<number[]>(new Array(12).fill(0));
   /** 一段模式的原始帧：每一帧 12 个音级，按时间顺序排。 */
   const chromasRef = useRef<number[][]>([]);
+  /**
+   * 每一帧听到的最低音（音级），用来判断转位（v0.89.0）。
+   * 12 个音级丢了八度，`bassPc` 得从频谱里单独找最低的那个响着的音。
+   */
+  const bassesRef = useRef<number[]>([]);
   const framesRef = useRef(0);
   const startedAtRef = useRef(0);
   const lastFrameRef = useRef(0);
@@ -143,7 +159,7 @@ export default function ChordListen() {
     if (mode === "hold") {
       // 长音模式：最后一秒的滑窗就是「你现在按着的那个和弦」
       const recent = chromasRef.current.slice(-HOLD_WINDOW);
-      setReading(readChroma(recent, frames));
+      setReading(readChroma(recent, frames, bassOf(bassesRef.current.slice(-HOLD_WINDOW))));
       setPhase("idle");
       setProgress(0);
       return;
@@ -154,7 +170,11 @@ export default function ChordListen() {
       setReading({ chord: null, frames, bassPc: null });
     } else {
       const normalized = chroma.map((value) => value / peak);
-      setReading({ chord: detectChordFromChroma(normalized), frames, bassPc: null });
+      setReading({
+        chord: detectChordFromChroma(normalized, bassOf(bassesRef.current) ?? undefined),
+        frames,
+        bassPc: bassOf(bassesRef.current),
+      });
     }
     setPhase("idle");
     setProgress(0);
@@ -200,6 +220,71 @@ export default function ChordListen() {
     });
     window.dispatchEvent(new Event("guitar:scores"));
     setSeqSaved(true);
+  }
+
+  /** 切出来的那几个和弦（跳过没认出来的段）。 */
+  function sequenceChords(): DetectedChord[] {
+    if (!segments) return [];
+    return segments
+      .map((segment) => segment.chord)
+      .filter((chord): chord is DetectedChord => Boolean(chord));
+  }
+
+  /**
+   * 直接跟练这一段和弦谱（v0.89.0）：不必先存进「我的谱」。
+   * 速度就按上面填的那个，目标 +40；成绩记在 `guitar.rhythm.v1` 的 `seq:` 前缀下。
+   */
+  function startFollow() {
+    const chords = sequenceChords();
+    if (chords.length === 0) return;
+    const labels = chords.map((chord) => chord.label).join("–");
+    setFollow({
+      id: `seq:${chords.map((chord) => chord.label).join("-")}`,
+      name: `和弦谱 ${labels}`,
+      bpm: [saveBpm, saveBpm + 40],
+      tab: sequenceTabOf(chords, saveBeats, saveBpm),
+      meter: `${saveBeats}/4`,
+    });
+  }
+
+  function recordFollow(result: { bpm: number; minutes: number }) {
+    if (!follow) return;
+    const today = dateKeyOf(new Date());
+    const previous = records[follow.id];
+    const next: RhythmRecords = {
+      ...records,
+      [follow.id]: {
+        bestBpm: Math.max(previous?.bestBpm ?? 0, result.bpm),
+        sessions: (previous?.sessions ?? 0) + 1,
+        minutes: (previous?.minutes ?? 0) + result.minutes,
+        lastAt: today,
+      },
+    };
+    setRecords(next);
+    saveRhythm(next);
+  }
+
+  /**
+   * 把这一段和弦谱导出成 PNG（v0.89.0）：分享给一起练的人，或者存进相册。
+   * 用和「我的谱」同一套渲染（2 倍像素、裁边），不是截屏。
+   */
+  async function exportImage() {
+    const chords = sequenceChords();
+    if (chords.length === 0 || exporting) return;
+    setExportError("");
+    setExporting(true);
+    try {
+      const tab = sequenceTabOf(chords, saveBeats, saveBpm);
+      const image = await renderScoreImage(tabToAlphaTex(tab), { minWidth: 420 });
+      const link = document.createElement("a");
+      link.href = image.dataUrl;
+      link.download = scoreFileName(`和弦谱 ${chords.map((chord) => chord.label).join("–")}`);
+      link.click();
+    } catch (err) {
+      setExportError((err as Error)?.message ?? "导出失败");
+    } finally {
+      setExporting(false);
+    }
   }
 
   function playSegment(chord: DetectedChord) {
@@ -289,6 +374,7 @@ export default function ChordListen() {
     setPhase("starting");
     accRef.current = new Array(12).fill(0);
     chromasRef.current = [];
+    bassesRef.current = [];
     framesRef.current = 0;
     doneRef.current = false;
     const limit = mode === "sequence" ? SEQUENCE_MS : mode === "hold" ? HOLD_MS : LISTEN_MS;
@@ -347,12 +433,20 @@ export default function ChordListen() {
               linear[i] = Number.isFinite(db) ? Math.pow(10, db / 20) : 0;
             }
             const chroma = chromaOfSpectrum(linear, ctx.sampleRate, FFT_SIZE);
+            const bass = bassPcOf(linear, ctx.sampleRate, FFT_SIZE);
             for (let pc = 0; pc < 12; pc += 1) accRef.current[pc] += chroma[pc];
             chromasRef.current.push(chroma);
+            bassesRef.current.push(bass ?? -1);
             framesRef.current += 1;
             // 长音模式：每两帧刷一次「最近一秒是什么和弦」，换和弦立刻跟上
             if (mode === "hold" && framesRef.current % 2 === 0) {
-              setReading(readChroma(chromasRef.current.slice(-HOLD_WINDOW), framesRef.current));
+              setReading(
+                readChroma(
+                  chromasRef.current.slice(-HOLD_WINDOW),
+                  framesRef.current,
+                  bassOf(bassesRef.current.slice(-HOLD_WINDOW)),
+                ),
+              );
             }
           }
         }
@@ -585,11 +679,28 @@ export default function ChordListen() {
             <button
               type="button"
               className="btn btn-quiet"
+              onClick={startFollow}
+              disabled={!segments.some((segment) => segment.chord)}
+            >
+              跟着练
+            </button>
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={exportImage}
+              disabled={exporting || !segments.some((segment) => segment.chord)}
+            >
+              {exporting ? "导出中…" : "导出图片"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-quiet"
               onClick={saveSequence}
               disabled={seqSaved || !segments.some((segment) => segment.chord)}
             >
               {seqSaved ? "已存进「我的谱」" : "存成和弦谱"}
             </button>
+            {exportError && <span className="cl-save-note">{exportError}</span>}
             {seqSaved && (
               <span className="cl-save-note">去「节奏」页最下面的「我的谱」找它——能试听、跟练、导出 PNG。</span>
             )}
@@ -615,6 +726,7 @@ export default function ChordListen() {
               <li key={tone}>{tone}</li>
             ))}
           </ul>
+          {chord.inversion > 0 && <p className="cl-bass">{bassHint(chord)}</p>}
           {chord.missing.length > 0 && (
             <p className="cl-missing">
               少了
@@ -660,8 +772,35 @@ export default function ChordListen() {
           </div>
         </div>
       )}
+
+      {follow && (
+        <FollowAlong
+          target={follow}
+          best={records[follow.id]?.bestBpm}
+          onFinish={recordFollow}
+          onClose={() => setFollow(null)}
+        />
+      )}
     </section>
   );
+}
+
+/**
+ * 转位的时候把「低音落在哪」说出来（v0.89.0）。
+ *
+ * 认成第一转位意味着最低的那个音不是根音——这正是初学者最容易按错的地方：
+ * 同样是 C，`x32010` 是原位，`032010` 就是第一转位（低音变成 E）。
+ * 所以这里不只报「第一转位」，还说清楚低音是哪个音、在几弦几品。
+ */
+function bassHint(chord: DetectedChord): string {
+  const bassMidi = chordMidis(chord)[0];
+  const name = noteNameOf(chord.bass);
+  const spots = positionsFor(bassMidi, 12)
+    .slice(0, 2)
+    .map((spot) => `${spot.s} 弦 ${spot.f === 0 ? "空弦" : `${spot.f} 品`}`)
+    .join(" 或 ");
+  const text = `${INVERSION_TEXT[chord.inversion] ?? "转位"}：低音是 ${name}`;
+  return spots ? `${text}（${spots}）。最低那个音换了，和弦的颜色就跟着变。` : `${text}。`;
 }
 
 /**
@@ -670,16 +809,63 @@ export default function ChordListen() {
  * 长音模式用它：按住不放的时候，画面一直显示「最近一秒是什么和弦」，
  * 换和弦了结果就跟着换——不用等一轮结束。
  */
-function readChroma(chromas: number[][], frames: number): ChordReading {
-  if (chromas.length === 0) return { chord: null, frames, bassPc: null };
+function readChroma(chromas: number[][], frames: number, bassPc: number | null = null): ChordReading {
+  if (chromas.length === 0) return { chord: null, frames, bassPc };
   const sum = new Array(12).fill(0);
   for (const chroma of chromas) {
     for (let pc = 0; pc < 12; pc += 1) sum[pc] += chroma[pc];
   }
   const peak = Math.max(...sum);
-  if (peak <= 0) return { chord: null, frames, bassPc: null };
+  if (peak <= 0) return { chord: null, frames, bassPc };
   const normalized = sum.map((value) => value / peak);
-  return { chord: detectChordFromChroma(normalized), frames, bassPc: null };
+  return {
+    chord: detectChordFromChroma(normalized, bassPc ?? undefined),
+    frames,
+    bassPc,
+  };
+}
+
+/**
+ * 频谱里最低的那个「响着的」音（v0.89.0）。
+ *
+ * 转位要靠低音判断，而 12 个音级把八度抹掉了——`detectChordFromChroma()`
+ * 拿到 `bassPc` 才知道是原位还是第一/第二转位。这里取「超过最强音 1/4」的
+ * 最低频点，避免把低频噪声当成低音。
+ */
+function bassPcOf(linear: Float32Array, sampleRate: number, fftSize: number): number | null {
+  let peak = 0;
+  for (let i = 0; i < linear.length; i += 1) if (linear[i] > peak) peak = linear[i];
+  if (peak <= 0) return null;
+  const bin = sampleRate / fftSize;
+  const floor = Math.max(65, bin);
+  for (let i = 1; i < linear.length; i += 1) {
+    const freq = i * bin;
+    if (freq < floor) continue;
+    if (freq > 1600) break;
+    if (linear[i] >= peak * 0.25) {
+      const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+      return ((midi % 12) + 12) % 12;
+    }
+  }
+  return null;
+}
+
+/** 一窗帧里的低音：取出现最多的那个（跳过的记 -1）。 */
+function bassOf(values: number[]): number | null {
+  const counts = new Map<number, number>();
+  for (const value of values) {
+    if (value < 0) continue;
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  let best = -1;
+  let bestCount = 0;
+  for (const [pc, count] of counts) {
+    if (count > bestCount) {
+      best = pc;
+      bestCount = count;
+    }
+  }
+  return best >= 0 ? best : null;
 }
 
 /** 和弦里听到的音：按根音往上排。 */

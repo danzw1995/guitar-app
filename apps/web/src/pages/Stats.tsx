@@ -80,8 +80,12 @@ export default function Stats() {
 
   // 跳过表：「今天跳过的」与「最近一周最常跳过的」（表里本来就只留 7 天）
   const skips = loadSkips(today);
-  const skipName = (id: string) =>
-    drillNames.get(id.replace(/^p:/, "")) ?? rhythmItemById(id)?.label ?? id;
+  /** 和弦谱跟练的 id 是 `seq:C-Am-G`（v0.89.0），不是节奏页的条目，得自己翻译一下。 */
+  const nameOf = (id: string) =>
+    id.startsWith("seq:")
+      ? `和弦谱 ${id.slice(4).split("-").join("–")}`
+      : (drillNames.get(id.replace(/^p:/, "")) ?? rhythmItemById(id)?.label ?? id);
+  const skipName = nameOf;
   const todaySkips = [...skipsOf(skips, today)];
   const skipCounts = new Map<string, number>();
   for (const ids of Object.values(skips)) {
@@ -621,7 +625,7 @@ export default function Stats() {
         <ul className="stat-list">
           {topRhythm.map((item) => (
             <li key={item.id}>
-              <span>{rhythmItemById(item.id)?.label ?? item.id}</span>
+              <span>{nameOf(item.id)}</span>
               <span className="muted">
                 {item.bestBpm} BPM · 练 {item.sessions} 次
                 {item.lastAt ? ` · ${item.lastAt.slice(5)}` : ""}
@@ -646,7 +650,7 @@ export default function Stats() {
               const practice = curve.id.startsWith("p:");
               const name = practice
                 ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
-                : rhythmItemById(curve.id)?.label ?? curve.id;
+                : nameOf(curve.id);
               return (
                 <li key={curve.id}>
                   <span className="curve-name">{name}</span>

@@ -96,6 +96,7 @@ v0.86.0 又加了四个新导出（`qualityIntervals()` / `chordMidis()` / `voic
 v0.87.0 加了 `chordPatternTab()`（同一个和弦写成扫弦或分解），core 到 `0.45.0`——切段改名、和弦谱单独听都只在前端。
 v0.88.0 把 `sequenceTabOf()` 扩成 `(chords, beatsPerBar, bpm)`（速度和拍号进谱头），core 到 `0.46.0`；
 「按住不放」的长音跟读、切段调顺序与合并都在前端。
+v0.89.0 只动前端：直接跟练、导出图片、转位低音提示都用现成的 core 接口，core 停在 `0.46.0`；
 `tools/tab-score` 是独立发布的包（`@danzw777/tab-score`），版本线与产品无关，现在是 `0.8.4`
 （0.7.0 加了 ASCII 六线谱输入，0.8.0 补子路径导出并把样例从发布包里摘掉，0.8.1 是第一次真正发布到 npm——
 因为 `@danzw` 那个 scope 当时的 token 没有写权限，包名从 `@danzw/tab-score` 改成了 `@danzw777/tab-score`；

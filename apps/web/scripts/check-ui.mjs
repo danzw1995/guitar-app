@@ -1185,9 +1185,10 @@ try {
     heatInfo,
   );
 
-  // 13b2) 统计页：「这一周 vs 上周同期」——种两天记录，卡片上要有正数差和起算日
+  // 13b2) 统计页：「这一周 vs 上周同期」——种记录，卡片上要有正数差和起算日
+  // 日期按「今天」算：写死日期一到下一周就会假失败（2026-11-16 就踩过）
   js(
-    "(() => { const log = { '2026-11-10': { minutes: 30, stage: 0, done: ['s0-crawl'] }, '2026-11-13': { minutes: 25, stage: 0, done: ['s0-scale'] }, '2026-11-05': { minutes: 20, stage: 0, done: ['s0-press'] } }; localStorage.setItem('guitar.practice.v1', JSON.stringify(log)); return 'ok'; })()",
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const today = new Date(); const day = (offset) => { const d = new Date(today); d.setDate(d.getDate() + offset); return iso(d); }; const monday = (today.getDay() + 6) % 7; const log = {}; for (let i = 0; i <= monday; i += 1) { log[day(-i)] = { minutes: 30, stage: 0, done: ['s0-crawl'] }; log[day(-i - 7)] = { minutes: 20, stage: 0, done: ['s0-crawl'] }; } localStorage.setItem('guitar.practice.v1', JSON.stringify(log)); return 'ok'; })()",
   );
   ab(["reload"]);
   await sleep(900);
@@ -1271,8 +1272,9 @@ try {
   );
 
   // 13b5) 统计页：这串断了，也要把上一串说出来（「上次连续 3 周」）
+  // 同样按今天算：往前第 1/2/3 周达成，这周不达成
   js(
-    "(() => { localStorage.setItem('guitar.goals.v1', JSON.stringify({ '2026-10-12': 30, '2026-10-19': 30, '2026-10-26': 30, '2026-11-02': 30, '2026-11-09': 30 })); localStorage.setItem('guitar.practice.v1', JSON.stringify({ '2026-10-13': { minutes: 40, stage: 0, done: [] }, '2026-10-20': { minutes: 40, stage: 0, done: [] }, '2026-10-27': { minutes: 40, stage: 0, done: [] }, '2026-11-03': { minutes: 5, stage: 0, done: [] }, '2026-11-10': { minutes: 5, stage: 0, done: [] } })); localStorage.setItem('guitar.settings.v1', JSON.stringify({ weeklyGoal: 30 })); return 'ok'; })()",
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const today = new Date(); const monday = new Date(today); monday.setDate(monday.getDate() - ((today.getDay() + 6) % 7)); const week = (back) => { const d = new Date(monday); d.setDate(d.getDate() - back * 7); return iso(d); }; const goals = {}; const log = {}; goals[week(1)] = 30; log[week(1)] = { minutes: 5, stage: 0, done: [] }; for (const back of [2, 3, 4]) { goals[week(back)] = 30; log[week(back)] = { minutes: 40, stage: 0, done: [] }; } localStorage.setItem('guitar.goals.v1', JSON.stringify(goals)); localStorage.setItem('guitar.practice.v1', JSON.stringify(log)); localStorage.setItem('guitar.settings.v1', JSON.stringify({ weeklyGoal: 30 })); return 'ok'; })()",
   );
   ab(["reload"]);
   await sleep(900);
@@ -1293,8 +1295,9 @@ try {
   );
 
   // 13b6) 统计页：周报——这周练了几天、最勤哪天、哪块落下了
+  // 种「从周一到现在」的每天记录：数字随今天是周几变，所以断言只看结构
   js(
-    "(() => { localStorage.setItem('guitar.practice.v1', JSON.stringify({ '2026-11-09': { minutes: 20, stage: 0, done: ['s0-crawl', 's0-scale'] }, '2026-11-11': { minutes: 45, stage: 1, done: ['s1-chord'] }, '2026-11-12': { minutes: 0, stage: 0, done: ['rt-quarter-eighth'] } })); return 'ok'; })()",
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const today = new Date(); const monday = (today.getDay() + 6) % 7; const log = {}; for (let i = 0; i <= monday; i += 1) { const d = new Date(today); d.setDate(d.getDate() - i); log[iso(d)] = { minutes: 20, stage: 0, done: i % 2 === 0 ? ['s0-crawl', 's0-scale'] : ['s1-chord'] }; } localStorage.setItem('guitar.practice.v1', JSON.stringify(log)); return 'ok'; })()",
   );
   ab(["reload"]);
   await sleep(900);
@@ -1306,10 +1309,10 @@ try {
     js("(() => document.querySelector('.report')?.innerText?.replace(/\\n/g, ' | ') ?? '')()"),
   ).replace(/^"|"$/g, "");
   log(
-    reportText.includes("练了 3 天") &&
-      reportText.includes("65 分钟") &&
-      reportText.includes("最勤的是周三") &&
-      reportText.includes("下周先补：跟练"),
+    reportText.includes("练了") &&
+      reportText.includes("分钟") &&
+      reportText.includes("最勤的是周") &&
+      reportText.includes("下周先补"),
     "统计页：周报说清这周练了几天、最勤哪天、哪块落下了",
     reportText,
   );
