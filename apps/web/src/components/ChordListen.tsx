@@ -14,6 +14,7 @@ import {
   bassLineOf,
   chordLabelOf,
   estimateTempo,
+  snapSegments,
   sequenceTabOf,
   tabToAlphaTex,
   dateKeyOf,
@@ -24,6 +25,7 @@ import {
   type TempoGuess,
 } from "@guitar/core";
 import ChordDiagram from "./ChordDiagram";
+import BassOverlay from "./BassOverlay";
 import FollowAlong, { type FollowTarget } from "./FollowAlong";
 import { addScore, scoreFileName } from "../lib/my-scores";
 import { addPattern } from "../lib/patterns";
@@ -164,9 +166,10 @@ export default function ChordListen() {
     if (mode === "sequence") {
       // 一段模式：交给 core 按「像不像上一个和弦」切开，页面不自己判断
       const found = segmentChords(chromasRef.current, FRAME_MS / 1000, { basses: bassesRef.current });
-      setSegments(found);
       // 按你弹的速度估个 BPM（v0.91.0）：填过就不动，免得把用户改的数覆盖掉
       const guess = estimateTempo(found);
+      // 再把边界挪到小节线上（v0.93.0）：切段只看音级分布，边界会落在换和弦的那一帧上
+      setSegments(guess ? snapSegments(found, { bpm: guess.bpm, beatsPerChord: guess.beatsPerChord }) : found);
       setTempoGuess(guess);
       if (guess && !bpmTouchedRef.current) setSaveBpm(guess.bpm);
       setPhase("idle");
@@ -607,7 +610,7 @@ export default function ChordListen() {
       {segments && segments.length > 0 && (
         <div className="cl-result cl-sequence">
           <p className="cl-seq-head">这一段里听到 {segments.length} 个和弦：</p>
-          <SequenceScore tab={sequenceTab()} chords={sequenceChords()} />
+          <SequenceScore tab={sequenceTab()} />
           <BassLine chords={sequenceChords()} />
           <ol className="cl-seq-list">
             {segments.map((segment, index) => (
@@ -765,6 +768,7 @@ export default function ChordListen() {
               <span className="cl-tempo">
                 按你弹的速度估的：≈{tempoGuess.bpm} BPM（一段 {tempoGuess.seconds} 秒，按{" "}
                 {tempoGuess.beatsPerChord} 拍一个和弦算）——不准就改上面那个数。
+                边界已经挪到小节线上，谱上的小节线就是你的拍子。
               </span>
             )}
             {seqSaved && (
@@ -950,36 +954,11 @@ function bassOf(values: number[]): number | null {
  * 折线要「对齐小节」就得知道每一拍在图上哪儿——`renderScoreImage` 返回的
  * `beats`（每拍一个 `{x,w,y,h}`）正好是这件事。低音的音高映射到那一拍的纵向范围里，
  * 高的在上、低的在下，于是「低音往上爬」在谱上也看得见。
+ *
+ * v0.93.0 起折线由 `BassOverlay` 统一画（「我的谱」的和弦谱卡用的是同一套）。
  */
-function SequenceScore({ tab, chords }: { tab: Tab; chords: DetectedChord[] }) {
+function SequenceScore({ tab }: { tab: Tab }) {
   const { image, error } = useScoreImage(tabToAlphaTex(tab));
-
-  const overlay = useMemo(() => {
-    if (!image?.beats?.length || chords.length === 0) return null;
-    // 每个和弦从第几拍开始：谱上同一个拍上写的音属于同一个和弦
-    const starts = [...new Set(tab.notes.map((note) => note.beat))].sort((a, b) => a - b);
-    const steps = bassLineOf(chords);
-    const mids = steps.map((step) => step.midi);
-    const lows = Math.min(...mids);
-    const highs = Math.max(...mids);
-    const span = highs - lows || 1;
-    const points: { x: number; y: number; moved: boolean }[] = [];
-    steps.forEach((step, index) => {
-      const beat = starts[index];
-      if (beat === undefined) return;
-      const band = image.beats?.[beat];
-      if (!band) return;
-      const top = band.y + band.h * 0.18;
-      const bottom = band.y + band.h * 0.82;
-      const ratio = highs === lows ? 0.5 : (highs - step.midi) / span;
-      points.push({
-        x: Number((band.x + band.w / 2).toFixed(1)),
-        y: Number((top + ratio * (bottom - top)).toFixed(1)),
-        moved: step.moved,
-      });
-    });
-    return points.length >= 2 ? points : null;
-  }, [image, chords, tab.notes]);
 
   if (error) return <p className="my-error">{error}</p>;
   if (!image) return <p className="my-hint">正在画谱…</p>;
@@ -995,19 +974,7 @@ function SequenceScore({ tab, chords }: { tab: Tab; chords: DetectedChord[] }) {
           style={{ width: "100%", height: "auto" }}
           alt={`这一段和弦的六线谱，共 ${tab.bars} 小节`}
         />
-        {overlay && (
-          <svg
-            className="cl-basschart cl-basschart-overlay"
-            viewBox={`0 0 ${image.width} ${image.height}`}
-            role="img"
-            aria-label={`谱上的低音走线：${bassLineOf(chords).map((step) => step.bassName).join(" → ")}`}
-          >
-            <polyline points={overlay.map((point) => `${point.x},${point.y}`).join(" ")} />
-            {overlay.map((point, index) => (
-              <circle key={index} cx={point.x} cy={point.y} r={point.moved ? 2.4 : 1.8} />
-            ))}
-          </svg>
-        )}
+        <BassOverlay tab={tab} image={image} />
       </div>
       <p className="cl-score-note">谱上那条线就是低音：点落在小节里，高低跟着音高走。</p>
     </div>

@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { tabToAlphaTex, type Tab } from "@guitar/core";
 import { useScoreImage } from "../hooks/useScoreImage";
 import { loadPatterns, removePattern, updatePattern, type SavedPattern } from "../lib/patterns";
+import { scoreFileName } from "../lib/my-scores";
+import { renderScoreImage } from "../lib/score-image";
 import type { FollowTarget } from "./FollowAlong";
 
 interface Props {
@@ -65,6 +67,15 @@ export default function MyPatterns({ audition, follow, best }: Props) {
   function saveEdit(id: string) {
     setPatterns(updatePattern(id, { bpm: draftBpm, beatsPerBar: draftBeats, title: draftTitle }));
     setEditing(null);
+  }
+
+  /** 导出成 PNG（v0.93.0）：跟「我的谱」同一套渲染，只是不用先存进「我的谱」。 */
+  async function exportPng(pattern: SavedPattern) {
+    const image = await renderScoreImage(tabToAlphaTex(pattern.tab));
+    const link = document.createElement("a");
+    link.href = image.dataUrl;
+    link.download = scoreFileName(pattern.title);
+    link.click();
   }
 
   return (
@@ -165,6 +176,13 @@ export default function MyPatterns({ audition, follow, best }: Props) {
                   {best(pattern.id) !== undefined && (
                     <span className="best-badge">最高 {best(pattern.id)} BPM</span>
                   )}
+                  <button
+                    type="button"
+                    className="btn-quiet"
+                    onClick={() => void exportPng(pattern)}
+                  >
+                    导出 PNG
+                  </button>
                   <button type="button" className="btn-quiet" onClick={() => startEdit(pattern)}>
                     改
                   </button>

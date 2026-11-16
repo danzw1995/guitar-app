@@ -4,6 +4,7 @@ import type { FollowTarget } from "./FollowAlong";
 import type { ScoreImage } from "../lib/score-image";
 import { renderScoreImage } from "../lib/score-image";
 import { useScoreImage } from "../hooks/useScoreImage";
+import BassOverlay from "./BassOverlay";
 import { useTone } from "../hooks/useTone";
 import { goTo } from "../lib/nav";
 import ChordDiagram from "./ChordDiagram";
@@ -98,6 +99,7 @@ function ScoreFigure({
   meter,
   bpm,
   beat,
+  bassTab,
 }: {
   image?: ScoreImage;
   error?: string;
@@ -106,6 +108,8 @@ function ScoreFigure({
   bpm: number;
   /** 正在播第几拍（0 起）；null / undefined 表示没在播。 */
   beat?: number | null;
+  /** 和弦谱才传：在谱上叠一条低音走线（v0.93.0）。 */
+  bassTab?: Tab;
 }) {
   const band =
     image && typeof beat === "number" && beat >= 0 ? image.beats?.[beat] : undefined;
@@ -134,6 +138,7 @@ function ScoreFigure({
               }}
             />
           )}
+          {bassTab && <BassOverlay tab={bassTab} image={image} />}
         </span>
       ) : (
         <span className="alpha-score-note">{error ?? "谱面渲染中…"}</span>
@@ -288,6 +293,7 @@ function ScoreCard({
           meter={meter}
           bpm={bpm}
           beat={beatOf(score.id)}
+          bassTab={storedSource === "progression" ? earTab ?? undefined : undefined}
         />
       )}
       {chordsOfTab.length > 0 && (

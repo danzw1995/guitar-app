@@ -506,15 +506,20 @@ export function segmentTabOf(
   const first = played[0].start;
   const notes: TabNote[] = [];
   let cursor = 0;
-  for (const segment of played) {
+  played.forEach((segment, index) => {
     const rawStart = ((segment.start - first) * bpm) / 60;
     const rawLength = ((segment.end - segment.start) * bpm) / 60;
     const startBeat = Math.max(cursor, Math.round(rawStart / grid) * grid);
-    const beats = Math.max(grid, Math.round(rawLength / grid) * grid);
+    // 时值不超过「到下一个和弦为止」（v0.93.0）：边界已经对齐到小节线之后，
+    // 再按原始时长写就会跨过小节线，alphaTab 会画成一条半截的延音线。
+    const next = played[index + 1];
+    const room = next ? Math.round(((next.start - first) * bpm) / 60 / grid) * grid - startBeat : rawLength;
+    const length = next ? Math.min(rawLength, Math.max(grid, room)) : rawLength;
+    const beats = Math.max(grid, Math.round(length / grid) * grid);
     const spots = voicingOf(chordMidis(segment.chord), 15);
     for (const spot of spots) notes.push(n(spot.s, spot.f, startBeat, beats));
     cursor = startBeat + beats;
-  }
+  });
 
   const bars = Math.max(1, Math.ceil((cursor - 1e-6) / beatsPerBar));
   return tabOf(notes, {
@@ -620,4 +625,51 @@ export function estimateTempo(
     seconds: Math.round(median * 100) / 100,
     confident: played.length >= 2,
   };
+}
+
+/**
+ * 把切段结果按小节线对齐（v0.93.0）。
+ *
+ * 切段本身只看「音级分布什么时候变」，所以边界会落在换和弦的那一帧上，而不是小节线上。
+ * 估出速度之后，每个和弦的起点就挪到最近的「一小节」格点上——第一段的起点当原点
+ * （用户弹的第一个和弦就是第一小节），后面的边界依次接上，最后一段补满一格。
+ */
+export function snapSegments(
+  segments: ChordSegment[],
+  options: { bpm: number; beatsPerChord?: number },
+): ChordSegment[] {
+  const played = segments.filter((segment) => segment.chord);
+  if (played.length === 0) return [];
+  const bpm = Math.max(20, Math.round(options.bpm));
+  const beats = Math.max(1, Math.round(options.beatsPerChord ?? 4));
+  const step = (beats * 60) / bpm;
+  if (!(step > 0)) return played;
+
+  const origin = played[0].start;
+  const snapped = played.map((segment) => {
+    const slot = Math.round((segment.start - origin) / step);
+    return {
+      ...segment,
+      start: Number((origin + slot * step).toFixed(2)),
+    };
+  });
+
+  // 同一个格点上的两段并成一段（切段本来就容易在边界抖出碎段）
+  const merged: ChordSegment[] = [];
+  for (const segment of snapped) {
+    const last = merged[merged.length - 1];
+    if (last && segment.start <= last.start + 1e-6) {
+      last.frames += segment.frames;
+      last.chord = last.chord ?? segment.chord;
+      continue;
+    }
+    merged.push({ ...segment });
+  }
+
+  merged.forEach((segment, index) => {
+    const next = merged[index + 1];
+    const end = next ? next.start : Math.max(segment.end, segment.start + step);
+    segment.end = Number(end.toFixed(2));
+  });
+  return merged;
 }

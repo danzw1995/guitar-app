@@ -673,6 +673,17 @@ try {
     "我的谱：和弦谱卡每个和弦一个 chip，能单独听",
     chordChips,
   );
+  // 9a5b0) v0.93.0：和弦谱卡上叠一条低音走线（谱图和「听和弦」那边共用一套）
+  const bassOverlay = String(
+    js(
+      "(() => { const overlay = document.querySelector('.my-card .cl-basschart-overlay'); if (!overlay) return 'none'; const points = overlay.querySelector('polyline')?.getAttribute('points') ?? ''; const dots = overlay.querySelectorAll('circle').length; return `${points ? 'line' : 'noline'}|${dots}|${overlay.getAttribute('aria-label') ?? ''}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    bassOverlay.startsWith("line|2|") && bassOverlay.includes("低音走线"),
+    "我的谱：和弦谱卡上叠着低音走线",
+    bassOverlay,
+  );
   // 9a5b) v0.90.0：和弦谱卡上要写清拍号 / 速度 / 每小节几拍
   const beatMark = String(
     js(
@@ -710,6 +721,17 @@ try {
       patternInfo.includes("跟练"),
     "节奏页：我存的进行能直接试听、跟练",
     patternInfo,
+  );
+  // 9a6b) v0.93.0：我存的进行能导出 PNG
+  const patternButtons = String(
+    js(
+      "(() => [...document.querySelectorAll('.my-pattern .drill-actions button')].map(n => n.textContent.trim()).join(','))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    patternButtons.includes("导出 PNG"),
+    "节奏页：我存的进行能导出 PNG",
+    patternButtons,
   );
   js("(() => { localStorage.removeItem('guitar.patterns.v1'); return 'ok'; })()");
 

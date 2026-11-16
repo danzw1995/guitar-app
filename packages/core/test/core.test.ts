@@ -29,6 +29,7 @@ import {
   bassLineOf,
   chordLabelOf,
   estimateTempo,
+  snapSegments,
   voicingOf,
   completedCount,
   dailyPuzzle,
@@ -3255,6 +3256,52 @@ test("听和弦：低音走线说清哪几段换了低音", () => {
     [false, true, true],
   );
   assert.deepEqual(bassLineOf([]), []);
+});
+
+test("听和弦：切段的边界挪到小节线上，同一格的两段并起来", () => {
+  const c = detectChord([48, 52, 55])!;
+  const am = detectChord([57, 60, 64])!;
+  const g = detectChord([55, 59, 62])!;
+  // 120 BPM、四拍一个和弦 → 一格 2 秒；起点故意偏一点
+  const snapped = snapSegments(
+    [
+      { start: 0.3, end: 2.1, chord: c, frames: 5 },
+      { start: 2.1, end: 4.4, chord: am, frames: 6 },
+      { start: 4.4, end: 6.2, chord: g, frames: 5 },
+    ],
+    { bpm: 120, beatsPerChord: 4 },
+  );
+  assert.deepEqual(
+    snapped.map((segment) => segment.start),
+    [0.3, 2.3, 4.3],
+  );
+  assert.deepEqual(
+    snapped.map((segment) => segment.end),
+    [2.3, 4.3, 6.3],
+  );
+  assert.deepEqual(
+    snapped.map((segment) => segment.chord?.label),
+    ["C", "Am", "G"],
+  );
+
+  // 两段落在同一个格点上就并成一段，帧数相加
+  const merged = snapSegments(
+    [
+      { start: 0, end: 0.9, chord: c, frames: 3 },
+      { start: 0.4, end: 1.5, chord: c, frames: 4 },
+    ],
+    { bpm: 120, beatsPerChord: 4 },
+  );
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].frames, 7);
+  assert.equal(merged[0].end, 2);
+
+  // 没有和弦的段直接丢掉；空数组返回空
+  assert.deepEqual(
+    snapSegments([{ start: 0, end: 2, chord: null, frames: 2 }], { bpm: 120 }),
+    [],
+  );
+  assert.deepEqual(snapSegments([], { bpm: 120 }), []);
 });
 
 
