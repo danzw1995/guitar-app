@@ -2281,6 +2281,12 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
   font-size: 12px;
 }
+.my-beats {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -3860,6 +3866,38 @@ button, select, input { font: inherit; color: inherit; }
   margin: 0;
   font-size: 12px;
   color: var(--text);
+}
+.cl-bassline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.cl-bassline-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.cl-bass-step-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cl-bass-step {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--panel-2);
+}
+.cl-bass-step.alt {
+  color: var(--accent);
+}
+.cl-bass-arrow {
+  color: var(--muted);
+}
+.cl-bassline-note {
+  color: var(--muted);
+  font-size: 12px;
 }
 .cl-save {
   display: flex;

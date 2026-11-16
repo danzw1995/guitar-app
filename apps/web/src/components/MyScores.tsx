@@ -273,6 +273,11 @@ function ScoreCard({
           </p>
         </div>
       )}
+      {tab && (
+        <p className="my-beats">
+          {meter} · ♩={bpm} · 每小节 {tab.beatsPerBar} 拍 · 共 {tab.bars} 小节
+        </p>
+      )}
       {parsed?.error ? (
         <p className="my-error">{parsed.error}</p>
       ) : (

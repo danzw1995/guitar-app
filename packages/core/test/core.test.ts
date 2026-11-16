@@ -25,6 +25,8 @@ import {
   chordMidis,
   qualityIntervals,
   sequenceTabOf,
+  segmentTabOf,
+  bassLineOf,
   voicingOf,
   completedCount,
   dailyPuzzle,
@@ -3118,6 +3120,100 @@ test("听和弦：一串和弦按成谱时，一根弦不会按两个品", () =>
   ]);
   // 超出品域的音就没有按法
   assert.deepEqual(voicingOf([20]), []);
+});
+
+test("听和弦：切段按真实时长写谱，拖长的地方谱上也长", () => {
+  const c = detectChord([48, 52, 55])!;
+  const am = detectChord([45, 48, 52])!;
+  const g = detectChord([43, 47, 50])!;
+  // 60 BPM：1 秒正好 1 拍
+  const tab = segmentTabOf(
+    [
+      { start: 0, end: 1, chord: c },
+      { start: 1, end: 2, chord: am },
+      { start: 2, end: 4, chord: g },
+    ],
+    { bpm: 60, beatsPerBar: 4 },
+  );
+  assert.equal(tab.bpm?.[0], 60);
+  assert.equal(tab.beatsPerBar, 4);
+  // 三个和弦分别落在 0 / 1 / 2 拍，最后一个拖两拍
+  const onsets = [...new Set(tab.notes.map((note) => note.beat))].sort((a, b) => a - b);
+  assert.deepEqual(onsets, [0, 1, 2]);
+  assert.deepEqual(
+    onsets.map((beat) => tab.notes.find((note) => note.beat === beat)?.dur),
+    [1, 1, 2],
+  );
+  // 总长 4 拍 → 一小节；拖到 5 拍就要两小节
+  assert.equal(tab.bars, 1);
+  const longer = segmentTabOf([{ start: 0, end: 5, chord: c }], { bpm: 60, beatsPerBar: 4 });
+  assert.equal(longer.bars, 2);
+  // 第一个和弦从 0 拍起，不管它实际在几秒
+  const late = segmentTabOf([{ start: 3.2, end: 4.2, chord: c }], { bpm: 60 });
+  assert.equal(late.notes[0].beat, 0);
+  // 中间空一拍：后面的和弦不会被压到前一段结尾之前，但也不会挤在一起
+  const gap = segmentTabOf(
+    [
+      { start: 0, end: 1, chord: c },
+      { start: 3, end: 4, chord: am },
+    ],
+    { bpm: 60 },
+  );
+  assert.deepEqual(
+    [...new Set(gap.notes.map((note) => note.beat))].sort((a, b) => a - b),
+    [0, 3],
+  );
+  assert.throws(() => segmentTabOf([{ start: 0, end: 1, chord: null }]), /没有和弦/);
+});
+
+test("听和弦：切段带上低音，同一组音也能分出转位", () => {
+  // 同样的 C 大三和弦，第一段低音是 C，第二段低音换成 E
+  const cChroma = Array.from({ length: 12 }, (_, pc) => (pc === 0 || pc === 4 || pc === 7 ? 1 : 0));
+  const chromas = [cChroma, cChroma, cChroma, cChroma, cChroma, cChroma, cChroma, cChroma];
+  const basses = [0, 0, 0, 0, 4, 4, 4, 4];
+  const segments = segmentChords(chromas, 0.1, { basses, threshold: 0.86 });
+  assert.equal(segments.length, 2);
+  assert.deepEqual(
+    segments.map((segment) => segment.chord?.bass),
+    [0, 4],
+  );
+  assert.deepEqual(
+    segments.map((segment) => segment.chord?.inversion),
+    [0, 1],
+  );
+  const steps = bassLineOf(segments.map((segment) => segment.chord!));
+  assert.deepEqual(
+    steps.map((step) => step.bassName),
+    ["C", "E"],
+  );
+  assert.deepEqual(
+    steps.map((step) => step.moved),
+    [false, true],
+  );
+  // 不给低音就还是一段（同名和弦照旧合并）
+  const withoutBass = segmentChords(chromas, 0.1);
+  assert.equal(withoutBass.length, 1);
+});
+
+test("听和弦：低音走线说清哪几段换了低音", () => {
+  const c = detectChord([48, 52, 55])!;
+  const firstInversion = detectChord([52, 55, 60])!;
+  const secondInversion = detectChord([55, 60, 64])!;
+  const steps = bassLineOf([c, firstInversion, secondInversion]);
+  assert.deepEqual(
+    steps.map((step) => step.bassName),
+    ["C", "E", "G"],
+  );
+  assert.deepEqual(
+    steps.map((step) => step.inversion),
+    [0, 1, 2],
+  );
+  // 第一段没有「换」这回事
+  assert.deepEqual(
+    steps.map((step) => step.moved),
+    [false, true, true],
+  );
+  assert.deepEqual(bassLineOf([]), []);
 });
 
 

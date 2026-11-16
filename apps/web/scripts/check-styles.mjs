@@ -796,6 +796,21 @@ for (const selector of ["select", "input", "textarea"]) {
     parseFloat(saveField.get("min-height") ?? "0") >= 40,
     `min-height=${saveField.get("min-height") ?? "未设置"}`,
   );
+  // v0.90.0：低音走线里「换了低音」的那几段要能一眼看出来
+  const bassStep = narrowDecls(".cl-bass-step.alt");
+  expect(
+    "低音走线里换过低音的那段用强调色",
+    (bassStep.get("color") ?? "").includes("var(--accent)"),
+    `color=${bassStep.get("color") ?? "未设置"}`,
+  );
+  // v0.90.0：和弦谱的节拍标记是给眼睛扫的小字，别抢标题
+  const myBeats = narrowDecls(".my-beats");
+  expect(
+    "和弦谱卡上的节拍标记是小号等宽数字",
+    parseFloat(myBeats.get("font-size") ?? "0") <= 13 &&
+      (myBeats.get("font-variant-numeric") ?? "").includes("tabular-nums"),
+    `font-size=${myBeats.get("font-size") ?? "未设置"} numeric=${myBeats.get("font-variant-numeric") ?? "未设置"}`,
+  );
   const voicingImg = narrowDecls(".chord-voicing-img");
   expect(
     "和弦页的六线谱图按原尺寸显示，不拉宽也不超出",

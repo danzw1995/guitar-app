@@ -10,6 +10,8 @@ import {
   noteNameOf,
   positionsFor,
   segmentChords,
+  segmentTabOf,
+  bassLineOf,
   sequenceTabOf,
   tabToAlphaTex,
   dateKeyOf,
@@ -151,7 +153,7 @@ export default function ChordListen() {
     const frames = framesRef.current;
     if (mode === "sequence") {
       // 一段模式：交给 core 按「像不像上一个和弦」切开，页面不自己判断
-      setSegments(segmentChords(chromasRef.current, FRAME_MS / 1000));
+      setSegments(segmentChords(chromasRef.current, FRAME_MS / 1000, { basses: bassesRef.current }));
       setPhase("idle");
       setProgress(0);
       return;
@@ -204,30 +206,36 @@ export default function ChordListen() {
    * 认不出来的段（`chord` 是 null）直接跳过——谱上不能有一格空着。
    * 速度和拍号按上面那两个控件写进谱头（v0.88.0）。
    */
-  function saveSequence() {
-    if (!segments) return;
-    const chords = segments
-      .map((segment) => segment.chord)
-      .filter((chord): chord is DetectedChord => Boolean(chord));
-    if (chords.length === 0) return;
-    addScore({
-      title: `和弦谱 · ${chords.map((chord) => chord.label).join("–")}`,
-      ascii: "",
-      source: "progression",
-      tab: sequenceTabOf(chords, saveBeats, saveBpm),
-      meter: `${saveBeats}/4`,
-      bpm: saveBpm,
-    });
-    window.dispatchEvent(new Event("guitar:scores"));
-    setSeqSaved(true);
-  }
-
   /** 切出来的那几个和弦（跳过没认出来的段）。 */
   function sequenceChords(): DetectedChord[] {
     if (!segments) return [];
     return segments
       .map((segment) => segment.chord)
       .filter((chord): chord is DetectedChord => Boolean(chord));
+  }
+
+  /**
+   * 这一段的谱（v0.90.0）：按每段的**真实时长**写拍子，不再平均分配。
+   * 弹得快的和弦谱上就短、拖长的地方就长，小节线也按真实时间落。
+   */
+  function sequenceTab() {
+    return segmentTabOf(segments ?? [], { bpm: saveBpm, beatsPerBar: saveBeats });
+  }
+
+  function saveSequence() {
+    if (!segments) return;
+    const chords = sequenceChords();
+    if (chords.length === 0) return;
+    addScore({
+      title: `和弦谱 · ${chords.map((chord) => chord.label).join("–")}`,
+      ascii: "",
+      source: "progression",
+      tab: sequenceTab(),
+      meter: `${saveBeats}/4`,
+      bpm: saveBpm,
+    });
+    window.dispatchEvent(new Event("guitar:scores"));
+    setSeqSaved(true);
   }
 
   /**
@@ -242,7 +250,7 @@ export default function ChordListen() {
       id: `seq:${chords.map((chord) => chord.label).join("-")}`,
       name: `和弦谱 ${labels}`,
       bpm: [saveBpm, saveBpm + 40],
-      tab: sequenceTabOf(chords, saveBeats, saveBpm),
+      tab: sequenceTab(),
       meter: `${saveBeats}/4`,
     });
   }
@@ -274,7 +282,7 @@ export default function ChordListen() {
     setExportError("");
     setExporting(true);
     try {
-      const tab = sequenceTabOf(chords, saveBeats, saveBpm);
+      const tab = sequenceTab();
       const image = await renderScoreImage(tabToAlphaTex(tab), { minWidth: 420 });
       const link = document.createElement("a");
       link.href = image.dataUrl;
@@ -566,6 +574,7 @@ export default function ChordListen() {
       {segments && segments.length > 0 && (
         <div className="cl-result cl-sequence">
           <p className="cl-seq-head">这一段里听到 {segments.length} 个和弦：</p>
+          <BassLine chords={sequenceChords()} />
           <ol className="cl-seq-list">
             {segments.map((segment, index) => (
               <li key={`${segment.start}-${index}`} className="cl-seq-item">
@@ -867,6 +876,32 @@ function bassOf(values: number[]): number | null {
     }
   }
   return best >= 0 ? best : null;
+}
+
+/**
+ * 低音走线（v0.90.0）：把每一段的「最低那个音」摆成一排。
+ *
+ * `C`、`C/E`、`C/G` 三个和弦的组成音完全一样，只有最低音不同——写成
+ * `C → C/E → C/G` 才能看出「低音在往下走」；只报和弦名会把这条线藏起来。
+ */
+function BassLine({ chords }: { chords: DetectedChord[] }) {
+  const steps = bassLineOf(chords);
+  if (steps.length < 2) return null;
+  const moved = steps.filter((step) => step.moved).length;
+  return (
+    <p className="cl-bassline">
+      <span className="cl-bassline-label">低音走线</span>
+      {steps.map((step, index) => (
+        <span key={`${step.label}-${index}`} className="cl-bass-step-wrap">
+          {index > 0 && <span className="cl-bass-arrow">→</span>}
+          <span className={step.inversion > 0 ? "cl-bass-step alt" : "cl-bass-step"}>
+            {step.inversion > 0 ? `${step.label}/${step.bassName}` : step.label}
+          </span>
+        </span>
+      ))}
+      <span className="cl-bassline-note">{moved > 0 ? `换了 ${moved} 次低音` : "低音一直没动"}</span>
+    </p>
+  );
 }
 
 /** 和弦里听到的音：按根音往上排。 */

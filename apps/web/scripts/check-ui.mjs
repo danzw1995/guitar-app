@@ -673,6 +673,17 @@ try {
     "我的谱：和弦谱卡每个和弦一个 chip，能单独听",
     chordChips,
   );
+  // 9a5b) v0.90.0：和弦谱卡上要写清拍号 / 速度 / 每小节几拍
+  const beatMark = String(
+    js(
+      "(() => { const el = document.querySelector('.my-beats'); return el ? el.textContent.replace(/\\s+/g, ' ').trim() : ''; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    beatMark.includes("4/4") && beatMark.includes("♩=70") && beatMark.includes("每小节 4 拍"),
+    "我的谱：和弦谱卡上写着拍号、速度和每小节几拍",
+    beatMark,
+  );
   js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
 
 

@@ -238,6 +238,13 @@ export interface SegmentOptions {
   minSeconds?: number;
   /** 连续几帧都判成换才真的切（防抖，单帧噪声不该切）。 */
   holdFrames?: number;
+  /**
+   * 每一帧的「最低那个音」的音级（`null` = 这一帧没听出低音）。
+   *
+   * 12 个音级把八度抹掉了，光看音级分不出 `C` 和 `C/E`；把低音带上，
+   * 切出来的每一段才能标成第一转位 / 第二转位（v0.90.0）。
+   */
+  basses?: Array<number | null>;
 }
 
 /** 把一帧 chroma 归一成单位向量，之后用点积当余弦相似度。 */
@@ -291,6 +298,12 @@ export function segmentChords(
   /** 已经不像当前段、但还没攒够帧数的那几帧；真切换时它们归到新的一段。 */
   let pending: number[][] = [];
   let divergeFrom = 0;
+  /** 当前这一段听到的低音（音级）；低音换了也算换和弦，哪怕音级分布一模一样。 */
+  let currentBass: number | null = null;
+  const bassOf = (index: number): number | null => {
+    const value = options.basses?.[index];
+    return typeof value === "number" && value >= 0 ? value : null;
+  };
 
   for (let index = 0; index < chromas.length; index += 1) {
     const frame = chromas[index];
@@ -301,19 +314,25 @@ export function segmentChords(
         current = null;
       }
       pending = [];
+      currentBass = null;
       continue;
     }
     const vector = unit(frame);
+    const frameBass = bassOf(index);
     if (!current) {
       current = { from: index, to: index, frames: [vector] };
       pending = [];
+      currentBass = frameBass;
       continue;
     }
     const center = unit(meanOf(current.frames));
-    if (dot(center, vector) >= threshold) {
+    // 低音换了（C → C/E）音级分布可能一模一样，得单独算一次「不像」
+    const bassChanged = currentBass !== null && frameBass !== null && frameBass !== currentBass;
+    if (dot(center, vector) >= threshold && !bassChanged) {
       current.frames.push(vector);
       current.to = index;
       pending = [];
+      if (frameBass !== null) currentBass = frameBass;
       continue;
     }
     if (pending.length === 0) divergeFrom = index;
@@ -323,6 +342,7 @@ export function segmentChords(
     current.to = divergeFrom - 1;
     if (current.to >= current.from) runs.push(current);
     current = { from: divergeFrom, to: index, frames: pending.slice() };
+    currentBass = bassOf(divergeFrom);
     pending = [];
   }
   if (current) runs.push(current);
@@ -331,11 +351,28 @@ export function segmentChords(
   for (const run of runs) {
     const seconds = (run.to - run.from + 1) * frameSeconds;
     if (seconds + 1e-9 < minSeconds) continue;
-    const chord = detectChordFromChroma(meanOf(run.frames));
+    // 这一段的低音：取段内出现最多的那个（没听出低音的帧不投票）
+    let bass: number | undefined;
+    if (options.basses) {
+      const counts = new Map<number, number>();
+      for (let index = run.from; index <= run.to; index += 1) {
+        const value = options.basses[index];
+        if (typeof value === "number" && value >= 0) counts.set(value, (counts.get(value) ?? 0) + 1);
+      }
+      let best = 0;
+      for (const [pc, count] of counts) {
+        if (count > best) {
+          best = count;
+          bass = pc;
+        }
+      }
+    }
+    const chord = detectChordFromChroma(meanOf(run.frames), bass);
     const start = Number((run.from * frameSeconds).toFixed(2));
     const end = Number(((run.to + 1) * frameSeconds).toFixed(2));
     const previous = segments[segments.length - 1];
-    if (previous && previous.chord?.label === chord?.label) {
+    // 同名的和弦也要看低音：C 和 C/E 是两段，不能并成一段
+    if (previous && previous.chord?.label === chord?.label && previous.chord?.bass === chord?.bass) {
       previous.end = end;
       previous.frames += run.to - run.from + 1;
       continue;
@@ -432,5 +469,87 @@ export function sequenceTabOf(chords: DetectedChord[], beatsPerBar = 4, bpm = 70
     // 速度定死一个值（不是区间）：谱头会画出 ♩=bpm，跟练也从这里起步
     bpm: [bpm, bpm],
     caption: chords.map((chord) => chord.label).join("–"),
+  });
+}
+
+export interface SegmentTabOptions {
+  /** 切段时的速度：用它把「秒」换成「拍」。 */
+  bpm?: number;
+  beatsPerBar?: number;
+  /** 对齐网格，单位是拍：0.5 = 八分音符。 */
+  grid?: number;
+}
+
+/**
+ * 按**真实时长**把切出来的和弦写成谱（v0.90.0）。
+ *
+ * `sequenceTabOf()` 是「一个和弦半小节」的平均分配，适合听不出节奏时先记下来；
+ * 但一段扫弦里每个和弦占多久本来就有长短，平均分配会把节奏抹平。
+ * 这里用每段的 `start` / `end` 乘以速度换成拍，再对齐到 `grid`（默认半拍），
+ * 所以弹得快的地方谱上就短、拖长的地方就长，小节线也按真实时间落。
+ *
+ * 第一个和弦落在 0 拍（不要求踩着节拍器起手），后面的顺序按时间排；
+ * 前面一段比后面一段长时不会被压回去（`startBeat` 至少等于上一段的结尾）。
+ */
+export function segmentTabOf(
+  segments: { start: number; end: number; chord: DetectedChord | null }[],
+  options: SegmentTabOptions = {},
+): Tab {
+  const bpm = Math.max(20, Math.round(options.bpm ?? 70));
+  const beatsPerBar = Math.max(1, Math.round(options.beatsPerBar ?? 4));
+  const grid = Math.max(0.25, options.grid ?? 0.5);
+  const played = segments.filter(
+    (segment): segment is { start: number; end: number; chord: DetectedChord } => Boolean(segment.chord),
+  );
+  if (played.length === 0) throw new Error("segmentTabOf: 没有和弦");
+
+  const first = played[0].start;
+  const notes: TabNote[] = [];
+  let cursor = 0;
+  for (const segment of played) {
+    const rawStart = ((segment.start - first) * bpm) / 60;
+    const rawLength = ((segment.end - segment.start) * bpm) / 60;
+    const startBeat = Math.max(cursor, Math.round(rawStart / grid) * grid);
+    const beats = Math.max(grid, Math.round(rawLength / grid) * grid);
+    const spots = voicingOf(chordMidis(segment.chord), 15);
+    for (const spot of spots) notes.push(n(spot.s, spot.f, startBeat, beats));
+    cursor = startBeat + beats;
+  }
+
+  const bars = Math.max(1, Math.ceil((cursor - 1e-6) / beatsPerBar));
+  return tabOf(notes, {
+    beatsPerBar,
+    bars,
+    bpm: [bpm, bpm],
+    caption: played.map((segment) => segment.chord.label).join("–"),
+  });
+}
+
+export interface BassStep {
+  label: string;
+  /** 低音的音名（`C` / `E` / `G`）。 */
+  bassName: string;
+  /** 0 = 原位，>0 = 转位。 */
+  inversion: number;
+  /** 低音跟上一段不一样（第一段恒为 false）。 */
+  moved: boolean;
+}
+
+/**
+ * 低音走线（v0.90.0）：一串和弦的「最低那个音」怎么走。
+ *
+ * 认和弦时最容易被忽略的是低音：`C`、`C/E`、`C/G` 三个和弦的组成音完全一样，
+ * 只有最低音不同——写成 `C–C/E–C/G` 才能看出「低音在往下走」这件事。
+ * 这里只做数据，文案交给页面。
+ */
+export function bassLineOf(chords: DetectedChord[]): BassStep[] {
+  return chords.map((chord, index) => {
+    const previous = index > 0 ? chords[index - 1].bass : null;
+    return {
+      label: chord.label,
+      bassName: noteNameOf(chord.bass),
+      inversion: chord.inversion,
+      moved: previous !== null && previous !== chord.bass,
+    };
   });
 }
