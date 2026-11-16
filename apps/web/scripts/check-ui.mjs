@@ -713,6 +713,42 @@ try {
   );
   js("(() => { localStorage.removeItem('guitar.patterns.v1'); return 'ok'; })()");
 
+  // 9a7) v0.92.0：我存的进行能改速度、改拍号（谱子跟着重切小节）
+  js(
+    `(() => { localStorage.setItem('guitar.patterns.v1', JSON.stringify([{ id: 'pattern-edit1', title: '和弦进行 · C–Am', tab: { beatsPerBar: 4, bars: 1, notes: [{ s: 5, f: 3, beat: 0, dur: 2 }, { s: 3, f: 0, beat: 2, dur: 2 }] }, meter: '4/4', bpm: 72, createdAt: Date.now() }])); return 'ok'; })()`,
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js("(() => { document.querySelector('.my-pattern')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(600);
+  js(
+    "(() => { const card = document.querySelector('.my-pattern'); const edit = [...card.querySelectorAll('button')].find(n => n.textContent.trim() === '改'); edit?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  js(
+    `(() => { const wrap = document.querySelector('.my-pattern-edit'); if (!wrap) return 'noedit'; const input = wrap.querySelector('input[type=number]'); const select = wrap.querySelector('select'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(input, '96'); input.dispatchEvent(new Event('input', { bubbles: true })); const pick = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; pick.call(select, '3'); select.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()`,
+  );
+  await sleep(400);
+  js(
+    "(() => { const btn = [...document.querySelectorAll('.my-pattern-edit button')].find(n => n.textContent.trim() === '存'); btn?.click(); return 'ok'; })()",
+  );
+  await sleep(800);
+  const edited = String(
+    js(
+      "(() => { const raw = JSON.parse(localStorage.getItem('guitar.patterns.v1') || '[]')[0] ?? {}; const beats = document.querySelector('.my-pattern .my-beats')?.textContent?.replace(/\\s+/g, ' ').trim() ?? ''; return `${raw.bpm}|${raw.meter}|${raw.tab?.beatsPerBar}|${beats.includes('♩=96') ? 'bpm' : 'nobpm'}|${beats.includes('3/4') ? 'meter' : 'nometer'}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    edited.startsWith("96|3/4|3|bpm|meter"),
+    "节奏页：我存的进行能改速度、改拍号",
+    edited,
+  );
+  js("(() => { localStorage.removeItem('guitar.patterns.v1'); return 'ok'; })()");
+
 
   // 9b) 扒谱（v0.72.0 独立成页）：四节课、练听辨、录音工具都在
   js(

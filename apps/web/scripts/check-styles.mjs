@@ -860,6 +860,16 @@ for (const selector of ["select", "input", "textarea"]) {
     (patternImg.get("max-width") ?? "") === "100%",
     `max-width=${patternImg.get("max-width") ?? "未设置"}`,
   );
+
+  // v0.92.0：低音折线叠在谱上是绝对定位，不把谱撑大
+  const overlay = narrowDecls(".cl-basschart-overlay");
+  const overlayWrap = narrowDecls(".cl-score-wrap");
+  expect(
+    "低音折线叠在谱上是绝对定位，不把谱撑大",
+    (overlay.get("position") ?? "") === "absolute" &&
+      (overlayWrap.get("position") ?? "") === "relative",
+    `overlay=${overlay.get("position") ?? "未设置"} wrap=${overlayWrap.get("position") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

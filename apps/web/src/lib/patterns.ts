@@ -69,3 +69,41 @@ export function addPattern(input: Omit<SavedPattern, "id" | "createdAt">): Saved
 export function removePattern(id: string) {
   savePatterns(loadPatterns().filter((item) => item.id !== id));
 }
+
+/** 改拍号时把谱的小节重新切开：音符的拍位不动，只是小节线换位置（v0.92.0）。 */
+function retime(tab: Tab, beatsPerBar: number): Tab {
+  const end = tab.notes.reduce((most, note) => Math.max(most, note.beat + note.dur), 0);
+  return {
+    ...tab,
+    beatsPerBar,
+    bars: Math.max(1, Math.ceil((end - 1e-6) / beatsPerBar)),
+  };
+}
+
+/**
+ * 改一条已存的进行（v0.92.0）：速度、拍号、标题。
+ *
+ * 速度只是「跟练从哪儿起步」，不写进谱头的话下一次打开又回到旧值；
+ * 拍号会真的重切小节——六线谱上的小节线是照着 `beatsPerBar` 画的。
+ */
+export function updatePattern(
+  id: string,
+  patch: { bpm?: number; beatsPerBar?: number; title?: string },
+): SavedPattern[] {
+  const next = loadPatterns().map((item) => {
+    if (item.id !== id) return item;
+    const bpm =
+      patch.bpm === undefined ? item.bpm : Math.min(200, Math.max(40, Math.round(patch.bpm)));
+    const beats = patch.beatsPerBar ?? item.tab.beatsPerBar;
+    const title = patch.title?.trim() || item.title;
+    return {
+      ...item,
+      title,
+      bpm,
+      meter: `${beats}/4`,
+      tab: beats === item.tab.beatsPerBar ? item.tab : retime(item.tab, beats),
+    };
+  });
+  savePatterns(next);
+  return next;
+}

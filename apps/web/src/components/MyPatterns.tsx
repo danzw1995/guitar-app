@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { tabToAlphaTex, type Tab } from "@guitar/core";
 import { useScoreImage } from "../hooks/useScoreImage";
-import { loadPatterns, removePattern, type SavedPattern } from "../lib/patterns";
+import { loadPatterns, removePattern, updatePattern, type SavedPattern } from "../lib/patterns";
 import type { FollowTarget } from "./FollowAlong";
 
 interface Props {
@@ -36,6 +36,11 @@ function PatternFigure({ tab }: { tab: Tab }) {
  */
 export default function MyPatterns({ audition, follow, best }: Props) {
   const [patterns, setPatterns] = useState<SavedPattern[]>(() => loadPatterns());
+  /** 正在改的那一条（v0.92.0）：只允许改速度、拍号、标题，谱子跟着重画。 */
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draftBpm, setDraftBpm] = useState(70);
+  const [draftBeats, setDraftBeats] = useState(4);
+  const [draftTitle, setDraftTitle] = useState("");
 
   useEffect(() => {
     const reload = () => setPatterns(loadPatterns());
@@ -50,6 +55,18 @@ export default function MyPatterns({ audition, follow, best }: Props) {
     setPatterns(loadPatterns());
   }
 
+  function startEdit(pattern: SavedPattern) {
+    setEditing(pattern.id);
+    setDraftBpm(pattern.bpm);
+    setDraftBeats(pattern.tab.beatsPerBar);
+    setDraftTitle(pattern.title);
+  }
+
+  function saveEdit(id: string) {
+    setPatterns(updatePattern(id, { bpm: draftBpm, beatsPerBar: draftBeats, title: draftTitle }));
+    setEditing(null);
+  }
+
   return (
     <>
       <h3 className="practice-h3">
@@ -61,6 +78,7 @@ export default function MyPatterns({ audition, follow, best }: Props) {
       <div className="drill-grid">
         {patterns.map((pattern) => {
           const bpm = pattern.bpm;
+          const open = editing === pattern.id;
           return (
             <article key={pattern.id} className="drill-card my-pattern">
               <header className="drill-head">
@@ -74,37 +92,87 @@ export default function MyPatterns({ audition, follow, best }: Props) {
                 {pattern.meter} · ♩={bpm} · 每小节 {pattern.tab.beatsPerBar} 拍 · 共{" "}
                 {pattern.tab.bars} 小节
               </p>
-              <div className="drill-actions">
-                <button
-                  type="button"
-                  className="btn"
-                  aria-label={`试听 ${pattern.title}`}
-                  onClick={() => audition(pattern.id, pattern.tab, bpm)}
-                >
-                  试听
-                </button>
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() =>
-                    follow({
-                      id: pattern.id,
-                      name: pattern.title,
-                      bpm: [bpm, bpm + 40],
-                      tab: pattern.tab,
-                      meter: pattern.meter,
-                    })
-                  }
-                >
-                  跟练
-                </button>
-                {best(pattern.id) !== undefined && (
-                  <span className="best-badge">最高 {best(pattern.id)} BPM</span>
-                )}
-                <button type="button" className="btn-quiet" onClick={() => drop(pattern.id)}>
-                  删掉
-                </button>
-              </div>
+              {open ? (
+                <div className="my-pattern-edit">
+                  <label className="cl-save-field">
+                    速度
+                    <input
+                      type="number"
+                      min={40}
+                      max={200}
+                      value={draftBpm}
+                      aria-label="这条进行的速度"
+                      onChange={(event) => {
+                        const next = Number(event.target.value);
+                        setDraftBpm(Number.isFinite(next) ? Math.min(200, Math.max(40, Math.round(next))) : 70);
+                      }}
+                    />
+                    BPM
+                  </label>
+                  <label className="cl-save-field">
+                    拍号
+                    <select
+                      value={draftBeats}
+                      aria-label="这条进行的拍号"
+                      onChange={(event) => setDraftBeats(Number(event.target.value))}
+                    >
+                      <option value={4}>4/4</option>
+                      <option value={3}>3/4</option>
+                      <option value={2}>2/4</option>
+                    </select>
+                  </label>
+                  <label className="cl-save-field">
+                    名字
+                    <input
+                      type="text"
+                      value={draftTitle}
+                      aria-label="这条进行的名字"
+                      onChange={(event) => setDraftTitle(event.target.value)}
+                    />
+                  </label>
+                  <button type="button" className="btn" onClick={() => saveEdit(pattern.id)}>
+                    存
+                  </button>
+                  <button type="button" className="btn-quiet" onClick={() => setEditing(null)}>
+                    取消
+                  </button>
+                </div>
+              ) : (
+                <div className="drill-actions">
+                  <button
+                    type="button"
+                    className="btn"
+                    aria-label={`试听 ${pattern.title}`}
+                    onClick={() => audition(pattern.id, pattern.tab, bpm)}
+                  >
+                    试听
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() =>
+                      follow({
+                        id: pattern.id,
+                        name: pattern.title,
+                        bpm: [bpm, bpm + 40],
+                        tab: pattern.tab,
+                        meter: pattern.meter,
+                      })
+                    }
+                  >
+                    跟练
+                  </button>
+                  {best(pattern.id) !== undefined && (
+                    <span className="best-badge">最高 {best(pattern.id)} BPM</span>
+                  )}
+                  <button type="button" className="btn-quiet" onClick={() => startEdit(pattern)}>
+                    改
+                  </button>
+                  <button type="button" className="btn-quiet" onClick={() => drop(pattern.id)}>
+                    删掉
+                  </button>
+                </div>
+              )}
             </article>
           );
         })}

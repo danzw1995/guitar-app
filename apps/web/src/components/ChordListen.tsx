@@ -20,6 +20,7 @@ import {
   type ChordSegment,
   type ChordShape,
   type DetectedChord,
+  type Tab,
   type TempoGuess,
 } from "@guitar/core";
 import ChordDiagram from "./ChordDiagram";
@@ -29,6 +30,7 @@ import { addPattern } from "../lib/patterns";
 import { loadRhythm, saveRhythm, type RhythmRecords } from "../lib/storage";
 import { renderScoreImage } from "../lib/score-image";
 import { useTone } from "../hooks/useTone";
+import { useScoreImage } from "../hooks/useScoreImage";
 
 const FFT_SIZE = 4096;
 const LISTEN_MS = 2400;
@@ -108,7 +110,7 @@ export default function ChordListen() {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
-  const { play, stop: stopTone } = useTone();
+  const { play, playTab, stop: stopTone } = useTone();
   // 改名字时能选的和弦：只列「和弦库里有、而且认得出性质」的那些，
   // 免得选完名字变了、谱上还是老按法。
   const nameOptions = useMemo(
@@ -605,6 +607,7 @@ export default function ChordListen() {
       {segments && segments.length > 0 && (
         <div className="cl-result cl-sequence">
           <p className="cl-seq-head">这一段里听到 {segments.length} 个和弦：</p>
+          <SequenceScore tab={sequenceTab()} chords={sequenceChords()} />
           <BassLine chords={sequenceChords()} />
           <ol className="cl-seq-list">
             {segments.map((segment, index) => (
@@ -717,6 +720,14 @@ export default function ChordListen() {
                 <option value={2}>2/4</option>
               </select>
             </label>
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={() => playTab(sequenceTab(), saveBpm)}
+              disabled={!segments.some((segment) => segment.chord)}
+            >
+              按这个速度试听
+            </button>
             <button
               type="button"
               className="btn btn-quiet"
@@ -933,22 +944,80 @@ function bassOf(values: number[]): number | null {
  * `C`、`C/E`、`C/G` 三个和弦的组成音完全一样，只有最低音不同——写成
  * `C → C/E → C/G` 才能看出「低音在往下走」；只报和弦名会把这条线藏起来。
  */
+/**
+ * 切段结果的谱 + 叠在上面的低音走线（v0.92.0）。
+ *
+ * 折线要「对齐小节」就得知道每一拍在图上哪儿——`renderScoreImage` 返回的
+ * `beats`（每拍一个 `{x,w,y,h}`）正好是这件事。低音的音高映射到那一拍的纵向范围里，
+ * 高的在上、低的在下，于是「低音往上爬」在谱上也看得见。
+ */
+function SequenceScore({ tab, chords }: { tab: Tab; chords: DetectedChord[] }) {
+  const { image, error } = useScoreImage(tabToAlphaTex(tab));
+
+  const overlay = useMemo(() => {
+    if (!image?.beats?.length || chords.length === 0) return null;
+    // 每个和弦从第几拍开始：谱上同一个拍上写的音属于同一个和弦
+    const starts = [...new Set(tab.notes.map((note) => note.beat))].sort((a, b) => a - b);
+    const steps = bassLineOf(chords);
+    const mids = steps.map((step) => step.midi);
+    const lows = Math.min(...mids);
+    const highs = Math.max(...mids);
+    const span = highs - lows || 1;
+    const points: { x: number; y: number; moved: boolean }[] = [];
+    steps.forEach((step, index) => {
+      const beat = starts[index];
+      if (beat === undefined) return;
+      const band = image.beats?.[beat];
+      if (!band) return;
+      const top = band.y + band.h * 0.18;
+      const bottom = band.y + band.h * 0.82;
+      const ratio = highs === lows ? 0.5 : (highs - step.midi) / span;
+      points.push({
+        x: Number((band.x + band.w / 2).toFixed(1)),
+        y: Number((top + ratio * (bottom - top)).toFixed(1)),
+        moved: step.moved,
+      });
+    });
+    return points.length >= 2 ? points : null;
+  }, [image, chords, tab.notes]);
+
+  if (error) return <p className="my-error">{error}</p>;
+  if (!image) return <p className="my-hint">正在画谱…</p>;
+
+  return (
+    <div className="cl-score">
+      <div className="cl-score-wrap" style={{ width: `${image.width}px` }}>
+        <img
+          className="tab-score"
+          src={image.dataUrl}
+          width={image.width}
+          height={image.height}
+          style={{ width: "100%", height: "auto" }}
+          alt={`这一段和弦的六线谱，共 ${tab.bars} 小节`}
+        />
+        {overlay && (
+          <svg
+            className="cl-basschart cl-basschart-overlay"
+            viewBox={`0 0 ${image.width} ${image.height}`}
+            role="img"
+            aria-label={`谱上的低音走线：${bassLineOf(chords).map((step) => step.bassName).join(" → ")}`}
+          >
+            <polyline points={overlay.map((point) => `${point.x},${point.y}`).join(" ")} />
+            {overlay.map((point, index) => (
+              <circle key={index} cx={point.x} cy={point.y} r={point.moved ? 2.4 : 1.8} />
+            ))}
+          </svg>
+        )}
+      </div>
+      <p className="cl-score-note">谱上那条线就是低音：点落在小节里，高低跟着音高走。</p>
+    </div>
+  );
+}
+
 function BassLine({ chords }: { chords: DetectedChord[] }) {
   const steps = bassLineOf(chords);
   if (steps.length < 2) return null;
   const moved = steps.filter((step) => step.moved).length;
-  // 折线按音高画：高音在上面，一眼能看出低音是往上走还是往下走
-  const WIDTH = 100;
-  const HEIGHT = 30;
-  const PAD = 4;
-  const lows = Math.min(...steps.map((step) => step.midi));
-  const highs = Math.max(...steps.map((step) => step.midi));
-  const span = highs - lows || 1;
-  const points = steps.map((step, index) => {
-    const x = steps.length === 1 ? WIDTH / 2 : PAD + (index * (WIDTH - PAD * 2)) / (steps.length - 1);
-    const y = highs === lows ? HEIGHT / 2 : PAD + ((highs - step.midi) / span) * (HEIGHT - PAD * 2);
-    return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) };
-  });
   return (
     <div className="cl-bassline">
       <p className="cl-bassline-row">
@@ -963,17 +1032,6 @@ function BassLine({ chords }: { chords: DetectedChord[] }) {
         ))}
         <span className="cl-bassline-note">{moved > 0 ? `换了 ${moved} 次低音` : "低音一直没动"}</span>
       </p>
-      <svg
-        className="cl-basschart"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        role="img"
-        aria-label={`低音走线：${steps.map((step) => step.bassName).join(" → ")}`}
-      >
-        <polyline points={points.map((point) => `${point.x},${point.y}`).join(" ")} />
-        {points.map((point, index) => (
-          <circle key={index} cx={point.x} cy={point.y} r={steps[index].moved ? 2 : 1.6} />
-        ))}
-      </svg>
     </div>
   );
 }
