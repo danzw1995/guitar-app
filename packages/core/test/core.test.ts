@@ -27,6 +27,7 @@ import {
   sequenceTabOf,
   segmentTabOf,
   bassLineOf,
+  chordLabelOf,
   voicingOf,
   completedCount,
   dailyPuzzle,
@@ -3193,6 +3194,11 @@ test("听和弦：切段带上低音，同一组音也能分出转位", () => {
   // 不给低音就还是一段（同名和弦照旧合并）
   const withoutBass = segmentChords(chromas, 0.1);
   assert.equal(withoutBass.length, 1);
+  // 写谱时的名字要带上低音，不然卡片上会是三个一模一样的 C
+  const tab = segmentTabOf(segments, { bpm: 60 });
+  assert.equal(tab.caption, "C–C/E");
+  assert.equal(chordLabelOf(detectChord([48, 52, 55])!), "C");
+  assert.equal(chordLabelOf(detectChord([52, 55, 60])!), "C/E");
 });
 
 test("听和弦：低音走线说清哪几段换了低音", () => {

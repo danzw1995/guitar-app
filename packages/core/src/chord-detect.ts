@@ -521,8 +521,18 @@ export function segmentTabOf(
     beatsPerBar,
     bars,
     bpm: [bpm, bpm],
-    caption: played.map((segment) => segment.chord.label).join("–"),
+    caption: played.map((segment) => chordLabelOf(segment.chord)).join("–"),
   });
+}
+
+/**
+ * 写给人看的和弦名：转位写成 `C/E`（斜杠后面是低音），原位就是 `C`。
+ *
+ * `label` 只带和弦性质，原位和转位都叫 `C`；存成谱、写标题时得带上低音，
+ * 不然 `C → C/E → C/G` 在卡片上会变成三个一模一样的 `C`（v0.90.1）。
+ */
+export function chordLabelOf(chord: DetectedChord): string {
+  return chord.inversion > 0 ? `${chord.label}/${chord.bassName}` : chord.label;
 }
 
 export interface BassStep {

@@ -12,6 +12,7 @@ import {
   segmentChords,
   segmentTabOf,
   bassLineOf,
+  chordLabelOf,
   sequenceTabOf,
   tabToAlphaTex,
   dateKeyOf,
@@ -227,7 +228,7 @@ export default function ChordListen() {
     const chords = sequenceChords();
     if (chords.length === 0) return;
     addScore({
-      title: `和弦谱 · ${chords.map((chord) => chord.label).join("–")}`,
+      title: `和弦谱 · ${chords.map((chord) => chordLabelOf(chord)).join("–")}`,
       ascii: "",
       source: "progression",
       tab: sequenceTab(),
@@ -245,9 +246,9 @@ export default function ChordListen() {
   function startFollow() {
     const chords = sequenceChords();
     if (chords.length === 0) return;
-    const labels = chords.map((chord) => chord.label).join("–");
+    const labels = chords.map((chord) => chordLabelOf(chord)).join("–");
     setFollow({
-      id: `seq:${chords.map((chord) => chord.label).join("-")}`,
+      id: `seq:${chords.map((chord) => chordLabelOf(chord)).join("-")}`,
       name: `和弦谱 ${labels}`,
       bpm: [saveBpm, saveBpm + 40],
       tab: sequenceTab(),
@@ -286,7 +287,7 @@ export default function ChordListen() {
       const image = await renderScoreImage(tabToAlphaTex(tab), { minWidth: 420 });
       const link = document.createElement("a");
       link.href = image.dataUrl;
-      link.download = scoreFileName(`和弦谱 ${chords.map((chord) => chord.label).join("–")}`);
+      link.download = scoreFileName(`和弦谱 ${chords.map((chord) => chordLabelOf(chord)).join("–")}`);
       link.click();
     } catch (err) {
       setExportError((err as Error)?.message ?? "导出失败");
