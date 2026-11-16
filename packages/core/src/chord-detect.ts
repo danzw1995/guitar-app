@@ -668,7 +668,8 @@ export function snapSegments(
 
   merged.forEach((segment, index) => {
     const next = merged[index + 1];
-    const end = next ? next.start : Math.max(segment.end, segment.start + step);
+    // 最后一段补满一格（不是「到录音结束」）：多出来的那半格写成延音线反而像谱坏了
+    const end = next ? next.start : segment.start + step;
     segment.end = Number(end.toFixed(2));
   });
   return merged;
