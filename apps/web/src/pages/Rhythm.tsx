@@ -24,6 +24,7 @@ import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
 import MyScores from "../components/MyScores";
+import MyPatterns from "../components/MyPatterns";
 import UndoToast from "../components/UndoToast";
 import { useTone } from "../hooks/useTone";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -953,6 +954,8 @@ export default function Rhythm() {
           </article>
         ))}
       </div>
+
+      <MyPatterns audition={audition} best={best} follow={setTarget} />
 
       <MyScores audition={audition} best={best} follow={setTarget} beatOf={beatOf} />
 

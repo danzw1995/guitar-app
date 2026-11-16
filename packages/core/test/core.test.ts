@@ -28,6 +28,7 @@ import {
   segmentTabOf,
   bassLineOf,
   chordLabelOf,
+  estimateTempo,
   voicingOf,
   completedCount,
   dailyPuzzle,
@@ -3199,6 +3200,40 @@ test("听和弦：切段带上低音，同一组音也能分出转位", () => {
   assert.equal(tab.caption, "C–C/E");
   assert.equal(chordLabelOf(detectChord([48, 52, 55])!), "C");
   assert.equal(chordLabelOf(detectChord([52, 55, 60])!), "C/E");
+});
+
+test("听和弦：按你弹的速度估 BPM，太快太慢会换个「几拍一个和弦」", () => {
+  const c = detectChord([48, 52, 55])!;
+  const am = detectChord([45, 48, 52])!;
+  // 每段 2 秒、按一小节 4 拍算 → 120 BPM
+  const two = estimateTempo([
+    { start: 0, end: 2, chord: c },
+    { start: 2, end: 4, chord: am },
+  ]);
+  assert.equal(two?.bpm, 120);
+  assert.equal(two?.beatsPerChord, 4);
+  assert.equal(two?.seconds, 2);
+  assert.equal(two?.confident, true);
+  // 每段 4 秒 → 60 BPM
+  assert.equal(estimateTempo([{ start: 0, end: 4, chord: c }])?.bpm, 60);
+  // 每段 1 秒：按 4 拍算要 240（超过 200），改成 2 拍一个和弦 → 120
+  const fast = estimateTempo([
+    { start: 0, end: 1, chord: c },
+    { start: 1, end: 2, chord: am },
+  ]);
+  assert.equal(fast?.bpm, 120);
+  assert.equal(fast?.beatsPerChord, 2);
+  // 每段 8 秒：按 4 拍算只有 30，翻倍成 8 拍一个和弦 → 60
+  const slow = estimateTempo([
+    { start: 0, end: 8, chord: c },
+    { start: 8, end: 16, chord: am },
+  ]);
+  assert.equal(slow?.bpm, 60);
+  assert.equal(slow?.beatsPerChord, 8);
+  // 只有一段：能估但不可信；一段都没有 → null
+  assert.equal(estimateTempo([{ start: 0, end: 2, chord: c }])?.confident, false);
+  assert.equal(estimateTempo([]), null);
+  assert.equal(estimateTempo([{ start: 0, end: 2, chord: null }]), null);
 });
 
 test("听和弦：低音走线说清哪几段换了低音", () => {

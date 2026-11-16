@@ -543,6 +543,8 @@ export interface BassStep {
   inversion: number;
   /** 低音跟上一段不一样（第一段恒为 false）。 */
   moved: boolean;
+  /** 低音的实际音高（MIDI），画折线时按它比高低。 */
+  midi: number;
 }
 
 /**
@@ -560,6 +562,62 @@ export function bassLineOf(chords: DetectedChord[]): BassStep[] {
       bassName: noteNameOf(chord.bass),
       inversion: chord.inversion,
       moved: previous !== null && previous !== chord.bass,
+      // 低音的实际音高：转位时它是被转上来的那个音，比原位高
+      midi: chordMidis(chord)[0] ?? 0,
     };
   });
+}
+
+export interface TempoGuess {
+  /** 估出来的速度（40–200）。 */
+  bpm: number;
+  /** 一个和弦按几拍算的。 */
+  beatsPerChord: number;
+  /** 一个和弦平均多少秒。 */
+  seconds: number;
+  /** 够不够可信：少于两段就只能算瞎猜。 */
+  confident: boolean;
+}
+
+/**
+ * 按你弹的速度估 BPM（v0.91.0）：拿每段和弦的平均时长反推。
+ *
+ * 切段只知道「每段多少秒」，不知道你按什么速度弹；而写谱、跟练都要 BPM。
+ * 这里假设**一个和弦占一小节**（4 拍）——扫弦进行里最常见；算出来太快或太慢时
+ * 自动改成「一个和弦 2 拍 / 8 拍」，落在 40–200 之间。
+ *
+ * 只有一段时没法估（不知道你是弹了半小节还是一小节），返回 `confident: false`。
+ */
+export function estimateTempo(
+  segments: Array<{ start: number; end: number; chord: DetectedChord | null }>,
+  options: { beatsPerChord?: number; min?: number; max?: number } = {},
+): TempoGuess | null {
+  const played = segments.filter((segment) => segment.chord && segment.end > segment.start);
+  if (played.length === 0) return null;
+  const seconds = played.map((segment) => segment.end - segment.start).sort((a, b) => a - b);
+  const middle = Math.floor(seconds.length / 2);
+  const median =
+    seconds.length % 2 === 0 ? (seconds[middle - 1] + seconds[middle]) / 2 : seconds[middle];
+  if (!(median > 0)) return null;
+
+  const min = options.min ?? 40;
+  const max = options.max ?? 200;
+  let beatsPerChord = Math.max(1, Math.round(options.beatsPerChord ?? 4));
+  let bpm = (60 * beatsPerChord) / median;
+  // 一段弹得飞快或拖得很慢时，换个「几拍一个和弦」更合理
+  while (bpm > max && beatsPerChord > 1) {
+    beatsPerChord = beatsPerChord === 4 ? 2 : 1;
+    bpm = (60 * beatsPerChord) / median;
+  }
+  while (bpm < min && beatsPerChord < 16) {
+    beatsPerChord *= 2;
+    bpm = (60 * beatsPerChord) / median;
+  }
+  bpm = Math.min(max, Math.max(min, Math.round(bpm)));
+  return {
+    bpm,
+    beatsPerChord,
+    seconds: Math.round(median * 100) / 100,
+    confident: played.length >= 2,
+  };
 }

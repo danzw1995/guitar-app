@@ -13,16 +13,19 @@ import {
   segmentTabOf,
   bassLineOf,
   chordLabelOf,
+  estimateTempo,
   sequenceTabOf,
   tabToAlphaTex,
   dateKeyOf,
   type ChordSegment,
   type ChordShape,
   type DetectedChord,
+  type TempoGuess,
 } from "@guitar/core";
 import ChordDiagram from "./ChordDiagram";
 import FollowAlong, { type FollowTarget } from "./FollowAlong";
 import { addScore, scoreFileName } from "../lib/my-scores";
+import { addPattern } from "../lib/patterns";
 import { loadRhythm, saveRhythm, type RhythmRecords } from "../lib/storage";
 import { renderScoreImage } from "../lib/score-image";
 import { useTone } from "../hooks/useTone";
@@ -96,6 +99,10 @@ export default function ChordListen() {
   /** 存和弦谱时用的速度和拍号：谱头按这个画 ♩=bpm（v0.88.0）。 */
   const [saveBpm, setSaveBpm] = useState(70);
   const [saveBeats, setSaveBeats] = useState(4);
+  /** 按你弹的速度估的 BPM（v0.91.0）；用户自己改过速度之后就不再自动填。 */
+  const [tempoGuess, setTempoGuess] = useState<TempoGuess | null>(null);
+  const bpmTouchedRef = useRef(false);
+  const [patternSaved, setPatternSaved] = useState(false);
   /** 切出来的和弦谱直接跟练（v0.89.0）：不用先存进「我的谱」。 */
   const [follow, setFollow] = useState<FollowTarget | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -154,7 +161,12 @@ export default function ChordListen() {
     const frames = framesRef.current;
     if (mode === "sequence") {
       // 一段模式：交给 core 按「像不像上一个和弦」切开，页面不自己判断
-      setSegments(segmentChords(chromasRef.current, FRAME_MS / 1000, { basses: bassesRef.current }));
+      const found = segmentChords(chromasRef.current, FRAME_MS / 1000, { basses: bassesRef.current });
+      setSegments(found);
+      // 按你弹的速度估个 BPM（v0.91.0）：填过就不动，免得把用户改的数覆盖掉
+      const guess = estimateTempo(found);
+      setTempoGuess(guess);
+      if (guess && !bpmTouchedRef.current) setSaveBpm(guess.bpm);
       setPhase("idle");
       setProgress(0);
       return;
@@ -237,6 +249,24 @@ export default function ChordListen() {
     });
     window.dispatchEvent(new Event("guitar:scores"));
     setSeqSaved(true);
+  }
+
+  /**
+   * 存成「我存的进行」（v0.91.0）：和存成和弦谱不同，这一条是**拿来跟练的素材**，
+   * 会出现在节奏页，直接带「试听 / 跟练」两个按钮。
+   */
+  function savePattern() {
+    if (!segments) return;
+    const chords = sequenceChords();
+    if (chords.length === 0) return;
+    addPattern({
+      title: `和弦进行 · ${chords.map((chord) => chordLabelOf(chord)).join("–")}`,
+      tab: sequenceTab(),
+      meter: `${saveBeats}/4`,
+      bpm: saveBpm,
+    });
+    window.dispatchEvent(new Event("guitar:patterns"));
+    setPatternSaved(true);
   }
 
   /**
@@ -665,6 +695,7 @@ export default function ChordListen() {
                 aria-label="和弦谱的速度"
                 onChange={(event) => {
                   const next = Number(event.target.value);
+                  bpmTouchedRef.current = true;
                   setSaveBpm(Number.isFinite(next) ? Math.min(200, Math.max(40, Math.round(next))) : 70);
                   setSeqSaved(false);
                 }}
@@ -710,9 +741,26 @@ export default function ChordListen() {
             >
               {seqSaved ? "已存进「我的谱」" : "存成和弦谱"}
             </button>
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={savePattern}
+              disabled={patternSaved || !segments.some((segment) => segment.chord)}
+            >
+              {patternSaved ? "已存进「我存的进行」" : "存成节奏型"}
+            </button>
             {exportError && <span className="cl-save-note">{exportError}</span>}
+            {tempoGuess && (
+              <span className="cl-tempo">
+                按你弹的速度估的：≈{tempoGuess.bpm} BPM（一段 {tempoGuess.seconds} 秒，按{" "}
+                {tempoGuess.beatsPerChord} 拍一个和弦算）——不准就改上面那个数。
+              </span>
+            )}
             {seqSaved && (
               <span className="cl-save-note">去「节奏」页最下面的「我的谱」找它——能试听、跟练、导出 PNG。</span>
+            )}
+            {patternSaved && (
+              <span className="cl-save-note">去「节奏」页的「我存的进行」找它——那里直接能试听、跟练。</span>
             )}
           </div>
           <p className="cl-tip">
@@ -889,19 +937,44 @@ function BassLine({ chords }: { chords: DetectedChord[] }) {
   const steps = bassLineOf(chords);
   if (steps.length < 2) return null;
   const moved = steps.filter((step) => step.moved).length;
+  // 折线按音高画：高音在上面，一眼能看出低音是往上走还是往下走
+  const WIDTH = 100;
+  const HEIGHT = 30;
+  const PAD = 4;
+  const lows = Math.min(...steps.map((step) => step.midi));
+  const highs = Math.max(...steps.map((step) => step.midi));
+  const span = highs - lows || 1;
+  const points = steps.map((step, index) => {
+    const x = steps.length === 1 ? WIDTH / 2 : PAD + (index * (WIDTH - PAD * 2)) / (steps.length - 1);
+    const y = highs === lows ? HEIGHT / 2 : PAD + ((highs - step.midi) / span) * (HEIGHT - PAD * 2);
+    return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) };
+  });
   return (
-    <p className="cl-bassline">
-      <span className="cl-bassline-label">低音走线</span>
-      {steps.map((step, index) => (
-        <span key={`${step.label}-${index}`} className="cl-bass-step-wrap">
-          {index > 0 && <span className="cl-bass-arrow">→</span>}
-          <span className={step.inversion > 0 ? "cl-bass-step alt" : "cl-bass-step"}>
-            {step.inversion > 0 ? `${step.label}/${step.bassName}` : step.label}
+    <div className="cl-bassline">
+      <p className="cl-bassline-row">
+        <span className="cl-bassline-label">低音走线</span>
+        {steps.map((step, index) => (
+          <span key={`${step.label}-${index}`} className="cl-bass-step-wrap">
+            {index > 0 && <span className="cl-bass-arrow">→</span>}
+            <span className={step.inversion > 0 ? "cl-bass-step alt" : "cl-bass-step"}>
+              {step.inversion > 0 ? `${step.label}/${step.bassName}` : step.label}
+            </span>
           </span>
-        </span>
-      ))}
-      <span className="cl-bassline-note">{moved > 0 ? `换了 ${moved} 次低音` : "低音一直没动"}</span>
-    </p>
+        ))}
+        <span className="cl-bassline-note">{moved > 0 ? `换了 ${moved} 次低音` : "低音一直没动"}</span>
+      </p>
+      <svg
+        className="cl-basschart"
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        role="img"
+        aria-label={`低音走线：${steps.map((step) => step.bassName).join(" → ")}`}
+      >
+        <polyline points={points.map((point) => `${point.x},${point.y}`).join(" ")} />
+        {points.map((point, index) => (
+          <circle key={index} cx={point.x} cy={point.y} r={steps[index].moved ? 2 : 1.6} />
+        ))}
+      </svg>
+    </div>
   );
 }
 

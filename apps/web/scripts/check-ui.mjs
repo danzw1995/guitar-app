@@ -686,6 +686,33 @@ try {
   );
   js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
 
+  // 9a6) v0.91.0：我存的进行——节奏页有一块，卡上直接能试听、跟练
+  js(
+    `(() => { localStorage.setItem('guitar.patterns.v1', JSON.stringify([{ id: 'pattern-test1', title: '和弦进行 · C–Am', tab: { beatsPerBar: 4, bars: 1, notes: [{ s: 5, f: 3, beat: 0, dur: 2 }, { s: 4, f: 2, beat: 0, dur: 2 }, { s: 3, f: 0, beat: 0, dur: 2 }, { s: 3, f: 2, beat: 2, dur: 2 }, { s: 2, f: 1, beat: 2, dur: 2 }, { s: 1, f: 0, beat: 2, dur: 2 }] }, meter: '4/4', bpm: 72, createdAt: Date.now() }])); return 'ok'; })()`,
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js("(() => { document.querySelector('.my-pattern')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(700);
+  const patternInfo = String(
+    js(
+      "(() => { const head = [...document.querySelectorAll('.practice-h3')].map(n => n.textContent.replace(/\\s+/g, ' ').trim()).find(t => t.includes('我存的进行')) ?? ''; const card = document.querySelector('.my-pattern'); const title = card?.querySelector('h4')?.textContent?.trim() ?? ''; const beats = card?.querySelector('.my-beats')?.textContent?.replace(/\\s+/g, ' ').trim() ?? ''; const buttons = [...(card?.querySelectorAll('.drill-actions button') ?? [])].map(n => n.textContent.trim()).join(','); return [head ? 'head' : 'nohead', title, beats, buttons].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    patternInfo.startsWith("head|和弦进行 · C–Am|") &&
+      patternInfo.includes("♩=72") &&
+      patternInfo.includes("试听") &&
+      patternInfo.includes("跟练"),
+    "节奏页：我存的进行能直接试听、跟练",
+    patternInfo,
+  );
+  js("(() => { localStorage.removeItem('guitar.patterns.v1'); return 'ok'; })()");
+
 
   // 9b) 扒谱（v0.72.0 独立成页）：四节课、练听辨、录音工具都在
   js(

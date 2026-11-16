@@ -204,3 +204,33 @@ test("合并和弦转换：最快速度取高的，日期取晚的", () => {
   assert.equal(chords["pg-folk"].bestBpm, 70, "本机独有的要留着");
   assert.equal(chords["pg-1564"].bestBpm, 80, "备份里多出来的要进来");
 });
+
+test("合并我存的进行：按 id 去重，两边都留着", () => {
+  const tab = { beatsPerBar: 4, bars: 1, notes: [{ s: 5, f: 3, beat: 0, dur: 4 }] };
+  const current = {
+    ...empty(),
+    data: {
+      "guitar.patterns.v1": [
+        { id: "p1", title: "和弦进行 · C–Am", tab, meter: "4/4", bpm: 70, createdAt: 2 },
+        { id: "p2", title: "和弦进行 · G–D", tab, meter: "4/4", bpm: 80, createdAt: 1 },
+      ],
+    },
+  };
+  const incoming = {
+    ...empty(),
+    data: {
+      "guitar.patterns.v1": [
+        { id: "p1", title: "和弦进行 · C–Am", tab, meter: "4/4", bpm: 70, createdAt: 2 },
+        { id: "p3", title: "和弦进行 · Em–C", tab, meter: "4/4", bpm: 90, createdAt: 3 },
+      ],
+    },
+  };
+  const { next } = mergeBackup(current, incoming);
+  const patterns = next.data["guitar.patterns.v1"];
+  assert.equal(patterns.length, 3, "同一条不重复，三条都在");
+  assert.deepEqual(
+    patterns.map((item) => item.id),
+    ["p3", "p1", "p2"],
+    "按存下来的时间倒序",
+  );
+});

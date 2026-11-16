@@ -842,6 +842,24 @@ for (const selector of ["select", "input", "textarea"]) {
       (px(earTrendSvg.get("height")) ?? 999) <= 40,
     `width=${earTrendSvg.get("width") ?? "未设置"} height=${earTrendSvg.get("height") ?? "未设置"}`,
   );
+
+  // v0.91.0：低音走线的折线是个小图，颜色跟强调色一致
+  const bassChart = narrowDecls(".cl-basschart");
+  const bassLine = narrowDecls(".cl-basschart polyline");
+  expect(
+    "低音走线是一条小折线，用强调色画",
+    (px(bassChart.get("height")) ?? 999) <= 40 &&
+      (bassLine.get("stroke") ?? "").includes("var(--accent)"),
+    `height=${bassChart.get("height") ?? "未设置"} stroke=${bassLine.get("stroke") ?? "未设置"}`,
+  );
+
+  // v0.91.0：我存的进行里的谱图不能撑出卡片
+  const patternImg = narrowDecls(".my-pattern .tab-score");
+  expect(
+    "我存的进行里的谱图有最大宽度，不会撑出卡片",
+    (patternImg.get("max-width") ?? "") === "100%",
+    `max-width=${patternImg.get("max-width") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

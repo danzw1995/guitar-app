@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.90.1`，core `0.47.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.91.0`，core `0.48.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -98,7 +98,10 @@ v0.88.0 把 `sequenceTabOf()` 扩成 `(chords, beatsPerBar, bpm)`（速度和拍
 「按住不放」的长音跟读、切段调顺序与合并都在前端。
 v0.89.0 只动前端：直接跟练、导出图片、转位低音提示都用现成的 core 接口，core 停在 `0.46.0`；
 v0.90.0 加了两个新导出（`segmentTabOf()` 按真实时长写谱、`bassLineOf()` 低音走线），core 到 `0.47.0`；
-「我的谱」卡上的节拍标记只在前端。
+「我的谱」卡上的节拍标记只在前端；
+v0.90.1 只是把转位和弦写成 `C/E`（`chordLabelOf()` 是新导出，但只为了这个显示问题，按 PATCH 走）；
+v0.91.0 加了 `estimateTempo()`（按你弹的速度估 BPM）并给 `BassStep` 加了 `midi` 字段，core 到 `0.48.0`；
+「我存的进行」那一块与备份合并都在前端。
 `tools/tab-score` 是独立发布的包（`@danzw777/tab-score`），版本线与产品无关，现在是 `0.8.4`
 （0.7.0 加了 ASCII 六线谱输入，0.8.0 补子路径导出并把样例从发布包里摘掉，0.8.1 是第一次真正发布到 npm——
 因为 `@danzw` 那个 scope 当时的 token 没有写权限，包名从 `@danzw/tab-score` 改成了 `@danzw777/tab-score`；

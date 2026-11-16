@@ -30,6 +30,7 @@ export const BACKUP_KEYS = [
   "guitar.chords.v1",
   "guitar.goals.v1",
   "guitar.ear.v1",
+  "guitar.patterns.v1",
 ] as const;
 
 export type BackupKey = (typeof BACKUP_KEYS)[number];
@@ -239,6 +240,28 @@ function mergeGoals(a: unknown, b: unknown): Record<string, number> {
 }
 
 /** 听辨记录：轮数、最好成绩取大的；两种题型取练得多的那一份（对错数不累加，否则会超过总题数）。 */
+/**
+ * 合并「我存的进行」：按 `id` 去重，两边都留着（谁也别丢），最多 40 条。
+ *
+ * 这些是自己存下来的素材，不是计数器——没有「取大取小」的道理，合并就是并集。
+ */
+function mergePatterns(a: unknown, b: unknown): unknown[] {
+  const out: unknown[] = [];
+  const seen = new Set<string>();
+  for (const source of [a, b]) {
+    if (!Array.isArray(source)) continue;
+    for (const item of source) {
+      if (!isDict(item) || typeof item.id !== "string") continue;
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      out.push(item);
+    }
+  }
+  return out
+    .sort((left, right) => Number((right as { createdAt?: number }).createdAt ?? 0) - Number((left as { createdAt?: number }).createdAt ?? 0))
+    .slice(0, 40);
+}
+
 function mergeEar(a: unknown, b: unknown): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const left = isDict(a) ? a : {};
@@ -313,6 +336,10 @@ export function mergeBackup(
   // 听辨记录：取两边更全的那一份
   const ear = mergeEar(a["guitar.ear.v1"], b["guitar.ear.v1"]);
   if (Object.keys(ear).length) data["guitar.ear.v1"] = ear;
+
+  // 我存的进行：按 id 合并（两边都是自己存的，谁也别丢）
+  const patterns = mergePatterns(a["guitar.patterns.v1"], b["guitar.patterns.v1"]);
+  if (patterns.length) data["guitar.patterns.v1"] = patterns;
 
   for (const key of ["guitar.settings.v1", "guitar.audio.v1", "guitar.onboarded.v1"] as const) {
     if (b[key] !== undefined) data[key] = b[key];
