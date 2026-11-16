@@ -747,7 +747,8 @@ export default function ChordListen() {
               ——多半是相邻的弦没闷住。
             </p>
           )}
-          {library && (
+          {/* 转位不画库里的指法图：库里存的是原位按法，画出来跟「第一转位」打架 */}
+          {library && chord.inversion === 0 && (
             <div className="cl-diagram">
               <ChordDiagram chord={library} />
             </div>
