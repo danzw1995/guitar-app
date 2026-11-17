@@ -1,4 +1,5 @@
 import type { Tab } from "@guitar/core";
+import { retimeTab } from "./retime";
 
 /** 自己存下来的「和弦进行」——听和弦切出来、觉得值得练的那几段。 */
 export interface SavedPattern {
@@ -71,28 +72,6 @@ export function removePattern(id: string) {
 }
 
 /**
- * 改拍号时重切小节（v0.92.0）：拍位不动，但**时值不能跨过小节线**。
- *
- * 4/4 里一个和弦按满四拍，改成 3/4 之后它就会横跨小节线——alphaTab 会画成延音线，
- * 看起来像谱子坏了。所以每个和弦的时值改成「到下一个和弦为止」和「一小节」里更短的那个。
- */
-function retime(tab: Tab, beatsPerBar: number): Tab {
-  const beats = [...new Set(tab.notes.map((note) => note.beat))].sort((a, b) => a - b);
-  const notes = tab.notes.map((note) => {
-    const next = beats.find((beat) => beat > note.beat);
-    const room = (next === undefined ? note.dur : next - note.beat) || note.dur;
-    return { ...note, dur: Math.max(1, Math.min(Math.round(room), beatsPerBar)) };
-  });
-  const end = notes.reduce((most, note) => Math.max(most, note.beat + note.dur), 0);
-  return {
-    ...tab,
-    notes,
-    beatsPerBar,
-    bars: Math.max(1, Math.ceil((end - 1e-6) / beatsPerBar)),
-  };
-}
-
-/**
  * 改一条已存的进行（v0.92.0）：速度、拍号、标题。
  *
  * 速度只是「跟练从哪儿起步」，不写进谱头的话下一次打开又回到旧值；
@@ -113,7 +92,7 @@ export function updatePattern(
       title,
       bpm,
       meter: `${beats}/4`,
-      tab: beats === item.tab.beatsPerBar ? item.tab : retime(item.tab, beats),
+      tab: beats === item.tab.beatsPerBar ? item.tab : retimeTab(item.tab, beats),
     };
   });
   savePatterns(next);

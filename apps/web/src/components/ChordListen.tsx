@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CHORD_BY_NAME,
+  SHARP_NAMES,
   STANDARD_TUNING,
   chordMidis,
   chordVoicingTab,
   chromaOfSpectrum,
   detectChord,
   detectChordFromChroma,
+  degreeInKey,
   noteNameOf,
   positionsFor,
   segmentChords,
@@ -112,6 +114,8 @@ export default function ChordListen() {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
+  /** 级数按哪个调算（v0.94.0）：null = 跟着第一个和弦的根音走。 */
+  const [keyPick, setKeyPick] = useState<number | null>(null);
   const { play, playTab, stop: stopTone } = useTone();
   // 改名字时能选的和弦：只列「和弦库里有、而且认得出性质」的那些，
   // 免得选完名字变了、谱上还是老按法。
@@ -259,17 +263,22 @@ export default function ChordListen() {
   /**
    * 存成「我存的进行」（v0.91.0）：和存成和弦谱不同，这一条是**拿来跟练的素材**，
    * 会出现在节奏页，直接带「试听 / 跟练」两个按钮。
+   *
+   * v0.94.0 起**一小节一张卡**：一段扫弦常常就是「一小节一个和弦」，拆开才好单练那一个；
+   * 想整段一起练就存成和弦谱。
    */
   function savePattern() {
     if (!segments) return;
     const chords = sequenceChords();
     if (chords.length === 0) return;
-    addPattern({
-      title: `和弦进行 · ${chords.map((chord) => chordLabelOf(chord)).join("–")}`,
-      tab: sequenceTab(),
-      meter: `${saveBeats}/4`,
-      bpm: saveBpm,
-    });
+    for (const chord of chords) {
+      addPattern({
+        title: `${chordLabelOf(chord)}（${saveBeats}/4）`,
+        tab: sequenceTabOf([chord], saveBeats, saveBpm),
+        meter: `${saveBeats}/4`,
+        bpm: saveBpm,
+      });
+    }
     window.dispatchEvent(new Event("guitar:patterns"));
     setPatternSaved(true);
   }
@@ -415,6 +424,8 @@ export default function ChordListen() {
     setProgress(0);
     setSaved(false);
     setSeqSaved(false);
+    setPatternSaved(false);
+    setKeyPick(null);
     setPhase("starting");
     accRef.current = new Array(12).fill(0);
     chromasRef.current = [];
@@ -611,7 +622,11 @@ export default function ChordListen() {
         <div className="cl-result cl-sequence">
           <p className="cl-seq-head">这一段里听到 {segments.length} 个和弦：</p>
           <SequenceScore tab={sequenceTab()} />
-          <BassLine chords={sequenceChords()} />
+          <BassLine
+            chords={sequenceChords()}
+            keyPc={keyPick ?? sequenceChords()[0]?.root ?? 0}
+            onKey={setKeyPick}
+          />
           <ol className="cl-seq-list">
             {segments.map((segment, index) => (
               <li key={`${segment.start}-${index}`} className="cl-seq-item">
@@ -981,7 +996,21 @@ function SequenceScore({ tab }: { tab: Tab }) {
   );
 }
 
-function BassLine({ chords }: { chords: DetectedChord[] }) {
+/**
+ * 低音走线（v0.91.0 起一条折线，v0.94.0 起带级数）。
+ *
+ * 级数要跟着调走：同一串 C–Am–G 在 C 调里是 1–6–5，在 G 调里是 4–2–1。
+ * 默认按「第一个和弦的根音」当主音（多半就是调），也可以手动换。
+ */
+function BassLine({
+  chords,
+  keyPc,
+  onKey,
+}: {
+  chords: DetectedChord[];
+  keyPc: number;
+  onKey: (pc: number) => void;
+}) {
   const steps = bassLineOf(chords);
   if (steps.length < 2) return null;
   const moved = steps.filter((step) => step.moved).length;
@@ -989,16 +1018,30 @@ function BassLine({ chords }: { chords: DetectedChord[] }) {
     <div className="cl-bassline">
       <p className="cl-bassline-row">
         <span className="cl-bassline-label">低音走线</span>
-        {steps.map((step, index) => (
-          <span key={`${step.label}-${index}`} className="cl-bass-step-wrap">
-            {index > 0 && <span className="cl-bass-arrow">→</span>}
-            <span className={step.inversion > 0 ? "cl-bass-step alt" : "cl-bass-step"}>
-              {step.inversion > 0 ? `${step.label}/${step.bassName}` : step.label}
+        {steps.map((step, index) => {
+          const degree = degreeInKey(step.midi % 12, keyPc);
+          return (
+            <span key={`${step.label}-${index}`} className="cl-bass-step-wrap">
+              {index > 0 && <span className="cl-bass-arrow">→</span>}
+              <span className={step.inversion > 0 ? "cl-bass-step alt" : "cl-bass-step"}>
+                {step.inversion > 0 ? `${step.label}/${step.bassName}` : step.label}
+                {degree > 0 && <em className="cl-degree">{degree}</em>}
+              </span>
             </span>
-          </span>
-        ))}
+          );
+        })}
         <span className="cl-bassline-note">{moved > 0 ? `换了 ${moved} 次低音` : "低音一直没动"}</span>
       </p>
+      <label className="cl-key">
+        <span>按哪个调算级数</span>
+        <select value={keyPc} onChange={(event) => onKey(Number(event.target.value))}>
+          {SHARP_NAMES.map((name, pc) => (
+            <option key={name} value={pc}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }

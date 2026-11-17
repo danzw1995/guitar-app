@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CHORD_BY_NAME, STANDARD_TUNING, tabToAlphaTex, type Tab } from "@guitar/core";
+import { CHORD_BY_NAME, STANDARD_TUNING, degreeInKey, tabToAlphaTex, type Tab } from "@guitar/core";
 import type { FollowTarget } from "./FollowAlong";
 import type { ScoreImage } from "../lib/score-image";
 import { renderScoreImage } from "../lib/score-image";
@@ -7,6 +7,7 @@ import { useScoreImage } from "../hooks/useScoreImage";
 import BassOverlay from "./BassOverlay";
 import { useTone } from "../hooks/useTone";
 import { goTo } from "../lib/nav";
+import { retimeTab } from "../lib/retime";
 import ChordDiagram from "./ChordDiagram";
 import {
   addScore,
@@ -226,7 +227,28 @@ function ScoreCard({
   }, [rendered.image, stored, onImage, score.id]);
   const high = best(score.id);
   const { play } = useTone();
-  // 和弦谱：按拍把音归回一个个和弦，点一下单独听那一个（v0.87.0）
+  // 和弦谱卡也能改速度 / 拍号（v0.94.0）：改拍号会真的重切小节，六线谱的小节线跟着动。
+  const [editing, setEditing] = useState(false);
+  const [draftBpm, setDraftBpm] = useState(bpm);
+  const [draftBeats, setDraftBeats] = useState(tab?.beatsPerBar ?? 4);
+  const canEditTiming = storedSource === "progression" && !!earTab;
+
+  function saveTiming() {
+    if (!earTab) return;
+    const beats = Math.max(2, Math.min(4, Math.round(draftBeats)));
+    const nextBpm = Math.max(40, Math.min(200, Math.round(draftBpm) || bpm));
+    updateScore(score.id, {
+      title: score.title,
+      ascii: score.ascii,
+      tab: beats === earTab.beatsPerBar ? earTab : retimeTab(earTab, beats),
+      meter: `${beats}/4`,
+      bpm: nextBpm,
+    });
+    window.dispatchEvent(new Event("guitar:scores"));
+    setEditing(false);
+  }
+
+  // 和弦谱：按拍把音归回一个个和弦，点一下单独听那一个（v0.87.0）；级数跟着调走（v0.94.0）
   const chordsOfTab = useMemo(() => {
     if (storedSource !== "progression" || !tab) return [];
     const labels = (tab.caption ?? "").split("–").filter(Boolean);
@@ -237,9 +259,15 @@ function ScoreCard({
       list.push(midi);
       byBeat.set(note.beat, list);
     }
-    return [...byBeat.entries()]
+    const grouped = [...byBeat.entries()]
       .sort((a, b) => a[0] - b[0])
-      .map(([, midis], index) => ({ label: labels[index] ?? `第 ${index + 1} 个`, midis }));
+      .map(([, midis], index) => ({
+        label: labels[index] ?? `第 ${index + 1} 个`,
+        midis,
+        root: Math.min(...midis) % 12,
+      }));
+    const keyPc = grouped[0]?.root ?? 0;
+    return grouped.map((item) => ({ ...item, degree: degreeInKey(item.root, keyPc) }));
   }, [storedSource, tab]);
 
   return (
@@ -281,7 +309,51 @@ function ScoreCard({
       {tab && (
         <p className="my-beats">
           {meter} · ♩={bpm} · 每小节 {tab.beatsPerBar} 拍 · 共 {tab.bars} 小节
+          {canEditTiming && (
+            <button
+              type="button"
+              className="btn-quiet my-timing-edit"
+              onClick={() => {
+                setDraftBpm(bpm);
+                setDraftBeats(tab.beatsPerBar);
+                setEditing((value) => !value);
+              }}
+            >
+              {editing ? "收起" : "改速度 / 拍号"}
+            </button>
+          )}
         </p>
+      )}
+      {editing && canEditTiming && (
+        <div className="my-timing">
+          <label className="cl-save-field">
+            <span>速度</span>
+            <input
+              type="number"
+              min={40}
+              max={200}
+              step={1}
+              value={draftBpm}
+              onChange={(event) => setDraftBpm(Number(event.target.value))}
+              aria-label="这条谱的速度"
+            />
+          </label>
+          <label className="cl-save-field">
+            <span>拍号</span>
+            <select
+              value={draftBeats}
+              onChange={(event) => setDraftBeats(Number(event.target.value))}
+              aria-label="这条谱的拍号"
+            >
+              <option value={4}>4/4</option>
+              <option value={3}>3/4</option>
+              <option value={2}>2/4</option>
+            </select>
+          </label>
+          <button type="button" className="btn" onClick={saveTiming}>
+            存
+          </button>
+        </div>
       )}
       {parsed?.error ? (
         <p className="my-error">{parsed.error}</p>
@@ -304,10 +376,11 @@ function ScoreCard({
               key={`${item.label}-${index}`}
               type="button"
               className="chip"
-              aria-label={`试听 ${item.label}`}
+              aria-label={`试听 ${item.label}${item.degree > 0 ? `，第 ${item.degree} 级` : ""}`}
               onClick={() => play(item.midis, 0.04)}
             >
               {item.label}
+              {item.degree > 0 && <em className="cl-degree">{item.degree}</em>}
             </button>
           ))}
         </div>

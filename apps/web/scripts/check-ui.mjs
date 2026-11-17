@@ -665,11 +665,12 @@ try {
   await sleep(600);
   const chordChips = String(
     js(
-      "(() => { const chips = [...document.querySelectorAll('.my-chord-chips .chip')].map(n => n.textContent.trim()); const label = document.querySelector('.my-chord-chips-label')?.textContent?.trim() ?? ''; return [chips.join(','), label].join('|'); })()",
+      "(() => { const chips = [...document.querySelectorAll('.my-chord-chips .chip')].map(n => n.textContent.replace(/\\s+/g, '').trim()); const label = document.querySelector('.my-chord-chips-label')?.textContent?.trim() ?? ''; return [chips.join(','), label].join('|'); })()",
     ),
   ).replace(/^"|"$/g, "");
   log(
-    chordChips === "C,Am|单独听：",
+    // v0.94.0 起 chip 上还带级数（C1 / Am6），所以只比对和弦名和「单独听」
+    chordChips === "C1,Am6|单独听：" || chordChips === "C,Am|单独听：",
     "我的谱：和弦谱卡每个和弦一个 chip，能单独听",
     chordChips,
   );
@@ -770,6 +771,44 @@ try {
     edited,
   );
   js("(() => { localStorage.removeItem('guitar.patterns.v1'); return 'ok'; })()");
+
+  // 9a8) v0.94.0：和弦谱卡也能改速度 / 拍号（改拍号会真的重切小节）
+  js(
+    `(() => { localStorage.setItem('guitar.scores.v1', JSON.stringify([{ id: 'my-seq1', title: '和弦谱 · C–Am', ascii: '', source: 'progression', tab: { beatsPerBar: 4, bars: 2, notes: [{ s: 5, f: 3, beat: 0, dur: 4 }, { s: 3, f: 0, beat: 4, dur: 4 }] }, meter: '4/4', bpm: 80, createdAt: Date.now() }])); return 'ok'; })()`,
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js("(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(700);
+  const hasTimingEdit = String(
+    js(
+      "(() => { const card = document.querySelector('.my-card'); const btn = [...(card?.querySelectorAll('button') ?? [])].find(n => n.textContent.trim() === '改速度 / 拍号'); if (!btn) return 'nobtn'; btn.click(); return 'btn'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await sleep(500);
+  js(
+    `(() => { const wrap = document.querySelector('.my-card .my-timing'); if (!wrap) return 'noedit'; const input = wrap.querySelector('input[type=number]'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(input, '96'); input.dispatchEvent(new Event('input', { bubbles: true })); const select = wrap.querySelector('select'); const pick = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; pick.call(select, '3'); select.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()`,
+  );
+  await sleep(400);
+  js(
+    "(() => { const btn = [...document.querySelectorAll('.my-card .my-timing button')].find(n => n.textContent.trim() === '存'); btn?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  const timing = String(
+    js(
+      "(() => { const raw = JSON.parse(localStorage.getItem('guitar.scores.v1') || '[]')[0] ?? {}; const beats = document.querySelector('.my-card .my-beats')?.textContent?.replace(/\\s+/g, ' ').trim() ?? ''; return `${raw.bpm}|${raw.meter}|${raw.tab?.beatsPerBar}|${beats.includes('♩=96') ? 'bpm' : 'nobpm'}|${beats.includes('3/4') ? 'meter' : 'nometer'}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    hasTimingEdit === "btn" && timing.startsWith("96|3/4|3|bpm|meter"),
+    "我的谱：和弦谱卡能改速度 / 拍号",
+    `${hasTimingEdit} · ${timing}`,
+  );
+  js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
 
 
   // 9b) 扒谱（v0.72.0 独立成页）：四节课、练听辨、录音工具都在

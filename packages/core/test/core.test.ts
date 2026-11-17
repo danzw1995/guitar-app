@@ -30,6 +30,7 @@ import {
   chordLabelOf,
   estimateTempo,
   snapSegments,
+  degreeInKey,
   voicingOf,
   completedCount,
   dailyPuzzle,
@@ -3302,6 +3303,27 @@ test("听和弦：切段的边界挪到小节线上，同一格的两段并起�
     [],
   );
   assert.deepEqual(snapSegments([], { bpm: 120 }), []);
+});
+
+test("听和弦：低音换成级数标注，跟着调走", () => {
+  // C 大调里 C–Am–G 就是 1–6–5
+  assert.equal(degreeInKey(0, 0), 1);
+  assert.equal(degreeInKey(9, 0), 6);
+  assert.equal(degreeInKey(7, 0), 5);
+  assert.equal(degreeInKey(2, 0), 2);
+
+  // 换成 G 调：G 是 1、E 是 6、D 是 5
+  assert.equal(degreeInKey(7, 7), 1);
+  assert.equal(degreeInKey(4, 7), 6);
+  assert.equal(degreeInKey(2, 7), 5);
+
+  // 调外音级返回 0（界面上只写音名，不写数字）
+  assert.equal(degreeInKey(1, 0), 0);
+  assert.equal(degreeInKey(6, 0), 0);
+
+  // 跨八度、负数音级也要落回 0–11
+  assert.equal(degreeInKey(12, 0), 1);
+  assert.equal(degreeInKey(-3, 0), 6);
 });
 
 

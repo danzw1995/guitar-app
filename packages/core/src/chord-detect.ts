@@ -628,6 +628,18 @@ export function estimateTempo(
 }
 
 /**
+ * 和弦在调内的级数（v0.94.0）：`degreeInKey(9, 0)` → 6（A 在 C 大调里是 6 级）。
+ *
+ * 不在大调音阶上的音级返回 0（比如 `C` 调里的 `C#`），界面上就只写音名、不写数字。
+ */
+export function degreeInKey(rootPc: number, keyPc: number): number {
+  const major = [0, 2, 4, 5, 7, 9, 11];
+  const relative = (((Math.round(rootPc) - Math.round(keyPc)) % 12) + 12) % 12;
+  const index = major.indexOf(relative);
+  return index < 0 ? 0 : index + 1;
+}
+
+/**
  * 把切段结果按小节线对齐（v0.93.0）。
  *
  * 切段本身只看「音级分布什么时候变」，所以边界会落在换和弦的那一帧上，而不是小节线上。

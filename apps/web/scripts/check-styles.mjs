@@ -870,6 +870,23 @@ for (const selector of ["select", "input", "textarea"]) {
       (overlayWrap.get("position") ?? "") === "relative",
     `overlay=${overlay.get("position") ?? "未设置"} wrap=${overlayWrap.get("position") ?? "未设置"}`,
   );
+
+  // v0.94.0：级数是贴在和弦后面的小角标，不能抢和弦名的视线
+  const degree = narrowDecls(".cl-degree");
+  expect(
+    "级数角标是小字号、带一点强调色底",
+    Number((degree.get("font-size") ?? "99px").replace("px", "")) <= 11 &&
+      (degree.get("background") ?? "").includes("rgba(232, 176, 75"),
+    `font-size=${degree.get("font-size") ?? "未设置"} background=${degree.get("background") ?? "未设置"}`,
+  );
+
+  // v0.94.0：和弦谱卡改速度 / 拍号的那一行是自动换行的，手机上不挤成一条
+  const timing = narrowDecls(".my-timing");
+  expect(
+    "改速度 / 拍号那一行会自动换行",
+    (timing.get("display") ?? "") === "flex" && (timing.get("flex-wrap") ?? "") === "wrap",
+    `display=${timing.get("display") ?? "未设置"} wrap=${timing.get("flex-wrap") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

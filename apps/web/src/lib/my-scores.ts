@@ -253,6 +253,10 @@ export function updateScore(
     imageWidth?: number;
     imageHeight?: number;
     beats?: { x: number; w: number; y: number; h: number }[];
+    /** 和弦谱才用得到（v0.94.0）：改速度 / 拍号时顺手把谱和拍号一起换掉。 */
+    tab?: Tab;
+    meter?: string;
+    bpm?: number;
   },
 ): MyScore[] {
   const scores = loadScores().map((item) =>
@@ -265,6 +269,9 @@ export function updateScore(
           imageWidth: input.imageWidth,
           imageHeight: input.imageHeight,
           beats: input.beats,
+          ...(input.tab ? { tab: input.tab } : {}),
+          ...(input.meter ? { meter: input.meter } : {}),
+          ...(typeof input.bpm === "number" ? { bpm: input.bpm } : {}),
         }
       : item,
   );
