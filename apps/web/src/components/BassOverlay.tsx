@@ -83,6 +83,17 @@ export default function BassOverlay({
       aria-label={`谱上的低音走线：${names.join(" → ")}${degrees.some((d) => d > 0) ? `（级数 ${degrees.map((d) => (d > 0 ? d : "·")).join(" ")}）` : ""}`}
     >
       <polyline points={points.map((point) => `${point.x},${point.y}`).join(" ")} />
+      {/* 线段按级数上色（v0.96.0）：走到 1 级、5 级的那一段跟着变亮 */}
+      {points.slice(1).map((point, index) => (
+        <line
+          key={`seg-${index}`}
+          x1={points[index].x}
+          y1={points[index].y}
+          x2={point.x}
+          y2={point.y}
+          className={point.degree === 1 ? "lv1" : point.degree === 5 ? "lv5" : undefined}
+        />
+      ))}
       {points.map((point, index) => (
         <circle
           key={index}

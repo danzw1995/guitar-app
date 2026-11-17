@@ -258,8 +258,8 @@ function ScoreCard({
     setEditing(false);
   }
 
-  /** 级数按哪个调算：null = 跟着第一个和弦的根音（v0.95.0）。 */
-  const [keyPick, setKeyPick] = useState<number | null>(null);
+  /** 级数按哪个调算：null = 跟着第一个和弦的根音（v0.95.0）；选过的记在这条记录上（v0.96.0）。 */
+  const [keyPick, setKeyPick] = useState<number | null>(score.keyPc ?? null);
   // 和弦谱：按拍把音归回一个个和弦，点一下单独听那一个（v0.87.0）；级数跟着调走（v0.94.0）
   const chordsOfTab = useMemo(() => {
     if (storedSource !== "progression" || !tab) return [];
@@ -404,7 +404,20 @@ function ScoreCard({
           <span>按哪个调算级数</span>
           <select
             value={cardKey}
-            onChange={(event) => setKeyPick(Number(event.target.value))}
+            onChange={(event) => {
+              const pc = Number(event.target.value);
+              setKeyPick(pc);
+              // 记住这个调（v0.96.0）：刷新、重开都还是它
+              updateScore(score.id, {
+                title: score.title,
+                ascii: score.ascii,
+                image: score.image,
+                imageWidth: score.imageWidth,
+                imageHeight: score.imageHeight,
+                beats: score.beats,
+                keyPc: pc,
+              });
+            }}
             aria-label={`${score.title} 按哪个调算级数`}
           >
             {SHARP_NAMES.map((name, pc) => (

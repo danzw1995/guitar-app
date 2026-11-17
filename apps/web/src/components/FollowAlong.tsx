@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Tab } from "@guitar/core";
-import { METERS, SUBDIVISION_LABEL, type Subdivision } from "@guitar/core";
+import { METERS, STANDARD_TUNING, SUBDIVISION_LABEL, degreeInKey, noteNameOf, type Subdivision } from "@guitar/core";
 import { useMetronome } from "../hooks/useMetronome";
 import { useAudioVolume, volumeLabel } from "../lib/audio-bus";
 import TabScore from "./TabScore";
@@ -26,6 +26,31 @@ function clock(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+/**
+ * 每个起音拍是第几级（v0.96.0）：跟练时提示「现在在第几级」。
+ *
+ * 低音（每个起音拍上最低那个音）当根音，主音取第一个起音的低音——
+ * 和低音走线、和弦谱卡用的是同一套算法，三处显示不会打架。
+ */
+function degreesOf(tab: Tab): { beat: number; degree: number; name: string }[] {
+  const onsets = [...new Set(tab.notes.map((note) => note.beat))].sort((a, b) => a - b);
+  const rows = onsets.map((beat) => {
+    const midis = tab.notes
+      .filter((note) => note.beat === beat)
+      .map((note) => (STANDARD_TUNING.strings[note.s - 1] ?? 0) + note.f);
+    return { beat, midi: midis.length ? Math.min(...midis) : null };
+  });
+  const first = rows.find((row) => row.midi !== null)?.midi;
+  if (first === undefined || first === null) return [];
+  return rows
+    .filter((row): row is { beat: number; midi: number } => row.midi !== null)
+    .map((row) => ({
+      beat: row.beat,
+      degree: degreeInKey(((row.midi % 12) + 12) % 12, ((first % 12) + 12) % 12),
+      name: noteNameOf(row.midi),
+    }));
 }
 
 /**
@@ -74,7 +99,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     ? { from: Math.min(loopFrom, loopTo), to: Math.max(loopFrom, loopTo) }
     : null;
 
-  const { running, bar, countingIn, start, stop } = useMetronome({
+  const { running, bar, active, countingIn, start, stop } = useMetronome({
     bpm,
     meterId: meter,
     subdivision,
@@ -83,6 +108,13 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     countIn,
     loop,
   });
+
+  // 现在弹到第几级（v0.96.0）：按起音拍往后找，找不到就退回第一个
+  const degrees = useMemo(() => degreesOf(target.tab), [target.tab]);
+  const beatNow = bar * target.tab.beatsPerBar + Math.max(0, active);
+  const degreeNow = degrees.length
+    ? [...degrees].reverse().find((row) => row.beat <= beatNow) ?? degrees[0]
+    : null;
 
   useEffect(() => {
     if (!running) return;
@@ -130,6 +162,11 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
           {running ? (
             <em className="follow-bar">
               {countingIn ? "预备…" : `第 ${loop ? bar : bar + 1} 小节`}
+            </em>
+          ) : null}
+          {running && !countingIn && degreeNow && degreeNow.degree > 0 ? (
+            <em className="follow-degree">
+              第 {degreeNow.degree} 级 · {degreeNow.name}
             </em>
           ) : null}
         </div>

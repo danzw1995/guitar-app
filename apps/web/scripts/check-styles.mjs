@@ -843,14 +843,24 @@ for (const selector of ["select", "input", "textarea"]) {
     `width=${earTrendSvg.get("width") ?? "未设置"} height=${earTrendSvg.get("height") ?? "未设置"}`,
   );
 
-  // v0.91.0：低音走线的折线是个小图，颜色跟强调色一致
+  // v0.91.0：低音走线的折线是个小图；v0.96.0 起底下的折线压成灰的，颜色交给线段
   const bassChart = narrowDecls(".cl-basschart");
   const bassLine = narrowDecls(".cl-basschart polyline");
   expect(
-    "低音走线是一条小折线，用强调色画",
+    "低音走线是一条小折线，颜色交给线段",
     (px(bassChart.get("height")) ?? 999) <= 40 &&
-      (bassLine.get("stroke") ?? "").includes("var(--accent)"),
+      (bassLine.get("stroke") ?? "").includes("var(--muted)"),
     `height=${bassChart.get("height") ?? "未设置"} stroke=${bassLine.get("stroke") ?? "未设置"}`,
+  );
+
+  // v0.96.0：折线的线段按级数上色（1 级强调色、5 级绿色）
+  const segLv1 = narrowDecls(".cl-basschart line.lv1");
+  const segLv5 = narrowDecls(".cl-basschart line.lv5");
+  expect(
+    "低音折线的线段按级数上色",
+    (segLv1.get("stroke") ?? "").includes("var(--accent)") &&
+      (segLv5.get("stroke") ?? "").includes("var(--green)"),
+    `lv1=${segLv1.get("stroke") ?? "未设置"} lv5=${segLv5.get("stroke") ?? "未设置"}`,
   );
 
   // v0.91.0：我存的进行里的谱图不能撑出卡片

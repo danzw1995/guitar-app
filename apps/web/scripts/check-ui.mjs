@@ -717,6 +717,34 @@ try {
     "我的谱：级数能按别的调算，低音点跟着着色",
     `${keyBefore} → ${keyAfter} → ${dotsBack}`,
   );
+
+  // 9a5b2) v0.96.0：选的调要记住（刷新之后还是 G 调）
+  js(
+    `(() => { const select = document.querySelector('.my-card .my-key select'); if (!select) return 'no'; const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(select, '7'); select.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()`,
+  );
+  await sleep(500);
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js("(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(700);
+  const keyRemembered = String(
+    js(
+      "(() => { const card = document.querySelector('.my-card'); const select = card?.querySelector('.my-key select'); const chips = [...(card?.querySelectorAll('.my-chord-chips .chip') ?? [])].map(n => n.textContent.replace(/\\s+/g, '').trim()); const stored = JSON.parse(localStorage.getItem('guitar.scores.v1') || '[]')[0] ?? {}; return [select?.value ?? '', chips.join(','), stored.keyPc].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    keyRemembered === "7|C4,Am2|7",
+    "我的谱：选过的调会记住，刷新后还在",
+    keyRemembered,
+  );
+  js(
+    `(() => { const select = document.querySelector('.my-card .my-key select'); if (!select) return 'no'; const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(select, '0'); select.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()`,
+  );
+  await sleep(400);
   // 9a5b) v0.90.0：和弦谱卡上要写清拍号 / 速度 / 每小节几拍
   const beatMark = String(
     js(

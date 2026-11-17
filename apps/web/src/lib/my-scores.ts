@@ -21,6 +21,8 @@ export interface MyScore {
   tab?: Tab;
   meter?: string;
   bpm?: number;
+  /** 和弦谱按哪个调算级数（v0.96.0）：记下来，刷新后还是上次选的调。 */
+  keyPc?: number;
   /** `data:image/png;base64,…`；旧记录可能没有，遇到时现画一张补上。 */
   image?: string;
   imageWidth?: number;
@@ -257,6 +259,8 @@ export function updateScore(
     tab?: Tab;
     meter?: string;
     bpm?: number;
+    /** 和弦谱按哪个调算级数（v0.96.0）。 */
+    keyPc?: number;
   },
 ): MyScore[] {
   const scores = loadScores().map((item) =>
@@ -272,6 +276,7 @@ export function updateScore(
           ...(input.tab ? { tab: input.tab } : {}),
           ...(input.meter ? { meter: input.meter } : {}),
           ...(typeof input.bpm === "number" ? { bpm: input.bpm } : {}),
+          ...(typeof input.keyPc === "number" ? { keyPc: input.keyPc } : {}),
         }
       : item,
   );
