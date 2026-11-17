@@ -685,6 +685,38 @@ try {
     "我的谱：和弦谱卡上叠着低音走线",
     bassOverlay,
   );
+
+  // 9a5b1) v0.95.0：和弦谱卡的级数能换调算（C–Am 在 C 调是 1–6，在 G 调是 4–2）
+  const keyBefore = String(
+    js(
+      "(() => [...document.querySelectorAll('.my-card .my-chord-chips .chip')].map(n => n.textContent.replace(/\\s+/g, '').trim()).join(',') )()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    `(() => { const select = document.querySelector('.my-card .my-key select'); if (!select) return 'no'; const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(select, '7'); select.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()`,
+  );
+  await sleep(400);
+  const keyAfter = String(
+    js(
+      "(() => { const chips = [...document.querySelectorAll('.my-card .my-chord-chips .chip')].map(n => n.textContent.replace(/\\s+/g, '').trim()); const dots = document.querySelectorAll('.my-card .cl-basschart-overlay circle').length; return [chips.join(','), dots].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    `(() => { const select = document.querySelector('.my-card .my-key select'); if (!select) return 'no'; const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(select, '0'); select.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()`,
+  );
+  await sleep(400);
+  const dotsBack = String(
+    js(
+      "(() => { const dots = [...document.querySelectorAll('.my-card .cl-basschart-overlay circle')].map(n => n.getAttribute('class') ?? 'plain'); return dots.join(','); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    keyBefore === "C1,Am6" &&
+      keyAfter === "C4,Am2|2" &&
+      dotsBack.includes("lv1"),
+    "我的谱：级数能按别的调算，低音点跟着着色",
+    `${keyBefore} → ${keyAfter} → ${dotsBack}`,
+  );
   // 9a5b) v0.90.0：和弦谱卡上要写清拍号 / 速度 / 每小节几拍
   const beatMark = String(
     js(

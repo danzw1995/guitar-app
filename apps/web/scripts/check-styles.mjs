@@ -887,6 +887,16 @@ for (const selector of ["select", "input", "textarea"]) {
     (timing.get("display") ?? "") === "flex" && (timing.get("flex-wrap") ?? "") === "wrap",
     `display=${timing.get("display") ?? "未设置"} wrap=${timing.get("flex-wrap") ?? "未设置"}`,
   );
+
+  // v0.95.0：低音点按级数着色（1 级强调色、5 级绿色、其余压暗）
+  const lv1 = narrowDecls(".cl-basschart circle.lv1");
+  const lv5 = narrowDecls(".cl-basschart circle.lv5");
+  expect(
+    "低音点按级数着色：1 级亮、5 级次亮",
+    (lv1.get("fill") ?? "").includes("var(--accent)") &&
+      (lv5.get("fill") ?? "").includes("var(--green)"),
+    `lv1=${lv1.get("fill") ?? "未设置"} lv5=${lv5.get("fill") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

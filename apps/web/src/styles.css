@@ -3924,7 +3924,15 @@ button, select, input { font: inherit; color: inherit; }
   stroke-linecap: round;
 }
 .cl-basschart circle {
+  fill: var(--muted);
+}
+/* 级数着色（v0.95.0）：1 级最亮、5 级次之，其余压暗 */
+.cl-basschart circle.lv1 {
   fill: var(--accent);
+  r: 2.6;
+}
+.cl-basschart circle.lv5 {
+  fill: var(--green);
 }
 .cl-score {
   display: grid;

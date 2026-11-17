@@ -265,12 +265,18 @@ export default function ChordListen() {
    * 会出现在节奏页，直接带「试听 / 跟练」两个按钮。
    *
    * v0.94.0 起**一小节一张卡**：一段扫弦常常就是「一小节一个和弦」，拆开才好单练那一个；
-   * 想整段一起练就存成和弦谱。
+   * v0.95.0 起再顺手存一张**整段**的（`和弦进行 · C–Am–G`），想连着弹的时候不用自己拼。
    */
   function savePattern() {
     if (!segments) return;
     const chords = sequenceChords();
     if (chords.length === 0) return;
+    addPattern({
+      title: `和弦进行 · ${chords.map((chord) => chordLabelOf(chord)).join("–")}`,
+      tab: sequenceTab(),
+      meter: `${saveBeats}/4`,
+      bpm: saveBpm,
+    });
     for (const chord of chords) {
       addPattern({
         title: `${chordLabelOf(chord)}（${saveBeats}/4）`,

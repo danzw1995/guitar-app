@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CHORD_BY_NAME, STANDARD_TUNING, degreeInKey, tabToAlphaTex, type Tab } from "@guitar/core";
+import {
+  CHORD_BY_NAME,
+  SHARP_NAMES,
+  STANDARD_TUNING,
+  degreeInKey,
+  tabToAlphaTex,
+  type Tab,
+} from "@guitar/core";
 import type { FollowTarget } from "./FollowAlong";
 import type { ScoreImage } from "../lib/score-image";
 import { renderScoreImage } from "../lib/score-image";
@@ -101,6 +108,7 @@ function ScoreFigure({
   bpm,
   beat,
   bassTab,
+  bassKey,
 }: {
   image?: ScoreImage;
   error?: string;
@@ -111,6 +119,8 @@ function ScoreFigure({
   beat?: number | null;
   /** 和弦谱才传：在谱上叠一条低音走线（v0.93.0）。 */
   bassTab?: Tab;
+  /** 低音点的级数按哪个调算（v0.95.0）。 */
+  bassKey?: number;
 }) {
   const band =
     image && typeof beat === "number" && beat >= 0 ? image.beats?.[beat] : undefined;
@@ -139,7 +149,7 @@ function ScoreFigure({
               }}
             />
           )}
-          {bassTab && <BassOverlay tab={bassTab} image={image} />}
+          {bassTab && <BassOverlay tab={bassTab} image={image} keyPc={bassKey} />}
         </span>
       ) : (
         <span className="alpha-score-note">{error ?? "谱面渲染中…"}</span>
@@ -248,6 +258,8 @@ function ScoreCard({
     setEditing(false);
   }
 
+  /** 级数按哪个调算：null = 跟着第一个和弦的根音（v0.95.0）。 */
+  const [keyPick, setKeyPick] = useState<number | null>(null);
   // 和弦谱：按拍把音归回一个个和弦，点一下单独听那一个（v0.87.0）；级数跟着调走（v0.94.0）
   const chordsOfTab = useMemo(() => {
     if (storedSource !== "progression" || !tab) return [];
@@ -266,9 +278,10 @@ function ScoreCard({
         midis,
         root: Math.min(...midis) % 12,
       }));
-    const keyPc = grouped[0]?.root ?? 0;
+    const keyPc = keyPick ?? grouped[0]?.root ?? 0;
     return grouped.map((item) => ({ ...item, degree: degreeInKey(item.root, keyPc) }));
-  }, [storedSource, tab]);
+  }, [storedSource, tab, keyPick]);
+  const cardKey = keyPick ?? chordsOfTab[0]?.root ?? 0;
 
   return (
     <article className="drill-card my-card" ref={boxRef}>
@@ -366,6 +379,7 @@ function ScoreCard({
           bpm={bpm}
           beat={beatOf(score.id)}
           bassTab={storedSource === "progression" ? earTab ?? undefined : undefined}
+          bassKey={cardKey}
         />
       )}
       {chordsOfTab.length > 0 && (
@@ -384,6 +398,22 @@ function ScoreCard({
             </button>
           ))}
         </div>
+      )}
+      {chordsOfTab.length > 0 && (
+        <label className="cl-key my-key">
+          <span>按哪个调算级数</span>
+          <select
+            value={cardKey}
+            onChange={(event) => setKeyPick(Number(event.target.value))}
+            aria-label={`${score.title} 按哪个调算级数`}
+          >
+            {SHARP_NAMES.map((name, pc) => (
+              <option key={name} value={pc}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
       <div className="drill-actions">
         {tab && (
