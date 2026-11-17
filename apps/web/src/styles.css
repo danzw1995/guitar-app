@@ -1735,6 +1735,45 @@ button, select, input { font: inherit; color: inherit; }
   font-style: normal;
   white-space: nowrap;
 }
+/* 整段的级数序列（v0.97.0）：当前那个高亮，1 级 / 5 级带底色 */
+.follow-degrees {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+}
+.follow-degree-chip {
+  min-width: 22px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.follow-degree-chip.lv1 {
+  border-color: rgba(232, 176, 75, 0.5);
+  color: var(--accent);
+}
+.follow-degree-chip.lv5 {
+  border-color: rgba(63, 185, 80, 0.5);
+  color: var(--green);
+}
+.follow-degree-chip.on {
+  border-color: var(--accent);
+  background: rgba(232, 176, 75, 0.18);
+  color: var(--accent);
+}
+.follow-next {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  white-space: nowrap;
+}
 .follow-controls {
   display: flex;
   align-items: center;

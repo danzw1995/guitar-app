@@ -33,6 +33,7 @@ import { addScore, scoreFileName } from "../lib/my-scores";
 import { addPattern } from "../lib/patterns";
 import { loadRhythm, saveRhythm, type RhythmRecords } from "../lib/storage";
 import { renderScoreImage } from "../lib/score-image";
+import { withDegreeStrip } from "../lib/degree-image";
 import { useTone } from "../hooks/useTone";
 import { useScoreImage } from "../hooks/useScoreImage";
 
@@ -335,8 +336,10 @@ export default function ChordListen() {
     try {
       const tab = sequenceTab();
       const image = await renderScoreImage(tabToAlphaTex(tab), { minWidth: 420 });
+      // 图底下补一行「级数 1 → 6 → 5」（v0.97.0），分享出去看得出走向
+      const dataUrl = await withDegreeStrip(image.dataUrl, tab);
       const link = document.createElement("a");
-      link.href = image.dataUrl;
+      link.href = dataUrl;
       link.download = scoreFileName(`和弦谱 ${chords.map((chord) => chordLabelOf(chord)).join("–")}`);
       link.click();
     } catch (err) {

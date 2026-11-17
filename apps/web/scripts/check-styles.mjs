@@ -907,6 +907,17 @@ for (const selector of ["select", "input", "textarea"]) {
       (lv5.get("fill") ?? "").includes("var(--green)"),
     `lv1=${lv1.get("fill") ?? "未设置"} lv5=${lv5.get("fill") ?? "未设置"}`,
   );
+
+  // v0.97.0：跟练面板里那一排级数
+  const degreeRow = narrowDecls(".follow-degrees");
+  const degreeOn = narrowDecls(".follow-degree-chip.on");
+  expect(
+    "跟练里的级数序列是一排会换行的小方块，当前那个高亮",
+    (degreeRow.get("display") ?? "") === "flex" &&
+      (degreeRow.get("flex-wrap") ?? "") === "wrap" &&
+      (degreeOn.get("color") ?? "").includes("var(--accent)"),
+    `display=${degreeRow.get("display") ?? "未设置"} wrap=${degreeRow.get("flex-wrap") ?? "未设置"} on=${degreeOn.get("color") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

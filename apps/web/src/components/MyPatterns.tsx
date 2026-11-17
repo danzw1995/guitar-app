@@ -4,6 +4,7 @@ import { useScoreImage } from "../hooks/useScoreImage";
 import { loadPatterns, removePattern, updatePattern, type SavedPattern } from "../lib/patterns";
 import { scoreFileName } from "../lib/my-scores";
 import { renderScoreImage } from "../lib/score-image";
+import { withDegreeStrip } from "../lib/degree-image";
 import type { FollowTarget } from "./FollowAlong";
 
 interface Props {
@@ -72,8 +73,10 @@ export default function MyPatterns({ audition, follow, best }: Props) {
   /** 导出成 PNG（v0.93.0）：跟「我的谱」同一套渲染，只是不用先存进「我的谱」。 */
   async function exportPng(pattern: SavedPattern) {
     const image = await renderScoreImage(tabToAlphaTex(pattern.tab));
+    // 图底下补一行级数（v0.97.0），分享出去看得出走向
+    const dataUrl = await withDegreeStrip(image.dataUrl, pattern.tab);
     const link = document.createElement("a");
-    link.href = image.dataUrl;
+    link.href = dataUrl;
     link.download = scoreFileName(pattern.title);
     link.click();
   }
