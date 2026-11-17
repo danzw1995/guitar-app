@@ -918,6 +918,14 @@ for (const selector of ["select", "input", "textarea"]) {
       (degreeOn.get("color") ?? "").includes("var(--accent)"),
     `display=${degreeRow.get("display") ?? "未设置"} wrap=${degreeRow.get("flex-wrap") ?? "未设置"} on=${degreeOn.get("color") ?? "未设置"}`,
   );
+
+  // v0.98.0：级数方块能点（要够得着）
+  const degreeChip = narrowDecls(".follow-degree-chip");
+  expect(
+    "跟练里的级数方块是能点的，够 40×40",
+    (px(degreeChip.get("min-width")) ?? 0) >= 40 && (px(degreeChip.get("min-height")) ?? 0) >= 40,
+    `min-width=${degreeChip.get("min-width") ?? "未设置"} min-height=${degreeChip.get("min-height") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

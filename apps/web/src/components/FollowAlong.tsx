@@ -75,6 +75,15 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     ? { from: Math.min(loopFrom, loopTo), to: Math.max(loopFrom, loopTo) }
     : null;
 
+  /** 点级数方块：只反复练那一小节（v0.98.0）。没在跑就顺手开始。 */
+  function practiceBar(wanted: number): void {
+    const next = Math.min(Math.max(1, wanted), totalBars);
+    setLoopOn(true);
+    setLoopFrom(next);
+    setLoopTo(next);
+    if (!running) start();
+  }
+
   const { running, bar, active, countingIn, start, stop } = useMetronome({
     bpm,
     meterId: meter,
@@ -152,33 +161,49 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
               第 {degreeNow.degree} 级 · {degreeNow.name}
             </em>
           ) : null}
-          {running && !countingIn && degrees.length >= 2 ? (
-            <div className="follow-degrees" role="list" aria-label="这一段的级数">
-              {degrees.map((row, index) => (
-                <span
+          {/* 读屏也听得到「现在第几级、下一个第几级」（v0.98.0） */}
+          <span className="visually-hidden" role="status" aria-live="polite">
+            {running && !countingIn && degreeNow && degreeNow.degree > 0
+              ? `现在第 ${degreeNow.degree} 级${
+                  degreeNext && degreeNext.degree > 0 ? `，下一个第 ${degreeNext.degree} 级` : ""
+                }`
+              : ""}
+          </span>
+        </div>
+
+        {/* 级数方块单独一行（v0.98.0）：塞在 .follow-tempo 里会被挤成一条 */}
+        {running && !countingIn && degrees.length >= 2 ? (
+          <div className="follow-degrees" role="group" aria-label="这一段的级数，点一个就从那一小节反复练">
+            {degrees.map((row, index) => {
+              const bar = Math.floor(row.beat / target.tab.beatsPerBar) + 1;
+              const active = index === degreeIndex;
+              const className = active
+                ? "follow-degree-chip on"
+                : row.degree === 1
+                  ? "follow-degree-chip lv1"
+                  : row.degree === 5
+                    ? "follow-degree-chip lv5"
+                    : "follow-degree-chip";
+              return (
+                <button
                   key={`${row.beat}-${index}`}
-                  role="listitem"
-                  className={
-                    index === degreeIndex
-                      ? "follow-degree-chip on"
-                      : row.degree === 1
-                        ? "follow-degree-chip lv1"
-                        : row.degree === 5
-                          ? "follow-degree-chip lv5"
-                          : "follow-degree-chip"
-                  }
+                  type="button"
+                  className={className}
+                  aria-pressed={active}
+                  aria-label={`第 ${bar} 小节${row.degree > 0 ? `，第 ${row.degree} 级` : "，调外音"}；点一下只反复练这一小节`}
+                  onClick={() => practiceBar(bar)}
                 >
                   {row.degree > 0 ? row.degree : "?"}
-                </span>
-              ))}
-              {degreeNext ? (
-                <em className="follow-next">
-                  下一个 {degreeNext.degree > 0 ? `第 ${degreeNext.degree} 级` : "调外音"}
-                </em>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+                </button>
+              );
+            })}
+            {degreeNext ? (
+              <em className="follow-next">
+                下一个 {degreeNext.degree > 0 ? `第 ${degreeNext.degree} 级` : "调外音"}
+              </em>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="follow-controls">
           <button

@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { tabAriaLabel, type Tab } from "@guitar/core";
+import { tabAriaLabel, tabToAlphaTex, type Tab } from "@guitar/core";
 import { SCORES_VERSION } from "../lib/scores-version";
-import { useScoreBeats } from "../lib/score-beats";
+import { useScoreBeats, useScoreBeatsReady } from "../lib/score-beats";
+import { useScoreImage } from "../hooks/useScoreImage";
 
 interface Props {
   /** 谱面在 `public/scores/` 里的名字，由 `pnpm run gen:scores` 生成。 */
@@ -26,11 +27,23 @@ interface Props {
  *
  * `beat` 有值时叠一条半透明竖条（当前位置）。位置来自 `scores/beats.json`：
  * 图片是死的，哪一拍画在哪个像素只有生成时才量得准。
+ *
+ * **没有预渲染图的谱**（「我存的进行」「我的谱」里的条目、扒出来的谱，id 都是运行时
+ * 生成的）在这里退回现画一张（v0.98.0）——以前会去拿一个不存在的 PNG，跟练面板上
+ * 就是一块碎图。现画的图没有 `beats.json` 的拍位置，所以不画竖条。
  */
 export default function TabScore({ id, tab, className, beat }: Props) {
   const label = useMemo(() => tabAriaLabel(tab), [tab]);
   const beats = useScoreBeats();
+  const beatsReady = useScoreBeatsReady();
   const info = beats[id];
+  // 只有「拍位表已经拉到、里面又没有这张谱」才现画——否则 103 张卡会在表到之前
+  // 全部挤进渲染队列（v0.98.0 的教训）。
+  const tex = useMemo(
+    () => (beatsReady && !info ? tabToAlphaTex(tab) : null),
+    [beatsReady, info, tab],
+  );
+  const generated = useScoreImage(tex);
   const band = beat !== null && beat !== undefined ? info?.beats[beat] : undefined;
   const width = info?.width ?? 0;
   const height = info?.height ?? 0;
@@ -40,13 +53,25 @@ export default function TabScore({ id, tab, className, beat }: Props) {
 
   return (
     <span className={className ? `tab-score-wrap ${className}` : "tab-score-wrap"}>
-      <img
-        className="tab-score"
-        src={`${import.meta.env.BASE_URL}scores/${id}.png?v=${SCORES_VERSION}`}
-        alt={label}
-        loading="lazy"
-        decoding="async"
-      />
+      {info || !beatsReady ? (
+        <img
+          className="tab-score"
+          src={`${import.meta.env.BASE_URL}scores/${id}.png?v=${SCORES_VERSION}`}
+          alt={label}
+          loading="lazy"
+          decoding="async"
+        />
+      ) : generated.image ? (
+        <img
+          className="tab-score"
+          src={generated.image.dataUrl}
+          alt={label}
+          style={{ width: `${generated.image.width * 2}px`, height: "auto" }}
+          decoding="async"
+        />
+      ) : (
+        <span className="tab-score-placeholder">{label}</span>
+      )}
       {band && width > 0 && (
         <span
           className="tab-score-beat"

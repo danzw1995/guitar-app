@@ -33,9 +33,14 @@ type BeatIndex = Record<string, ScoreBeatMap>;
  */
 let cache: BeatIndex | null = null;
 let pending: Promise<BeatIndex> | null = null;
+/** 拍位表有没有拉完。没拉完时「查不到某个 id」不能当成「这张谱没有预渲染图」。 */
+let loaded = false;
 
 async function loadBeats(): Promise<BeatIndex> {
-  if (cache) return cache;
+  if (cache) {
+    loaded = true;
+    return cache;
+  }
   pending ??= fetch(`${import.meta.env.BASE_URL}scores/beats.json?v=${SCORES_VERSION}`)
     .then((response) => (response.ok ? (response.json() as Promise<BeatFile>) : null))
     .then((data) => {
@@ -47,6 +52,7 @@ async function loadBeats(): Promise<BeatIndex> {
       return cache;
     })
     .finally(() => {
+      loaded = true;
       pending = null;
     });
   return pending;
@@ -65,4 +71,28 @@ export function useScoreBeats(): BeatIndex {
     };
   }, []);
   return index;
+}
+
+/**
+ * 拍位表拉完了没有。
+ *
+ * `TabScore` 用它区分两件事：**这张谱没有预渲染图**（要现画）和
+ * **拍位表还没到**（先别急着画，103 张卡一起现画会把主线程堵死）。
+ */
+export function useScoreBeatsReady(): boolean {
+  const [ready, setReady] = useState(loaded);
+  useEffect(() => {
+    if (loaded) {
+      setReady(true);
+      return;
+    }
+    let alive = true;
+    void loadBeats().then(() => {
+      if (alive) setReady(true);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return ready;
 }

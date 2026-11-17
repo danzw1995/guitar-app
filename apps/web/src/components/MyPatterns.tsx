@@ -5,6 +5,7 @@ import { loadPatterns, removePattern, updatePattern, type SavedPattern } from ".
 import { scoreFileName } from "../lib/my-scores";
 import { renderScoreImage } from "../lib/score-image";
 import { withDegreeStrip } from "../lib/degree-image";
+import { degreeLine } from "../lib/degrees";
 import type { FollowTarget } from "./FollowAlong";
 
 interface Props {
@@ -96,7 +97,13 @@ export default function MyPatterns({ audition, follow, best }: Props) {
           return (
             <article key={pattern.id} className="drill-card my-pattern">
               <header className="drill-head">
-                <h4>{pattern.title}</h4>
+                <h4>
+                  {pattern.title}
+                  {/* 级数写进标题（v0.98.0）：一眼看出这是 1–6–5 还是别的走向 */}
+                  {degreeLine(pattern.tab) ? (
+                    <span className="my-degree-line"> · {degreeLine(pattern.tab)}</span>
+                  ) : null}
+                </h4>
                 <span className="rhythm-bpm">
                   {pattern.meter} · {bpm} BPM
                 </span>

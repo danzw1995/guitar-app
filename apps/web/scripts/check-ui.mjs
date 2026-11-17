@@ -776,11 +776,11 @@ try {
     ),
   ).replace(/^"|"$/g, "");
   log(
-    patternInfo.startsWith("head|和弦进行 · C–Am|") &&
+    patternInfo.startsWith("head|和弦进行 · C–Am · 1 → 6|") &&
       patternInfo.includes("♩=72") &&
       patternInfo.includes("试听") &&
       patternInfo.includes("跟练"),
-    "节奏页：我存的进行能直接试听、跟练",
+    "节奏页：我存的进行能直接试听、跟练（标题带级数）",
     patternInfo,
   );
   // 9a6b) v0.93.0：我存的进行能导出 PNG

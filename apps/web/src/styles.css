@@ -1742,17 +1742,32 @@ button, select, input { font: inherit; color: inherit; }
   align-items: center;
   gap: 4px;
   margin-top: 6px;
+  /* 一行独占（v0.98.0）：方块变按钮后够宽了，挤在速度那一行会把 BPM 挤走 */
+  flex-basis: 100%;
 }
 .follow-degree-chip {
-  min-width: 22px;
-  padding: 1px 6px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 8px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 8px;
+  background: transparent;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   font-style: normal;
   font-variant-numeric: tabular-nums;
   text-align: center;
+  cursor: pointer;
+}
+.follow-degree-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+/* 我存的进行：标题后面的级数（v0.98.0） */
+.my-degree-line {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
 }
 .follow-degree-chip.lv1 {
   border-color: rgba(232, 176, 75, 0.5);
@@ -2181,6 +2196,13 @@ button, select, input { font: inherit; color: inherit; }
   width: 100%;
   max-width: 600px;
   height: auto;
+}
+/* 还没画出来的时候先说一句是什么谱，别留一块空白 */
+.tab-score-placeholder {
+  display: block;
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 /* 播放时跟着拍的竖条：只盖这一拍的宽度和**这一行谱**的高度，压在图上面
    （图是透明的，所以看得见；长谱折行时不能贯穿整张图）。 */
