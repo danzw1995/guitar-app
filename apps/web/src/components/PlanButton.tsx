@@ -8,6 +8,8 @@ interface Props {
   title: string;
   tab: Tab;
   bpm: number;
+  /** 「我的谱」里的拍号可能不是 x/4（比如 6/8），传进来就用它 */
+  meter?: string;
 }
 
 /**
@@ -17,7 +19,7 @@ interface Props {
  * `guitar.plan.v1`，练习页「今天自己加的」里就能勾掉、能计时，统计页也会算进加餐。
  * 已经加过就显示「已在计划里」并禁用——同一标题只留一条。
  */
-export default function PlanButton({ title, tab, bpm }: Props) {
+export default function PlanButton({ title, tab, bpm, meter }: Props) {
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
@@ -26,7 +28,7 @@ export default function PlanButton({ title, tab, bpm }: Props) {
   }, [title]);
 
   function add() {
-    addExtra({ title, tab, meter: meterOfTab(tab), bpm }, dateKeyOf(new Date()));
+    addExtra({ title, tab, meter: meter ?? meterOfTab(tab), bpm }, dateKeyOf(new Date()));
     setAdded(true);
   }
 

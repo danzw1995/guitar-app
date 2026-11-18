@@ -16,6 +16,7 @@ import { useTone } from "../hooks/useTone";
 import { goTo } from "../lib/nav";
 import { retimeTab } from "../lib/retime";
 import ChordDiagram from "./ChordDiagram";
+import PlanButton from "./PlanButton";
 import {
   addScore,
   loadScores,
@@ -461,6 +462,7 @@ function ScoreCard({
               跟练
             </button>
             {high !== undefined && <span className="best-badge">最高 {high} BPM</span>}
+            <PlanButton title={score.title} tab={tab as Tab} bpm={bpm} meter={meter} />
           </>
         )}
         {!earTab && (

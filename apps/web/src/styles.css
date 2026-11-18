@@ -1551,6 +1551,31 @@ button, select, input { font: inherit; color: inherit; }
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* 加餐调顺序（v0.105.0）：↑↓ 给键盘和手机，整块可拖给鼠标 */
+.pb-move {
+  display: flex;
+  gap: 4px;
+}
+
+.pb-move-btn {
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.pb-move-btn:disabled {
+  opacity: 0.35;
+}
+
+.practice-extra[draggable="true"] {
+  cursor: grab;
+}
+
+.practice-extra.dragging {
+  opacity: 0.55;
+}
 .pb-index {
   width: 22px;
   height: 22px;

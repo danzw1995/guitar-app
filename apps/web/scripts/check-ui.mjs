@@ -686,6 +686,33 @@ try {
     bassOverlay,
   );
 
+  // 9a5b0b) v0.105.0：「我的谱」里也能把这一条加进今日计划
+  const scorePlan = JSON.parse(
+    String(
+      js(
+        "(() => { const card = document.querySelector('.my-card'); const btn = [...(card?.querySelectorAll('button') ?? [])].find(b => b.textContent.trim() === '加进今日计划'); btn?.click(); const plan = JSON.parse(localStorage.getItem('guitar.plan.v1') || '[]'); return JSON.stringify({ had: Boolean(btn), titles: plan.map(p => p.title) }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  await sleep(500);
+  const scorePlanAfter = JSON.parse(
+    String(
+      js(
+        "(() => { const plan = JSON.parse(localStorage.getItem('guitar.plan.v1') || '[]'); return JSON.stringify({ titles: plan.map(p => p.title) }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    scorePlan.had && scorePlanAfter.titles.includes("和弦谱 · C–Am"),
+    "我的谱：卡上能加进今日计划",
+    scorePlanAfter.titles.join("/"),
+  );
+  js("localStorage.removeItem('guitar.plan.v1')");
+
   // 9a5b1) v0.95.0：和弦谱卡的级数能换调算（C–Am 在 C 调是 1–6，在 G 调是 4–2）
   const keyBefore = String(
     js(
@@ -1503,18 +1530,19 @@ try {
     extraCard,
   );
 
-  // 12n) v0.104.0：「加餐」那张卡能点，回练习页的「今天自己加的」
+  // 12n) v0.104.0：「加餐」那张卡能点，回练习页那一段
+  // v0.105.0 起：多条时直接落到还没勾的那一条，所以这里只要求落在练习页、目标在视口内
   js(
     "(() => { const card = [...document.querySelectorAll('.stat-card-link')].find(c => c.textContent.includes('今天自己加的')); card?.click(); return 'ok'; })()",
   );
   await sleep(900);
   const extrasJump = String(
     js(
-      "(() => { const target = document.getElementById('practice-extras'); const tab = [...document.querySelectorAll('nav.tabs button')].find(n => n.getAttribute('aria-current') === 'page'); const rect = target?.getBoundingClientRect(); return `${location.hash}|${tab?.textContent?.trim() ?? ''}|${rect ? (rect.top < innerHeight && rect.bottom > 0 ? 'inview' : 'out') : 'missing'}`; })()",
+      "(() => { const anchor = document.getElementById('practice-extras'); const extra = [...document.querySelectorAll('.practice-extra')].find(li => location.hash.endsWith(`#practice/${li.id}`) || location.hash.endsWith(`/${li.id}`)); const target = extra ?? anchor; const tab = [...document.querySelectorAll('nav.tabs button')].find(n => n.getAttribute('aria-current') === 'page'); const rect = target?.getBoundingClientRect(); return `${location.hash}|${tab?.textContent?.trim() ?? ''}|${rect ? (rect.top < innerHeight && rect.bottom > 0 ? 'inview' : 'out') : 'missing'}`; })()",
     ),
   ).replace(/^"|"$/g, "");
   log(
-    extrasJump.startsWith("#practice/practice-extras|练习|inview"),
+    extrasJump.startsWith("#practice/") && extrasJump.includes("|练习|inview"),
     "统计页：点「加餐」那张卡回练习页那一段",
     extrasJump,
   );
@@ -1568,6 +1596,52 @@ try {
     extraName.includes("最卡的一小节") && !extraName.includes("p:extra-t9"),
     "统计页：加餐的名字跟着记录走，不显示 id",
     extraName.slice(0, 48),
+  );
+
+  // 12q) v0.105.0：加餐能调顺序（↑↓），顺序写回 guitar.plan.v1
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const tab = (name) => ({ beatsPerBar: 4, bars: 1, bpm: [90, 90], caption: name, notes: [{ s: 3, f: 0, beat: 0, dur: 4 }] }); const base = Date.now(); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-a', date: today, title: '甲 · 一小节', tab: tab('甲'), meter: '4/4', bpm: 90, addedAt: base }, { id: 'extra-b', date: today, title: '乙 · 一小节', tab: tab('乙'), meter: '4/4', bpm: 90, addedAt: base + 1 }])); return 'ok'; })()",
+  );
+  ab(["open", `${URL}#practice`]);
+  await sleep(900);
+  js(
+    "(() => { const btn = [...document.querySelectorAll('.practice-extra')].find(li => li.id === 'extra-a')?.querySelector('.pb-move-btn[aria-label*=\"往后\"]'); btn?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const orderInfo = JSON.parse(
+    String(
+      js(
+        "(() => { const dom = [...document.querySelectorAll('.practice-extra')].map(li => li.id); const plan = JSON.parse(localStorage.getItem('guitar.plan.v1') || '[]').map(p => p.id); return JSON.stringify({ dom, plan }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    orderInfo.dom.join(",") === "extra-b,extra-a" && orderInfo.plan.join(",") === "extra-b,extra-a",
+    "练习页：加餐能调顺序，顺序写回计划",
+    `${orderInfo.dom.join("/")} · ${orderInfo.plan.join("/")}`,
+  );
+
+  // 12r) v0.105.0：统计页加餐卡落到还没勾的那一条
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; localStorage.setItem('guitar.practice.v1', JSON.stringify({ [today]: { minutes: 3, stage: 0, done: ['extra-b'] } })); return 'ok'; })()",
+  );
+  ab(["open", `${URL}#stats`]);
+  await sleep(900);
+  js(
+    "(() => { const card = document.querySelector('.stat-card-link'); card?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  const jumpInfo = String(
+    js(
+      "(() => { const target = document.getElementById('extra-a'); const rect = target?.getBoundingClientRect(); return `${location.hash}|${target ? (rect.top < innerHeight && rect.bottom > 0 ? 'inview' : 'out') : 'missing'}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    jumpInfo.startsWith("#practice/extra-a|inview"),
+    "统计页：加餐卡落到还没勾的那一条",
+    jumpInfo,
   );
 
   js("localStorage.removeItem('guitar.plan.v1')");

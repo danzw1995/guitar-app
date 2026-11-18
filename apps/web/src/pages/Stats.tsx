@@ -385,7 +385,13 @@ export default function Stats() {
           <button
             type="button"
             className="stat-card stat-card-link"
-            onClick={() => goTo("practice", "practice-extras")}
+            onClick={() =>
+              // 多条时直接落到还没勾的那一条（v0.105.0），全勾完了就落到那一块标题
+              goTo(
+                "practice",
+                todayExtras.find((extra) => !todayDoneIds.has(extra.id))?.id ?? "practice-extras",
+              )
+            }
             title="去练习页看看今天自己加的那几条"
             aria-label={`今天自己加的 ${todayExtras.length} 条，已勾 ${extrasDone} 条；点一下去练习页`}
           >

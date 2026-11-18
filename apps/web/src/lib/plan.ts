@@ -108,3 +108,43 @@ export function removeExtra(id: string, today: string = dateKeyOf(new Date())): 
   writeAll(next);
   return next;
 }
+
+/**
+ * 调整今天自己加的那几条的先后（v0.105.0）。
+ *
+ * 顺序就是 `addedAt` 的顺序（`loadExtras()` 按它排），所以这里把整排重排后
+ * 重新发一遍递增的 `addedAt`——不用额外加一个 `order` 字段，也不会和旧的记录打架。
+ */
+export function moveExtra(
+  id: string,
+  delta: number,
+  today: string = dateKeyOf(new Date()),
+): PlanExtra[] {
+  const all = readAll().filter((item) => item.date === today);
+  const from = all.findIndex((item) => item.id === id);
+  if (from < 0) return all;
+  const to = Math.min(all.length - 1, Math.max(0, from + delta));
+  if (to === from) return all;
+  const list = [...all];
+  const [moved] = list.splice(from, 1);
+  list.splice(to, 0, moved);
+  const base = all.reduce((min, item) => Math.min(min, item.addedAt || Date.now()), Date.now());
+  const stamped = list.map((item, index) => ({ ...item, addedAt: base + index }));
+  writeAll(stamped);
+  return stamped;
+}
+
+/** 拖拽排序：按给定的 id 顺序重排（v0.105.0）。 */
+export function reorderExtras(
+  ids: string[],
+  today: string = dateKeyOf(new Date()),
+): PlanExtra[] {
+  const all = readAll().filter((item) => item.date === today);
+  const byId = new Map(all.map((item) => [item.id, item]));
+  const ordered = ids.map((id) => byId.get(id)).filter((item): item is PlanExtra => Boolean(item));
+  for (const item of all) if (!ids.includes(item.id)) ordered.push(item);
+  const base = all.reduce((min, item) => Math.min(min, item.addedAt || Date.now()), Date.now());
+  const stamped = ordered.map((item, index) => ({ ...item, addedAt: base + index }));
+  writeAll(stamped);
+  return stamped;
+}

@@ -992,6 +992,20 @@ for (const selector of ["select", "input", "textarea"]) {
     (px(linkCard.get("min-height")) ?? 0) >= 40 && (linkCard.get("cursor") ?? "") === "pointer",
     `min-height=${linkCard.get("min-height") ?? "未设置"} cursor=${linkCard.get("cursor") ?? "未设置"}`,
   );
+
+  // v0.105.0：加餐的 ↑↓ 够 40×40，拖动时整块变淡
+  const moveBtn = narrowDecls(".pb-move-btn");
+  expect(
+    "加餐的 ↑↓ 按钮够 40×40",
+    (px(moveBtn.get("min-width")) ?? 0) >= 40 && (px(moveBtn.get("min-height")) ?? 0) >= 40,
+    `min-width=${moveBtn.get("min-width") ?? "未设置"} min-height=${moveBtn.get("min-height") ?? "未设置"}`,
+  );
+  const dragging = narrowDecls(".practice-extra.dragging");
+  expect(
+    "拖动中的那一块会变淡，看得出在拖哪条",
+    (dragging.get("opacity") ?? "") === "0.55",
+    `opacity=${dragging.get("opacity") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

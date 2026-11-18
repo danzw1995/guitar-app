@@ -50,7 +50,7 @@ import {
 } from "../lib/storage";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
-import { addExtra, loadExtras, removeExtra, type PlanExtra } from "../lib/plan";
+import { addExtra, loadExtras, moveExtra, removeExtra, reorderExtras, type PlanExtra } from "../lib/plan";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
@@ -97,6 +97,8 @@ export default function Practice() {
   const [pauses, setPauses] = useState<PauseLog>(() => loadPauses());
   /** 今天自己加的计划（跟练里切出来的那一小节，v0.102.0）。 */
   const [extras, setExtras] = useState<PlanExtra[]>(() => loadExtras(today));
+  /** 正在拖的那一条（v0.105.0）：拖到另一条身上就按落点重排。 */
+  const [dragId, setDragId] = useState<string | null>(null);
   /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
   const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
 
@@ -157,6 +159,25 @@ export default function Practice() {
       today,
     );
     setExtras(next);
+  }
+
+  /** 加餐调顺序（v0.105.0）：↑↓ 给键盘和手机，拖拽给鼠标。 */
+  function moveExtraBy(id: string, delta: number) {
+    setExtras(moveExtra(id, delta, today));
+  }
+
+  /** 拖到另一条身上：按落点重排，落点之后的整体后移。 */
+  function dropExtraOn(targetId: string) {
+    if (!dragId || dragId === targetId) return;
+    const ids = extras.map((item) => item.id);
+    const from = ids.indexOf(dragId);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...ids];
+    next.splice(from, 1);
+    next.splice(to, 0, dragId);
+    setExtras(reorderExtras(next, today));
+    setDragId(null);
   }
 
   /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */  function swapBlock(id: string) {
@@ -680,7 +701,14 @@ export default function Practice() {
                 <li
                   key={extra.id}
                   id={extra.id}
-                  className={`practice-block practice-extra${extraDone ? " done" : ""}`}
+                  className={`practice-block practice-extra${extraDone ? " done" : ""}${
+                    dragId === extra.id ? " dragging" : ""
+                  }`}
+                  draggable
+                  onDragStart={() => setDragId(extra.id)}
+                  onDragEnd={() => setDragId(null)}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={() => dropExtraOn(extra.id)}
                 >
                   <div className="pb-head">
                     <span className="pb-index" aria-hidden="true">
@@ -692,6 +720,28 @@ export default function Practice() {
                         {extra.meter} · {extra.bpm} BPM · 自己加的
                       </p>
                     </div>
+                    <span className="pb-move">
+                      <button
+                        type="button"
+                        className="btn-quiet pb-move-btn"
+                        onClick={() => moveExtraBy(extra.id, -1)}
+                        disabled={index === 0}
+                        aria-label={`把「${extra.title}」往前挪一位`}
+                        title="往前挪一位"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-quiet pb-move-btn"
+                        onClick={() => moveExtraBy(extra.id, 1)}
+                        disabled={index === extras.length - 1}
+                        aria-label={`把「${extra.title}」往后挪一位`}
+                        title="往后挪一位"
+                      >
+                        ↓
+                      </button>
+                    </span>
                     <button
                       type="button"
                       className="btn-quiet"
