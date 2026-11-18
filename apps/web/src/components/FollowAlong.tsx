@@ -6,6 +6,7 @@ import { useMetronome } from "../hooks/useMetronome";
 import { useAudioVolume, volumeLabel } from "../lib/audio-bus";
 import { loadRhythm } from "../lib/storage";
 import { addScore } from "../lib/my-scores";
+import { addExtra } from "../lib/plan";
 import TabScore from "./TabScore";
 
 export interface FollowTarget {
@@ -93,6 +94,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   /** 上次记成绩时留下的「最卡的一处」：练到那一小节时提醒一下（v0.101.0）。 */
   const remembered = useMemo(() => loadRhythm()[target.id]?.hardest ?? null, [target.id]);
   const [sliceSaved, setSliceSaved] = useState(false);
+  const [planSaved, setPlanSaved] = useState(false);
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -128,11 +130,18 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
    *
    * 存的是一小节切片、不是整段：下次想单练不用再进跟练、也不用自己数小节。
    */
-  function saveHardestBar(hit: FollowHardest): void {
+  function sliceOf(hit: FollowHardest): { tab: ReturnType<typeof sliceTab>; title: string } {
     const width = target.tab.beatsPerBar;
-    const tab = sliceTab(target.tab, (hit.bar - 1) * width, width);
-    addScore({
+    return {
+      tab: sliceTab(target.tab, (hit.bar - 1) * width, width),
       title: `最卡的一小节 · ${target.name} 第 ${hit.bar} 小节`,
+    };
+  }
+
+  function saveHardestBar(hit: FollowHardest): void {
+    const { tab, title } = sliceOf(hit);
+    addScore({
+      title,
       ascii: "",
       source: "slice",
       tab,
@@ -141,6 +150,14 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     });
     setSliceSaved(true);
     window.dispatchEvent(new Event("guitar:scores"));
+  }
+
+  /** 加进「今日计划」（v0.102.0）：练习页顶部会多出一块，练完也算今天的量。 */
+  function addHardestToPlan(hit: FollowHardest): void {
+    const { tab, title } = sliceOf(hit);
+    addExtra({ title, tab, meter: `${tab.beatsPerBar}/4`, bpm });
+    setPlanSaved(true);
+    window.dispatchEvent(new Event("guitar:plan"));
   }
 
   const { running, bar, pass, active, countingIn, start, stop } = useMetronome({
@@ -223,6 +240,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     setLoopOn(false);
     setDone(null);
     setSliceSaved(false);
+    setPlanSaved(false);
     hardRef.current.clear();
     loopPassRef.current = 0;
     stop();
@@ -525,7 +543,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
               : " · 这一段没有单独去练哪一小节"}
           </p>
           {done.hardest ? (
-            <p className="follow-done-actions">
+            <div className="follow-done-actions">
               <button
                 type="button"
                 className="btn-quiet"
@@ -534,10 +552,19 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
               >
                 {sliceSaved ? "已存进「我的谱」" : `把第 ${done.hardest.bar} 小节存成练习`}
               </button>
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => addHardestToPlan(done.hardest!)}
+                disabled={planSaved}
+              >
+                {planSaved ? "已加进今日计划" : "加进今日计划"}
+              </button>
               <span className="follow-done-note">
-                切出来的那一小节在「节奏」页最下面的「我的谱」里，能单独试听、跟练、导出。
+                存成练习的会进「我的谱」（能单独试听、跟练、导出）；加进计划的会出现在
+                「练习」页最上面，练完也算今天的量。
               </span>
-            </p>
+            </div>
           ) : null}
         </div>
       ) : null}

@@ -28,6 +28,7 @@ import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, lo
 import { goTo } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
+import { loadPatterns } from "../lib/patterns";
 import { fmt, fmtSpan } from "../lib/format";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
@@ -88,6 +89,32 @@ export default function Stats() {
       ? `和弦谱 ${id.slice(4).split("-").join("–")}`
       : (drillNames.get(id.replace(/^p:/, "")) ?? rhythmItemById(id)?.label ?? id);
   const skipName = nameOf;
+
+  /** 「我存的进行」的 id 是 `pattern-…`，名字存在 `guitar.patterns.v1` 里，不在节奏页的条目表里。 */
+  const patternNames = useMemo(() => new Map(loadPatterns().map((item) => [item.id, item.title])), []);
+  const titleOf = (id: string) => patternNames.get(id) ?? nameOf(id);
+
+  /**
+   * 点「最卡的地方」里的一条 → 跳回那一段（v0.102.0）。
+   *
+   * 三种来源各回各的家：和弦谱跟练回扒谱页、我存的进行回节奏页那张卡、
+   * 练习页的关卡回练习库那条；剩下的（我的谱、节奏页条目）回节奏页顶上。
+   */
+  const jumpTo = (id: string) => {
+    if (id.startsWith("seq:")) {
+      goTo("ear", "chord-listen");
+      return;
+    }
+    if (id.startsWith("pattern-")) {
+      goTo("rhythm", id);
+      return;
+    }
+    if (DRILLS.some((drill) => drill.id === id.replace(/^p:/, ""))) {
+      goTo("practice", `drill-${id.replace(/^p:/, "")}`);
+      return;
+    }
+    goTo("rhythm");
+  };
   const todaySkips = [...skipsOf(skips, today)];
   const skipCounts = new Map<string, number>();
   for (const ids of Object.values(skips)) {
@@ -705,12 +732,22 @@ export default function Stats() {
             <ul className="hardest-items">
               {hardItems.map((item) => (
                 <li key={item.id} data-hardest-item={item.id}>
-                  <span>{nameOf(item.id)}</span>
-                  <span className="muted">
-                    第 {item.hardest.bar} 小节第 {item.hardest.degree} 级
-                    {item.hardest.name ? `（${item.hardest.name}）` : ""} · 单独练过{" "}
-                    {item.hardest.count} 次
-                  </span>
+                  <button
+                    type="button"
+                    className="hardest-jump"
+                    onClick={() => jumpTo(item.id)}
+                    title="跳到那一段"
+                  >
+                    <span>{titleOf(item.id)}</span>
+                    <span className="muted">
+                      第 {item.hardest.bar} 小节第 {item.hardest.degree} 级
+                      {item.hardest.name ? `（${item.hardest.name}）` : ""} · 单独练过{" "}
+                      {item.hardest.count} 次
+                    </span>
+                    <span className="hardest-go" aria-hidden="true">
+                      →
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>

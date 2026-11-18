@@ -97,7 +97,7 @@ export default function MyPatterns({ audition, follow, best, hardest }: Props) {
           const bpm = pattern.bpm;
           const open = editing === pattern.id;
           return (
-            <article key={pattern.id} className="drill-card my-pattern">
+            <article key={pattern.id} id={pattern.id} className="drill-card my-pattern">
               <header className="drill-head">
                 <h4>
                   {pattern.title}

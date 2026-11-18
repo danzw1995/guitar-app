@@ -970,6 +970,20 @@ for (const selector of ["select", "input", "textarea"]) {
     (hardItems.get("display") ?? "") === "grid",
     `display=${hardItems.get("display") ?? "未设置"}`,
   );
+
+  // v0.102.0：练习页那句「最近最卡的是第几级」整行是按钮；统计页的条目也是按钮
+  const hardestBar = narrowDecls(".practice-hardest");
+  expect(
+    "练习页「最近最卡的是第几级」整行是能点的，够 40 高",
+    (px(hardestBar.get("min-height")) ?? 0) >= 40 && (hardestBar.get("width") ?? "") === "100%",
+    `min-height=${hardestBar.get("min-height") ?? "未设置"} width=${hardestBar.get("width") ?? "未设置"}`,
+  );
+  const hardestJump = narrowDecls(".hardest-jump");
+  expect(
+    "统计页按条目那条整行是按钮，点一下跳回那一段",
+    (px(hardestJump.get("min-height")) ?? 0) >= 40 && (hardestJump.get("width") ?? "") === "100%",
+    `min-height=${hardestJump.get("min-height") ?? "未设置"} width=${hardestJump.get("width") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

@@ -1393,6 +1393,56 @@ try {
   );
   js("localStorage.removeItem('guitar.ear.v1')");
 
+  // 12i) v0.102.0：练习页顶部提一句「最近最卡的是第几级」
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const now = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'pattern-h1': { bestBpm: 90, sessions: 2, minutes: 3, lastAt: now, hardest: { bar: 3, degree: 5, name: 'G', count: 4 } }, 'pattern-h2': { bestBpm: 88, sessions: 1, minutes: 2, lastAt: now, hardest: { bar: 1, degree: 5, name: 'G', count: 1 } } })); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(900);
+  const practiceHard = JSON.parse(
+    String(
+      js(
+        "(() => { const el = document.querySelector('.practice-hardest'); if (!el) return JSON.stringify({ present: false }); return JSON.stringify({ present: true, text: el.innerText.replace(/\\s+/g, ' ').trim(), tag: el.tagName }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    practiceHard.present &&
+      practiceHard.text.includes("第 5 级（G）") &&
+      practiceHard.text.includes("2 条练习") &&
+      practiceHard.tag === "BUTTON",
+    "练习页：顶部提一句最近最卡的是第几级（整行是按钮）",
+    practiceHard.text,
+  );
+
+  // 12j) v0.102.0：跟练里「加进今日计划」的那一条会出现在练习页
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const now = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const tab = { beatsPerBar: 4, bars: 1, bpm: [120, 120], caption: 'C–Am–G', notes: [{ s: 3, f: 0, beat: 0, dur: 4 }, { s: 2, f: 0, beat: 0, dur: 4 }, { s: 2, f: 3, beat: 0, dur: 4 }] }; localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-t1', date: now, title: '最卡的一小节 · 和弦进行 · C–Am–G 第 3 小节', tab, meter: '4/4', bpm: 120, addedAt: Date.now() }])); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(900);
+  const extraInfo = JSON.parse(
+    String(
+      js(
+        "(() => { const list = document.querySelector('.practice-extras'); const head = [...document.querySelectorAll('.practice-h3')].map(h => h.innerText.replace(/\\s+/g, ' ').trim()).find(t => t.includes('今天自己加的')) ?? ''; return JSON.stringify({ cards: list ? list.querySelectorAll('.practice-extra').length : 0, head, buttons: list ? [...list.querySelectorAll('button')].map(b => b.textContent.trim()) : [] }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    extraInfo.cards === 1 &&
+      extraInfo.head.includes("今天自己加的 1 条") &&
+      extraInfo.buttons.includes("跟练") &&
+      extraInfo.buttons.includes("删掉"),
+    "练习页：跟练里加进来的那一条在「今天自己加的」里",
+    `${extraInfo.cards} 张 · ${extraInfo.buttons.join("/")}`,
+  );
+  js("localStorage.removeItem('guitar.plan.v1')");
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+
   // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
@@ -1991,6 +2041,18 @@ try {
       hardItemInfo.includes("第 2 小节第 6 级（Am）"),
     "统计页：最卡的地方还按条目列一份，能看出是哪一段",
     hardItemInfo.slice(0, 90),
+  );
+
+  // 16d5) v0.102.0：点其中一条要跳回那一段（pattern 回节奏页那张卡，hash 带 id）
+  const jumpHash = String(
+    js(
+      "(() => { const btn = document.querySelector('.hardest-jump'); if (!btn) return 'none'; btn.click(); return location.hash; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    jumpHash.startsWith("#rhythm") || jumpHash.startsWith("#practice") || jumpHash.startsWith("#ear"),
+    "统计页：点最卡的一条会跳回那一段",
+    jumpHash,
   );
   js("localStorage.removeItem('guitar.rhythm.v1')");
 

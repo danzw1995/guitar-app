@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  addDays,
   DRILLS,
   FEELS,
+  hardestTally,
   SESSION_MINUTES,
   STAGES,
   blockOf,
@@ -48,6 +50,7 @@ import {
 } from "../lib/storage";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
+import { loadExtras, removeExtra, type PlanExtra } from "../lib/plan";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
@@ -92,6 +95,8 @@ export default function Practice() {
   const [follow, setFollow] = useState<FollowTarget | null>(null);
   const [skips, setSkips] = useState<SkipLog>(() => loadSkips());
   const [pauses, setPauses] = useState<PauseLog>(() => loadPauses());
+  /** 今天自己加的计划（跟练里切出来的那一小节，v0.102.0）。 */
+  const [extras, setExtras] = useState<PlanExtra[]>(() => loadExtras(today));
   /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
   const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
 
@@ -121,6 +126,17 @@ export default function Practice() {
       bpm: drill.bpm ?? [70, 90],
       tab: drill.tab,
       meter: meterOfTab(drill.tab),
+    });
+  }
+
+  /** 跟练「今天自己加的」那一条：键用 `p:` 前缀之外再加 `extra:`，免得和练习库的 id 撞。 */
+  function openExtra(extra: PlanExtra) {
+    setFollow({
+      id: `p:${extra.id}`,
+      name: extra.title,
+      bpm: [extra.bpm, extra.bpm + 40],
+      tab: extra.tab,
+      meter: extra.meter,
     });
   }
 
@@ -234,6 +250,8 @@ export default function Practice() {
   );
   // 听辨正确率的走向：练习页也放一条，省得为了看趋势切到统计页
   const earTrend = earTrendOf(loadEar());
+  // 最近一周最卡的那一级：跟练时单练得最多的那处，和统计页同一套归堆（core 的 hardestTally）
+  const hardTally = useMemo(() => hardestTally(records, addDays(today, -6)), [records, today]);
 
   const day: DayLog | undefined = log[today];
   const done = new Set(day?.done ?? []);
@@ -253,6 +271,13 @@ export default function Practice() {
     const timer = window.setTimeout(() => setNextId(null), 1600);
     return () => window.clearTimeout(timer);
   }, [nextId]);
+
+  // 在跟练面板里点「加进今日计划」时，这一页要立刻多出那一条
+  useEffect(() => {
+    const reload = () => setExtras(loadExtras(today));
+    window.addEventListener("guitar:plan", reload);
+    return () => window.removeEventListener("guitar:plan", reload);
+  }, [today]);
 
   function commit(next: PracticeLog) {
     setLog(next);
@@ -353,6 +378,23 @@ export default function Practice() {
             去练听辨
           </button>
         </div>
+      )}
+
+      {hardTally[0] && (
+        <button
+          type="button"
+          className="practice-hardest"
+          onClick={() => goTo("stats")}
+          title="去统计页看最卡的地方"
+        >
+          <span>
+            最近最卡的是<b>第 {hardTally[0].degree} 级（{hardTally[0].name}）</b> ·{" "}
+            {hardTally[0].items} 条练习里单独练过 {hardTally[0].count} 次
+          </span>
+          <span className="practice-hardest-go" aria-hidden="true">
+            看统计 →
+          </span>
+        </button>
       )}
 
       {follow && (
@@ -575,6 +617,50 @@ export default function Practice() {
           );
         })}
       </ol>
+
+      {extras.length > 0 && (
+        <>
+          <h3 className="practice-h3">
+            今天自己加的 {extras.length} 条
+            <span className="practice-h3-hint">跟练里切出来的那一小节，练完也算今天的量</span>
+          </h3>
+          <ol className="practice-list practice-extras">
+            {extras.map((extra, index) => (
+              <li key={extra.id} id={extra.id} className="practice-block practice-extra">
+                <div className="pb-head">
+                  <span className="pb-index" aria-hidden="true">
+                    {index + 1}
+                  </span>
+                  <div className="pb-title">
+                    <h4>{extra.title}</h4>
+                    <p className="pb-meta">
+                      {extra.meter} · {extra.bpm} BPM · 自己加的
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-quiet"
+                    onClick={() => audition(extra.id, extra.tab, extra.bpm)}
+                  >
+                    试听
+                  </button>
+                  <button type="button" className="btn-quiet" onClick={() => openExtra(extra)}>
+                    跟练
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-quiet"
+                    onClick={() => setExtras(removeExtra(extra.id, today))}
+                  >
+                    删掉
+                  </button>
+                </div>
+                <TabScore id={extra.id} tab={extra.tab} beat={beatOf(extra.id)} />
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
 
       {/* ---------- 本阶段全部练习 ---------- */}
       <h3 className="practice-h3">
