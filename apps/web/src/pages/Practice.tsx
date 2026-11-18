@@ -154,7 +154,11 @@ export default function Practice() {
     setUndo(null);
   }
 
-  function recordFollow(result: { bpm: number; minutes: number }) {
+  function recordFollow(result: {
+    bpm: number;
+    minutes: number;
+    hardest?: { bar: number; degree: number; name: string; count: number };
+  }) {
     if (!follow) return;
     const previous = records[follow.id];
     const next: RhythmRecords = {
@@ -165,6 +169,7 @@ export default function Practice() {
         minutes: (previous?.minutes ?? 0) + result.minutes,
         lastAt: today,
         history: pushBpmPoint(previous?.history, today, result.bpm),
+        ...(result.hardest ? { hardest: result.hardest } : previous?.hardest ? { hardest: previous.hardest } : {}),
       },
     };
     setRecords(next);

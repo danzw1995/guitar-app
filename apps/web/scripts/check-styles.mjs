@@ -926,6 +926,22 @@ for (const selector of ["select", "input", "textarea"]) {
     (px(degreeChip.get("min-width")) ?? 0) >= 40 && (px(degreeChip.get("min-height")) ?? 0) >= 40,
     `min-width=${degreeChip.get("min-width") ?? "未设置"} min-height=${degreeChip.get("min-height") ?? "未设置"}`,
   );
+
+  // v0.99.0：记完成绩那句回执要说清「最卡的是哪一小节」，所以得显眼
+  const doneLine = narrowDecls(".follow-done");
+  expect(
+    "跟练记完成绩的回执用绿色，和错误提示区分开",
+    (doneLine.get("color") ?? "").includes("var(--green)"),
+    `color=${doneLine.get("color") ?? "未设置"}`,
+  );
+
+  // v0.99.0：「练完两遍自动接回整段」这句是说明文字，不能抢节拍器读数
+  const loopNote = narrowDecls(".follow-loop-note");
+  expect(
+    "跟练里「只练几小节」的说明是小字，不抢读数",
+    (px(loopNote.get("font-size")) ?? 99) <= 12,
+    `font-size=${loopNote.get("font-size") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

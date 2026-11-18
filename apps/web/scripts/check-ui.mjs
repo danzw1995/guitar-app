@@ -783,9 +783,51 @@ try {
     "节奏页：我存的进行能直接试听、跟练（标题带级数）",
     patternInfo,
   );
-  // 9a6b) v0.93.0：我存的进行能导出 PNG
-  const patternButtons = String(
+  // 9a6c) v0.99.0：跟练里点级数方块只练那一小节，方块上带小节号
+  js(
+    "(() => { const card = document.querySelector('.my-pattern'); const b = [...(card?.querySelectorAll('.drill-actions button') ?? [])].find(n => n.textContent.trim() === '跟练'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow-controls button')].find(n => n.textContent.trim() === '开始跟练'); b?.click(); return 'ok'; })()",
+  );
+  // 级数方块要等预备拍走完、真的在跑才出现
+  let followChips = "";
+  for (let i = 0; i < 24; i += 1) {
+    followChips = String(
+      js(
+        "(() => [...document.querySelectorAll('.follow-degree-chip')].map(n => n.textContent.trim()).join(','))()",
+      ),
+    ).replace(/^"|"$/g, "");
+    if (followChips) break;
+    await sleep(400);
+  }
+  log(
+    /^\d+·\d+(,\d+·\d+)*$/.test(followChips),
+    "跟练：级数方块上带小节号（3·5 这种）",
+    followChips || "还没出现",
+  );
+  js("(() => { document.querySelectorAll('.follow-degree-chip')[0]?.click(); return 'ok'; })()");
+  await sleep(700);
+  const loopNote = String(
     js(
+      "(() => { const label = [...document.querySelectorAll('.follow-controls label')].find(n => n.textContent.includes('只练')); const box = label?.querySelector('input[type=checkbox]'); const note = document.querySelector('.follow-loop-note')?.textContent?.replace(/\\s+/g, ' ').trim() ?? ''; return `${box?.checked ? 'on' : 'off'}|${note}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  // 这条种子进行只有一小节，所以「练完自动接回整段」那句不该出现（整段就是那一小节）；
+  // 多小节的自动接回由探针 probe-v99 覆盖
+  log(
+    loopNote.startsWith("on|") && loopNote.endsWith("|"),
+    "跟练：点级数方块会把「只练」勾到那一小节",
+    loopNote,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow button')].find(n => n.textContent.trim() === '收起'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+
+  // 9a6b) v0.93.0：我存的进行能导出 PNG
+  const patternButtons = String(    js(
       "(() => [...document.querySelectorAll('.my-pattern .drill-actions button')].map(n => n.textContent.trim()).join(','))()",
     ),
   ).replace(/^"|"$/g, "");

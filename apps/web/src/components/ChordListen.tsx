@@ -307,7 +307,11 @@ export default function ChordListen() {
     });
   }
 
-  function recordFollow(result: { bpm: number; minutes: number }) {
+  function recordFollow(result: {
+    bpm: number;
+    minutes: number;
+    hardest?: { bar: number; degree: number; name: string; count: number };
+  }) {
     if (!follow) return;
     const today = dateKeyOf(new Date());
     const previous = records[follow.id];
@@ -318,6 +322,7 @@ export default function ChordListen() {
         sessions: (previous?.sessions ?? 0) + 1,
         minutes: (previous?.minutes ?? 0) + result.minutes,
         lastAt: today,
+        ...(result.hardest ? { hardest: result.hardest } : previous?.hardest ? { hardest: previous.hardest } : {}),
       },
     };
     setRecords(next);

@@ -49,6 +49,7 @@ import {
   skipsOf,
   type PauseLog,
   type RhythmRecords,
+  type RhythmRecord,
   type SkipLog,
 } from "../lib/storage";
 
@@ -219,7 +220,7 @@ export default function Rhythm() {
     shownSnippets.length;
 
   /** 记成绩：跟练记录（最高速度）+ 当天练习时长（让连续天数也涨）。 */
-  function record(result: { bpm: number; minutes: number }) {
+  function record(result: { bpm: number; minutes: number; hardest?: RhythmRecord["hardest"] }) {
     if (!target) return;
     const today = dateKeyOf(new Date());
     const previous = records[target.id];
@@ -231,6 +232,7 @@ export default function Rhythm() {
         minutes: (previous?.minutes ?? 0) + result.minutes,
         lastAt: today,
         history: pushBpmPoint(previous?.history, today, result.bpm),
+        ...(result.hardest ? { hardest: result.hardest } : previous?.hardest ? { hardest: previous.hardest } : {}),
       },
     };
     setRecords(next);

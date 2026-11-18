@@ -179,6 +179,11 @@ export interface RhythmRecord {
   lastAt: string;
   /** 最高速度的变化：一天一个点，最多 60 个（v0.45.0 起记录）。 */
   history?: BpmPoint[];
+  /**
+   * 这一段里最卡的一处（v0.99.0）：跟练时点级数方块单独去练点得最多的那一小节。
+   * 只记「用户自己标出来的」，不是猜的。
+   */
+  hardest?: { bar: number; degree: number; name: string; count: number };
 }
 
 export type RhythmRecords = Record<string, RhythmRecord>;
@@ -200,8 +205,27 @@ function parseHistory(value: unknown): BpmPoint[] {
 }
 
 /** 一张「id → 成绩」的表：跟练与和弦转换共用同一套形状。 */
-function parseRecords(raw: unknown): RhythmRecords {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+/** 「最卡的一处」只收站得住的数：小节 ≥1、级数 0–7、名字是字符串、次数 ≥1。 */
+function parseHardest(
+  value: unknown,
+): { bar: number; degree: number; name: string; count: number } | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const item = value as Record<string, unknown>;
+  const bar = Number(item.bar);
+  const degree = Number(item.degree);
+  const count = Number(item.count);
+  if (!Number.isFinite(bar) || bar < 1) return undefined;
+  if (!Number.isFinite(degree) || degree < 0 || degree > 7) return undefined;
+  if (!Number.isFinite(count) || count < 1) return undefined;
+  return {
+    bar: Math.round(bar),
+    degree: Math.round(degree),
+    name: typeof item.name === "string" ? item.name : "",
+    count: Math.round(count),
+  };
+}
+
+function parseRecords(raw: unknown): RhythmRecords {  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
 
   const records: RhythmRecords = {};
   for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
@@ -215,6 +239,7 @@ function parseRecords(raw: unknown): RhythmRecords {
       minutes: Number.isFinite(Number(item.minutes)) ? Math.max(0, Number(item.minutes)) : 0,
       lastAt: typeof item.lastAt === "string" ? item.lastAt : "",
       history: parseHistory(item.history),
+      hardest: parseHardest(item.hardest),
     };
   }
   return records;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Tab } from "@guitar/core";
 import { METERS, SUBDIVISION_LABEL, type Subdivision } from "@guitar/core";
 import { degreesOf } from "../lib/degrees";
@@ -15,11 +15,23 @@ export interface FollowTarget {
   meter?: string;
 }
 
+/** 只练某几小节时，练满几遍自动接回整段（v0.99.0）。 */
+const LOOP_PASSES = 2;
+
+/** 跟练时「最卡的一级」：用户点级数方块单独去练的那一处（v0.99.0）。 */
+export interface FollowHardest {
+  bar: number;
+  degree: number;
+  name: string;
+  /** 点了几次。 */
+  count: number;
+}
+
 export interface FollowAlongProps {
   target: FollowTarget;
   /** 之前练到过的最高速度（没有就不显示）。 */
   best?: number;
-  onFinish: (result: { bpm: number; minutes: number }) => void;
+  onFinish: (result: { bpm: number; minutes: number; hardest?: FollowHardest }) => void;
   onClose: () => void;
 }
 
@@ -69,6 +81,12 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   const [loopTo, setLoopTo] = useState(target.tab.bars);
   const [seconds, setSeconds] = useState(0);
   const [volume, setVolume] = useAudioVolume();
+  /** 记录成绩之后显示的那一句（含「最卡的一级」）。 */
+  const [done, setDone] = useState<{ bpm: number; hardest: FollowHardest | null } | null>(null);
+  /** 点级数方块单独去练的次数：点得最多的那一处就是「最卡的」。 */
+  const hardRef = useRef(new Map<string, FollowHardest>());
+  const loopPassRef = useRef(0);
+  const lastBarRef = useRef(-1);
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -81,6 +99,21 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     setLoopOn(true);
     setLoopFrom(next);
     setLoopTo(next);
+    loopPassRef.current = 0;
+    // 点得最多的小节 = 最卡的地方（v0.99.0），记录成绩时一起存
+    const row = degrees.find(
+      (item) => Math.floor(item.beat / target.tab.beatsPerBar) + 1 === next,
+    );
+    if (row) {
+      const key = String(next);
+      const previous = hardRef.current.get(key);
+      hardRef.current.set(key, {
+        bar: next,
+        degree: row.degree,
+        name: row.name,
+        count: (previous?.count ?? 0) + 1,
+      });
+    }
     if (!running) start();
   }
 
@@ -114,6 +147,44 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     return () => window.clearInterval(timer);
   }, [running]);
 
+  /**
+   * 只练某几小节时，练满 `LOOP_PASSES` 遍就自动接回整段（v0.99.0）。
+   *
+   * 判定「转了一圈」：小节号从 `loop.to` 回到 `loop.from`。节拍器内部知道 pass，
+   * 但那是排程细节，这里只看界面上能看到的小节号，和用户看到的一致。
+   */
+  useEffect(() => {
+    if (!running || !loop) {
+      lastBarRef.current = bar;
+      return;
+    }
+    const previous = lastBarRef.current;
+    lastBarRef.current = bar;
+    if (previous !== loop.to || bar !== loop.from) return;
+    loopPassRef.current += 1;
+    if (loopPassRef.current < LOOP_PASSES) return;
+    loopPassRef.current = 0;
+    // 只有「只练一部分」才需要接回整段；本来就在整段里打圈就让它继续
+    if (loop.to - loop.from + 1 < totalBars) setLoopOn(false);
+  }, [bar, running, loop, totalBars]);
+
+  /** 这一段里最卡的一处：点级数方块点得最多的那一小节。 */
+  function hardestSoFar(): FollowHardest | null {
+    let best: FollowHardest | null = null;
+    for (const item of hardRef.current.values()) {
+      if (!best || item.count > best.count) best = item;
+    }
+    return best;
+  }
+
+  function finish() {
+    const hardest = hardestSoFar();
+    onFinish({ bpm, minutes: Math.max(1, Math.round(seconds / 60)), hardest: hardest ?? undefined });
+    setDone({ bpm, hardest });
+    stop();
+    setSeconds(0);
+  }
+
   // 换一条练习就重置速度与计时（卸载时由 useMetronome 自己收尾）
   useEffect(() => {
     setStartBpm(target.bpm[0]);
@@ -123,14 +194,11 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     setLoopFrom(1);
     setLoopTo(target.tab.bars);
     setLoopOn(false);
+    setDone(null);
+    hardRef.current.clear();
+    loopPassRef.current = 0;
     stop();
   }, [target.id]);
-
-  function finish() {
-    onFinish({ bpm, minutes: Math.max(1, Math.round(seconds / 60)) });
-    stop();
-    setSeconds(0);
-  }
 
   return (
     <section className="follow" aria-label={`跟练：${target.name}`}>
@@ -153,7 +221,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
           <span>BPM</span>
           {running ? (
             <em className="follow-bar">
-              {countingIn ? "预备…" : `第 ${loop ? bar : bar + 1} 小节`}
+              {countingIn ? "预备…" : `第 ${loop ? bar : (bar % totalBars) + 1} 小节`}
             </em>
           ) : null}
           {running && !countingIn && degreeNow && degreeNow.degree > 0 ? (
@@ -193,13 +261,19 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
                   aria-label={`第 ${bar} 小节${row.degree > 0 ? `，第 ${row.degree} 级` : "，调外音"}；点一下只反复练这一小节`}
                   onClick={() => practiceBar(bar)}
                 >
-                  {row.degree > 0 ? row.degree : "?"}
+                  {row.degree > 0 ? `${bar}·${row.degree}` : `${bar}·?`}
                 </button>
               );
             })}
             {degreeNext ? (
               <em className="follow-next">
                 下一个 {degreeNext.degree > 0 ? `第 ${degreeNext.degree} 级` : "调外音"}
+              </em>
+            ) : null}
+            {loop && (loop.to - loop.from + 1) < totalBars ? (
+              <em className="follow-loop-note">
+                只练第 {loop.from === loop.to ? loop.from : `${loop.from}–${loop.to}`} 小节 · 练完{" "}
+                {LOOP_PASSES} 遍自动接回整段
               </em>
             ) : null}
           </div>
@@ -382,6 +456,15 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
           </button>
         </div>
       </div>
+
+      {done ? (
+        <p className="follow-done" role="status">
+          记下了：{done.bpm} BPM
+          {done.hardest
+            ? ` · 这段最卡的是第 ${done.hardest.bar} 小节第 ${done.hardest.degree} 级（${done.hardest.name}），点了 ${done.hardest.count} 次`
+            : " · 这一段没有单独去练哪一小节"}
+        </p>
+      ) : null}
 
       <TabScore id={target.id} tab={target.tab} />
 
