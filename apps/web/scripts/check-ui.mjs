@@ -1979,6 +1979,19 @@ try {
     "统计页：最卡的地方按级数归堆，次数多的排前面",
     hardInfo.slice(0, 90),
   );
+  // 16d4) v0.101.0：同一份数据按「条目」再列一份——哪一段最卡、卡在哪一小节
+  const hardItemInfo = String(
+    js(
+      "(() => { const rows = [...document.querySelectorAll('[data-hardest-item]')].map(li => li.innerText.replace(/\\n/g, ' ').trim()); return rows.join(' | '); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    hardItemInfo.includes("第 3 小节第 5 级（G）") &&
+      hardItemInfo.includes("单独练过 4 次") &&
+      hardItemInfo.includes("第 2 小节第 6 级（Am）"),
+    "统计页：最卡的地方还按条目列一份，能看出是哪一段",
+    hardItemInfo.slice(0, 90),
+  );
   js("localStorage.removeItem('guitar.rhythm.v1')");
 
   // 16e) 调音页：六根空弦都在、点「开始」拿不到麦克风时要有一句人话

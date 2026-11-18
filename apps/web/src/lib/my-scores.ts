@@ -14,7 +14,7 @@ export interface MyScore {
    * `manual` = 手写/粘贴的（能编辑）；`transcribe` = 扒谱扒出来的（只读，靠 `tab` 重画）；
    * `chord` = 听和弦认出来之后存下的和弦按法（只读）。
    */
-  source?: "manual" | "transcribe" | "chord" | "progression";
+  source?: "manual" | "transcribe" | "chord" | "progression" | "slice";
   /** `chord` 存下的和弦名（`C` / `Am`），用来跳回和弦页看指法。 */
   chordName?: string;
   /** 扒谱存下的谱：没有 ASCII 原文，留着音符才能重画、试听、跟练。 */
@@ -146,9 +146,12 @@ export function loadScores(): MyScore[] {
       .filter(
         (item) =>
           typeof item?.id === "string" &&
-          // 手写的要有原文；扒谱 / 和弦 / 和弦谱存下的没有原文，得留着音符才画得出来。
+          // 手写的要有原文；扒谱 / 和弦 / 和弦谱 / 跟练切出来的没有原文，得留着音符才画得出来。
           (typeof item.ascii === "string" ||
-            ((item.source === "transcribe" || item.source === "chord" || item.source === "progression") &&
+            ((item.source === "transcribe" ||
+              item.source === "chord" ||
+              item.source === "progression" ||
+              item.source === "slice") &&
               item.tab)),
       )
       .map((item) => ({ ...item, ascii: typeof item.ascii === "string" ? item.ascii : "" }))
@@ -186,7 +189,7 @@ function persist(scores: MyScore[]): MyScore[] {
 export function addScore(input: {
   title: string;
   ascii: string;
-  source?: "manual" | "transcribe" | "chord" | "progression";
+  source?: "manual" | "transcribe" | "chord" | "progression" | "slice";
   chordName?: string;
   tab?: Tab;
   meter?: string;

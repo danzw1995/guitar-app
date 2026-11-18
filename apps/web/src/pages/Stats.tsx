@@ -177,6 +177,12 @@ export default function Stats() {
   // 最卡的地方（v0.100.0）：跟练时点级数方块单练过的那一小节，按级数归堆。
   // 只看最近 7 天练过的条目——一个月前那条不该影响这周的结论。
   const hardTally = hardestTally(rhythm, addDays(today, -6));
+  // 同一份数据按「条目」再排一遍（v0.101.0）：哪一段最卡、卡在哪一小节
+  const hardItems = Object.entries(rhythm)
+    .filter(([, record]) => record.hardest && record.lastAt && record.lastAt >= addDays(today, -6))
+    .map(([id, record]) => ({ id, hardest: record.hardest! }))
+    .sort((a, b) => b.hardest.count - a.hardest.count)
+    .slice(0, 4);
 
   // 听辨（扒谱页「练」）：`guitar.ear.v1` 存最好成绩、轮数与四种题型各自的正确率
   const ear = loadEar();
@@ -695,8 +701,22 @@ export default function Stats() {
               </li>
             ))}
           </ul>
+          {hardItems.length > 0 && (
+            <ul className="hardest-items">
+              {hardItems.map((item) => (
+                <li key={item.id} data-hardest-item={item.id}>
+                  <span>{nameOf(item.id)}</span>
+                  <span className="muted">
+                    第 {item.hardest.bar} 小节第 {item.hardest.degree} 级
+                    {item.hardest.name ? `（${item.hardest.name}）` : ""} · 单独练过{" "}
+                    {item.hardest.count} 次
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="hint hardest-hint">
-            统计最近 7 天练过的条目：跟练时点级数方块单练的那一小节，按级数归堆。
+            统计最近 7 天练过的条目：上面按级数归堆（该补哪种和声），下面按条目排（哪一段最卡）。
           </p>
         </>
       )}

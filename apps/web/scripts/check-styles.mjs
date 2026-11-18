@@ -956,6 +956,20 @@ for (const selector of ["select", "input", "textarea"]) {
     (hardestList.get("display") ?? "") === "grid",
     `display=${hardestList.get("display") ?? "未设置"}`,
   );
+
+  // v0.101.0：上次最卡的那一处用虚线框标出来；按条目列的那份也是一列
+  const hardChip = narrowDecls(".follow-degree-chip.hard");
+  expect(
+    "跟练里「上次最卡的那一处」用虚线框标出来，不跟当前小节抢高亮",
+    (hardChip.get("border-style") ?? "") === "dashed",
+    `border-style=${hardChip.get("border-style") ?? "未设置"}`,
+  );
+  const hardItems = narrowDecls(".hardest-items");
+  expect(
+    "统计页按条目列的那份也是一列网格",
+    (hardItems.get("display") ?? "") === "grid",
+    `display=${hardItems.get("display") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

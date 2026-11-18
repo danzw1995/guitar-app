@@ -109,6 +109,31 @@ export function tabOf(notes: TabNote[], opts: Partial<Tab> = {}): Tab {
 }
 
 /**
+ * 从一张谱里切出一段（v0.101.0）：跟练时「最卡的那一小节」能单独存成一条练习。
+ *
+ * 只留 `[fromBeat, fromBeat + beats)` 里的音，拍位平移成从 0 开始，时值按段的长度截断
+ * （跨出段尾的音不补延音线，免得画出来比听见的长）。切出来的谱按 `beats` 当一小节。
+ */
+export function sliceTab(tab: Tab, fromBeat: number, beats: number): Tab {
+  const start = Math.max(0, fromBeat);
+  const length = Math.max(1, Math.round(beats));
+  const end = start + length;
+  const notes = tab.notes
+    .filter((note) => note.beat >= start - 1e-6 && note.beat < end - 1e-6)
+    .map((note) => ({
+      ...note,
+      beat: Math.max(0, note.beat - start),
+      dur: Math.max(0.25, Math.min(note.dur, end - Math.max(note.beat, start))),
+    }));
+  return tabOf(notes, {
+    beatsPerBar: length,
+    bars: 1,
+    bpm: tab.bpm,
+    caption: tab.caption,
+  });
+}
+
+/**
  * 谱面对读屏的一句话。
  *
  * 谱面要么是预渲染的 PNG、要么是 alphaTab 画出来的字形，都没有语义，

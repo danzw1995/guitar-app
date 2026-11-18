@@ -178,7 +178,10 @@ function ScoreCard({
   onImage: (id: string, image: ScoreImage) => void;
 }) {
   const storedSource =
-    score.source === "transcribe" || score.source === "chord" || score.source === "progression"
+    score.source === "transcribe" ||
+    score.source === "chord" ||
+    score.source === "progression" ||
+    score.source === "slice"
       ? score.source
       : null;
   const earTab = storedSource && score.tab ? score.tab : null;
@@ -297,7 +300,9 @@ function ScoreCard({
             ? "从听和弦存下的 · 只能试听、导出，不能编辑"
             : storedSource === "progression"
               ? "从一段扫弦切出来的和弦谱 · 只能试听、导出，不能编辑"
-              : "扒出来的 · 只能试听、导出，不能编辑"}
+              : storedSource === "slice"
+                ? "从跟练里切出来的一小节 · 只能试听、导出，不能编辑"
+                : "扒出来的 · 只能试听、导出，不能编辑"}
         </p>
       )}
       {storedSource === "chord" && score.chordName ? (

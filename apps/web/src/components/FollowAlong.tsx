@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Tab } from "@guitar/core";
-import { METERS, SUBDIVISION_LABEL, type Subdivision } from "@guitar/core";
+import { METERS, SUBDIVISION_LABEL, sliceTab, type Subdivision } from "@guitar/core";
 import { degreesOf } from "../lib/degrees";
 import { useMetronome } from "../hooks/useMetronome";
 import { useAudioVolume, volumeLabel } from "../lib/audio-bus";
+import { loadRhythm } from "../lib/storage";
+import { addScore } from "../lib/my-scores";
 import TabScore from "./TabScore";
 
 export interface FollowTarget {
@@ -88,6 +90,9 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   /** 点级数方块单独去练的次数：点得最多的那一处就是「最卡的」。 */
   const hardRef = useRef(new Map<string, FollowHardest>());
   const loopPassRef = useRef(0);
+  /** 上次记成绩时留下的「最卡的一处」：练到那一小节时提醒一下（v0.101.0）。 */
+  const remembered = useMemo(() => loadRhythm()[target.id]?.hardest ?? null, [target.id]);
+  const [sliceSaved, setSliceSaved] = useState(false);
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -116,6 +121,26 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
       });
     }
     if (!running) start();
+  }
+
+  /**
+   * 把「最卡的那一小节」单独切出来存进「我的谱」（v0.101.0）。
+   *
+   * 存的是一小节切片、不是整段：下次想单练不用再进跟练、也不用自己数小节。
+   */
+  function saveHardestBar(hit: FollowHardest): void {
+    const width = target.tab.beatsPerBar;
+    const tab = sliceTab(target.tab, (hit.bar - 1) * width, width);
+    addScore({
+      title: `最卡的一小节 · ${target.name} 第 ${hit.bar} 小节`,
+      ascii: "",
+      source: "slice",
+      tab,
+      meter: `${tab.beatsPerBar}/4`,
+      bpm,
+    });
+    setSliceSaved(true);
+    window.dispatchEvent(new Event("guitar:scores"));
   }
 
   const { running, bar, pass, active, countingIn, start, stop } = useMetronome({
@@ -178,7 +203,9 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   }
 
   function finish() {
-    const hardest = hardestSoFar();
+    // 这一遍没点过方块时退回「上次记下的那一处」（v0.101.0）：
+    // 不然「把第 N 小节存成练习」只在点过方块的这一遍里才有，等于白做。
+    const hardest = hardestSoFar() ?? remembered;
     onFinish({ bpm, minutes: Math.max(1, Math.round(seconds / 60)), hardest: hardest ?? undefined });
     setDone({ bpm, hardest });
     stop();
@@ -195,10 +222,14 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     setLoopTo(target.tab.bars);
     setLoopOn(false);
     setDone(null);
+    setSliceSaved(false);
     hardRef.current.clear();
     loopPassRef.current = 0;
     stop();
   }, [target.id]);
+
+  /** 谱面显示用的小节号：不循环时一直往下数，数到末尾绕回第 1 小节（v0.99.0）。 */
+  const currentBar = loop ? bar : (bar % totalBars) + 1;
 
   return (
     <section className="follow" aria-label={`跟练：${target.name}`}>
@@ -221,7 +252,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
           <span>BPM</span>
           {running ? (
             <em className="follow-bar">
-              {countingIn ? "预备…" : `第 ${loop ? bar : (bar % totalBars) + 1} 小节`}
+              {countingIn ? "预备…" : `第 ${currentBar} 小节`}
             </em>
           ) : null}
           {running && !countingIn && degreeNow && degreeNow.degree > 0 ? (
@@ -245,20 +276,26 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
             {degrees.map((row, index) => {
               const bar = Math.floor(row.beat / target.tab.beatsPerBar) + 1;
               const active = index === degreeIndex;
-              const className = active
+              const hard =
+                remembered !== null && remembered.bar === bar && remembered.degree === row.degree;
+              const nowHard = hard && active;
+              const base = active
                 ? "follow-degree-chip on"
                 : row.degree === 1
                   ? "follow-degree-chip lv1"
                   : row.degree === 5
                     ? "follow-degree-chip lv5"
                     : "follow-degree-chip";
+              const className = `${base}${hard ? " hard" : ""}${nowHard ? " now-hard" : ""}`;
               return (
                 <button
                   key={`${row.beat}-${index}`}
                   type="button"
                   className={className}
                   aria-pressed={active}
-                  aria-label={`第 ${bar} 小节${row.degree > 0 ? `，第 ${row.degree} 级` : "，调外音"}；点一下只反复练这一小节`}
+                  aria-label={`第 ${bar} 小节${row.degree > 0 ? `，第 ${row.degree} 级` : "，调外音"}${
+                    hard ? "（上次最卡的地方）" : ""
+                  }；点一下只反复练这一小节`}
                   onClick={() => practiceBar(bar)}
                 >
                   {row.degree > 0 ? `${bar}·${row.degree}` : `${bar}·?`}
@@ -268,6 +305,12 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
             {degreeNext ? (
               <em className="follow-next">
                 下一个 {degreeNext.degree > 0 ? `第 ${degreeNext.degree} 级` : "调外音"}
+              </em>
+            ) : null}
+            {remembered && running && !countingIn && currentBar === remembered.bar ? (
+              <em className="follow-hard-note">
+                就是这里：第 {remembered.bar} 小节第 {remembered.degree} 级（{remembered.name}）
+                {remembered.count > 0 ? `，上次单独练了 ${remembered.count} 次` : ""}
               </em>
             ) : null}
             {loop && (loop.to - loop.from + 1) < totalBars ? (
@@ -474,12 +517,29 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
       </div>
 
       {done ? (
-        <p className="follow-done" role="status">
-          记下了：{done.bpm} BPM
-          {done.hardest
-            ? ` · 这段最卡的是第 ${done.hardest.bar} 小节第 ${done.hardest.degree} 级（${done.hardest.name}），点了 ${done.hardest.count} 次`
-            : " · 这一段没有单独去练哪一小节"}
-        </p>
+        <div className="follow-done" role="status">
+          <p className="follow-done-text">
+            记下了：{done.bpm} BPM
+            {done.hardest
+              ? ` · 这段最卡的是第 ${done.hardest.bar} 小节第 ${done.hardest.degree} 级（${done.hardest.name}），点了 ${done.hardest.count} 次`
+              : " · 这一段没有单独去练哪一小节"}
+          </p>
+          {done.hardest ? (
+            <p className="follow-done-actions">
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => saveHardestBar(done.hardest!)}
+                disabled={sliceSaved}
+              >
+                {sliceSaved ? "已存进「我的谱」" : `把第 ${done.hardest.bar} 小节存成练习`}
+              </button>
+              <span className="follow-done-note">
+                切出来的那一小节在「节奏」页最下面的「我的谱」里，能单独试听、跟练、导出。
+              </span>
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <TabScore id={target.id} tab={target.tab} />

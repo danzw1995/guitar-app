@@ -106,6 +106,7 @@ import {
   changesIn,
   drillBeats,
   hardestTally,
+  sliceTab,
 } from "../src/index.ts";
 import {
   CIRCLE,
@@ -3376,6 +3377,43 @@ test("最卡的地方：按级数归堆，只算最近练过的条目", () => {
     hardestTally({ bad: { lastAt: "2026-11-18", hardest: { bar: 0, degree: 0, name: "", count: 0 } } }, "2026-11-01"),
     [],
   );
+});
+
+test("切一段：只留那几拍的音，拍位从 0 开始，时值不超出段尾", () => {
+  const tab = tabOf(
+    [
+      n(5, 3, 0, 4),
+      n(4, 2, 0, 4),
+      n(3, 2, 4, 4),
+      n(2, 1, 4, 4),
+      n(6, 3, 8, 4),
+      n(5, 2, 8, 4),
+    ],
+    { beatsPerBar: 4, bars: 3, caption: "C–Am–G" },
+  );
+
+  // 切第 2 小节（拍 4–7）
+  const second = sliceTab(tab, 4, 4);
+  assert.equal(second.bars, 1);
+  assert.equal(second.beatsPerBar, 4);
+  assert.deepEqual(
+    second.notes.map((note) => [note.s, note.f, note.beat]),
+    [
+      [3, 2, 0],
+      [2, 1, 0],
+    ],
+  );
+  assert.equal(second.caption, "C–Am–G");
+
+  // 切两拍：跨出段尾的时值被截到段长，不会画出比听见更长的音
+  const head = sliceTab(tab, 0, 2);
+  assert.equal(head.notes.length, 2);
+  assert.equal(head.notes[0].dur, 2);
+
+  // 空段也能切出一张空谱，不抛
+  const empty = sliceTab(tab, 100, 4);
+  assert.equal(empty.notes.length, 0);
+  assert.equal(empty.bars, 1);
 });
 
 

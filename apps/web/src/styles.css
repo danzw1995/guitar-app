@@ -1798,8 +1798,53 @@ button, select, input { font: inherit; color: inherit; }
 }
 /* 记完成绩后的一句回执（v0.99.0）：这一遍多少 BPM、最卡的是哪一小节 */
 .follow-done {
+  display: grid;
+  gap: 4px;
   margin: 8px 0 0;
   color: var(--green);
+  font-size: 13px;
+}
+.follow-done-text {
+  margin: 0;
+}
+.follow-done-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+  color: var(--muted);
+}
+.follow-done-note {
+  font-size: 12px;
+}
+/* 跟练时练到「上次最卡的那一处」（v0.101.0）：方块加个虚线圈，正在弹的时候再说一句 */
+.follow-degree-chip.hard {
+  border-style: dashed;
+  border-color: var(--accent);
+}
+.follow-degree-chip.now-hard {
+  box-shadow: 0 0 0 2px rgba(232, 176, 75, 0.28);
+}
+.follow-hard-note {
+  flex-basis: 100%;
+  color: var(--accent);
+  font-size: 11px;
+  font-style: normal;
+}
+/* 统计页按「条目」再列一份（v0.101.0）：哪一段最卡、卡在哪一小节 */
+.hardest-items {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.hardest-items li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
   font-size: 13px;
 }
 /* 「我存的进行」卡上的最卡的一处（v0.100.0） */

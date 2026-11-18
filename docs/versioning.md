@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.100.0`，core `0.51.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.101.0`，core `0.52.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -116,6 +116,8 @@ v0.99.0 同样只动前端（只练两遍自动接回整段、级数方块带小
 v0.100.0 把「最卡的地方」归堆放进 core（新导出 `hardestTally()`），按「新增导出算 MINOR」
 升到 `0.51.0`；产品侧只是多了一行卡片文字、一个「练几遍」下拉和统计页一块列表。
 顺带修掉只练单小节时数不出圈的 bug：改成用节拍器的 `pass` 而不是小节读数。
+v0.101.0 的 `sliceTab()`（把一段谱切成一小节）也放在 core，新导出算 MINOR，core 到 `0.52.0`；
+产品侧是跟练里提醒上次最卡的那一处、把它存成练习，以及统计页按条目再列一份。
 `tools/tab-score` 是独立发布的包（`@danzw777/tab-score`），版本线与产品无关，现在是 `0.8.4`
 （0.7.0 加了 ASCII 六线谱输入，0.8.0 补子路径导出并把样例从发布包里摘掉，0.8.1 是第一次真正发布到 npm——
 因为 `@danzw` 那个 scope 当时的 token 没有写权限，包名从 `@danzw/tab-score` 改成了 `@danzw777/tab-score`；
