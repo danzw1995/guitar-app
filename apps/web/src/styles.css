@@ -1802,6 +1802,34 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--green);
   font-size: 13px;
 }
+/* 「我存的进行」卡上的最卡的一处（v0.100.0） */
+.my-hardest {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 12px;
+}
+/* 统计页「最卡的地方」（v0.100.0）：一行一级，次数在后面 */
+.hardest-list {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.hardest-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 13px;
+}
+.hardest-list b {
+  color: var(--accent);
+  font-weight: 600;
+}
+.hardest-hint {
+  margin: 0 0 14px;
+}
 .follow-controls {
   display: flex;
   align-items: center;

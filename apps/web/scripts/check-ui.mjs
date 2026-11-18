@@ -1955,6 +1955,32 @@ try {
   );
   js("localStorage.removeItem('guitar.ear.v1')");
 
+  // 16d3) v0.100.0：统计页「最卡的地方」——跟练时点开单练的级数按周归堆
+  js(
+    "(() => { const today = new Date(); const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; const now = key(today); localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'pattern-h1': { bestBpm: 90, sessions: 2, minutes: 3, lastAt: now, hardest: { bar: 3, degree: 5, name: 'G', count: 4 } }, 'pattern-h2': { bestBpm: 88, sessions: 1, minutes: 2, lastAt: now, hardest: { bar: 2, degree: 6, name: 'Am', count: 2 } }, 'pattern-h3': { bestBpm: 80, sessions: 1, minutes: 2, lastAt: now, hardest: { bar: 1, degree: 5, name: 'G', count: 1 } } })); return 'ok'; })()",
+  );
+  await sleep(100);
+  ab(["reload"]);
+  await sleep(800);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const hardInfo = String(
+    js(
+      "(() => { const rows = [...document.querySelectorAll('[data-hardest]')].map(li => li.innerText.replace(/\\n/g, ' ').trim()); const hint = document.querySelector('.hardest-hint')?.innerText?.replace(/\\n/g, ' ').trim() ?? ''; return `${rows.join(' | ')}##${hint}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    hardInfo.startsWith("第 5 级（G）") &&
+      hardInfo.includes("2 条练习里单独练过 5 次") &&
+      hardInfo.includes("第 6 级（Am）") &&
+      hardInfo.includes("最近 7 天"),
+    "统计页：最卡的地方按级数归堆，次数多的排前面",
+    hardInfo.slice(0, 90),
+  );
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+
   // 16e) 调音页：六根空弦都在、点「开始」拿不到麦克风时要有一句人话
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '调音'); b?.click(); return 'ok'; })()",

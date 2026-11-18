@@ -942,6 +942,20 @@ for (const selector of ["select", "input", "textarea"]) {
     (px(loopNote.get("font-size")) ?? 99) <= 12,
     `font-size=${loopNote.get("font-size") ?? "未设置"}`,
   );
+
+  // v0.100.0：最卡的那一处——卡上是强调色小字，统计页是一行一级的列表
+  const myHardest = narrowDecls(".my-hardest");
+  expect(
+    "「我存的进行」卡上的最卡一处用强调色，一眼能看到",
+    (myHardest.get("color") ?? "").includes("var(--accent)"),
+    `color=${myHardest.get("color") ?? "未设置"}`,
+  );
+  const hardestList = narrowDecls(".hardest-list");
+  expect(
+    "统计页「最卡的地方」是一列网格，不是挤成一段话",
+    (hardestList.get("display") ?? "") === "grid",
+    `display=${hardestList.get("display") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

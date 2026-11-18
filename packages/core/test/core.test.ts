@@ -105,6 +105,7 @@ import {
   chordAt,
   changesIn,
   drillBeats,
+  hardestTally,
 } from "../src/index.ts";
 import {
   CIRCLE,
@@ -3324,6 +3325,57 @@ test("听和弦：低音换成级数标注，跟着调走", () => {
   // 跨八度、负数音级也要落回 0–11
   assert.equal(degreeInKey(12, 0), 1);
   assert.equal(degreeInKey(-3, 0), 6);
+});
+
+test("最卡的地方：按级数归堆，只算最近练过的条目", () => {
+  const records = {
+    "pattern-a": {
+      lastAt: "2026-11-18",
+      hardest: { bar: 3, degree: 5, name: "G", count: 4 },
+    },
+    "pattern-b": {
+      lastAt: "2026-11-17",
+      hardest: { bar: 1, degree: 5, name: "G", count: 1 },
+    },
+    "pattern-c": {
+      lastAt: "2026-11-16",
+      hardest: { bar: 2, degree: 6, name: "Am", count: 2 },
+    },
+    // 太久了，不算这周
+    "pattern-old": {
+      lastAt: "2026-10-01",
+      hardest: { bar: 2, degree: 1, name: "C", count: 99 },
+    },
+    // 没记过最卡的地方
+    "pattern-plain": { lastAt: "2026-11-18" },
+  };
+
+  const tally = hardestTally(records, "2026-11-12");
+  // 5 级两次（4 + 1）、6 级一次（2）；1 级那条太旧被排除
+  assert.deepEqual(tally, [
+    { degree: 5, name: "G", count: 5, items: 2 },
+    { degree: 6, name: "Am", count: 2, items: 1 },
+  ]);
+
+  // 同分时级数小的排前面（根音更值得先看）
+  const tie = hardestTally(
+    {
+      x: { lastAt: "2026-11-18", hardest: { bar: 1, degree: 6, name: "Am", count: 2 } },
+      y: { lastAt: "2026-11-18", hardest: { bar: 1, degree: 2, name: "Dm", count: 2 } },
+    },
+    "2026-11-01",
+  );
+  assert.deepEqual(
+    tie.map((item) => item.degree),
+    [2, 6],
+  );
+
+  // 空表、坏数据都不炸
+  assert.deepEqual(hardestTally({}, "2026-11-12"), []);
+  assert.deepEqual(
+    hardestTally({ bad: { lastAt: "2026-11-18", hardest: { bar: 0, degree: 0, name: "", count: 0 } } }, "2026-11-01"),
+    [],
+  );
 });
 
 

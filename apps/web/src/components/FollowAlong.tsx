@@ -15,7 +15,8 @@ export interface FollowTarget {
   meter?: string;
 }
 
-/** 只练某几小节时，练满几遍自动接回整段（v0.99.0）。 */
+/** 只练某几小节时，练满几遍自动接回整段（v0.99.0；v0.100.0 起遍数可选）。 */
+const LOOP_PASS_CHOICES = [1, 2, 3] as const;
 const LOOP_PASSES = 2;
 
 /** 跟练时「最卡的一级」：用户点级数方块单独去练的那一处（v0.99.0）。 */
@@ -77,6 +78,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   );
   const [countIn, setCountIn] = useState(1);
   const [loopOn, setLoopOn] = useState(false);
+  const [loopPasses, setLoopPasses] = useState(LOOP_PASSES);
   const [loopFrom, setLoopFrom] = useState(1);
   const [loopTo, setLoopTo] = useState(target.tab.bars);
   const [seconds, setSeconds] = useState(0);
@@ -86,7 +88,6 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   /** 点级数方块单独去练的次数：点得最多的那一处就是「最卡的」。 */
   const hardRef = useRef(new Map<string, FollowHardest>());
   const loopPassRef = useRef(0);
-  const lastBarRef = useRef(-1);
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -117,7 +118,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     if (!running) start();
   }
 
-  const { running, bar, active, countingIn, start, stop } = useMetronome({
+  const { running, bar, pass, active, countingIn, start, stop } = useMetronome({
     bpm,
     meterId: meter,
     subdivision,
@@ -148,25 +149,24 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   }, [running]);
 
   /**
-   * 只练某几小节时，练满 `LOOP_PASSES` 遍就自动接回整段（v0.99.0）。
+   * 只练某几小节时，练满 `loopPasses` 遍就自动接回整段（v0.99.0，v0.100.0 起遍数可选）。
    *
-   * 判定「转了一圈」：小节号从 `loop.to` 回到 `loop.from`。节拍器内部知道 pass，
-   * 但那是排程细节，这里只看界面上能看到的小节号，和用户看到的一致。
+   * 用节拍器给的 `pass`（循环里第几遍）数圈：单小节循环时 `bar` 一直是同一个值，
+   * 靠小节读数根本数不出圈（v0.100.0 踩到的 bug——只练一小节时一挂上就白算一遍）。
    */
   useEffect(() => {
     if (!running || !loop) {
-      lastBarRef.current = bar;
+      loopPassRef.current = 0;
       return;
     }
-    const previous = lastBarRef.current;
-    lastBarRef.current = bar;
-    if (previous !== loop.to || bar !== loop.from) return;
-    loopPassRef.current += 1;
-    if (loopPassRef.current < LOOP_PASSES) return;
+    if (pass < 1) return;
+    if (pass <= loopPassRef.current) return;
+    loopPassRef.current = pass;
+    if (pass < loopPasses) return;
     loopPassRef.current = 0;
     // 只有「只练一部分」才需要接回整段；本来就在整段里打圈就让它继续
     if (loop.to - loop.from + 1 < totalBars) setLoopOn(false);
-  }, [bar, running, loop, totalBars]);
+  }, [pass, running, loop, totalBars, loopPasses]);
 
   /** 这一段里最卡的一处：点级数方块点得最多的那一小节。 */
   function hardestSoFar(): FollowHardest | null {
@@ -273,7 +273,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
             {loop && (loop.to - loop.from + 1) < totalBars ? (
               <em className="follow-loop-note">
                 只练第 {loop.from === loop.to ? loop.from : `${loop.from}–${loop.to}`} 小节 · 练完{" "}
-                {LOOP_PASSES} 遍自动接回整段
+                {loopPasses} 遍自动接回整段
               </em>
             ) : null}
           </div>
@@ -399,6 +399,22 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
               onChange={(event) => setLoopOn(event.target.checked)}
             />
             只练
+          </label>
+
+          <label className="follow-field">
+            <span>练</span>
+            <select
+              value={loopPasses}
+              aria-label="只练几遍后自动接回整段"
+              disabled={!loopOn}
+              onChange={(event) => setLoopPasses(Number(event.target.value))}
+            >
+              {LOOP_PASS_CHOICES.map((value) => (
+                <option key={value} value={value}>
+                  {value} 遍
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="follow-field">

@@ -12,6 +12,8 @@ interface Props {
   audition: (id: string, tab: Tab, bpm: number) => void;
   follow: (target: FollowTarget) => void;
   best: (id: string) => number | undefined;
+  /** 跟练时记下的「最卡的一处」（v0.100.0）。 */
+  hardest: (id: string) => { bar: number; degree: number; name: string; count: number } | undefined;
 }
 
 /** 一张卡的图：和「我的谱」同一套渲染（浏览器里现画、2 倍像素）。 */
@@ -38,7 +40,7 @@ function PatternFigure({ tab }: { tab: Tab }) {
  * 和「我的谱」不同，这些不是一张静态谱，而是**拿来跟练的素材**：
  * 每张卡上直接有「试听 / 跟练」，跟练成绩和节奏页其它条目共用一套记录。
  */
-export default function MyPatterns({ audition, follow, best }: Props) {
+export default function MyPatterns({ audition, follow, best, hardest }: Props) {
   const [patterns, setPatterns] = useState<SavedPattern[]>(() => loadPatterns());
   /** 正在改的那一条（v0.92.0）：只允许改速度、拍号、标题，谱子跟着重画。 */
   const [editing, setEditing] = useState<string | null>(null);
@@ -113,6 +115,14 @@ export default function MyPatterns({ audition, follow, best }: Props) {
                 {pattern.meter} · ♩={bpm} · 每小节 {pattern.tab.beatsPerBar} 拍 · 共{" "}
                 {pattern.tab.bars} 小节
               </p>
+              {/* 跟练时记下的「最卡的一处」（v0.100.0）：点开过就写在卡上，不用进跟练才知道 */}
+              {hardest(pattern.id) ? (
+                <p className="my-hardest">
+                  最卡：第 {hardest(pattern.id)!.bar} 小节第 {hardest(pattern.id)!.degree} 级
+                  {hardest(pattern.id)!.name ? `（${hardest(pattern.id)!.name}）` : ""} · 单独练过{" "}
+                  {hardest(pattern.id)!.count} 次
+                </p>
+              ) : null}
               {open ? (
                 <div className="my-pattern-edit">
                   <label className="cl-save-field">

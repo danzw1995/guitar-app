@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
+  addDays,
   dateKeyOf,
   DRILLS,
   FEELS,
+  hardestTally,
   heatmapOf,
   lastNDays,
   practiceStats,
@@ -171,6 +173,10 @@ export default function Stats() {
     .filter((item) => item.points.length >= 2)
     .sort((a, b) => b.points.length - a.points.length)
     .slice(0, 6);
+
+  // 最卡的地方（v0.100.0）：跟练时点级数方块单练过的那一小节，按级数归堆。
+  // 只看最近 7 天练过的条目——一个月前那条不该影响这周的结论。
+  const hardTally = hardestTally(rhythm, addDays(today, -6));
 
   // 听辨（扒谱页「练」）：`guitar.ear.v1` 存最好成绩、轮数与四种题型各自的正确率
   const ear = loadEar();
@@ -670,6 +676,28 @@ export default function Stats() {
               );
             })}
           </ul>
+        </>
+      )}
+
+      {/* 最卡的地方（v0.100.0）：跟练时点开单练最多的那一级，按级数归堆 */}
+      {hardTally.length > 0 && (
+        <>
+          <h3 className="stat-sub">最卡的地方</h3>
+          <ul className="hardest-list">
+            {hardTally.slice(0, 5).map((item) => (
+              <li key={item.degree} data-hardest={item.degree}>
+                <b>
+                  第 {item.degree} 级{item.name ? `（${item.name}）` : ""}
+                </b>
+                <span className="muted">
+                  {item.items} 条练习里单独练过 {item.count} 次
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="hint hardest-hint">
+            统计最近 7 天练过的条目：跟练时点级数方块单练的那一小节，按级数归堆。
+          </p>
         </>
       )}
 

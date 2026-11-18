@@ -22,6 +22,8 @@ export interface MetronomeHandle {
   active: number;
   /** 当前第几小节（预备阶段是 0）。 */
   bar: number;
+  /** 循环时第几遍（不循环时恒为 0）——「只练 N 遍」靠它数圈，单小节循环时 `bar` 不变。 */
+  pass: number;
   /** 还在预备拍里（正式那遍没开始）。 */
   countingIn: boolean;
   start: () => void;
@@ -52,6 +54,8 @@ export function useMetronome({
   const [running, setRunning] = useState(false);
   const [active, setActive] = useState(-1);
   const [bar, setBar] = useState(0);
+  /** 循环时第几遍（不循环时恒为 0）——「只练 N 遍」靠它数圈，单小节循环时 bar 不变。 */
+  const [pass, setPass] = useState(0);
   const [countingIn, setCountingIn] = useState(false);
 
   const audioRef = useRef<AudioContext | null>(null);
@@ -174,6 +178,7 @@ export function useMetronome({
         dotsRef.current.delete(id);
         setActive(where.inBar);
         setBar(where.bar);
+        setPass(where.pass);
         setCountingIn(where.counting);
       }, delay);
       dotsRef.current.add(id);
@@ -221,5 +226,5 @@ export function useMetronome({
     timerRef.current = window.setInterval(tick, 25);
   }
 
-  return { running, active, bar, countingIn, start, stop };
+  return { running, active, bar, pass, countingIn, start, stop };
 }

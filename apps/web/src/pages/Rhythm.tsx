@@ -957,7 +957,12 @@ export default function Rhythm() {
         ))}
       </div>
 
-      <MyPatterns audition={audition} best={best} follow={setTarget} />
+      <MyPatterns
+        audition={audition}
+        best={best}
+        hardest={(id) => records[id]?.hardest}
+        follow={setTarget}
+      />
 
       <MyScores audition={audition} best={best} follow={setTarget} beatOf={beatOf} />
 
