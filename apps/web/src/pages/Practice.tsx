@@ -204,6 +204,9 @@ export default function Practice() {
         lastAt: today,
         history: pushBpmPoint(previous?.history, today, result.bpm),
         ...(result.hardest ? { hardest: result.hardest } : previous?.hardest ? { hardest: previous.hardest } : {}),
+        // 加餐的名字跟着记录走（v0.104.0）：计划表第二天就清空，
+        // 不存名字的话统计页「最卡的地方」过一天只剩 `p:extra-…` 这种 id
+        ...(follow.id.startsWith("p:extra-") ? { title: follow.name } : {}),
       },
     };
     setRecords(next);
@@ -663,7 +666,7 @@ export default function Practice() {
 
       {extras.length > 0 && (
         <>
-          <h3 className="practice-h3">
+          <h3 className="practice-h3" id="practice-extras">
             今天自己加的 {extras.length} 条
             <span className="practice-h3-hint">
               跟练里切出来的那一小节 / 练习库里加的，练完也算今天的量

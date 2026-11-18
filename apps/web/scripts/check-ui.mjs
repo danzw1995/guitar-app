@@ -1502,6 +1502,74 @@ try {
     "统计页：今天自己加的练了几条，完成度看得见",
     extraCard,
   );
+
+  // 12n) v0.104.0：「加餐」那张卡能点，回练习页的「今天自己加的」
+  js(
+    "(() => { const card = [...document.querySelectorAll('.stat-card-link')].find(c => c.textContent.includes('今天自己加的')); card?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  const extrasJump = String(
+    js(
+      "(() => { const target = document.getElementById('practice-extras'); const tab = [...document.querySelectorAll('nav.tabs button')].find(n => n.getAttribute('aria-current') === 'page'); const rect = target?.getBoundingClientRect(); return `${location.hash}|${tab?.textContent?.trim() ?? ''}|${rect ? (rect.top < innerHeight && rect.bottom > 0 ? 'inview' : 'out') : 'missing'}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    extrasJump.startsWith("#practice/practice-extras|练习|inview"),
+    "统计页：点「加餐」那张卡回练习页那一段",
+    extrasJump,
+  );
+
+  // 12o) v0.104.0：节奏页 103 条也能加进今日计划
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const rhythmAdd = JSON.parse(
+    String(
+      js(
+        "(() => { const card = document.querySelector('.drill-card'); const btn = [...(card?.querySelectorAll('.drill-actions button') ?? [])].find(b => b.textContent.trim() === '加进今日计划'); const title = card?.querySelector('h4')?.textContent?.replace(/\\s+/g, ' ').trim() ?? ''; btn?.click(); const plan = JSON.parse(localStorage.getItem('guitar.plan.v1') || '[]'); return JSON.stringify({ had: Boolean(btn), title, plan: plan.map(p => p.title), disabled: [...(card?.querySelectorAll('.drill-actions button') ?? [])].some(b => b.textContent.trim() === '已在计划里') }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  await sleep(600);
+  const rhythmPlan = JSON.parse(
+    String(
+      js(
+        "(() => { const plan = JSON.parse(localStorage.getItem('guitar.plan.v1') || '[]'); return JSON.stringify({ titles: plan.map(p => p.title) }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    rhythmAdd.had && rhythmPlan.titles.includes(rhythmAdd.title),
+    "节奏页：任意一条都能加进今日计划",
+    `${rhythmAdd.title} → ${rhythmPlan.titles.join("/")}`,
+  );
+
+  // 12p) v0.104.0：加餐的名字跟着记录走，统计页不显示 `p:extra-…` 这种 id
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const record = { 'p:extra-t9': { bestBpm: 96, sessions: 1, minutes: 2, lastAt: today, title: '最卡的一小节 · 和弦进行 · C–Am–G 第 3 小节', hardest: { bar: 3, degree: 5, name: 'G', count: 3 } } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(record)); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(800);
+  const extraName = String(
+    js(
+      "(() => { const row = document.querySelector('[data-hardest-item=\"p:extra-t9\"]'); return row ? row.textContent.replace(/\\s+/g, ' ').trim() : 'none'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    extraName.includes("最卡的一小节") && !extraName.includes("p:extra-t9"),
+    "统计页：加餐的名字跟着记录走，不显示 id",
+    extraName.slice(0, 48),
+  );
+
   js("localStorage.removeItem('guitar.plan.v1')");
   js("localStorage.removeItem('guitar.practice.v1')");
   js("localStorage.removeItem('guitar.rhythm.v1')");

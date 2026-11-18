@@ -25,6 +25,7 @@ import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
 import MyScores from "../components/MyScores";
 import MyPatterns from "../components/MyPatterns";
+import PlanButton from "../components/PlanButton";
 import UndoToast from "../components/UndoToast";
 import { useTone } from "../hooks/useTone";
 import { useMediaQuery } from "../hooks/useMediaQuery";
@@ -524,7 +525,8 @@ export default function Rhythm() {
               >
                 跟练
               </button>
-              {best(drill.id) !== undefined && (
+                                          <PlanButton title={`练习 ${drill.no} · ${drill.name}`} tab={drill.tab} bpm={drill.bpm[0]} />
+{best(drill.id) !== undefined && (
                 <span className="best-badge">最高 {best(drill.id)} BPM</span>
               )}
             </div>
@@ -599,6 +601,7 @@ export default function Rhythm() {
               >
                 跟练
               </button>
+              <PlanButton title={drill.name} tab={drill.tab} bpm={drill.bpm[0]} />
               {best(drill.id) !== undefined && (
                 <span className="best-badge">最高 {best(drill.id)} BPM</span>
               )}
@@ -704,7 +707,8 @@ export default function Rhythm() {
                 >
                   跟练
                 </button>
-                {best(drill.id) !== undefined && (
+                                              <PlanButton title={`练习 ${drill.no} · ${drill.name}`} tab={drill.tab} bpm={drill.bpm ?? 70} />
+{best(drill.id) !== undefined && (
                   <span className="best-badge">最高 {best(drill.id)} BPM</span>
                 )}
               </div>
@@ -793,6 +797,7 @@ export default function Rhythm() {
               >
                 跟练
               </button>
+              <PlanButton title={`练习 ${item.no} · ${item.name}`} tab={item.tab} bpm={item.bpm} />
               {best(item.id) !== undefined && (
                 <span className="best-badge">最高 {best(item.id)} BPM</span>
               )}
@@ -884,6 +889,7 @@ export default function Rhythm() {
               >
                 跟练
               </button>
+              <PlanButton title={pattern.name} tab={pattern.tab} bpm={70} />
               {best(pattern.id) !== undefined && (
                 <span className="best-badge">最高 {best(pattern.id)} BPM</span>
               )}
@@ -948,6 +954,7 @@ export default function Rhythm() {
               >
                 跟练
               </button>
+              <PlanButton title={snippet.name} tab={snippet.tab} bpm={snippet.bpm[0]} />
               {best(snippet.id) !== undefined && (
                 <span className="best-badge">最高 {best(snippet.id)} BPM</span>
               )}

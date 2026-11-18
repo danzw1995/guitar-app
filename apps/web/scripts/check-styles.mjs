@@ -984,6 +984,14 @@ for (const selector of ["select", "input", "textarea"]) {
     (px(hardestJump.get("min-height")) ?? 0) >= 40 && (hardestJump.get("width") ?? "") === "100%",
     `min-height=${hardestJump.get("min-height") ?? "未设置"} width=${hardestJump.get("width") ?? "未设置"}`,
   );
+
+  // v0.104.0：「今天自己加的」那张统计卡也能点，回练习页
+  const linkCard = narrowDecls(".stat-card-link");
+  expect(
+    "统计页「加餐」那张卡是能点的，够 40 高",
+    (px(linkCard.get("min-height")) ?? 0) >= 40 && (linkCard.get("cursor") ?? "") === "pointer",
+    `min-height=${linkCard.get("min-height") ?? "未设置"} cursor=${linkCard.get("cursor") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

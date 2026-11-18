@@ -184,6 +184,13 @@ export interface RhythmRecord {
    * 只记「用户自己标出来的」，不是猜的。
    */
   hardest?: { bar: number; degree: number; name: string; count: number };
+  /**
+   * 「今天自己加的」那一条的名字（v0.104.0）。
+   *
+   * 加餐的 id 是运行时生成的（`p:extra-…`），计划表第二天就清空了；名字不跟着
+   * 记录走的话，统计页「最卡的地方」过一天就只剩一串 id。
+   */
+  title?: string;
 }
 
 export type RhythmRecords = Record<string, RhythmRecord>;
@@ -240,6 +247,9 @@ function parseRecords(raw: unknown): RhythmRecords {  if (!raw || typeof raw !==
       lastAt: typeof item.lastAt === "string" ? item.lastAt : "",
       history: parseHistory(item.history),
       hardest: parseHardest(item.hardest),
+      ...(typeof item.title === "string" && item.title.trim()
+        ? { title: item.title.trim() }
+        : {}),
     };
   }
   return records;

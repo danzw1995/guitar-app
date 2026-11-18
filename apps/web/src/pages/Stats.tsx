@@ -93,7 +93,7 @@ export default function Stats() {
 
   /** 「我存的进行」的 id 是 `pattern-…`，名字存在 `guitar.patterns.v1` 里，不在节奏页的条目表里。 */
   const patternNames = useMemo(() => new Map(loadPatterns().map((item) => [item.id, item.title])), []);
-  const titleOf = (id: string) => patternNames.get(id) ?? nameOf(id);
+  const titleOf = (id: string) => rhythm[id]?.title ?? patternNames.get(id) ?? nameOf(id);
 
   /**
    * 点「最卡的地方」里的一条 → 跳回那一段（v0.102.0）。
@@ -382,12 +382,18 @@ export default function Stats() {
           <span>练习页跟练过的条目</span>
         </div>
         {todayExtras.length > 0 && (
-          <div className="stat-card">
+          <button
+            type="button"
+            className="stat-card stat-card-link"
+            onClick={() => goTo("practice", "practice-extras")}
+            title="去练习页看看今天自己加的那几条"
+            aria-label={`今天自己加的 ${todayExtras.length} 条，已勾 ${extrasDone} 条；点一下去练习页`}
+          >
             <b>
               {extrasDone}/{todayExtras.length}
             </b>
             <span>今天自己加的（加餐）</span>
-          </div>
+          </button>
         )}
       </div>
       <p className="hint week-hint">
