@@ -1440,7 +1440,70 @@ try {
     "练习页：跟练里加进来的那一条在「今天自己加的」里",
     `${extraInfo.cards} 张 · ${extraInfo.buttons.join("/")}`,
   );
+
+  // 12k) v0.103.0：那条能勾掉，勾完进当天日志（统计页的「加餐」就是读这个）
+  js(
+    "(() => { const btn = [...document.querySelectorAll('.practice-extra button')].find(b => b.textContent.trim() === '完成'); btn?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const extraDone = JSON.parse(
+    String(
+      js(
+        "(() => { const card = document.querySelector('.practice-extra'); const log = JSON.parse(localStorage.getItem('guitar.practice.v1') || '{}'); const days = Object.values(log); const done = days.some((day) => (day?.done ?? []).includes('extra-t1')); return JSON.stringify({ done: card?.classList.contains('done') ?? false, logged: done, label: card ? [...card.querySelectorAll('button')].map(b => b.textContent.trim()).join('/') : '' }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    extraDone.done && extraDone.logged && extraDone.label.includes("已勾"),
+    "练习页：自己加的那条能勾掉，勾完写进当天日志",
+    `${extraDone.done ? "done" : "no-done"} · ${extraDone.logged ? "logged" : "unlogged"} · ${extraDone.label}`,
+  );
+
+  // 12l) v0.103.0：练习库里任意一条都能手动加进今日计划
+  const addPlan = JSON.parse(
+    String(
+      js(
+        "(() => { const card = document.querySelector('.drill-card'); const btn = [...(card?.querySelectorAll('.drill-actions button') ?? [])].find(b => b.textContent.trim() === '加进今日计划'); const name = card?.querySelector('h4')?.textContent?.trim() ?? ''; btn?.click(); return JSON.stringify({ name, had: Boolean(btn) }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  await sleep(700);
+  const extrasAfter = JSON.parse(
+    String(
+      js(
+        "(() => { const list = document.querySelector('.practice-extras'); const titles = [...(list?.querySelectorAll('.practice-extra h4') ?? [])].map(h => h.textContent.trim()); return JSON.stringify({ titles }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    addPlan.had && extrasAfter.titles.length === 2 && extrasAfter.titles.includes(addPlan.name),
+    "练习页：练习库里任意一条都能加进今日计划",
+    `${addPlan.name} → ${extrasAfter.titles.join("/")}`,
+  );
+
+  // 12m) v0.103.0：统计页「加餐」那张卡看得到今天加了几条、勾了几条
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const extraCard = String(
+    js(
+      "(() => { const card = [...document.querySelectorAll('.stat-card')].find(c => c.textContent.includes('今天自己加的')); return card ? card.textContent.replace(/\\s+/g, ' ').trim() : 'none'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    extraCard.includes("2") && extraCard.includes("今天自己加的"),
+    "统计页：今天自己加的练了几条，完成度看得见",
+    extraCard,
+  );
   js("localStorage.removeItem('guitar.plan.v1')");
+  js("localStorage.removeItem('guitar.practice.v1')");
   js("localStorage.removeItem('guitar.rhythm.v1')");
 
   // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）

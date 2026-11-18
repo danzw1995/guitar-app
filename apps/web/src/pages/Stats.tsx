@@ -29,6 +29,7 @@ import { goTo } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { loadPatterns } from "../lib/patterns";
+import { loadExtras } from "../lib/plan";
 import { fmt, fmtSpan } from "../lib/format";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
@@ -200,6 +201,12 @@ export default function Stats() {
     .filter((item) => item.points.length >= 2)
     .sort((a, b) => b.points.length - a.points.length)
     .slice(0, 6);
+
+  // 「今天自己加的」（v0.103.0）：跟练里切出来的一小节、或练习库里手动加的。
+  // 它们不进计划的分母，但既然记在同一个 done 表里，就该在这儿看得出练没练。
+  const todayExtras = loadExtras(today);
+  const todayDoneIds = new Set(practiceLog[today]?.done ?? []);
+  const extrasDone = todayExtras.filter((extra) => todayDoneIds.has(extra.id)).length;
 
   // 最卡的地方（v0.100.0）：跟练时点级数方块单练过的那一小节，按级数归堆。
   // 只看最近 7 天练过的条目——一个月前那条不该影响这周的结论。
@@ -374,6 +381,14 @@ export default function Stats() {
           <b>{practiceFollows.length}</b>
           <span>练习页跟练过的条目</span>
         </div>
+        {todayExtras.length > 0 && (
+          <div className="stat-card">
+            <b>
+              {extrasDone}/{todayExtras.length}
+            </b>
+            <span>今天自己加的（加餐）</span>
+          </div>
+        )}
       </div>
       <p className="hint week-hint">
         这一周从 {weekStats.from.slice(5).replace("-", "/")} 起算：练了 {weekStats.days} 天、{weekStats.items} 条；

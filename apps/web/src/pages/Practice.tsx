@@ -50,7 +50,7 @@ import {
 } from "../lib/storage";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
-import { loadExtras, removeExtra, type PlanExtra } from "../lib/plan";
+import { addExtra, loadExtras, removeExtra, type PlanExtra } from "../lib/plan";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
@@ -140,8 +140,26 @@ export default function Practice() {
     });
   }
 
-  /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */
-  function swapBlock(id: string) {
+  /**
+   * 练习库里任意一条 → 「今天自己加的」（v0.103.0）。
+   *
+   * 计划每天只挑 4 条，剩下的想练就自己加：加进来的和跟练切出来的那条
+   * 走同一套 `guitar.plan.v1`，一样能试听、跟练、勾掉，只是不进计划的分母。
+   */
+  function addToPlan(drill: Drill) {
+    const next = addExtra(
+      {
+        title: drill.name,
+        tab: drill.tab,
+        meter: meterOfTab(drill.tab),
+        bpm: drill.bpm ? drill.bpm[0] : 70,
+      },
+      today,
+    );
+    setExtras(next);
+  }
+
+  /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */  function swapBlock(id: string) {
     const label = session.blocks.find((block) => block.drill.id === id)?.drill.name ?? id;
     const next = addSkip(skips, today, id);
     saveSkips(next);
@@ -199,6 +217,18 @@ export default function Practice() {
         stage,
       }),
     );
+
+    // 「今天自己加的」那一条：跟练完直接算勾掉（v0.103.0），
+    // 用户不用再回上去点一次「完成」——记成绩本身就是练完了。
+    if (follow.id.startsWith("p:extra-")) {
+      commit(
+        recordBlock(log, today, {
+          drill: follow.id.slice(2),
+          minutes: result.minutes,
+          stage,
+        }),
+      );
+    }
   }
 
   const stageDef = stageOf(stage);
@@ -296,6 +326,19 @@ export default function Practice() {
       return;
     }
     setRunningId(id);
+    setSeconds(0);
+  }
+
+  /**
+   * 勾掉「今天自己加的」那一条（v0.103.0）。
+   *
+   * 和计划里的块走同一本账（`done` 里存 id、分钟数进当天），所以统计页的
+   * 「练了几天 / 多少分钟」都算上它；但它不进计划的分母，属于加餐。
+   */
+  function finishExtra(extra: PlanExtra) {
+    const used = seconds > 0 ? Math.max(1, Math.round(seconds / 60)) : 1;
+    commit(recordBlock(log, today, { drill: extra.id, minutes: used, stage }));
+    setRunningId(null);
     setSeconds(0);
   }
 
@@ -622,42 +665,68 @@ export default function Practice() {
         <>
           <h3 className="practice-h3">
             今天自己加的 {extras.length} 条
-            <span className="practice-h3-hint">跟练里切出来的那一小节，练完也算今天的量</span>
+            <span className="practice-h3-hint">
+              跟练里切出来的那一小节 / 练习库里加的，练完也算今天的量
+            </span>
           </h3>
           <ol className="practice-list practice-extras">
-            {extras.map((extra, index) => (
-              <li key={extra.id} id={extra.id} className="practice-block practice-extra">
-                <div className="pb-head">
-                  <span className="pb-index" aria-hidden="true">
-                    {index + 1}
-                  </span>
-                  <div className="pb-title">
-                    <h4>{extra.title}</h4>
-                    <p className="pb-meta">
-                      {extra.meter} · {extra.bpm} BPM · 自己加的
-                    </p>
+            {extras.map((extra, index) => {
+              const extraDone = done.has(extra.id);
+              const extraRunning = runningId === extra.id;
+              return (
+                <li
+                  key={extra.id}
+                  id={extra.id}
+                  className={`practice-block practice-extra${extraDone ? " done" : ""}`}
+                >
+                  <div className="pb-head">
+                    <span className="pb-index" aria-hidden="true">
+                      {index + 1}
+                    </span>
+                    <div className="pb-title">
+                      <h4>{extra.title}</h4>
+                      <p className="pb-meta">
+                        {extra.meter} · {extra.bpm} BPM · 自己加的
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-quiet"
+                      onClick={() => audition(extra.id, extra.tab, extra.bpm)}
+                    >
+                      试听
+                    </button>
+                    <button type="button" className="btn-quiet" onClick={() => openExtra(extra)}>
+                      跟练
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => start(extra.id)}
+                      aria-pressed={extraRunning}
+                    >
+                      {extraRunning ? "暂停" : "计时"}
+                    </button>
+                    <button
+                      type="button"
+                      className={extraDone ? "btn" : "btn primary"}
+                      onClick={() => finishExtra(extra)}
+                      disabled={extraDone}
+                    >
+                      {extraDone ? "已勾" : "完成"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-quiet"
+                      onClick={() => setExtras(removeExtra(extra.id, today))}
+                    >
+                      删掉
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="btn-quiet"
-                    onClick={() => audition(extra.id, extra.tab, extra.bpm)}
-                  >
-                    试听
-                  </button>
-                  <button type="button" className="btn-quiet" onClick={() => openExtra(extra)}>
-                    跟练
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-quiet"
-                    onClick={() => setExtras(removeExtra(extra.id, today))}
-                  >
-                    删掉
-                  </button>
-                </div>
-                <TabScore id={extra.id} tab={extra.tab} beat={beatOf(extra.id)} />
-              </li>
-            ))}
+                  <TabScore id={extra.id} tab={extra.tab} beat={beatOf(extra.id)} />
+                </li>
+              );
+            })}
           </ol>
         </>
       )}
@@ -685,6 +754,15 @@ export default function Practice() {
               </button>
               <button type="button" className="btn-quiet" onClick={() => openFollow(drill)}>
                 跟练
+              </button>
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => addToPlan(drill)}
+                disabled={extras.some((extra) => extra.title === drill.name)}
+                title="把这条加到「今天自己加的」里，之后能勾掉"
+              >
+                {extras.some((extra) => extra.title === drill.name) ? "已在计划里" : "加进今日计划"}
               </button>
               {best(followKey(drill.id)) !== undefined && (
                 <span className="best-badge">最高 {best(followKey(drill.id))} BPM</span>
