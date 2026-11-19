@@ -263,6 +263,12 @@
 - **归堆那几行也能点（v0.108.0）**：每行是一整个 `.hardest-row` 按钮，点了跟上面那排 chip 是
   同一个状态（`aria-pressed` 同步），行尾写「只看这级 →」/「已筛」。两边共用一个 `degreeFilter`，
   所以点 chip 和点行不会各筛各的。
+- **筛选写进地址栏（v0.109.0）**：选中哪一级会写成 `#stats?d=5`（`parseHash` 现在按 `?` 拆出
+  `query`，`goTo(tab, target, query)` 也支持带参数）。写的时候用 `history.replaceState` 而不是
+  push——点 chip 不该在浏览器历史里留一串记录。**只靠 hash 不够**：顶部 Tab 点击是
+  `replaceState(null, "", "#stats")`，会把 `?d=` 冲掉，所以同一个值再往 `sessionStorage`
+  （`guitar.stats.degree`）里兜一份：换 tab 再回来还在，关掉标签页就没了（不用 localStorage，
+  这是「这一会儿在看哪一级」，不是偏好设置）。
 - **跳过小结（v0.53.0）**：7 天柱状图下面两行——「今天跳过的 N 条：…」（没跳过就写
   「一条也没跳过」）和「最近一周最常跳过：… ×N」（按次数取前 3）。跳过表本来就只留最近
   7 天，所以这一行天然是「这一周」；两条都为空时整块不出现。名字按两个命名空间解析：
@@ -668,6 +674,16 @@ accent 色边框（1.6 秒后自己褪掉），不用自己往下找「接下来
 所以手机上换一套动作：按住 420ms 拿起来（`.held` 强调色外框 + 顶部一句「已拿起「X」」），
 再点另一条，那条就插到目标前面；点自己取消。按到按钮 / 输入框上不算长按（`closest()` 判断），
 不然点「试听」也会被误判。指针抬起 / 取消 / 离开都清掉计时器，`useEffect` 里再兜一次。
+
+**拿着一条时其余几条淡提示（v0.109.0）**：拿起一条之后，别的块边框变成淡虚线
+（`.practice-extra.droppable`），一眼看出去哪几条可以放。只在「手里有东西」时出现，
+平时就是普通卡片；点自己取消，提示也跟着消失。
+
+**分组能收起（v0.109.0）**：分组标题本身是按钮（`.extras-group-toggle`，`aria-expanded`），
+点一下把这一组的块 `hidden` 掉，右端「收起 / 展开」跟着变。收起时如果手里正拿着这一组的
+条，会先放下（`setHeldId(null)`），不然拿着一个看不见的东西没法操作。
+`.practice-list li` 自带 `display: flex`，会盖掉 `[hidden]` 的默认值，所以
+`.practice-extra[hidden] { display: none }` 必须显式写。
 
 **六线谱**：v0.28.0 起和节奏页走同一条管线——构建时用 `@danzw777/tab-score` 把
 `Drill.tab` 渲染成 `apps/web/public/scores/<drill.id>.png`，页面里只有 `<img class="tab-score">`

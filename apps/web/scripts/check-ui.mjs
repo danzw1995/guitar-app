@@ -1755,6 +1755,63 @@ try {
     `${heldInfo} · ${heldState} · ${heldOrder}`,
   );
 
+  // 12w) v0.109.0：拿着一条时，其余几条淡虚线提示「可以放这儿」
+  const firstExtra = String(
+    js("(() => document.querySelectorAll('.practice-extra')[0]?.id ?? 'none')()"),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const li = document.querySelectorAll('.practice-extra')[0]; li.querySelector('h4').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerType: 'touch' })); return 'ok'; })()",
+  );
+  await sleep(650);
+  const droppableInfo = String(
+    js(
+      "(() => { const held = document.querySelector('.practice-extra.held')?.id ?? 'none'; const rest = [...document.querySelectorAll('.practice-extra.droppable')].map(li => li.id).join(','); const dashed = [...document.querySelectorAll('.practice-extra.droppable')].every(li => getComputedStyle(li).borderStyle === 'dashed'); return `${held}|${rest}|${dashed ? 'dashed' : 'solid'}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    droppableInfo === `${firstExtra}|${["extra-a", "extra-b", "extra-c"].filter((id) => id !== firstExtra).join(",")}|dashed`,
+    "练习页：拿着一条时，其余几条淡虚线提示可以放这儿",
+    droppableInfo,
+  );
+  // 放下（点自己取消），免得影响下面
+  js(
+    "(() => { document.querySelector('.practice-extra.held h4')?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return 'ok'; })()",
+  );
+  await sleep(400);
+
+  // 12x) v0.109.0：分组标题能收起这一组，再点展开还在原来的位置
+  const orderBefore = String(
+    js("(() => [...document.querySelectorAll('.practice-extra')].map(li => li.id).join(','))()"),
+  ).replace(/^"|"$/g, "");
+  const firstGroupId = orderBefore.split(",")[0];
+  const groupToggleInfo = String(
+    js(
+      "(() => { const btns = [...document.querySelectorAll('.extras-group-toggle')]; return btns.map(b => b.getAttribute('aria-expanded')).join(','); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("document.querySelectorAll('.extras-group-toggle')[0]?.click()");
+  await sleep(400);
+  const collapsedInfo = String(
+    js(
+      "(() => { const expanded = [...document.querySelectorAll('.extras-group-toggle')].map(b => b.getAttribute('aria-expanded')).join(','); const visible = [...document.querySelectorAll('.practice-extra')].filter(li => !li.hidden).map(li => li.id).join(','); return `${expanded}|${visible}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("document.querySelectorAll('.extras-group-toggle')[0]?.click()");
+  await sleep(400);
+  const expandedAgain = String(
+    js(
+      "(() => [...document.querySelectorAll('.practice-extra')].filter(li => !li.hidden).map(li => li.id).join(','))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    groupToggleInfo === "true,true,true" &&
+      collapsedInfo === `false,true,true|${orderBefore.split(",").slice(1).join(",")}` &&
+      expandedAgain === orderBefore &&
+      !expandedAgain.split(",").includes("") ,
+    "练习页：分组能收起，再点展开顺序不变",
+    `${orderBefore} → 收起 ${firstGroupId}: ${collapsedInfo} → ${expandedAgain}`,
+  );
+
   js("localStorage.removeItem('guitar.plan.v1')");
   js("localStorage.removeItem('guitar.practice.v1')");
   js("localStorage.removeItem('guitar.rhythm.v1')");
@@ -2436,6 +2493,27 @@ try {
     rowFilter === "5|第 5 级|s0-crawl",
     "统计页：点归堆那一行也能筛，和上面的 chip 联动",
     rowFilter,
+  );
+
+  // 16d9) v0.109.0：筛选状态写进地址栏，离开再回来还在
+  const hashAfterFilter = String(js("location.hash")).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '练习'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(700);
+  const hashBack = String(
+    js(
+      "(() => { const pressed = [...document.querySelectorAll('.hardest-filter .chip')].find(c => c.getAttribute('aria-pressed') === 'true')?.textContent.trim() ?? 'none'; const items = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join('/'); return `${location.hash}|${pressed}|${items}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    hashAfterFilter === "#stats?d=5" && hashBack === "#stats?d=5|第 5 级|s0-crawl",
+    "统计页：筛选写进地址栏，跳到别的页再回来还在",
+    `${hashAfterFilter} → ${hashBack}`,
   );
 
   js("localStorage.removeItem('guitar.rhythm.v1')");

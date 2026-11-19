@@ -25,7 +25,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
-import { goTo } from "../lib/nav";
+import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { loadPatterns } from "../lib/patterns";
@@ -37,6 +37,39 @@ import Stars from "../components/Stars";
 /** 统计页：全部来自本机 localStorage，没有账号也没有上报。 */
 const WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
 const WEEK_KIND_LABEL = { practice: "练习页的关卡", follow: "跟练", rhythm: "节奏页的条目" } as const;
+/** 「按级数筛」的那一个数字存在哪儿（v0.109.0）：地址栏 + 一个会话级的备份键。 */
+const DEGREE_FILTER_KEY = "guitar.stats.degree";
+
+/** 读筛选：地址栏 `#stats?d=5` 优先（刷新 / 分享都还在），否则读这次会话留下的那个数。 */
+function readDegreeFilter(): number | null {
+  const fromHash = Number(parseHash(window.location.hash)?.query.d ?? "");
+  if (Number.isInteger(fromHash) && fromHash >= 1 && fromHash <= 7) return fromHash;
+  const stored = Number(window.sessionStorage.getItem(DEGREE_FILTER_KEY) ?? "");
+  if (Number.isInteger(stored) && stored >= 1 && stored <= 7) return stored;
+  return null;
+}
+
+/**
+ * 写筛选（v0.109.0）。
+ *
+ * 地址栏用 `replaceState`：点 chip 不该往历史里塞一条记录（后退键会变成一步步退筛选）。
+ * 地址栏不是统计页时（说明用户已经在别的页面）就不动它，只更新 sessionStorage——
+ * 从练习页点回「统计」时 Tab 会把 hash 换成 `#stats`，那时靠这一个数还原。
+ */
+function saveDegreeFilter(value: number | null): void {
+  if (value === null) window.sessionStorage.removeItem(DEGREE_FILTER_KEY);
+  else window.sessionStorage.setItem(DEGREE_FILTER_KEY, String(value));
+
+  const route = parseHash(window.location.hash);
+  if (!route || route.tab !== "stats") return;
+  const query = { ...route.query };
+  if (value === null) delete query.d;
+  else query.d = String(value);
+  const search = new URLSearchParams(query).toString();
+  const next = `#stats${route.target ? `/${route.target}` : ""}${search ? `?${search}` : ""}`;
+  if (window.location.hash !== next) window.history.replaceState(null, "", next);
+}
+
 const EAR_KINDS: { id: EarKind; label: string }[] = [
   { id: "position", label: "听音辨位" },
   { id: "interval", label: "音程判断" },
@@ -240,7 +273,13 @@ export default function Stats() {
     .join(" · ");
 
   // 按级数筛「最卡的条目」（v0.107.0）：null = 全部
-  const [degreeFilter, setDegreeFilter] = useState<number | null>(null);
+  // 筛选状态写进地址栏（`#stats?d=5`，v0.109.0），另外在 sessionStorage 里留一份——
+  // 从统计页跳到练习页再点回来时地址栏被 Tab 用 replaceState 换成了 `#stats`，
+  // 只靠 hash 会丢；两处都写，回来时先读 hash、退回去读 sessionStorage。
+  const [degreeFilter, setDegreeFilter] = useState<number | null>(() => readDegreeFilter());
+  useEffect(() => {
+    saveDegreeFilter(degreeFilter);
+  }, [degreeFilter]);
 
   // 最卡的地方（v0.100.0）：跟练时点级数方块单练过的那一小节，按级数归堆。
   // 只看最近 7 天练过的条目——一个月前那条不该影响这周的结论。

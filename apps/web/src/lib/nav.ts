@@ -35,6 +35,8 @@ export interface Route {
   tab: Tab;
   /** 目标元素的 id，比如 `drill-rd-01`；没有就是只切页面 */
   target?: string;
+  /** `?d=5` 这种附加状态（v0.109.0）：目前只给统计页的「按级数筛」用 */
+  query: Record<string, string>;
 }
 
 export function isTab(value: string): value is Tab {
@@ -45,15 +47,22 @@ export function isTab(value: string): value is Tab {
 export function parseHash(hash: string): Route | null {
   const raw = hash.replace(/^#/, "").trim();
   if (raw === "") return null;
-  const [head, ...rest] = raw.split("/");
+  const [path, ...searchParts] = raw.split("?");
+  const search = searchParts.join("?");
+  const [head, ...rest] = path.split("/");
   if (!isTab(head)) return null;
   const target = rest.join("/").trim();
-  return target === "" ? { tab: head } : { tab: head, target };
+  const query: Record<string, string> = {};
+  new URLSearchParams(search).forEach((value, key) => {
+    query[key] = value;
+  });
+  return target === "" ? { tab: head, query } : { tab: head, target, query };
 }
 
 /** 切页面 + 可选地滚到某一条；写进 hash，浏览器后退键也能用 */
-export function goTo(tab: Tab, target?: string): void {
-  const next = target ? `#${tab}/${target}` : `#${tab}`;
+export function goTo(tab: Tab, target?: string, query?: Record<string, string>): void {
+  const search = new URLSearchParams(query ?? {}).toString();
+  const next = `#${tab}${target ? `/${target}` : ""}${search ? `?${search}` : ""}`;
   if (window.location.hash === next) {
     // 同一个位置再点一次：hash 不变就不会触发 hashchange，手动滚一下
     if (target) flashTarget(target);

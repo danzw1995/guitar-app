@@ -1055,6 +1055,19 @@ for (const selector of ["select", "input", "textarea"]) {
       (hardestRowOn.get("border-color") ?? "") === "var(--accent)",
     `min-height=${hardestRow.get("min-height") ?? "未设置"} cursor=${hardestRow.get("cursor") ?? "未设置"} pressed=${hardestRowOn.get("border-color") ?? "未设置"}`,
   );
+
+  // v0.109.0：拿起来的时候其余几条淡虚线提示可以放这儿；分组标题是 40 高的按钮；收起的整块真的不占位置
+  const droppable = narrowDecls(".practice-extra.droppable");
+  const groupToggle = narrowDecls(".extras-group-toggle");
+  const hiddenExtra = narrowDecls(".practice-extra[hidden]");
+  expect(
+    "拿着一条时其余几条是淡虚线，分组标题够 40 高，收起的块不占位置",
+    (droppable.get("border-style") ?? "") === "dashed" &&
+      (droppable.get("border-color") ?? "").startsWith("rgba(232, 176, 75") &&
+      parseFloat(groupToggle.get("min-height") ?? "0") >= 40 &&
+      (hiddenExtra.get("display") ?? "") === "none",
+    `droppable=${droppable.get("border-color") ?? "未设置"} toggle=${groupToggle.get("min-height") ?? "未设置"} hidden=${hiddenExtra.get("display") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

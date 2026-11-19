@@ -1657,6 +1657,43 @@ button, select, input { font: inherit; color: inherit; }
   box-shadow: 0 0 0 2px rgba(232, 176, 75, 0.24);
 }
 
+/* 手里拿着一条的时候，其余几条淡淡地提示「可以放这儿」（v0.109.0） */
+.practice-extra.droppable {
+  border-color: rgba(232, 176, 75, 0.32);
+  border-style: dashed;
+}
+
+/* 分组能收起（v0.109.0）：标题整行是按钮，够手指点 */
+.extras-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.extras-group-toggle:hover {
+  color: var(--text);
+}
+
+.extras-group-go {
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.practice-extra[hidden] {
+  display: none;
+}
+
 /* 按级数筛选（v0.107.0） */
 .hardest-filter {
   display: flex;

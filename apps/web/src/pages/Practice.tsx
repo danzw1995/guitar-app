@@ -66,6 +66,16 @@ function clock(totalSeconds: number): string {
 }
 
 /**
+ * 一条加餐属于哪个分组（v0.109.0）。
+ *
+ * 练习库加进来的带 `stage`（v0.107.0 起），「我的谱」加的、跟练里切出来的小节没有，
+ * 统一归到「其他」——分组只影响显示，`extras` 的顺序就是用户拖出来的顺序。
+ */
+function groupKeyOf(extra: PlanExtra): string {
+  return typeof extra.stage === "number" ? `stage-${extra.stage}` : "other";
+}
+
+/**
  * 今日练习：先选阶段，再按「今天有多少时间」生成计划。
  *
  * 三个刻意的设计：
@@ -245,17 +255,31 @@ export default function Practice() {
   /** 加餐按阶段分组（v0.108.0）：列表顺序不动，只在换组的地方插一行小标题。 */
   const extraGroups = useMemo(() => {
     return extras.map((extra, index) => {
-      const key = typeof extra.stage === "number" ? extra.stage : "other";
-      const previous = index === 0 ? null : typeof extras[index - 1].stage === "number" ? extras[index - 1].stage : "other";
+      const key = groupKeyOf(extra);
+      const previous = index === 0 ? null : groupKeyOf(extras[index - 1]);
       if (index === 0 || key !== previous) {
         return {
+          key,
           heading:
-            typeof key === "number" ? `第 ${key + 1} 阶段 · ${stageOf(key).name}` : "其他 · 自己存的谱、跟练里切的",
+            typeof extra.stage === "number"
+              ? `第 ${extra.stage + 1} 阶段 · ${stageOf(extra.stage).name}`
+              : "其他 · 自己存的谱、跟练里切的",
         };
       }
       return null;
     });
   }, [extras]);
+
+  /** 收起某一组（v0.109.0）：只影响显示，数据顺序不动，展开还是原来的位置。 */
+  const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
+
+  function toggleGroup(key: string) {
+    setClosedGroups((previous) => ({ ...previous, [key]: !previous[key] }));
+    // 收起的时候如果手里还拿着这一组里的某一条，直接放下，免得它被藏起来之后没法放回去
+    if (heldId && extras.some((item) => item.id === heldId && groupKeyOf(item) === key)) {
+      setHeldId(null);
+    }
+  }
 
   /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */
   function swapBlock(id: string) {
@@ -780,18 +804,30 @@ export default function Practice() {
             {extras.map((extra, index) => {
               const extraDone = done.has(extra.id);
               const extraRunning = runningId === extra.id;
-              const heading = extraGroups[index]?.heading;
+              const heading = extraGroups[index];
               const held = heldId === extra.id;
+              const collapsed = heading ? closedGroups[heading.key] === true : false;
               return (
                 <Fragment key={extra.id}>
                   {heading && (
-                    <li className="extras-group">{heading}</li>
+                    <li className="extras-group">
+                      <button
+                        type="button"
+                        className="extras-group-toggle"
+                        aria-expanded={!collapsed}
+                        onClick={() => toggleGroup(heading.key)}
+                      >
+                        <span>{heading.heading}</span>
+                        <span className="extras-group-go">{collapsed ? "展开" : "收起"}</span>
+                      </button>
+                    </li>
                   )}
                 <li
                   id={extra.id}
+                  hidden={collapsed}
                   className={`practice-block practice-extra${extraDone ? " done" : ""}${
                     dragId === extra.id ? " dragging" : ""
-                  }${held ? " held" : ""}`}
+                  }${held ? " held" : ""}${heldId && !held ? " droppable" : ""}`}
                   draggable
                   onDragStart={() => setDragId(extra.id)}
                   onDragEnd={() => {
