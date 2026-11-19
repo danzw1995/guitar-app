@@ -11,6 +11,8 @@ export interface PlanExtra {
   tab: Tab;
   meter: string;
   bpm: number;
+  /** 从练习库加进来的那一条属于哪个阶段（v0.107.0）；别处加进来的没有这个字段。 */
+  stage?: number;
   addedAt: number;
 }
 
@@ -50,6 +52,9 @@ function parse(raw: unknown): PlanExtra[] {
       tab: extra.tab,
       meter: typeof extra.meter === "string" ? extra.meter : `${extra.tab.beatsPerBar}/4`,
       bpm: typeof extra.bpm === "number" && extra.bpm > 0 ? Math.min(200, Math.round(extra.bpm)) : 70,
+      ...(typeof extra.stage === "number" && extra.stage >= 0 && extra.stage < 6
+        ? { stage: Math.round(extra.stage) }
+        : {}),
       addedAt: typeof extra.addedAt === "number" ? extra.addedAt : 0,
     });
   }
@@ -82,7 +87,7 @@ export function loadExtras(today: string = dateKeyOf(new Date())): PlanExtra[] {
 
 /** 加一条进今天的计划；同一条（同标题同谱）已经加过就不重复加。 */
 export function addExtra(
-  input: { title: string; tab: Tab; meter: string; bpm: number },
+  input: { title: string; tab: Tab; meter: string; bpm: number; stage?: number },
   today: string = dateKeyOf(new Date()),
 ): PlanExtra[] {
   const all = readAll().filter((item) => item.date === today);
@@ -95,6 +100,7 @@ export function addExtra(
     tab: input.tab,
     meter: input.meter,
     bpm: input.bpm,
+    ...(typeof input.stage === "number" ? { stage: input.stage } : {}),
     addedAt: Date.now(),
   };
   const next = [...all, extra].slice(-MAX_PER_DAY);

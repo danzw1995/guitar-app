@@ -208,6 +208,40 @@ export default function Stats() {
   const todayDoneIds = new Set(practiceLog[today]?.done ?? []);
   const extrasDone = todayExtras.filter((extra) => todayDoneIds.has(extra.id)).length;
 
+  /**
+   * 加餐一共练了多久、分在哪些阶段（v0.107.0）。
+   *
+   * 分阶段的依据是名字对回练习库（`DRILLS`）：计划表第二天就清空，`PlanExtra.stage` 留不下来；
+   * 名字是当初加计划时存下的（v0.104.0 起跟着记录走），对不上练习库的就归「其他」。
+   */
+  const extraRows = Object.entries(rhythm)
+    .filter(([id]) => id.startsWith("p:extra-"))
+    .map(([, record]) => ({
+      title: record.title ?? "",
+      minutes: record.minutes ?? 0,
+      stage: DRILLS.find((drill) => drill.name === record.title)?.stage,
+    }))
+    .filter((row) => row.minutes > 0);
+  const extraTotalMinutes = extraRows.reduce((sum, row) => sum + row.minutes, 0);
+  const extraByStage = (() => {
+    const map = new Map<number | "other", number>();
+    for (const row of extraRows) {
+      const key = row.stage === undefined ? "other" : row.stage;
+      map.set(key, (map.get(key) ?? 0) + row.minutes);
+    }
+    return [...map.entries()].sort((a, b) => {
+      if (a[0] === "other") return 1;
+      if (b[0] === "other") return -1;
+      return a[0] - b[0];
+    });
+  })();
+  const extraStageLine = extraByStage
+    .map(([key, minutes]) => `${key === "other" ? "其他" : `第 ${key + 1} 阶段`} ${minutes} 分钟`)
+    .join(" · ");
+
+  // 按级数筛「最卡的条目」（v0.107.0）：null = 全部
+  const [degreeFilter, setDegreeFilter] = useState<number | null>(null);
+
   // 最卡的地方（v0.100.0）：跟练时点级数方块单练过的那一小节，按级数归堆。
   // 只看最近 7 天练过的条目——一个月前那条不该影响这周的结论。
   const hardTally = hardestTally(rhythm, addDays(today, -6));
@@ -215,7 +249,7 @@ export default function Stats() {
   // 最卡的地方按条目排（v0.105.0）：今天计划里的那几条按练习页的顺序排在最前（v0.106.0），
   // 计划和统计页两份列表顺序对得上；剩下的才按「单独练过几次」排。
   const planOrder = new Map(todayExtras.map((extra, index) => [extra.id, index]));
-  const hardItems = Object.entries(rhythm)
+  const hardSorted = Object.entries(rhythm)
     .filter(([, record]) => record.hardest && record.lastAt && record.lastAt >= addDays(today, -6))
     .map(([id, record]) => ({
       id,
@@ -227,8 +261,11 @@ export default function Stats() {
       if (a.order !== undefined) return -1;
       if (b.order !== undefined) return 1;
       return b.hardest.count - a.hardest.count;
-    })
-    .slice(0, 4);
+    });
+  const hardItems = (degreeFilter === null
+    ? hardSorted
+    : hardSorted.filter((item) => item.hardest.degree === degreeFilter)
+  ).slice(0, 4);
 
   // 听辨（扒谱页「练」）：`guitar.ear.v1` 存最好成绩、轮数与四种题型各自的正确率
   const ear = loadEar();
@@ -418,6 +455,12 @@ export default function Stats() {
         这一周从 {weekStats.from.slice(5).replace("-", "/")} 起算：练了 {weekStats.days} 天、{weekStats.items} 条；
         上周同期 {weekStats.prevDays} 天、{weekStats.prevMinutes} 分钟。
       </p>
+      {extraTotalMinutes > 0 && (
+        <p className="hint extra-time">
+          <b>加餐练了 {extraTotalMinutes} 分钟</b>
+          {extraStageLine ? ` · ${extraStageLine}` : ""}
+        </p>
+      )}
       <div className="goal">
         <div className="goal-head">
           <b>本周目标</b>
@@ -755,9 +798,39 @@ export default function Stats() {
       {hardTally.length > 0 && (
         <>
           <h3 className="stat-sub">最卡的地方</h3>
+          {/* 按级数筛（v0.107.0）：只看第 5 级的条目，修的时候就盯这一种 */}
+          <div className="hardest-filter" role="group" aria-label="按级数筛选最卡的条目">
+            <button
+              type="button"
+              className={`chip${degreeFilter === null ? " on" : ""}`}
+              aria-pressed={degreeFilter === null}
+              onClick={() => setDegreeFilter(null)}
+            >
+              全部
+            </button>
+            {hardTally.slice(0, 7).map((item) => (
+              <button
+                key={item.degree}
+                type="button"
+                className={`chip${degreeFilter === item.degree ? " on" : ""}`}
+                aria-pressed={degreeFilter === item.degree}
+                onClick={() =>
+                  setDegreeFilter((current) => (current === item.degree ? null : item.degree))
+                }
+              >
+                第 {item.degree} 级
+              </button>
+            ))}
+          </div>
           <ul className="hardest-list">
             {hardTally.slice(0, 5).map((item) => (
-              <li key={item.degree} data-hardest={item.degree}>
+              <li
+                key={item.degree}
+                data-hardest={item.degree}
+                className={
+                  degreeFilter !== null && degreeFilter !== item.degree ? "hardest-dim" : undefined
+                }
+              >
                 <b>
                   第 {item.degree} 级{item.name ? `（${item.name}）` : ""}
                 </b>

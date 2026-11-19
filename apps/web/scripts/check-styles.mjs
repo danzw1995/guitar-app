@@ -1022,6 +1022,16 @@ for (const selector of ["select", "input", "textarea"]) {
     dropLineAfter.get("bottom") === "-1px" && dropLineAfter.get("top") === "auto",
     `top=${dropLineAfter.get("top") ?? "未设置"} bottom=${dropLineAfter.get("bottom") ?? "未设置"}`,
   );
+
+  // v0.107.0：拖到末尾那条落点平时是虚线，拖上去变强调色
+  const dropEnd = narrowDecls(".practice-drop-end");
+  const dropEndOn = narrowDecls(".practice-drop-end.on");
+  expect(
+    "拖到末尾的落点是虚线框，拖上去变强调色",
+    (dropEnd.get("border") ?? "").includes("dashed") &&
+      (dropEndOn.get("border-color") ?? "") === "var(--accent)",
+    `border=${dropEnd.get("border") ?? "未设置"} hover=${dropEndOn.get("border-color") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

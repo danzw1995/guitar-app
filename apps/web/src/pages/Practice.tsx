@@ -101,6 +101,8 @@ export default function Practice() {
   const [dragId, setDragId] = useState<string | null>(null);
   /** 拖到谁身上、插在它前面还是后面（v0.106.0）：用来画那条插入线。 */
   const [dropAt, setDropAt] = useState<{ id: string; after: boolean } | null>(null);
+  /** 拖到列表末尾那条落点上（v0.107.0）。 */
+  const [dropEnd, setDropEnd] = useState(false);
   /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
   const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
 
@@ -157,6 +159,8 @@ export default function Practice() {
         tab: drill.tab,
         meter: meterOfTab(drill.tab),
         bpm: drill.bpm ? drill.bpm[0] : 70,
+        // 记下它属于哪个阶段（v0.107.0），统计页才能按阶段算「加餐练了多久」
+        stage: drill.stage,
       },
       today,
     );
@@ -184,7 +188,19 @@ export default function Practice() {
     setDropAt(null);
   }
 
-  /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */  function swapBlock(id: string) {
+  /** 拖到列表末尾（v0.107.0）：最后一块的下半部分往往够不到，单独留一条落点。 */
+  function dropExtraAtEnd() {
+    if (!dragId) return;
+    const ids = extras.map((item) => item.id).filter((id) => id !== dragId);
+    ids.push(dragId);
+    setExtras(reorderExtras(ids, today));
+    setDragId(null);
+    setDropAt(null);
+    setDropEnd(false);
+  }
+
+  /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */
+  function swapBlock(id: string) {
     const label = session.blocks.find((block) => block.drill.id === id)?.drill.name ?? id;
     const next = addSkip(skips, today, id);
     saveSkips(next);
@@ -803,6 +819,20 @@ export default function Practice() {
                 </li>
               );
             })}
+            {dragId && (
+              <li
+                className={`practice-drop-end${dropEnd ? " on" : ""}`}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  if (!dropEnd) setDropEnd(true);
+                  setDropAt(null);
+                }}
+                onDragLeave={() => setDropEnd(false)}
+                onDrop={dropExtraAtEnd}
+              >
+                拖到这里，排到最后
+              </li>
+            )}
           </ol>
         </>
       )}

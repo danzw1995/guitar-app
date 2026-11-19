@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.106.0`，core `0.52.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.107.0`，core `0.52.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -128,6 +128,8 @@ v0.105.0 还是只动前端：「我的谱」也能加进今日计划、加餐�
 统计页加餐卡落到还没勾的那一条；`guitar.plan.v1` 里重排后写的是递增的 `addedAt`，没加新字段。
 v0.106.0 同样只动前端：拖拽落点画插入线、加进计划的名字带级数、
 统计页按条目的顺序跟练习页计划对齐；core 与工具都不动。
+v0.107.0 还是只动前端：拖到列表末尾的落点、按阶段统计加餐时长（用记录的 `title` 回查 `DRILLS`，
+计划表里的 `stage` 第二天就没了）、「最卡的地方」按级数筛；core 与工具都不动。
 `tools/tab-score` 是独立发布的包（`@danzw777/tab-score`），版本线与产品无关，现在是 `0.8.4`
 （0.7.0 加了 ASCII 六线谱输入，0.8.0 补子路径导出并把样例从发布包里摘掉，0.8.1 是第一次真正发布到 npm——
 因为 `@danzw` 那个 scope 当时的 token 没有写权限，包名从 `@danzw/tab-score` 改成了 `@danzw777/tab-score`；

@@ -1680,6 +1680,34 @@ try {
     `${dragStartInfo} · ${lineClass} · ${dropAfter}`,
   );
 
+  // 12t) v0.107.0：拖到列表末尾那条落点上，直接排到最后
+  const draggedId = String(
+    js(
+      "(() => { const a = document.querySelectorAll('.practice-extra')[0]; const rect = a.getBoundingClientRect(); a.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, clientX: rect.left + 40, clientY: rect.top + 4 })); return a.id; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await sleep(250);
+  const dropEndShown = String(
+    js(
+      "(() => { const zone = document.querySelector('.practice-drop-end'); if (!zone) return 'none'; zone.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true })); return 'shown'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await sleep(300);
+  js(
+    "(() => { const zone = document.querySelector('.practice-drop-end.on'); zone?.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true })); return 'ok'; })()",
+  );
+  await sleep(600);
+  const endOrder = String(
+    js("(() => [...document.querySelectorAll('.practice-extra')].map(li => li.id).join(','))()"),
+  ).replace(/^"|"$/g, "");
+  log(
+    dropEndShown === "shown" &&
+      endOrder.split(",").length === 2 &&
+      endOrder.endsWith(draggedId),
+    "练习页：拖到列表末尾的落点上，直接排最后",
+    `${draggedId} · ${dropEndShown} · ${endOrder}`,
+  );
+
   js("localStorage.removeItem('guitar.plan.v1')");
   js("localStorage.removeItem('guitar.practice.v1')");
   js("localStorage.removeItem('guitar.rhythm.v1')");
@@ -2311,6 +2339,40 @@ try {
     hardOrder.startsWith("p:extra-z,pattern-h9,s0-crawl"),
     "统计页：计划里的条目按计划顺序排最前",
     hardOrder,
+  );
+
+  // 16d7) v0.107.0：按级数筛选 + 加餐练了多久按阶段算
+  const hardSeed = String(
+    js(
+      "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const record = { 'p:extra-z': { bestBpm: 90, sessions: 1, minutes: 12, lastAt: today, title: '单弦爬格子（1-2-3-4）', hardest: { bar: 1, degree: 1, name: 'C', count: 1 } }, 'pattern-h9': { bestBpm: 120, sessions: 2, minutes: 4, lastAt: today, hardest: { bar: 2, degree: 6, name: 'Am', count: 9 } }, 's0-crawl': { bestBpm: 80, sessions: 1, minutes: 2, lastAt: today, hardest: { bar: 1, degree: 5, name: 'G', count: 5 } } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(record)); delete localStorage['guitar.plan.v1']; localStorage.removeItem('guitar.plan.v1'); return 'ok'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  ab(["open", `${URL}#stats`]);
+  await sleep(1000);
+  const filterInfo = String(
+    js(
+      "(() => { const chips = [...document.querySelectorAll('.hardest-filter .chip')].map(c => c.textContent.trim()); const six = [...document.querySelectorAll('.hardest-filter .chip')].find(c => c.textContent.includes('第 6 级')); six?.click(); return chips.join(','); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await sleep(500);
+  const filtered = String(
+    js(
+      "(() => { const items = [...document.querySelectorAll('[data-hardest-item]')].map(li => li.getAttribute('data-hardest-item')); const dim = document.querySelectorAll('.hardest-dim').length; const pressed = [...document.querySelectorAll('.hardest-filter .chip')].filter(c => c.getAttribute('aria-pressed') === 'true').map(c => c.textContent.trim()).join(','); return `${items.join('/')}|${dim}|${pressed}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    filterInfo.startsWith("全部,第") && filtered === "pattern-h9|2|第 6 级",
+    "统计页：最卡的地方能按级数筛条目",
+    `${filterInfo} → ${filtered}`,
+  );
+
+  const extraTime = String(
+    js("(() => document.querySelector('.extra-time')?.textContent?.replace(/\\s+/g, ' ').trim() ?? 'none')()"),
+  ).replace(/^"|"$/g, "");
+  log(
+    extraTime.includes("加餐练了 12 分钟") && extraTime.includes("第 1 阶段 12 分钟"),
+    "统计页：加餐练了多久，按阶段分开算",
+    extraTime,
   );
 
   js("localStorage.removeItem('guitar.rhythm.v1')");

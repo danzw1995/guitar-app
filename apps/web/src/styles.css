@@ -1597,6 +1597,54 @@ button, select, input { font: inherit; color: inherit; }
   top: auto;
   bottom: -1px;
 }
+
+/* 拖到列表末尾（v0.107.0）：最后一块的下半部分常常够不到，单独留一条落点 */
+.practice-drop-end {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 6px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  list-style: none;
+}
+
+.practice-drop-end.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(232, 176, 75, 0.08);
+}
+
+/* 加餐累计时长（v0.107.0） */
+.extra-time {
+  margin: -4px 0 10px;
+}
+
+.extra-time b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 按级数筛选（v0.107.0） */
+.hardest-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.hardest-filter .chip {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.hardest-dim {
+  opacity: 0.4;
+}
 .pb-index {
   width: 22px;
   height: 22px;
