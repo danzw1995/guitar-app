@@ -1068,6 +1068,17 @@ for (const selector of ["select", "input", "textarea"]) {
       (hiddenExtra.get("display") ?? "") === "none",
     `droppable=${droppable.get("border-color") ?? "未设置"} toggle=${groupToggle.get("min-height") ?? "未设置"} hidden=${hiddenExtra.get("display") ?? "未设置"}`,
   );
+
+  // v0.110.0：分组标题右边那枚「几条 · 多少分钟」是小药丸，数字不跳；第二种筛法前面有小字标签
+  const groupMeta = narrowDecls(".extras-group-meta");
+  const filterLabel = narrowDecls(".hardest-filter-label");
+  expect(
+    "分组标题的「几条 · 多少分钟」是小药丸，按阶段筛选有标签",
+    (groupMeta.get("white-space") ?? "") === "nowrap" &&
+      (groupMeta.get("font-variant-numeric") ?? "") === "tabular-nums" &&
+      (filterLabel.get("color") ?? "") === "var(--muted)",
+    `meta=${groupMeta.get("white-space") ?? "未设置"} label=${filterLabel.get("color") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

@@ -288,12 +288,19 @@ export default function Stats() {
   // 最卡的地方按条目排（v0.105.0）：今天计划里的那几条按练习页的顺序排在最前（v0.106.0），
   // 计划和统计页两份列表顺序对得上；剩下的才按「单独练过几次」排。
   const planOrder = new Map(todayExtras.map((extra, index) => [extra.id, index]));
+  // 按阶段筛（v0.110.0）：练习库里的直接按 id 查，加餐 / 跟练里切出来的记录靠 `title` 回查 DRILLS。
+  const stageById = new Map(DRILLS.map((drill) => [drill.id, drill.stage]));
+  const stageByName = new Map(DRILLS.map((drill) => [drill.name, drill.stage]));
+  const [stageFilter, setStageFilter] = useState<number | null>(null);
   const hardSorted = Object.entries(rhythm)
     .filter(([, record]) => record.hardest && record.lastAt && record.lastAt >= addDays(today, -6))
     .map(([id, record]) => ({
       id,
       hardest: record.hardest!,
       order: planOrder.get(id.replace(/^p:/, "")),
+      stage:
+        stageById.get(id.replace(/^p:/, "")) ??
+        (record.title ? stageByName.get(record.title) ?? null : null),
     }))
     .sort((a, b) => {
       if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
@@ -301,10 +308,16 @@ export default function Stats() {
       if (b.order !== undefined) return 1;
       return b.hardest.count - a.hardest.count;
     });
-  const hardItems = (degreeFilter === null
-    ? hardSorted
-    : hardSorted.filter((item) => item.hardest.degree === degreeFilter)
-  ).slice(0, 4);
+  const stageOptions = [...new Set(hardSorted.map((item) => item.stage))]
+    .filter((stage): stage is number => typeof stage === "number")
+    .sort((a, b) => a - b);
+  const hardItems = hardSorted
+    .filter(
+      (item) =>
+        (degreeFilter === null || item.hardest.degree === degreeFilter) &&
+        (stageFilter === null || item.stage === stageFilter),
+    )
+    .slice(0, 4);
 
   // 听辨（扒谱页「练」）：`guitar.ear.v1` 存最好成绩、轮数与四种题型各自的正确率
   const ear = loadEar();
@@ -861,6 +874,37 @@ export default function Stats() {
               </button>
             ))}
           </div>
+          {/* 按阶段筛（v0.110.0）：级数之外再按「第几阶段的练习」筛，两种筛法叠在一起 */}
+          {stageOptions.length > 1 && (
+            <div className="hardest-filter" role="group" aria-label="按阶段筛选最卡的条目">
+              <span className="hardest-filter-label">按阶段</span>
+              <button
+                type="button"
+                className={`chip${stageFilter === null ? " on" : ""}`}
+                aria-pressed={stageFilter === null}
+                onClick={() => setStageFilter(null)}
+              >
+                全部
+              </button>
+              {stageOptions.map((stage) => (
+                <button
+                  key={stage}
+                  type="button"
+                  className={`chip${stageFilter === stage ? " on" : ""}`}
+                  aria-pressed={stageFilter === stage}
+                  title={stageOf(stage).name}
+                  onClick={() =>
+                    setStageFilter((current) => (current === stage ? null : stage))
+                  }
+                >
+                  第 {stage + 1} 阶段
+                </button>
+              ))}
+            </div>
+          )}
+          {stageFilter !== null && (
+            <p className="hardest-note">上面的归堆还是全部数据；阶段只筛下面按条目的列表。</p>
+          )}
           <ul className="hardest-list">
             {hardTally.slice(0, 5).map((item) => (
               <li

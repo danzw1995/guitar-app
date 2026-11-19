@@ -154,3 +154,36 @@ export function reorderExtras(
   writeAll(stamped);
   return stamped;
 }
+
+/** 哪些分组被收起来了（v0.110.0）——纯界面状态，和计划本身无关。 */
+const CLOSED_KEY = "guitar.extras.closed.v1";
+
+/** 只认 `stage-N` / `other` 这两种键，其余一律当没写过。 */
+function isGroupKey(key: string): boolean {
+  return key === "other" || /^stage-[0-9]$/.test(key);
+}
+
+export function loadClosedGroups(): Record<string, boolean> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CLOSED_KEY) ?? "{}") as unknown;
+    if (!raw || typeof raw !== "object") return {};
+    const closed: Record<string, boolean> = {};
+    for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+      if (value === true && isGroupKey(key)) closed[key] = true;
+    }
+    return closed;
+  } catch {
+    return {};
+  }
+}
+
+export function saveClosedGroups(closed: Record<string, boolean>): void {
+  try {
+    const next: Record<string, boolean> = {};
+    for (const [key, value] of Object.entries(closed)) if (value && isGroupKey(key)) next[key] = true;
+    if (Object.keys(next).length === 0) localStorage.removeItem(CLOSED_KEY);
+    else localStorage.setItem(CLOSED_KEY, JSON.stringify(next));
+  } catch {
+    // 存不下就还是默认全展开，不影响练习。
+  }
+}

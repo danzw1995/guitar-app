@@ -50,7 +50,16 @@ import {
 } from "../lib/storage";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
-import { addExtra, loadExtras, moveExtra, removeExtra, reorderExtras, type PlanExtra } from "../lib/plan";
+import {
+  addExtra,
+  loadClosedGroups,
+  loadExtras,
+  moveExtra,
+  removeExtra,
+  reorderExtras,
+  saveClosedGroups,
+  type PlanExtra,
+} from "../lib/plan";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
@@ -252,14 +261,26 @@ export default function Practice() {
 
   useEffect(() => cancelHold, []);
 
-  /** 加餐按阶段分组（v0.108.0）：列表顺序不动，只在换组的地方插一行小标题。 */
+  /**
+   * 加餐按阶段分组（v0.108.0）：列表顺序不动，只在换组的地方插一行小标题。
+   * 小标题右边带这一组有几条、加起来练过几分钟（v0.110.0）——收起之后至少还知道这组多少量。
+   */
   const extraGroups = useMemo(() => {
+    const minutesOf = (id: string) => records[`p:${id}`]?.minutes ?? 0;
     return extras.map((extra, index) => {
       const key = groupKeyOf(extra);
       const previous = index === 0 ? null : groupKeyOf(extras[index - 1]);
       if (index === 0 || key !== previous) {
+        let count = 0;
+        let minutes = 0;
+        for (let i = index; i < extras.length && groupKeyOf(extras[i]) === key; i += 1) {
+          count += 1;
+          minutes += minutesOf(extras[i].id);
+        }
         return {
           key,
+          count,
+          minutes,
           heading:
             typeof extra.stage === "number"
               ? `第 ${extra.stage + 1} 阶段 · ${stageOf(extra.stage).name}`
@@ -268,10 +289,14 @@ export default function Practice() {
       }
       return null;
     });
-  }, [extras]);
+  }, [extras, records]);
 
-  /** 收起某一组（v0.109.0）：只影响显示，数据顺序不动，展开还是原来的位置。 */
-  const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>({});
+  /** 收起某一组（v0.109.0）：只影响显示，数据顺序不动，展开还是原来的位置。收起的组记在本机（v0.110.0）。 */
+  const [closedGroups, setClosedGroups] = useState<Record<string, boolean>>(() => loadClosedGroups());
+
+  useEffect(() => {
+    saveClosedGroups(closedGroups);
+  }, [closedGroups]);
 
   function toggleGroup(key: string) {
     setClosedGroups((previous) => ({ ...previous, [key]: !previous[key] }));
@@ -818,6 +843,10 @@ export default function Practice() {
                         onClick={() => toggleGroup(heading.key)}
                       >
                         <span>{heading.heading}</span>
+                        <span className="extras-group-meta">
+                          {heading.count} 条
+                          {heading.minutes > 0 ? ` · ${heading.minutes} 分钟` : ""}
+                        </span>
                         <span className="extras-group-go">{collapsed ? "展开" : "收起"}</span>
                       </button>
                     </li>

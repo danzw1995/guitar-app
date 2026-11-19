@@ -1812,6 +1812,55 @@ try {
     `${orderBefore} → 收起 ${firstGroupId}: ${collapsedInfo} → ${expandedAgain}`,
   );
 
+  // 12y) v0.110.0：分组标题带「几条 · 多少分钟」，收起的组刷新之后还是收着的
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'p:extra-a': { bestBpm: 90, sessions: 1, minutes: 12, lastAt: today }, 'p:extra-c': { bestBpm: 70, sessions: 1, minutes: 8, lastAt: today } })); localStorage.removeItem('guitar.extras.closed.v1'); return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(1000);
+  js("document.getElementById('practice-extras')?.scrollIntoView({ block: 'start' })");
+  await sleep(300);
+  const groupMeta = String(
+    js(
+      "(() => [...document.querySelectorAll('.extras-group-toggle')].map(b => b.textContent.replace(/\\s+/g, ' ').trim()).join(' / '))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  const stageIndex = Number(
+    String(
+      js(
+        "(() => [...document.querySelectorAll('.extras-group-toggle')].findIndex(b => b.textContent.includes('第 1 阶段')))()",
+      ),
+    ).replace(/^"|"$/g, ""),
+  );
+  js(`document.querySelectorAll('.extras-group-toggle')[${stageIndex}]?.click()`);
+  await sleep(400);
+  const closedStored = String(
+    js(
+      "(() => { const v = JSON.parse(localStorage.getItem('guitar.extras.closed.v1') || '{}'); return `${Object.keys(v).join(',')}|${String(v['stage-0'])}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await ab(["reload"]);
+  await sleep(1000);
+  js("document.getElementById('practice-extras')?.scrollIntoView({ block: 'start' })");
+  await sleep(300);
+  const afterReload = String(
+    js(
+      `(() => { const btn = document.querySelectorAll('.extras-group-toggle')[${stageIndex}]; return \`\${btn?.getAttribute('aria-expanded')}|\${document.querySelectorAll('.practice-extra[hidden]').length}\`; })()`,
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    groupMeta.includes("1 条 · 12 分钟") &&
+      groupMeta.includes("1 条 · 8 分钟") &&
+      closedStored === "stage-0|true" &&
+      afterReload === "false|1",
+    "练习页：分组标题带「几条 · 多少分钟」，收起的组刷新后还在",
+    `${groupMeta} · ${closedStored} · ${afterReload}`,
+  );
+  // 还原：再展开、清掉记下的收起状态，别影响后面的用例
+  js(`document.querySelectorAll('.extras-group-toggle')[${stageIndex}]?.click()`);
+  await sleep(300);
+  js("localStorage.removeItem('guitar.extras.closed.v1')");
+
   js("localStorage.removeItem('guitar.plan.v1')");
   js("localStorage.removeItem('guitar.practice.v1')");
   js("localStorage.removeItem('guitar.rhythm.v1')");
@@ -2514,6 +2563,41 @@ try {
     hashAfterFilter === "#stats?d=5" && hashBack === "#stats?d=5|第 5 级|s0-crawl",
     "统计页：筛选写进地址栏，跳到别的页再回来还在",
     `${hashAfterFilter} → ${hashBack}`,
+  );
+
+  // 16d10) v0.110.0：按阶段也能筛，和级数筛叠在一起
+  js(
+    "(() => { const b = [...document.querySelectorAll('.hardest-filter')[0].querySelectorAll('.chip')].find(c => c.textContent.trim() === '全部'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const raw = JSON.parse(localStorage.getItem('guitar.rhythm.v1') || '{}'); raw['s1-scale'] = { bestBpm: 75, sessions: 1, minutes: 3, lastAt: today, hardest: { bar: 2, degree: 3, name: 'E', count: 4 } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(1000);
+  const stageChips = String(
+    js(
+      "(() => [...document.querySelectorAll('.hardest-filter')].map(row => [...row.querySelectorAll('.chip')].map(c => c.textContent.trim()).join(',')).join(' | '))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  const stageLabel = String(
+    js("(() => document.querySelector('.hardest-filter-label')?.textContent.trim() ?? 'none')()"),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const rows = document.querySelectorAll('.hardest-filter'); const row = rows[1]; [...row.querySelectorAll('.chip')].find(c => c.textContent.includes('第 2 阶段'))?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const stageFiltered = String(
+    js(
+      "(() => { const items = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join('/'); const pressed = [...document.querySelectorAll('.hardest-filter')[1].querySelectorAll('.chip')].find(c => c.getAttribute('aria-pressed') === 'true')?.textContent.trim() ?? 'none'; const note = document.querySelector('.hardest-note') ? 'note' : 'nonote'; return `${items}|${pressed}|${note}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    stageLabel === "按阶段" &&
+      stageChips.includes("全部,第 1 阶段,第 2 阶段") &&
+      stageFiltered === "s1-scale|第 2 阶段|note",
+    "统计页：最卡的地方能按阶段筛，和级数筛叠在一起",
+    `${stageLabel} · ${stageChips} · ${stageFiltered}`,
   );
 
   js("localStorage.removeItem('guitar.rhythm.v1')");
