@@ -1006,6 +1006,22 @@ for (const selector of ["select", "input", "textarea"]) {
     (dragging.get("opacity") ?? "") === "0.55",
     `opacity=${dragging.get("opacity") ?? "未设置"}`,
   );
+
+  // v0.106.0：拖拽落点那条插入线用强调色，贴在块的上下边
+  const dropLine = narrowDecls(".pb-drop-line");
+  expect(
+    "拖拽落点画一条强调色的插入线",
+    dropLine.get("position") === "absolute" &&
+      (dropLine.get("background") ?? "").includes("var(--accent)") &&
+      dropLine.get("top") === "-1px",
+    `position=${dropLine.get("position") ?? "未设置"} background=${dropLine.get("background") ?? "未设置"}`,
+  );
+  const dropLineAfter = narrowDecls(".pb-drop-line.after");
+  expect(
+    "插在后面的那条线贴下边",
+    dropLineAfter.get("bottom") === "-1px" && dropLineAfter.get("top") === "auto",
+    `top=${dropLineAfter.get("top") ?? "未设置"} bottom=${dropLineAfter.get("bottom") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

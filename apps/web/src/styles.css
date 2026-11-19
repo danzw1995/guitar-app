@@ -1576,6 +1576,27 @@ button, select, input { font: inherit; color: inherit; }
 .practice-extra.dragging {
   opacity: 0.55;
 }
+
+/* 拖到哪一条的前面 / 后面（v0.106.0）：一条 2px 的强调色横线 */
+.practice-extra {
+  position: relative;
+}
+
+.pb-drop-line {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.pb-drop-line.after {
+  top: auto;
+  bottom: -1px;
+}
 .pb-index {
   width: 22px;
   height: 22px;

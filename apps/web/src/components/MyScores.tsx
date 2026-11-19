@@ -17,6 +17,7 @@ import { goTo } from "../lib/nav";
 import { retimeTab } from "../lib/retime";
 import ChordDiagram from "./ChordDiagram";
 import PlanButton from "./PlanButton";
+import { degreeLine } from "../lib/degrees";
 import {
   addScore,
   loadScores,
@@ -194,6 +195,15 @@ function ScoreCard({
   const tab = earTab ?? parsed?.tab ?? null;
   const meter = earTab ? (score.meter ?? `${earTab.beatsPerBar}/4`) : (parsed?.meter ?? "4/4");
   const bpm = earTab ? (score.bpm ?? 90) : (parsed?.bpm ?? 80);
+  /**
+   * 加进今日计划时的名字（v0.106.0）：带上级数，「练习页」那边一眼看出这是 1–6–5。
+   * 单音那种没有级数行，`degreeLine()` 返回空串，名字就是标题本身。
+   */
+  const planTitle = (() => {
+    if (!tab) return score.title;
+    const line = degreeLine(tab);
+    return line ? `${score.title} · ${line}` : score.title;
+  })();
   const tex = earTab ? tabToAlphaTex(earTab) : (parsed?.tex ?? "");
   const stored = useMemo<ScoreImage | undefined>(
     () =>
@@ -462,7 +472,12 @@ function ScoreCard({
               跟练
             </button>
             {high !== undefined && <span className="best-badge">最高 {high} BPM</span>}
-            <PlanButton title={score.title} tab={tab as Tab} bpm={bpm} meter={meter} />
+            <PlanButton
+              title={planTitle}
+              tab={tab as Tab}
+              bpm={bpm}
+              meter={meter}
+            />
           </>
         )}
         {!earTab && (

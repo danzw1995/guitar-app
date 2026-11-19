@@ -707,8 +707,8 @@ try {
       .replace(/\\"/g, '"'),
   );
   log(
-    scorePlan.had && scorePlanAfter.titles.includes("和弦谱 · C–Am"),
-    "我的谱：卡上能加进今日计划",
+    scorePlan.had && scorePlanAfter.titles.includes("和弦谱 · C–Am · 1 → 6"),
+    "我的谱：卡上能加进今日计划（名字带级数）",
     scorePlanAfter.titles.join("/"),
   );
   js("localStorage.removeItem('guitar.plan.v1')");
@@ -1644,6 +1644,42 @@ try {
     jumpInfo,
   );
 
+  // 12s) v0.106.0：拖到另一条身上会画一条插入线，松手就按落点重排
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const tab = (name) => ({ beatsPerBar: 4, bars: 1, bpm: [90, 90], caption: name, notes: [{ s: 3, f: 0, beat: 0, dur: 4 }] }); const base = Date.now(); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-a', date: today, title: '甲 · 一小节', tab: tab('甲'), meter: '4/4', bpm: 90, addedAt: base }, { id: 'extra-b', date: today, title: '乙 · 一小节', tab: tab('乙'), meter: '4/4', bpm: 90, addedAt: base + 1 }])); localStorage.removeItem('guitar.practice.v1'); return 'ok'; })()",
+  );
+  ab(["reload"]);
+  await sleep(900);
+  const dragStartInfo = String(
+    js(
+      "(() => { const items = [...document.querySelectorAll('.practice-extra')]; const a = items[0]; const rect = a.getBoundingClientRect(); a.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, clientX: rect.left + 40, clientY: rect.top + 4 })); return items.map(li => li.id).join(','); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await sleep(250);
+  js(
+    "(() => { const b = [...document.querySelectorAll('.practice-extra')][1]; const rect = b.getBoundingClientRect(); b.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientX: rect.left + 40, clientY: rect.top + rect.height - 6 })); return 'ok'; })()",
+  );
+  await sleep(300);
+  const lineClass = String(
+    js(
+      "(() => { const b = [...document.querySelectorAll('.practice-extra')][1]; const line = b.querySelector('.pb-drop-line'); return line ? line.className : 'none'; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.practice-extra')][1]; const rect = b.getBoundingClientRect(); b.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientX: rect.left + 40, clientY: rect.top + rect.height - 6 })); return 'ok'; })()",
+  );
+  await sleep(600);
+  const dropAfter = String(
+    js("(() => [...document.querySelectorAll('.practice-extra')].map(li => li.id).join(','))()"),
+  ).replace(/^"|"$/g, "");
+  log(
+    lineClass.includes("pb-drop-line") &&
+      lineClass.includes("after") &&
+      dropAfter === "extra-b,extra-a",
+    "练习页：拖到另一条身上有插入线，松手按落点重排",
+    `${dragStartInfo} · ${lineClass} · ${dropAfter}`,
+  );
+
   js("localStorage.removeItem('guitar.plan.v1')");
   js("localStorage.removeItem('guitar.practice.v1')");
   js("localStorage.removeItem('guitar.rhythm.v1')");
@@ -2259,7 +2295,26 @@ try {
     "统计页：点最卡的一条会跳回那一段",
     jumpHash,
   );
+
+  // 16d6) v0.106.0：今天计划里的那几条按计划顺序排在最前，别被「次数多」顶到后面
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const tab = (name) => ({ beatsPerBar: 4, bars: 1, bpm: [90, 90], caption: name, notes: [{ s: 3, f: 0, beat: 0, dur: 4 }] }); const base = Date.now(); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-z', date: today, title: '计划里的', tab: tab('计划'), meter: '4/4', bpm: 90, addedAt: base }])); const record = { 'p:extra-z': { bestBpm: 90, sessions: 1, minutes: 2, lastAt: today, title: '计划里的', hardest: { bar: 1, degree: 1, name: 'C', count: 1 } }, 'pattern-h9': { bestBpm: 120, sessions: 2, minutes: 4, lastAt: today, hardest: { bar: 2, degree: 6, name: 'Am', count: 9 } }, 's0-crawl': { bestBpm: 80, sessions: 1, minutes: 2, lastAt: today, hardest: { bar: 1, degree: 5, name: 'G', count: 5 } } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(record)); return 'ok'; })()",
+  );
+  ab(["open", `${URL}#stats`]);
+  await sleep(1000);
+  const hardOrder = String(
+    js(
+      "(() => [...document.querySelectorAll('[data-hardest-item]')].map(li => li.getAttribute('data-hardest-item')).join(','))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    hardOrder.startsWith("p:extra-z,pattern-h9,s0-crawl"),
+    "统计页：计划里的条目按计划顺序排最前",
+    hardOrder,
+  );
+
   js("localStorage.removeItem('guitar.rhythm.v1')");
+  js("localStorage.removeItem('guitar.plan.v1')");
 
   // 16e) 调音页：六根空弦都在、点「开始」拿不到麦克风时要有一句人话
   js(

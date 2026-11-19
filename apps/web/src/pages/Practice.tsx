@@ -99,6 +99,8 @@ export default function Practice() {
   const [extras, setExtras] = useState<PlanExtra[]>(() => loadExtras(today));
   /** 正在拖的那一条（v0.105.0）：拖到另一条身上就按落点重排。 */
   const [dragId, setDragId] = useState<string | null>(null);
+  /** 拖到谁身上、插在它前面还是后面（v0.106.0）：用来画那条插入线。 */
+  const [dropAt, setDropAt] = useState<{ id: string; after: boolean } | null>(null);
   /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
   const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
 
@@ -166,18 +168,20 @@ export default function Practice() {
     setExtras(moveExtra(id, delta, today));
   }
 
-  /** 拖到另一条身上：按落点重排，落点之后的整体后移。 */
-  function dropExtraOn(targetId: string) {
+  /** 拖到另一条身上：按落点重排，落点之后的整体后移。`after` 决定插在它前面还是后面。 */
+  function dropExtraOn(targetId: string, after: boolean) {
     if (!dragId || dragId === targetId) return;
     const ids = extras.map((item) => item.id);
     const from = ids.indexOf(dragId);
-    const to = ids.indexOf(targetId);
-    if (from < 0 || to < 0) return;
+    const anchor = ids.indexOf(targetId);
+    if (from < 0 || anchor < 0) return;
     const next = [...ids];
     next.splice(from, 1);
-    next.splice(to, 0, dragId);
+    const at = next.indexOf(targetId);
+    next.splice(after ? at + 1 : at, 0, dragId);
     setExtras(reorderExtras(next, today));
     setDragId(null);
+    setDropAt(null);
   }
 
   /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */  function swapBlock(id: string) {
@@ -706,10 +710,26 @@ export default function Practice() {
                   }`}
                   draggable
                   onDragStart={() => setDragId(extra.id)}
-                  onDragEnd={() => setDragId(null)}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={() => dropExtraOn(extra.id)}
+                  onDragEnd={() => {
+                    setDragId(null);
+                    setDropAt(null);
+                  }}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    const rect = event.currentTarget.getBoundingClientRect();
+                    const after = event.clientY > rect.top + rect.height / 2;
+                    if (dropAt?.id !== extra.id || dropAt.after !== after) {
+                      setDropAt({ id: extra.id, after });
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dropAt?.id === extra.id) setDropAt(null);
+                  }}
+                  onDrop={() => dropExtraOn(extra.id, dropAt?.id === extra.id ? dropAt.after : false)}
                 >
+                  {dropAt?.id === extra.id && !dropAt.after && (
+                    <span className="pb-drop-line" aria-hidden="true" />
+                  )}
                   <div className="pb-head">
                     <span className="pb-index" aria-hidden="true">
                       {index + 1}
@@ -777,6 +797,9 @@ export default function Practice() {
                     </button>
                   </div>
                   <TabScore id={extra.id} tab={extra.tab} beat={beatOf(extra.id)} />
+                  {dropAt?.id === extra.id && dropAt.after && (
+                    <span className="pb-drop-line after" aria-hidden="true" />
+                  )}
                 </li>
               );
             })}

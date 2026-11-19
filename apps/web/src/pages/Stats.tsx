@@ -212,10 +212,22 @@ export default function Stats() {
   // 只看最近 7 天练过的条目——一个月前那条不该影响这周的结论。
   const hardTally = hardestTally(rhythm, addDays(today, -6));
   // 同一份数据按「条目」再排一遍（v0.101.0）：哪一段最卡、卡在哪一小节
+  // 最卡的地方按条目排（v0.105.0）：今天计划里的那几条按练习页的顺序排在最前（v0.106.0），
+  // 计划和统计页两份列表顺序对得上；剩下的才按「单独练过几次」排。
+  const planOrder = new Map(todayExtras.map((extra, index) => [extra.id, index]));
   const hardItems = Object.entries(rhythm)
     .filter(([, record]) => record.hardest && record.lastAt && record.lastAt >= addDays(today, -6))
-    .map(([id, record]) => ({ id, hardest: record.hardest! }))
-    .sort((a, b) => b.hardest.count - a.hardest.count)
+    .map(([id, record]) => ({
+      id,
+      hardest: record.hardest!,
+      order: planOrder.get(id.replace(/^p:/, "")),
+    }))
+    .sort((a, b) => {
+      if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
+      if (a.order !== undefined) return -1;
+      if (b.order !== undefined) return 1;
+      return b.hardest.count - a.hardest.count;
+    })
     .slice(0, 4);
 
   // 听辨（扒谱页「练」）：`guitar.ear.v1` 存最好成绩、轮数与四种题型各自的正确率
