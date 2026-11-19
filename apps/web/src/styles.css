@@ -1628,6 +1628,35 @@ button, select, input { font: inherit; color: inherit; }
   font-weight: 600;
 }
 
+/* 加餐按阶段分组（v0.108.0）：顺序不动，只在换组的地方插一行小标题 */
+.extras-group {
+  margin: 12px 0 2px;
+  padding: 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  list-style: none;
+}
+
+.extras-group:first-child {
+  margin-top: 0;
+}
+
+/* 长按拿起来（v0.108.0）：手机上长按之后点另一条，那条就插到前面 */
+.extras-held {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.practice-extra.held {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(232, 176, 75, 0.24);
+}
+
 /* 按级数筛选（v0.107.0） */
 .hardest-filter {
   display: flex;
@@ -2040,6 +2069,35 @@ button, select, input { font: inherit; color: inherit; }
 .hardest-list b {
   color: var(--accent);
   font-weight: 600;
+}
+/* 归堆那几行也能点着筛（v0.108.0）：和上面那排 chip 共用同一个选中态 */
+.hardest-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.hardest-row:hover {
+  border-color: var(--line);
+}
+.hardest-row[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: rgba(232, 176, 75, 0.1);
+}
+.hardest-row-go {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
 }
 .hardest-hint {
   margin: 0 0 14px;

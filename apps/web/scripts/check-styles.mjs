@@ -1032,6 +1032,29 @@ for (const selector of ["select", "input", "textarea"]) {
       (dropEndOn.get("border-color") ?? "") === "var(--accent)",
     `border=${dropEnd.get("border") ?? "未设置"} hover=${dropEndOn.get("border-color") ?? "未设置"}`,
   );
+
+  // v0.108.0：加餐按阶段分组的小标题不能像正文一样抢眼；拿起来的那条要有强调色外框
+  const extrasGroup = narrowDecls(".extras-group");
+  const heldExtra = narrowDecls(".practice-extra.held");
+  expect(
+    "加餐的分组小标题是灰色小字，拿起来的那条有强调色外框",
+    (extrasGroup.get("color") ?? "") === "var(--muted)" &&
+      parseFloat(extrasGroup.get("font-size") ?? "0") <= 12 &&
+      (heldExtra.get("border-color") ?? "") === "var(--accent)" &&
+      extrasGroup.get("list-style") === "none",
+    `group color=${extrasGroup.get("color") ?? "未设置"} size=${extrasGroup.get("font-size") ?? "未设置"} held=${heldExtra.get("border-color") ?? "未设置"}`,
+  );
+
+  // v0.108.0：归堆那几行也做成能点的行，高度够手指点
+  const hardestRow = narrowDecls(".hardest-row");
+  const hardestRowOn = narrowDecls('.hardest-row[aria-pressed="true"]');
+  expect(
+    "归堆那几行是能点的整行按钮，选中有强调色外框",
+    parseFloat(hardestRow.get("min-height") ?? "0") >= 40 &&
+      (hardestRow.get("cursor") ?? "") === "pointer" &&
+      (hardestRowOn.get("border-color") ?? "") === "var(--accent)",
+    `min-height=${hardestRow.get("min-height") ?? "未设置"} cursor=${hardestRow.get("cursor") ?? "未设置"} pressed=${hardestRowOn.get("border-color") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

@@ -831,12 +831,26 @@ export default function Stats() {
                   degreeFilter !== null && degreeFilter !== item.degree ? "hardest-dim" : undefined
                 }
               >
-                <b>
-                  第 {item.degree} 级{item.name ? `（${item.name}）` : ""}
-                </b>
-                <span className="muted">
-                  {item.items} 条练习里单独练过 {item.count} 次
-                </span>
+                <button
+                  type="button"
+                  className="hardest-row"
+                  data-hardest-row={item.degree}
+                  aria-pressed={degreeFilter === item.degree}
+                  onClick={() =>
+                    setDegreeFilter(degreeFilter === item.degree ? null : item.degree)
+                  }
+                  title={degreeFilter === item.degree ? "取消筛选" : `只看第 ${item.degree} 级`}
+                >
+                  <b>
+                    第 {item.degree} 级{item.name ? `（${item.name}）` : ""}
+                  </b>
+                  <span className="muted">
+                    {item.items} 条练习里单独练过 {item.count} 次
+                  </span>
+                  <span className="hardest-row-go">
+                    {degreeFilter === item.degree ? "已筛" : "只看这级"} →
+                  </span>
+                </button>
               </li>
             ))}
           </ul>

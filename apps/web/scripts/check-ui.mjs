@@ -1708,6 +1708,53 @@ try {
     `${draggedId} · ${dropEndShown} · ${endOrder}`,
   );
 
+  // 12u) v0.108.0：加餐按阶段分组（顺序不动，只在换组的地方插一行小标题）
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const tab = (name) => ({ beatsPerBar: 4, bars: 1, bpm: [90, 90], caption: name, notes: [{ s: 3, f: 0, beat: 0, dur: 4 }] }); const base = Date.now(); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-a', date: today, title: '单弦爬格子', tab: tab('甲'), meter: '4/4', bpm: 90, addedAt: base, stage: 0 }, { id: 'extra-b', date: today, title: '和弦谱 · C–Am', tab: tab('乙'), meter: '4/4', bpm: 90, addedAt: base + 1 }, { id: 'extra-c', date: today, title: '换把练习', tab: tab('丙'), meter: '4/4', bpm: 90, addedAt: base + 2, stage: 2 }])); localStorage.removeItem('guitar.practice.v1'); return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(1100);
+  js("document.getElementById('practice-extras')?.scrollIntoView({ block: 'start' })");
+  await sleep(300);
+  const groupInfo = String(
+    js("(() => [...document.querySelectorAll('.extras-group')].map(el => el.textContent.trim()).join(' / '))()"),
+  ).replace(/^"|"$/g, "");
+  log(
+    groupInfo.includes("第 1 阶段") && groupInfo.includes("其他") && groupInfo.includes("第 3 阶段"),
+    "练习页：加餐按阶段分组，换组的地方插一行小标题",
+    groupInfo,
+  );
+
+  // 12v) v0.108.0：长按拿起来，再点另一条就插到它前面
+  const heldInfo = String(
+    js(
+      "(() => { const li = document.querySelectorAll('.practice-extra')[0]; const head = li.querySelector('h4'); const id = li.id; head.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerType: 'touch' })); return id; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  await sleep(650);
+  const heldState = String(
+    js(
+      "(() => { const held = document.querySelector('.practice-extra.held'); const hint = document.querySelector('.extras-held'); return `${held ? held.id : 'none'}|${hint ? 'hint' : 'nohint'}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const target = document.querySelectorAll('.practice-extra')[2]; target.querySelector('h4').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); return 'ok'; })()",
+  );
+  await sleep(600);
+  const heldOrder = String(
+    js("(() => [...document.querySelectorAll('.practice-extra')].map(li => li.id).join(','))()"),
+  ).replace(/^"|"$/g, "");
+  const heldPlan = String(
+    js("(() => JSON.parse(localStorage.getItem('guitar.plan.v1') || '[]').map(p => p.id).join(','))()"),
+  ).replace(/^"|"$/g, "");
+  log(
+    heldState === `${heldInfo}|hint` &&
+      heldOrder.split(",")[1] === heldInfo &&
+      heldPlan === heldOrder,
+    "练习页：长按拿起一条，点另一条就插到它前面",
+    `${heldInfo} · ${heldState} · ${heldOrder}`,
+  );
+
   js("localStorage.removeItem('guitar.plan.v1')");
   js("localStorage.removeItem('guitar.practice.v1')");
   js("localStorage.removeItem('guitar.rhythm.v1')");
@@ -2373,6 +2420,22 @@ try {
     extraTime.includes("加餐练了 12 分钟") && extraTime.includes("第 1 阶段 12 分钟"),
     "统计页：加餐练了多久，按阶段分开算",
     extraTime,
+  );
+
+  // 16d8) v0.108.0：点归堆那一行也能筛，和上面那排 chip 共用同一个选中态
+  js(
+    "(() => { const row = [...document.querySelectorAll('.hardest-row')].find(el => el.textContent.includes('第 5 级')); row?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const rowFilter = String(
+    js(
+      "(() => { const rows = [...document.querySelectorAll('.hardest-row')].filter(el => el.getAttribute('aria-pressed') === 'true').map(el => el.getAttribute('data-hardest-row')).join(','); const chips = [...document.querySelectorAll('.hardest-filter .chip')].filter(el => el.getAttribute('aria-pressed') === 'true').map(el => el.textContent.trim()).join(','); const items = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join('/'); return `${rows}|${chips}|${items}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    rowFilter === "5|第 5 级|s0-crawl",
+    "统计页：点归堆那一行也能筛，和上面的 chip 联动",
+    rowFilter,
   );
 
   js("localStorage.removeItem('guitar.rhythm.v1')");

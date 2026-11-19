@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   addDays,
   DRILLS,
@@ -103,6 +103,9 @@ export default function Practice() {
   const [dropAt, setDropAt] = useState<{ id: string; after: boolean } | null>(null);
   /** 拖到列表末尾那条落点上（v0.107.0）。 */
   const [dropEnd, setDropEnd] = useState(false);
+  /** 手机上长按「拿起来」的那一条（v0.108.0）：触摸屏没有拖拽，长按之后点另一条就挪过去。 */
+  const [heldId, setHeldId] = useState<string | null>(null);
+  const holdTimer = useRef<number | null>(null);
   /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
   const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
 
@@ -198,6 +201,61 @@ export default function Practice() {
     setDropAt(null);
     setDropEnd(false);
   }
+
+  /**
+   * 长按「拿起来」（v0.108.0）。
+   *
+   * 触摸屏上 HTML5 拖拽基本用不了（要长按再拖，浏览器还会抢去做滚动 / 菜单），
+   * 所以手机上换一套动作：按住 420ms 拿起来，再点另一条，那条就插到目标前面。
+   * 按到按钮上不算——不然点「试听」也会误判成长按。
+   */
+  function startHold(id: string, target: EventTarget | null) {
+    if (target instanceof Element && target.closest("button, input, select, textarea, a")) return;
+    cancelHold();
+    holdTimer.current = window.setTimeout(() => {
+      setHeldId(id);
+      holdTimer.current = null;
+    }, 420);
+  }
+
+  function cancelHold() {
+    if (holdTimer.current !== null) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  }
+
+  /** 拿着的那一条插到 `targetId` 前面。 */
+  function moveHeldBefore(targetId: string) {
+    if (!heldId) return;
+    if (heldId === targetId) {
+      setHeldId(null);
+      return;
+    }
+    const ids = extras.map((item) => item.id).filter((id) => id !== heldId);
+    const at = ids.indexOf(targetId);
+    if (at < 0) return;
+    ids.splice(at, 0, heldId);
+    setExtras(reorderExtras(ids, today));
+    setHeldId(null);
+  }
+
+  useEffect(() => cancelHold, []);
+
+  /** 加餐按阶段分组（v0.108.0）：列表顺序不动，只在换组的地方插一行小标题。 */
+  const extraGroups = useMemo(() => {
+    return extras.map((extra, index) => {
+      const key = typeof extra.stage === "number" ? extra.stage : "other";
+      const previous = index === 0 ? null : typeof extras[index - 1].stage === "number" ? extras[index - 1].stage : "other";
+      if (index === 0 || key !== previous) {
+        return {
+          heading:
+            typeof key === "number" ? `第 ${key + 1} 阶段 · ${stageOf(key).name}` : "其他 · 自己存的谱、跟练里切的",
+        };
+      }
+      return null;
+    });
+  }, [extras]);
 
   /** 「换一条」：今天先不练这条，计划会从同一块里挑下一条。 */
   function swapBlock(id: string) {
@@ -713,22 +771,49 @@ export default function Practice() {
               跟练里切出来的那一小节 / 练习库里加的，练完也算今天的量
             </span>
           </h3>
+          {heldId && (
+            <p className="extras-held" role="status">
+              已拿起「{extras.find((item) => item.id === heldId)?.title ?? ""}」：点另一条放到它前面，点自己取消。
+            </p>
+          )}
           <ol className="practice-list practice-extras">
             {extras.map((extra, index) => {
               const extraDone = done.has(extra.id);
               const extraRunning = runningId === extra.id;
+              const heading = extraGroups[index]?.heading;
+              const held = heldId === extra.id;
               return (
+                <Fragment key={extra.id}>
+                  {heading && (
+                    <li className="extras-group">{heading}</li>
+                  )}
                 <li
-                  key={extra.id}
                   id={extra.id}
                   className={`practice-block practice-extra${extraDone ? " done" : ""}${
                     dragId === extra.id ? " dragging" : ""
-                  }`}
+                  }${held ? " held" : ""}`}
                   draggable
                   onDragStart={() => setDragId(extra.id)}
                   onDragEnd={() => {
                     setDragId(null);
                     setDropAt(null);
+                  }}
+                  onPointerDown={(event) => {
+                    if (!heldId) startHold(extra.id, event.target);
+                  }}
+                  onPointerUp={cancelHold}
+                  onPointerCancel={cancelHold}
+                  onPointerLeave={cancelHold}
+                  onClick={(event) => {
+                    if (!heldId) return;
+                    if (event.target instanceof Element && event.target.closest("button, input, select, textarea, a")) {
+                      setHeldId(null);
+                      return;
+                    }
+                    moveHeldBefore(extra.id);
+                  }}
+                  onContextMenu={(event) => {
+                    if (heldId) event.preventDefault();
                   }}
                   onDragOver={(event) => {
                     event.preventDefault();
@@ -817,6 +902,7 @@ export default function Practice() {
                     <span className="pb-drop-line after" aria-hidden="true" />
                   )}
                 </li>
+                </Fragment>
               );
             })}
             {dragId && (
