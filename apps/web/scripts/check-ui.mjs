@@ -2600,6 +2600,43 @@ try {
     `${stageLabel} · ${stageChips} · ${stageFiltered}`,
   );
 
+  // 16d11) v0.111.0：两排筛选叠起来能存成一个「视角」，清掉筛选点回来能复原
+  js(
+    "(() => { const rows = document.querySelectorAll('.hardest-filter'); const deg = [...rows[0].querySelectorAll('.chip')].find(c => c.textContent.includes('第 5 级')); deg?.click(); return 'ok'; })()",
+  );
+  await sleep(350);
+  js(
+    "(() => { const rows = document.querySelectorAll('.hardest-filter'); const st = [...rows[1].querySelectorAll('.chip')].find(c => c.textContent.includes('第 1 阶段')); st?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  js("(() => { document.querySelector('.view-save')?.click(); return 'ok'; })()");
+  await sleep(400);
+  const viewSaved = String(
+    js(
+      "(() => { const pills = [...document.querySelectorAll('.view-pill')].map(p => p.textContent.trim()).join('/'); const stored = (JSON.parse(localStorage.getItem('guitar.stats.views.v1') || '[]')[0] || {}).label || 'none'; const save = document.querySelectorAll('.view-save').length; return `${pills}|${stored}|${save}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const rows = document.querySelectorAll('.hardest-filter'); rows[0].querySelectorAll('.chip')[0]?.click(); rows[1].querySelectorAll('.chip')[0]?.click(); return 'ok'; })()",
+  );
+  await sleep(450);
+  js("(() => { document.querySelector('.view-apply')?.click(); return 'ok'; })()");
+  await sleep(500);
+  const viewRestored = String(
+    js(
+      "(() => { const rows = document.querySelectorAll('.hardest-filter'); const pressed = [...rows].map(row => [...row.querySelectorAll('.chip')].find(c => c.getAttribute('aria-pressed') === 'true')?.textContent.trim() || 'none').join('/'); const items = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join('/'); return `${location.hash}|${pressed}|${items}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    viewSaved === "第 5 级 · 第 1 阶段×|第 5 级 · 第 1 阶段|0" &&
+      viewRestored === "#stats?d=5&s=0|第 5 级/第 1 阶段|s0-crawl",
+    "统计页：两排筛选能存成「视角」，清掉后点一下复原",
+    `${viewSaved} · ${viewRestored}`,
+  );
+  js("localStorage.removeItem('guitar.stats.views.v1')");
+  js("sessionStorage.removeItem('guitar.stats.degree')");
+  js("sessionStorage.removeItem('guitar.stats.stage')");
+
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");
 

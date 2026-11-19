@@ -1079,6 +1079,18 @@ for (const selector of ["select", "input", "textarea"]) {
       (filterLabel.get("color") ?? "") === "var(--muted)",
     `meta=${groupMeta.get("white-space") ?? "未设置"} label=${filterLabel.get("color") ?? "未设置"}`,
   );
+
+  // v0.111.0：存下的视角是一枚圆角胶囊（里面还有删除的 ×）；跟练里「这次还点了另外 N 处」整行够 40 高
+  const viewPill = narrowDecls(".view-pill");
+  const viewDel = narrowDecls(".view-del");
+  const spotsToggle = narrowDecls(".follow-spots-toggle");
+  expect(
+    "存的视角是圆角胶囊、「另外 N 处」那行够 40 高",
+    (viewPill.get("border-radius") ?? "") === "999px" &&
+      parseFloat(viewDel.get("min-height") ?? "0") >= 40 &&
+      parseFloat(spotsToggle.get("min-height") ?? "0") >= 40,
+    `pill=${viewPill.get("border-radius") ?? "未设置"} del=${viewDel.get("min-height") ?? "未设置"} spots=${spotsToggle.get("min-height") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

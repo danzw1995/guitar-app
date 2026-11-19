@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Tab } from "@guitar/core";
 import { METERS, SUBDIVISION_LABEL, sliceTab, type Subdivision } from "@guitar/core";
-import { degreesOf } from "../lib/degrees";
+import { degreeName, degreesOf } from "../lib/degrees";
 import { useMetronome } from "../hooks/useMetronome";
 import { useAudioVolume, volumeLabel } from "../lib/audio-bus";
 import { loadRhythm } from "../lib/storage";
@@ -87,14 +87,21 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   const [seconds, setSeconds] = useState(0);
   const [volume, setVolume] = useAudioVolume();
   /** 记录成绩之后显示的那一句（含「最卡的一级」）。 */
-  const [done, setDone] = useState<{ bpm: number; hardest: FollowHardest | null } | null>(null);
+  const [done, setDone] = useState<{
+    bpm: number;
+    hardest: FollowHardest | null;
+    spots: FollowHardest[];
+  } | null>(null);
   /** 点级数方块单独去练的次数：点得最多的那一处就是「最卡的」。 */
   const hardRef = useRef(new Map<string, FollowHardest>());
   const loopPassRef = useRef(0);
   /** 上次记成绩时留下的「最卡的一处」：练到那一小节时提醒一下（v0.101.0）。 */
   const remembered = useMemo(() => loadRhythm()[target.id]?.hardest ?? null, [target.id]);
-  const [sliceSaved, setSliceSaved] = useState(false);
-  const [planSaved, setPlanSaved] = useState(false);
+  /** 这一次记录过成绩的那几处（v0.111.0）：一次跟练可能点了不止一小节，按处记状态。 */
+  const [savedSpots, setSavedSpots] = useState<string[]>([]);
+  const [planSpots, setPlanSpots] = useState<string[]>([]);
+  /** 「这次还点了另外 N 处」要不要展开（v0.111.0）：默认收起，先看最卡的那一处。 */
+  const [spotsOpen, setSpotsOpen] = useState(false);
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -138,6 +145,11 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     };
   }
 
+  /** 一处「卡住的地方」的键：同一小节里不同级数算两处（v0.111.0）。 */
+  function spotKey(hit: FollowHardest): string {
+    return `${hit.bar}-${hit.degree}`;
+  }
+
   function saveHardestBar(hit: FollowHardest): void {
     const { tab, title } = sliceOf(hit);
     addScore({
@@ -148,7 +160,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
       meter: `${tab.beatsPerBar}/4`,
       bpm,
     });
-    setSliceSaved(true);
+    setSavedSpots((list) => (list.includes(spotKey(hit)) ? list : [...list, spotKey(hit)]));
     window.dispatchEvent(new Event("guitar:scores"));
   }
 
@@ -156,7 +168,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   function addHardestToPlan(hit: FollowHardest): void {
     const { tab, title } = sliceOf(hit);
     addExtra({ title, tab, meter: `${tab.beatsPerBar}/4`, bpm });
-    setPlanSaved(true);
+    setPlanSpots((list) => (list.includes(spotKey(hit)) ? list : [...list, spotKey(hit)]));
     window.dispatchEvent(new Event("guitar:plan"));
   }
 
@@ -219,12 +231,21 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     return best;
   }
 
+  /** 这一次点过的所有处，按点得多的在前（v0.111.0）。 */
+  function spotsSoFar(): FollowHardest[] {
+    return [...hardRef.current.values()]
+      .filter((item) => item.count > 0)
+      .sort((a, b) => b.count - a.count || a.bar - b.bar || b.degree - a.degree);
+  }
+
   function finish() {
     // 这一遍没点过方块时退回「上次记下的那一处」（v0.101.0）：
     // 不然「把第 N 小节存成练习」只在点过方块的这一遍里才有，等于白做。
-    const hardest = hardestSoFar() ?? remembered;
+    const spots = spotsSoFar();
+    const hardest = spots[0] ?? remembered;
     onFinish({ bpm, minutes: Math.max(1, Math.round(seconds / 60)), hardest: hardest ?? undefined });
-    setDone({ bpm, hardest });
+    setDone({ bpm, hardest, spots });
+    setSpotsOpen(false);
     stop();
     setSeconds(0);
   }
@@ -239,8 +260,9 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     setLoopTo(target.tab.bars);
     setLoopOn(false);
     setDone(null);
-    setSliceSaved(false);
-    setPlanSaved(false);
+    setSavedSpots([]);
+    setPlanSpots([]);
+    setSpotsOpen(false);
     hardRef.current.clear();
     loopPassRef.current = 0;
     stop();
@@ -539,7 +561,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
           <p className="follow-done-text">
             记下了：{done.bpm} BPM
             {done.hardest
-              ? ` · 这段最卡的是第 ${done.hardest.bar} 小节第 ${done.hardest.degree} 级（${done.hardest.name}），点了 ${done.hardest.count} 次`
+              ? ` · 这段最卡的是第 ${done.hardest.bar} 小节${degreeName(done.hardest.degree)}（${done.hardest.name}），点了 ${done.hardest.count} 次`
               : " · 这一段没有单独去练哪一小节"}
           </p>
           {done.hardest ? (
@@ -548,22 +570,67 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
                 type="button"
                 className="btn-quiet"
                 onClick={() => saveHardestBar(done.hardest!)}
-                disabled={sliceSaved}
+                disabled={savedSpots.includes(spotKey(done.hardest))}
               >
-                {sliceSaved ? "已存进「我的谱」" : `把第 ${done.hardest.bar} 小节存成练习`}
+                {savedSpots.includes(spotKey(done.hardest))
+                  ? "已存进「我的谱」"
+                  : `把第 ${done.hardest.bar} 小节存成练习`}
               </button>
               <button
                 type="button"
                 className="btn-quiet"
                 onClick={() => addHardestToPlan(done.hardest!)}
-                disabled={planSaved}
+                disabled={planSpots.includes(spotKey(done.hardest))}
               >
-                {planSaved ? "已加进今日计划" : "加进今日计划"}
+                {planSpots.includes(spotKey(done.hardest)) ? "已加进今日计划" : "加进今日计划"}
               </button>
               <span className="follow-done-note">
                 存成练习的会进「我的谱」（能单独试听、跟练、导出）；加进计划的会出现在
                 「练习」页最上面，练完也算今天的量。
               </span>
+            </div>
+          ) : null}
+
+          {/* 这一次点了不止一处（v0.111.0）：其余几处收在下面，按小节分组，一处一份按钮 */}
+          {done.spots.length > 1 ? (
+            <div className="follow-spots">
+              <button
+                type="button"
+                className="follow-spots-toggle"
+                aria-expanded={spotsOpen}
+                onClick={() => setSpotsOpen((open) => !open)}
+              >
+                <span>这次还点了另外 {done.spots.length - 1} 处</span>
+                <span className="follow-spots-go">{spotsOpen ? "收起" : "展开"}</span>
+              </button>
+              {spotsOpen ? (
+                <ol className="follow-spot-list">
+                  {done.spots.slice(1).map((spot) => (
+                    <li key={spotKey(spot)} className="follow-spot">
+                      <span className="follow-spot-where">
+                        第 {spot.bar} 小节 · {degreeName(spot.degree)}（{spot.name}）
+                      </span>
+                      <span className="follow-spot-count">点了 {spot.count} 次</span>
+                      <button
+                        type="button"
+                        className="btn-quiet"
+                        onClick={() => saveHardestBar(spot)}
+                        disabled={savedSpots.includes(spotKey(spot))}
+                      >
+                        {savedSpots.includes(spotKey(spot)) ? "已存" : "存成练习"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-quiet"
+                        onClick={() => addHardestToPlan(spot)}
+                        disabled={planSpots.includes(spotKey(spot))}
+                      >
+                        {planSpots.includes(spotKey(spot)) ? "已加进计划" : "加进计划"}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
             </div>
           ) : null}
         </div>

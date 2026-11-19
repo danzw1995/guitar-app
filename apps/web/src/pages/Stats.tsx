@@ -31,6 +31,8 @@ import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../l
 import { loadPatterns } from "../lib/patterns";
 import { loadExtras } from "../lib/plan";
 import { fmt, fmtSpan } from "../lib/format";
+import { loadViews, removeView, saveView, type StatsView } from "../lib/stats-views";
+import { degreeName } from "../lib/degrees";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
 
@@ -39,32 +41,41 @@ const WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "�
 const WEEK_KIND_LABEL = { practice: "练习页的关卡", follow: "跟练", rhythm: "节奏页的条目" } as const;
 /** 「按级数筛」的那一个数字存在哪儿（v0.109.0）：地址栏 + 一个会话级的备份键。 */
 const DEGREE_FILTER_KEY = "guitar.stats.degree";
+/** 按阶段筛的值（v0.111.0）：和级数一样两头都写，`?s=1`。 */
+const STAGE_FILTER_KEY = "guitar.stats.stage";
 
-/** 读筛选：地址栏 `#stats?d=5` 优先（刷新 / 分享都还在），否则读这次会话留下的那个数。 */
-function readDegreeFilter(): number | null {
-  const fromHash = Number(parseHash(window.location.hash)?.query.d ?? "");
-  if (Number.isInteger(fromHash) && fromHash >= 1 && fromHash <= 7) return fromHash;
-  const stored = Number(window.sessionStorage.getItem(DEGREE_FILTER_KEY) ?? "");
-  if (Number.isInteger(stored) && stored >= 1 && stored <= 7) return stored;
-  return null;
+/** 读筛选：地址栏 `#stats?d=5&s=1` 优先（刷新 / 分享都还在），否则读这次会话留下的数。 */
+function readFilter(param: string, sessionKey: string, min: number, max: number): number | null {
+  // 注意不能直接 Number(...)：阶段的最小值是 0，而 Number("") === 0，
+  // 「没存过」会被读成「按第 1 阶段筛」，点一下那个 chip 反而把筛选关掉（v0.111.0 踩过）。
+  const pick = (raw: string | null | undefined): number | null => {
+    if (raw === null || raw === undefined || raw.trim() === "") return null;
+    const value = Number(raw);
+    return Number.isInteger(value) && value >= min && value <= max ? value : null;
+  };
+  return pick(parseHash(window.location.hash)?.query[param]) ?? pick(window.sessionStorage.getItem(sessionKey));
 }
 
 /**
- * 写筛选（v0.109.0）。
+ * 写筛选（v0.109.0 / v0.111.0 加了阶段）。
  *
  * 地址栏用 `replaceState`：点 chip 不该往历史里塞一条记录（后退键会变成一步步退筛选）。
  * 地址栏不是统计页时（说明用户已经在别的页面）就不动它，只更新 sessionStorage——
- * 从练习页点回「统计」时 Tab 会把 hash 换成 `#stats`，那时靠这一个数还原。
+ * 从练习页点回「统计」时 Tab 会把 hash 换成 `#stats`，那时靠这两个数还原。
  */
-function saveDegreeFilter(value: number | null): void {
-  if (value === null) window.sessionStorage.removeItem(DEGREE_FILTER_KEY);
-  else window.sessionStorage.setItem(DEGREE_FILTER_KEY, String(value));
+function saveFilters(degree: number | null, stage: number | null): void {
+  if (degree === null) window.sessionStorage.removeItem(DEGREE_FILTER_KEY);
+  else window.sessionStorage.setItem(DEGREE_FILTER_KEY, String(degree));
+  if (stage === null) window.sessionStorage.removeItem(STAGE_FILTER_KEY);
+  else window.sessionStorage.setItem(STAGE_FILTER_KEY, String(stage));
 
   const route = parseHash(window.location.hash);
   if (!route || route.tab !== "stats") return;
   const query = { ...route.query };
-  if (value === null) delete query.d;
-  else query.d = String(value);
+  if (degree === null) delete query.d;
+  else query.d = String(degree);
+  if (stage === null) delete query.s;
+  else query.s = String(stage);
   const search = new URLSearchParams(query).toString();
   const next = `#stats${route.target ? `/${route.target}` : ""}${search ? `?${search}` : ""}`;
   if (window.location.hash !== next) window.history.replaceState(null, "", next);
@@ -240,6 +251,38 @@ export default function Stats() {
   const todayExtras = loadExtras(today);
   const todayDoneIds = new Set(practiceLog[today]?.done ?? []);
   const extrasDone = todayExtras.filter((extra) => todayDoneIds.has(extra.id)).length;
+  /**
+   * 加餐的完成度按阶段拆一行（v0.111.0）。
+   *
+   * 总数 `1/3` 说明不了「哪一块还欠着」；阶段取 `PlanExtra.stage`（当天有效），
+   * 老计划里没这个字段的用名字回查 `DRILLS`，再查不到就归「其他」。
+   */
+  const extrasByStage = (() => {
+    const map = new Map<number | "other", { done: number; total: number }>();
+    for (const extra of todayExtras) {
+      const stage =
+        typeof extra.stage === "number"
+          ? extra.stage
+          : DRILLS.find((drill) => drill.name === extra.title)?.stage;
+      const key = stage === undefined ? "other" : stage;
+      const cell = map.get(key) ?? { done: 0, total: 0 };
+      cell.total += 1;
+      if (todayDoneIds.has(extra.id)) cell.done += 1;
+      map.set(key, cell);
+    }
+    return [...map.entries()]
+      .sort((a, b) => {
+        if (a[0] === "other") return 1;
+        if (b[0] === "other") return -1;
+        return a[0] - b[0];
+      })
+      .map(([stage, cell]) => ({
+        stage,
+        done: cell.done,
+        total: cell.total,
+        label: stage === "other" ? "其他" : `第 ${stage + 1} 阶段`,
+      }));
+  })();
 
   /**
    * 加餐一共练了多久、分在哪些阶段（v0.107.0）。
@@ -273,13 +316,20 @@ export default function Stats() {
     .join(" · ");
 
   // 按级数筛「最卡的条目」（v0.107.0）：null = 全部
-  // 筛选状态写进地址栏（`#stats?d=5`，v0.109.0），另外在 sessionStorage 里留一份——
-  // 从统计页跳到练习页再点回来时地址栏被 Tab 用 replaceState 换成了 `#stats`，
+  // 筛选状态写进地址栏（`#stats?d=5&s=1`，v0.109.0 起、v0.111.0 加了阶段），另外在 sessionStorage
+  // 里留一份——从统计页跳到练习页再点回来时地址栏被 Tab 用 replaceState 换成了 `#stats`，
   // 只靠 hash 会丢；两处都写，回来时先读 hash、退回去读 sessionStorage。
-  const [degreeFilter, setDegreeFilter] = useState<number | null>(() => readDegreeFilter());
+  const [degreeFilter, setDegreeFilter] = useState<number | null>(() =>
+    readFilter("d", DEGREE_FILTER_KEY, 1, 7),
+  );
+  const [stageFilter, setStageFilter] = useState<number | null>(() =>
+    readFilter("s", STAGE_FILTER_KEY, 0, 5),
+  );
   useEffect(() => {
-    saveDegreeFilter(degreeFilter);
-  }, [degreeFilter]);
+    saveFilters(degreeFilter, stageFilter);
+  }, [degreeFilter, stageFilter]);
+  // 存下的视角（v0.111.0）：把「第 5 级 · 第 1 阶段」这种组合存一排，一键复原
+  const [views, setViews] = useState<StatsView[]>(() => loadViews());
 
   // 最卡的地方（v0.100.0）：跟练时点级数方块单练过的那一小节，按级数归堆。
   // 只看最近 7 天练过的条目——一个月前那条不该影响这周的结论。
@@ -291,7 +341,6 @@ export default function Stats() {
   // 按阶段筛（v0.110.0）：练习库里的直接按 id 查，加餐 / 跟练里切出来的记录靠 `title` 回查 DRILLS。
   const stageById = new Map(DRILLS.map((drill) => [drill.id, drill.stage]));
   const stageByName = new Map(DRILLS.map((drill) => [drill.name, drill.stage]));
-  const [stageFilter, setStageFilter] = useState<number | null>(null);
   const hardSorted = Object.entries(rhythm)
     .filter(([, record]) => record.hardest && record.lastAt && record.lastAt >= addDays(today, -6))
     .map(([id, record]) => ({
@@ -318,6 +367,21 @@ export default function Stats() {
         (stageFilter === null || item.stage === stageFilter),
     )
     .slice(0, 4);
+  // 存下的视角（v0.111.0）：现在这组筛选有没有存过 / 能不能存
+  const hasFilter = degreeFilter !== null || stageFilter !== null;
+  const currentSaved = views.some(
+    (view) => view.degree === degreeFilter && view.stage === stageFilter,
+  );
+  function applyView(view: StatsView): void {
+    setDegreeFilter(view.degree);
+    setStageFilter(view.stage);
+  }
+  function storeCurrentView(): void {
+    setViews(saveView(degreeFilter, stageFilter));
+  }
+  function dropView(id: string): void {
+    setViews(removeView(id));
+  }
 
   // 听辨（扒谱页「练」）：`guitar.ear.v1` 存最好成绩、轮数与四种题型各自的正确率
   const ear = loadEar();
@@ -500,6 +564,11 @@ export default function Stats() {
               {extrasDone}/{todayExtras.length}
             </b>
             <span>今天自己加的（加餐）</span>
+            {extrasByStage.length > 1 && (
+              <span className="stat-note">
+                {extrasByStage.map((row) => `${row.label} ${row.done}/${row.total}`).join(" · ")}
+              </span>
+            )}
           </button>
         )}
       </div>
@@ -870,7 +939,7 @@ export default function Stats() {
                   setDegreeFilter((current) => (current === item.degree ? null : item.degree))
                 }
               >
-                第 {item.degree} 级
+                {degreeName(item.degree)}
               </button>
             ))}
           </div>
@@ -905,6 +974,42 @@ export default function Stats() {
           {stageFilter !== null && (
             <p className="hardest-note">上面的归堆还是全部数据；阶段只筛下面按条目的列表。</p>
           )}
+          {/* 存下的视角（v0.111.0）：两排叠起来的组合存一次，以后一键复原 */}
+          {(hasFilter || views.length > 0) && (
+            <div className="hardest-views">
+              <span className="hardest-filter-label">存的视角</span>
+              {views.map((view) => (
+                <span
+                  key={view.id}
+                  className={`view-pill${
+                    view.degree === degreeFilter && view.stage === stageFilter ? " on" : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    className="view-apply"
+                    aria-pressed={view.degree === degreeFilter && view.stage === stageFilter}
+                    onClick={() => applyView(view)}
+                  >
+                    {view.label}
+                  </button>
+                  <button
+                    type="button"
+                    className="view-del"
+                    aria-label={`删掉视角「${view.label}」`}
+                    onClick={() => dropView(view.id)}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {hasFilter && !currentSaved && (
+                <button type="button" className="chip view-save" onClick={storeCurrentView}>
+                  存下这组筛选
+                </button>
+              )}
+            </div>
+          )}
           <ul className="hardest-list">
             {hardTally.slice(0, 5).map((item) => (
               <li
@@ -925,7 +1030,8 @@ export default function Stats() {
                   title={degreeFilter === item.degree ? "取消筛选" : `只看第 ${item.degree} 级`}
                 >
                   <b>
-                    第 {item.degree} 级{item.name ? `（${item.name}）` : ""}
+                    {degreeName(item.degree)}
+                    {item.name ? `（${item.name}）` : ""}
                   </b>
                   <span className="muted">
                     {item.items} 条练习里单独练过 {item.count} 次
@@ -949,7 +1055,7 @@ export default function Stats() {
                   >
                     <span>{titleOf(item.id)}</span>
                     <span className="muted">
-                      第 {item.hardest.bar} 小节第 {item.hardest.degree} 级
+                      第 {item.hardest.bar} 小节{degreeName(item.hardest.degree)}
                       {item.hardest.name ? `（${item.hardest.name}）` : ""} · 单独练过{" "}
                       {item.hardest.count} 次
                     </span>

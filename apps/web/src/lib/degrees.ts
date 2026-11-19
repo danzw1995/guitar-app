@@ -49,3 +49,13 @@ export function degreeLine(tab: Tab): string {
   if (degrees.length < 2) return "";
   return degrees.map((row) => (row.degree > 0 ? String(row.degree) : "?" )).join(" → ");
 }
+
+/**
+ * 级数写成一句人话（v0.111.0）。
+ *
+ * 级数 0 表示调外音——直接印「第 0 级」读起来像编号漏了，跟练方块上一直写的是「调外音」，
+ * 统计页、跟练回执、切片列表统一走这个函数。
+ */
+export function degreeName(degree: number): string {
+  return degree > 0 ? `第 ${degree} 级` : "调外音";
+}
