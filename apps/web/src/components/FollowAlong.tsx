@@ -37,6 +37,8 @@ export interface FollowAlongProps {
   best?: number;
   onFinish: (result: { bpm: number; minutes: number; hardest?: FollowHardest }) => void;
   onClose: () => void;
+  /** 点了「只练这一处」（v0.113.0）：父组件记一笔「这一处单独练过几次」。 */
+  onSpot?: (spot: FollowHardest) => void;
 }
 
 function clock(seconds: number): string {
@@ -69,7 +71,7 @@ function defaultSubdivision(tab: Tab, meter: string): Subdivision {
  * 起始速度、每次加多少、几小节加一次都可以改——每个人的"卡点"不一样，
  * 有人 86 就能稳，有人得从 60 起。
  */
-export default function FollowAlong({ target, best, onFinish, onClose }: FollowAlongProps) {
+export default function FollowAlong({ target, best, onFinish, onClose, onSpot }: FollowAlongProps) {
   const meter = target.meter ?? "4/4";
   const [startBpm, setStartBpm] = useState(target.bpm[0]);
   const [bpm, setBpm] = useState(target.bpm[0]);
@@ -102,6 +104,14 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   const [planSpots, setPlanSpots] = useState<string[]>([]);
   /** 「这次还点了另外 N 处」要不要展开（v0.111.0）：默认收起，先看最卡的那一处。 */
   const [spotsOpen, setSpotsOpen] = useState(false);
+  /**
+   * 每一处「只练这一处」单独练过几次（v0.113.0）。
+   * 跟 `hardest.count`（跟练里点级数方块的次数）分开：一个是「卡住了」，一个是「回头单独练」。
+   */
+  const [spotTimes, setSpotTimes] = useState<Record<string, number>>(() => {
+    const rows = loadRhythm()[target.id]?.spots ?? [];
+    return Object.fromEntries(rows.map((row) => [`${row.bar}-${row.degree}`, row.times]));
+  });
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -181,6 +191,12 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
   function practiceSpot(hit: FollowHardest): void {
     setDone(null);
     setSpotsOpen(false);
+    // 只练这一处也算一次「回头练」（v0.113.0）：记在父组件的 records 里，面板上也立刻显示
+    onSpot?.(hit);
+    setSpotTimes((before) => {
+      const key = `${hit.bar}-${hit.degree}`;
+      return { ...before, [key]: (before[key] ?? 0) + 1 };
+    });
     // 只是把循环挪过去，不再给「卡了几次」加一——刚才那一下已经记过了
     practiceBar(hit.bar, false);
   }
@@ -276,6 +292,9 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     setSavedSpots([]);
     setPlanSpots([]);
     setSpotsOpen(false);
+    // 换练习时把「单独练过几次」也换成这一条的
+    const rows = loadRhythm()[target.id]?.spots ?? [];
+    setSpotTimes(Object.fromEntries(rows.map((row) => [`${row.bar}-${row.degree}`, row.times])));
     hardRef.current.clear();
     loopPassRef.current = 0;
     stop();
@@ -624,6 +643,11 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
                         第 {spot.bar} 小节 · {degreeName(spot.degree)}（{spot.name}）
                       </span>
                       <span className="follow-spot-count">点了 {spot.count} 次</span>
+                      {(spotTimes[spotKey(spot)] ?? 0) > 0 ? (
+                        <span className="follow-spot-times">
+                          单独练过 {spotTimes[spotKey(spot)]} 次
+                        </span>
+                      ) : null}
                       <button
                         type="button"
                         className="btn-quiet"

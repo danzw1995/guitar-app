@@ -191,6 +191,20 @@ export interface RhythmRecord {
    * 记录走的话，统计页「最卡的地方」过一天就只剩一串 id。
    */
   title?: string;
+  /**
+   * 单独练过的几处（v0.113.0）：跟练回执里点「只练这一处」时记一次。
+   * 和 `hardest.count`（跟练时点级数方块的次数）分开算——一个是「卡」，一个是「回头练」。
+   */
+  spots?: SpotDrill[];
+}
+
+/** 某一处（第 N 小节第 M 级）单独练过几次。 */
+export interface SpotDrill {
+  bar: number;
+  degree: number;
+  name: string;
+  times: number;
+  lastAt: string;
 }
 
 export type RhythmRecords = Record<string, RhythmRecord>;
@@ -232,14 +246,42 @@ function parseHardest(
   };
 }
 
-function parseRecords(raw: unknown): RhythmRecords {  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+/** 单独练过的那几处（v0.113.0）：只收站得住的行，按时间倒序留最近 6 处。 */
+function parseSpots(value: unknown): SpotDrill[] {
+  if (!Array.isArray(value)) return [];
+  const spots: SpotDrill[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const item = raw as Record<string, unknown>;
+    const bar = Number(item.bar);
+    const degree = Number(item.degree);
+    const times = Number(item.times);
+    if (!Number.isFinite(bar) || bar < 1) continue;
+    if (!Number.isFinite(degree) || degree < 0 || degree > 7) continue;
+    if (!Number.isFinite(times) || times < 1) continue;
+    spots.push({
+      bar: Math.round(bar),
+      degree: Math.round(degree),
+      name: typeof item.name === "string" ? item.name : "",
+      times: Math.round(times),
+      lastAt: typeof item.lastAt === "string" ? item.lastAt : "",
+    });
+  }
+  return spots.slice(-6);
+}
+
+function parseRecords(raw: unknown): RhythmRecords {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
 
   const records: RhythmRecords = {};
   for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
     if (!value || typeof value !== "object" || Array.isArray(value)) continue;
     const item = value as Record<string, unknown>;
     const bestBpm = Number(item.bestBpm);
-    if (!Number.isFinite(bestBpm) || bestBpm <= 0) continue;
+    const spots = parseSpots(item.spots);
+    // 只单独练过某一处、还没整段练完时 bestBpm 会是 0——这种记录也得留住（v0.113.0）
+    if (!Number.isFinite(bestBpm) || bestBpm < 0) continue;
+    if (bestBpm <= 0 && spots.length === 0) continue;
     records[id] = {
       bestBpm: Math.round(bestBpm),
       sessions: Number.isFinite(Number(item.sessions)) ? Number(item.sessions) : 1,
@@ -247,6 +289,7 @@ function parseRecords(raw: unknown): RhythmRecords {  if (!raw || typeof raw !==
       lastAt: typeof item.lastAt === "string" ? item.lastAt : "",
       history: parseHistory(item.history),
       hardest: parseHardest(item.hardest),
+      ...(spots.length ? { spots } : {}),
       ...(typeof item.title === "string" && item.title.trim()
         ? { title: item.title.trim() }
         : {}),

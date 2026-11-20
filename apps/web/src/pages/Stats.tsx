@@ -31,7 +31,7 @@ import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../l
 import { loadPatterns } from "../lib/patterns";
 import { loadExtras } from "../lib/plan";
 import { fmt, fmtSpan } from "../lib/format";
-import { loadViews, removeView, saveView, viewLabel, type StatsView } from "../lib/stats-views";
+import { loadViews, promoteView, removeView, saveView, viewLabel, type StatsView } from "../lib/stats-views";
 import { degreeName } from "../lib/degrees";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
@@ -378,6 +378,8 @@ export default function Stats() {
   function applyView(view: StatsView): void {
     setDegreeFilter(view.degree);
     setStageFilter(view.stage);
+    // 用过的视角挪到最后 = 渲染时排在最前（v0.113.0）
+    setViews(promoteView(view.id));
   }
   function storeCurrentView(): void {
     setViews(saveView(degreeFilter, stageFilter, viewName));

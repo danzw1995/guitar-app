@@ -1103,6 +1103,19 @@ for (const selector of ["select", "input", "textarea"]) {
       parseFloat(viewName.get("height") ?? "0") >= 40,
     `set=${setPill.get("border-radius") ?? "未设置"} set-name=${setName.get("height") ?? "未设置"} view-name=${viewName.get("height") ?? "未设置"}`,
   );
+
+  // v0.113.0：「只加没练过的」是按下去的开关；「单独练过 N 次」用强调色、字号比正文小
+  const setSkip = narrowDecls(".set-skip");
+  const setSkipOn = narrowDecls('.set-skip[aria-pressed="true"]');
+  const spotTimes = narrowDecls(".follow-spot-times");
+  expect(
+    "「只加没练过的」是按下去的开关，「单独练过 N 次」用强调色",
+    parseFloat(setSkip.get("min-height") ?? "0") >= 40 &&
+      (setSkipOn.get("color") ?? "") === "var(--accent)" &&
+      (spotTimes.get("color") ?? "") === "var(--accent)" &&
+      parseFloat(spotTimes.get("font-size") ?? "0") <= 12,
+    `skip=${setSkip.get("min-height") ?? "未设置"} on=${setSkipOn.get("color") ?? "未设置"} times=${spotTimes.get("color") ?? "未设置"}/${spotTimes.get("font-size") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

@@ -1885,6 +1885,22 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 12px;
 }
 
+/* 「只加没练过的」开关（v0.113.0）：语气和 chip 一样，按下去记住状态 */
+.set-skip {
+  min-height: 40px;
+  font-size: 12px;
+}
+
+.set-skip[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.follow-spot-times {
+  color: var(--accent);
+  font-size: 11px;
+}
+
 .plan-sets-note {
   margin: -2px 0 10px;
   color: var(--muted);

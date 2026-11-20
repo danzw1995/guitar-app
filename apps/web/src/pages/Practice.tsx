@@ -53,7 +53,9 @@ import { earTrendOf } from "../lib/ear-trend";
 import {
   addExtra,
   loadClosedGroups,
+  loadDoneTitles,
   loadExtras,
+  markDoneTitle,
   moveExtra,
   removeExtra,
   reorderExtras,
@@ -61,6 +63,7 @@ import {
   type PlanExtra,
 } from "../lib/plan";
 import {
+  applyItems,
   applySet,
   loadSets,
   removeSet,
@@ -137,6 +140,15 @@ export default function Practice() {
   const [namingSet, setNamingSet] = useState(false);
   const [setName, setSetName] = useState("");
   const [setNotice, setSetNotice] = useState("");
+  /** 点组合时只加今天还没练过的那几条（v0.113.0）。 */
+  const [skipDone, setSkipDone] = useState(false);
+
+  /** 今天已经练过的加餐标题：「只加没练过的」按标题比（组合里存的是标题 + 谱，没有 id）。 */
+  const doneTitles = useMemo(() => {
+    const done = new Set(log[today]?.done ?? []);
+    const fromPlan = extras.filter((extra) => done.has(extra.id)).map((extra) => extra.title);
+    return new Set([...loadDoneTitles(today), ...fromPlan]);
+  }, [log, today, extras]);
   /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
   const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
 
@@ -227,13 +239,21 @@ export default function Practice() {
   }
 
   /** 点一套组合：把里面还没加过的加进今天的计划（v0.112.0）。 */
+  /** 点一套组合：把里面还没加过的加进今天的计划（v0.112.0）；「只加没练过的」时先筛掉今天已勾的（v0.113.0） */
   function useSet(set: PlanSet) {
-    const added = applySet(set, today);
+    const items = skipDone
+      ? set.items.filter((item) => !doneTitles.has(item.title))
+      : set.items;
+    const added = applyItems(items, today);
     setExtras(loadExtras(today));
     window.dispatchEvent(new Event("guitar:plan"));
+    if (skipDone && added === 0) {
+      setSetNotice(`「${set.name}」里今天已经都练过了。`);
+      return;
+    }
     setSetNotice(
       added > 0
-        ? `「${set.name}」加进来 ${added} 条。`
+        ? `「${set.name}」加进来 ${added} 条${skipDone ? "（跳过今天练过的）" : ""}。`
         : `「${set.name}」里的几条今天已经在计划里了。`,
     );
   }
@@ -385,6 +405,39 @@ export default function Practice() {
     setUndo(null);
   }
 
+  /**
+   * 「只练这一处」记一笔（v0.113.0）：写在跟练那条记录的 `spots` 里。
+   *
+   * 不另开一条 `p:spot-…` 记录——那串 id 会跑进统计页的曲线和「最卡的地方」，
+   * 名字解析不出来，只剩一串机器名。挂在原来那条下面，语义也对：这一处单独练过几次。
+   */
+  function recordSpot(hit: { bar: number; degree: number; name: string }) {
+    if (!follow) return;
+    const previous = records[follow.id];
+    const spots = [...(previous?.spots ?? [])];
+    const index = spots.findIndex((spot) => spot.bar === hit.bar && spot.degree === hit.degree);
+    if (index >= 0) {
+      spots[index] = { ...spots[index], times: spots[index].times + 1, lastAt: today };
+    } else {
+      spots.push({ bar: hit.bar, degree: hit.degree, name: hit.name, times: 1, lastAt: today });
+    }
+    const next: RhythmRecords = {
+      ...records,
+      [follow.id]: {
+        bestBpm: previous?.bestBpm ?? 0,
+        sessions: previous?.sessions ?? 0,
+        minutes: previous?.minutes ?? 0,
+        lastAt: previous?.lastAt ?? today,
+        ...(previous?.history ? { history: previous.history } : {}),
+        ...(previous?.hardest ? { hardest: previous.hardest } : {}),
+        ...(previous?.title ? { title: previous.title } : {}),
+        spots: spots.slice(-6),
+      },
+    };
+    setRecords(next);
+    saveRhythm(next);
+  }
+
   function recordFollow(result: {
     bpm: number;
     minutes: number;
@@ -428,6 +481,7 @@ export default function Practice() {
           stage,
         }),
       );
+      markDoneTitle(follow.name, today);
     }
   }
 
@@ -538,6 +592,8 @@ export default function Practice() {
   function finishExtra(extra: PlanExtra) {
     const used = seconds > 0 ? Math.max(1, Math.round(seconds / 60)) : 1;
     commit(recordBlock(log, today, { drill: extra.id, minutes: used, stage }));
+    // 记一笔「今天练过这一条」（v0.113.0）：删掉之后点组合还能知道它练过
+    markDoneTitle(extra.title, today);
     setRunningId(null);
     setSeconds(0);
   }
@@ -645,6 +701,7 @@ export default function Practice() {
           target={follow}
           best={best(follow.id)}
           onFinish={recordFollow}
+          onSpot={recordSpot}
           onClose={() => setFollow(null)}
         />
       )}
@@ -905,6 +962,17 @@ export default function Practice() {
                 onClick={() => setNamingSet(true)}
               >
                 存成组合
+              </button>
+            )}
+            {sets.length > 0 && (
+              <button
+                type="button"
+                className="chip set-skip"
+                aria-pressed={skipDone}
+                title="点组合时把今天已经勾掉的那几条跳过去"
+                onClick={() => setSkipDone(!skipDone)}
+              >
+                只加没练过的
               </button>
             )}
             {namingSet && (

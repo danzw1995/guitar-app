@@ -115,6 +115,18 @@ export function renameView(id: string, name: string): StatsView[] {
   return persist(loadViews().map((view) => (view.id === id ? { ...view, name: clean } : view)));
 }
 
+/**
+ * 用了一次就把这枚胶囊挪到最后（v0.113.0）——列表按 `addedAt` 升序渲染，
+ * 于是「常用的排在前面」不用另外存一个顺序字段，用过的自然浮上来。
+ */
+export function promoteView(id: string): StatsView[] {
+  const views = loadViews();
+  const target = views.find((view) => view.id === id);
+  if (!target) return views;
+  const rest = views.filter((view) => view.id !== id);
+  return persist([...rest, { ...target, addedAt: Date.now() }].slice(-MAX_VIEWS));
+}
+
 export function removeView(id: string): StatsView[] {
   return persist(loadViews().filter((view) => view.id !== id));
 }

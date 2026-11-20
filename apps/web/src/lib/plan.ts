@@ -187,3 +187,35 @@ export function saveClosedGroups(closed: Record<string, boolean>): void {
     // 存不下就还是默认全展开，不影响练习。
   }
 }
+
+/**
+ * 今天练过的那几条的**标题**（v0.113.0）。
+ *
+ * 为什么按标题记：一套组合里存的是标题 + 谱（没有 id），而加餐的 id 是运行时生成的；
+ * 另外「练过」的那一条可能已经从计划里删掉了，光看计划表就丢了。只留当天，第二天清空。
+ */
+const DONE_KEY = "guitar.plan.done.v1";
+
+export function loadDoneTitles(today: string = dateKeyOf(new Date())): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DONE_KEY) ?? "{}") as unknown;
+    if (!raw || typeof raw !== "object") return [];
+    const record = raw as Record<string, unknown>;
+    if (record.date !== today || !Array.isArray(record.titles)) return [];
+    return record.titles.filter((title): title is string => typeof title === "string");
+  } catch {
+    return [];
+  }
+}
+
+export function markDoneTitle(title: string, today: string = dateKeyOf(new Date())): void {
+  const clean = title.trim();
+  if (!clean) return;
+  const titles = loadDoneTitles(today);
+  if (titles.includes(clean)) return;
+  try {
+    localStorage.setItem(DONE_KEY, JSON.stringify({ date: today, titles: [...titles, clean] }));
+  } catch {
+    // 存不下就下次多点一条，不影响练习。
+  }
+}
