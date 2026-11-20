@@ -475,7 +475,21 @@ export default function Stats() {
       if (best) setWeak.set(name, best);
     }
   }
+  // 每套组合「练了几次 / 平均 BPM」（v0.120.0）：只算有记录的条目，没练过的不拉低平均。
+  const setMeta = new Map<string, { sessions: number; bpmSum: number; bpmCount: number }>();
+  for (const record of Object.values(rhythm)) {
+    const name = record.title ? setNameByTitle.get(record.title) : undefined;
+    if (!name) continue;
+    const stat = setMeta.get(name) ?? { sessions: 0, bpmSum: 0, bpmCount: 0 };
+    stat.sessions += record.sessions ?? 0;
+    if (record.bestBpm > 0) {
+      stat.bpmSum += record.bestBpm;
+      stat.bpmCount += 1;
+    }
+    setMeta.set(name, stat);
+  }
   // 存下的视角（v0.111.0）：现在这组筛选有没有存过 / 能不能存
+  const currentWeak = setFilter ? (setWeak.get(setFilter)?.degree ?? 0) : 0;
   const hasFilter =
     degreeFilter !== null || stageFilter !== null || spotFilter !== 0 || setFilter !== null;
   const currentSaved = views.some(
@@ -483,7 +497,8 @@ export default function Stats() {
       view.degree === degreeFilter &&
       view.stage === stageFilter &&
       (view.spot ?? 0) === spotFilter &&
-      (view.set ?? "") === (setFilter ?? ""),
+      (view.set ?? "") === (setFilter ?? "") &&
+      (view.weak ?? 0) === currentWeak,
   );
   // 起名字（v0.112.0）：点「存下这组筛选」先出一个输入框，名字可以不填（不填就用拼出来的那串）
   const [namingView, setNamingView] = useState(false);
@@ -497,7 +512,17 @@ export default function Stats() {
     setViews(promoteView(view.id));
   }
   function storeCurrentView(): void {
-    setViews(saveView(degreeFilter, stageFilter, spotFilter, viewName, setFilter ?? ""));
+    setViews(
+      saveView(
+        degreeFilter,
+        stageFilter,
+        spotFilter,
+        viewName,
+        setFilter ?? "",
+        currentWeak,
+        setFilter ? (setWeak.get(setFilter)?.count ?? 0) : 0,
+      ),
+    );
     setNamingView(false);
     setViewName("");
   }
@@ -1151,7 +1176,8 @@ export default function Stats() {
                   view.degree === degreeFilter &&
                   view.stage === stageFilter &&
                   (view.spot ?? 0) === spotFilter &&
-                  (view.set ?? "") === (setFilter ?? "");
+                  (view.set ?? "") === (setFilter ?? "") &&
+                  (view.weak ?? 0) === currentWeak;
                 return (
                   <span key={view.id} className={`view-pill${on ? " on" : ""}`}>
                     <button
@@ -1190,7 +1216,13 @@ export default function Stats() {
                     className="view-name"
                     value={viewName}
                     maxLength={12}
-                    placeholder={viewLabel(degreeFilter, stageFilter, spotFilter, setFilter ?? "")}
+                    placeholder={viewLabel(
+                      degreeFilter,
+                      stageFilter,
+                      spotFilter,
+                      setFilter ?? "",
+                      currentWeak,
+                    )}
                     aria-label="给这组筛选起个名字（可以不填）"
                     onChange={(event) => setViewName(event.target.value)}
                     onKeyDown={(event) => {
@@ -1259,32 +1291,54 @@ export default function Stats() {
                   <Fragment key={item.id}>
                     {groupHead && (
                       <li className="hardest-set">
-                        <button
-                          type="button"
-                          className="hardest-set-btn"
-                          data-hardest-set={groupHead}
-                          aria-pressed={setFilter === groupHead}
-                          onClick={() =>
-                            setSetFilter(setFilter === groupHead ? null : groupHead)
-                          }
-                          title={
-                            setFilter === groupHead
-                              ? "取消筛选，看全部条目"
-                              : `只看「${groupHead}」这一套`
-                          }
-                        >
-                          <span className="hardest-set-name">组合 · {groupHead}</span>
+                        <span className="hardest-set-row">
+                          <button
+                            type="button"
+                            className="hardest-set-btn"
+                            data-hardest-set={groupHead}
+                            aria-pressed={setFilter === groupHead}
+                            onClick={() =>
+                              setSetFilter(setFilter === groupHead ? null : groupHead)
+                            }
+                            title={
+                              setFilter === groupHead
+                                ? "取消筛选，看全部条目"
+                                : `只看「${groupHead}」这一套`
+                            }
+                          >
+                            <span className="hardest-set-name">组合 · {groupHead}</span>
+                          </button>
                           {setWeak.get(groupHead) && (
-                            <span className="hardest-set-weak">
+                            <button
+                              type="button"
+                              className="hardest-set-weak"
+                              aria-pressed={degreeFilter === setWeak.get(groupHead)!.degree}
+                              onClick={() => {
+                                const weak = setWeak.get(groupHead)!.degree;
+                                setDegreeFilter(degreeFilter === weak ? null : weak);
+                              }}
+                              title="只看这一级——这一套里卡得最多的那一级"
+                            >
                               整体卡在
                               {degreeName(setWeak.get(groupHead)!.degree)} ×
                               {setWeak.get(groupHead)!.count} 次
+                            </button>
+                          )}
+                          {setMeta.get(groupHead) && setMeta.get(groupHead)!.sessions > 0 && (
+                            <span className="hardest-set-meta">
+                              练了 {setMeta.get(groupHead)!.sessions} 次
+                              {setMeta.get(groupHead)!.bpmCount > 0
+                                ? ` · 平均 ${Math.round(
+                                    setMeta.get(groupHead)!.bpmSum /
+                                      setMeta.get(groupHead)!.bpmCount,
+                                  )} BPM`
+                                : ""}
                             </span>
                           )}
                           <span className="hardest-set-go">
                             {setFilter === groupHead ? "已筛" : "只看这套"} →
                           </span>
-                        </button>
+                        </span>
                       </li>
                     )}
                     <li data-hardest-item={item.id}>

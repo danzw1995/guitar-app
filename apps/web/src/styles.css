@@ -2383,7 +2383,8 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
 }
 /* 同一套组合的小标题（v0.117.0）：条目本来就相邻，这行把「为什么相邻」说明白。
-   v0.118.0 起它是个按钮：点一下只看这一套。 */
+   v0.118.0 起「组合 · 名字」是按钮：点一下只看这一套；
+   v0.120.0 起「整体卡在第几级」也是按钮（筛那一级），后面还跟一句练了几次 / 平均 BPM。 */
 .hardest-set {
   margin: 6px 0 0;
   color: var(--muted);
@@ -2393,11 +2394,16 @@ button, select, input { font: inherit; color: inherit; }
 .hardest-set:first-child {
   margin-top: 0;
 }
+.hardest-set-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+}
 .hardest-set-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
   min-height: 40px;
   padding: 0;
   border: 0;
@@ -2416,10 +2422,32 @@ button, select, input { font: inherit; color: inherit; }
   opacity: 0;
   transition: opacity 120ms ease-out;
 }
-/* 这套整体卡在哪一级（v0.119.0）：一次性的线索，别抢「只看这套」的注意力 */
+/* 这套整体卡在哪一级（v0.119.0 / 可点 v0.120.0）：一次性的线索，别抢「只看这套」的注意力 */
 .hardest-set-weak {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 120ms ease-out;
+}
+.hardest-set-weak:hover {
+  border-color: var(--line);
+  color: var(--text);
+}
+.hardest-set-weak[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* 这套练了几次 / 平均多快（v0.120.0） */
+.hardest-set-meta {
   color: var(--muted);
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
   opacity: 0.85;
 }
 .hardest-set-btn:hover .hardest-set-go,

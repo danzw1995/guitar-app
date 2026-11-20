@@ -1188,6 +1188,16 @@ for (const selector of ["select", "input", "textarea"]) {
       (setWeakDecl.get("color") ?? "") === "var(--muted)",
     `font-size=${setWeakDecl.get("font-size") ?? "未设置"} color=${setWeakDecl.get("color") ?? "未设置"}`,
   );
+
+  // v0.120.0：它是能点的（够 40 高、按下去用强调色），旁边那句「练了几次」是等宽灰字
+  const setMetaDecl = narrowDecls(".hardest-set-meta");
+  expect(
+    "「整体卡在第几级」能点，旁边「练了几次」用等宽数字",
+    (setWeakDecl.get("min-height") ?? "") === "40px" &&
+      (setWeakDecl.get("cursor") ?? "") === "pointer" &&
+      (setMetaDecl.get("font-variant-numeric") ?? "") === "tabular-nums",
+    `min-height=${setWeakDecl.get("min-height") ?? "未设置"} cursor=${setWeakDecl.get("cursor") ?? "未设置"} num=${setMetaDecl.get("font-variant-numeric") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

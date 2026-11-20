@@ -3003,7 +3003,7 @@ try {
   await sleep(400);
   const setStored = String(
     js(
-      "(() => { const list = JSON.parse(localStorage.getItem('guitar.stats.views.v1') ?? '[]'); const last = list[list.length - 1] ?? {}; return `${last.set ?? ''}|${last.name ?? ''}|${last.label ?? ''}`; })()",
+      "(() => { const list = JSON.parse(localStorage.getItem('guitar.stats.views.v1') ?? '[]'); const last = list[list.length - 1] ?? {}; return `${last.set ?? ''}|${last.name ?? ''}|${last.label ?? ''}|${last.weak ?? 0}|${last.weakCount ?? 0}`; })()",
     ),
   ).replace(/^"|"$/g, "");
   js("location.hash = '#stats'");
@@ -3018,11 +3018,32 @@ try {
   ).replace(/^"|"$/g, "");
   log(
     setHash.includes("g=") &&
-      setPlaceholder === "「早课」这套" &&
-      setStored === "早课|早课短板|「早课」这套" &&
+      setPlaceholder === "「早课」这套 · 整体卡在第 1 级" &&
+      setStored === "早课|早课短板|「早课」这套 · 整体卡在第 1 级|1|9" &&
       setRestored === "true|2|true",
     "统计页：只看这套也能存进视角，刷新后还在",
     `${setHash} · ${setPlaceholder} · ${setStored} · ${setRestored}`,
+  );
+
+  // 16d23) v0.120.0：这行里的「整体卡在第 1 级」也是按钮，点一下直接筛那一级；
+  // 后面还跟一句「练了 N 次 · 平均 M BPM」
+  const setMetaText = String(
+    js("(() => document.querySelector('.hardest-set-meta')?.textContent?.trim() ?? '')()"),
+  ).replace(/^"|"$/g, "");
+  js("document.querySelector('.hardest-set-weak')?.click()");
+  await sleep(400);
+  const weakFiltered = String(
+    js(
+      "(() => { const weak = document.querySelector('.hardest-set-weak'); const pressed = weak?.getAttribute('aria-pressed') ?? ''; const rows = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join(','); return `${pressed}|${rows}|${location.hash.includes('d=1')}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("location.hash = '#stats'");
+  await ab(["reload"]);
+  await sleep(700);
+  log(
+    setMetaText === "练了 2 次 · 平均 70 BPM" && weakFiltered === "true|p:extra-m1|true",
+    "统计页：「整体卡在第几级」点一下就筛那一级，旁边写着练了几次、平均多快",
+    `${setMetaText} · ${weakFiltered}`,
   );
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");
