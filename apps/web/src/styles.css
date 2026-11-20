@@ -2432,7 +2432,15 @@ button, select, input { font: inherit; color: inherit; }
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
   font-size: 12px;
+  cursor: pointer;
+}
+.hardest-set-note .btn-quiet:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 .hardest-jump:hover .hardest-go,
 .hardest-jump:focus-visible .hardest-go {
