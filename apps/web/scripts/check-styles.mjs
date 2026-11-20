@@ -1210,6 +1210,20 @@ for (const selector of ["select", "input", "textarea"]) {
       (setGoNarrow.get("opacity") ?? "") === "1",
     `display=${setRowNarrow.get("display") ?? "未设置"} cols=${setRowNarrow.get("grid-template-columns") ?? "未设置"} go=${setGoNarrow.get("opacity") ?? "未设置"}`,
   );
+
+  // v0.122.0：视角胶囊上顺手写「练了 N 次」（10px，不能挤掉名字）；
+  // 手机上把「整体卡在」省掉，换成「第 5 级 ×6 次」——用 ::after + attr(data-short)，
+  // 完整那句仍留在 DOM 里，读屏和既有断言都不受影响
+  const viewMetaDecl = narrowDecls(".view-meta");
+  const weakLongNarrow = narrowDecls(".hardest-set-weak-long");
+  const weakShortNarrow = narrowDecls(".hardest-set-weak::after");
+  expect(
+    "视角胶囊上写着练了几次，手机上的弱点换成短文案",
+    (viewMetaDecl.get("font-size") ?? "") === "10px" &&
+      (weakLongNarrow.get("display") ?? "") === "none" &&
+      String(weakShortNarrow.get("content") ?? "").includes("attr(data-short)"),
+    `meta=${viewMetaDecl.get("font-size") ?? "未设置"} long=${weakLongNarrow.get("display") ?? "未设置"} short=${weakShortNarrow.get("content") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

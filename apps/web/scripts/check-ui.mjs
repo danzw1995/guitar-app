@@ -3013,7 +3013,7 @@ try {
   await sleep(400);
   const setRestored = String(
     js(
-      "(() => { const rows = [...document.querySelectorAll('[data-hardest-item]')].length; const pressed = document.querySelector('.hardest-set-btn')?.getAttribute('aria-pressed') ?? ''; return `${location.hash.includes('g=')}|${rows}|${pressed}`; })()",
+      "(() => { const rows = [...document.querySelectorAll('[data-hardest-item]')].length; const pressed = document.querySelector('.hardest-set-btn')?.getAttribute('aria-pressed') ?? ''; const meta = document.querySelector('.view-meta')?.textContent?.trim() ?? ''; return `${location.hash.includes('g=')}|${rows}|${pressed}|${meta}`; })()",
     ),
   ).replace(/^"|"$/g, "");
   log(
@@ -3021,7 +3021,7 @@ try {
       setPlaceholder === "「早课」这套 · 整体卡在第 1 级 · 练了 2 次 · 平均 70 BPM" &&
       setStored ===
         "早课|早课短板|「早课」这套 · 整体卡在第 1 级 · 练了 2 次 · 平均 70 BPM|1|9" &&
-      setRestored === "true|2|true",
+      setRestored === "true|2|true|练了 2 次",
     "统计页：只看这套也能存进视角，刷新后还在",
     `${setHash} · ${setPlaceholder} · ${setStored} · ${setRestored}`,
   );
@@ -3055,10 +3055,26 @@ try {
     "统计页：「整体卡在第几级」点一下筛这一级、再点退回这套全部，旁边写着练了几次、平均多快",
     `${setMetaText} · ${weakFiltered} · ${weakBacked}`,
   );
+  // 16d24) v0.122.0：不在计划里的两条卡得一样狠，练得快的排前面
+  js(
+    "(() => { const key = 'guitar.rhythm.v1'; const store = JSON.parse(localStorage.getItem(key) ?? '{}'); const base = { sessions: 1, minutes: 1, lastAt: '2026-11-20', hardest: { bar: 1, degree: 3, name: 'E', count: 6 } }; store['p:extra-slow'] = { ...base, bestBpm: 60, title: '慢的' }; store['p:extra-fast'] = { ...base, bestBpm: 100, title: '快的' }; localStorage.setItem(key, JSON.stringify(store)); return 'ok'; })()",
+  );
+  js("location.hash = '#stats'");
+  js("(() => { for (const key of ['degree', 'stage', 'spot', 'set']) sessionStorage.removeItem(`guitar.stats.${key}`); return 'ok'; })()");
+  await ab(["reload"]);
+  await sleep(900);
+  const bpmOrder = String(
+    js(
+      "(() => { const ids = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item') ?? ''); const fast = ids.indexOf('p:extra-fast'); const slow = ids.indexOf('p:extra-slow'); return `${fast >= 0}|${slow >= 0}|${fast < slow}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    bpmOrder === "true|true|true",
+    "统计页：不在计划里的条目卡得一样狠时，练得快的排前面",
+    bpmOrder,
+  );
+
   js("localStorage.removeItem('guitar.rhythm.v1')");
-  js("localStorage.removeItem('guitar.plan.v1')");
-  js("localStorage.removeItem('guitar.rhythm.v1')");
-  js("localStorage.removeItem('guitar.plan.sets.v1')");
   js("localStorage.removeItem('guitar.plan.sets.v1')");
   js("localStorage.removeItem('guitar.plan.done.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");

@@ -431,6 +431,7 @@ export default function Stats() {
         setName: record.title ? setNameByTitle.get(record.title) : undefined,
         // 「单独练过几次」（v0.114.0）：跟练里点「只练这一处」的次数合计，和 hardest.count 不是一回事
         spots: (record.spots ?? []).reduce((sum, spot) => sum + spot.times, 0),
+        bpm: record.bestBpm ?? 0,
         stage: stageById.get(bare) ?? (record.title ? stageByName.get(record.title) ?? null : null),
       };
     })
@@ -439,10 +440,14 @@ export default function Stats() {
       const setA = a.setRank ?? Number.MAX_SAFE_INTEGER;
       const setB = b.setRank ?? Number.MAX_SAFE_INTEGER;
       if (setA !== setB) return setA - setB;
-      if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
-      if (a.order !== undefined) return -1;
-      if (b.order !== undefined) return 1;
-      return b.hardest.count - a.hardest.count;
+      if (a.order !== undefined && b.order !== undefined && a.order !== b.order) {
+        return a.order - b.order;
+      }
+      if (a.order !== undefined && b.order === undefined) return -1;
+      if (b.order !== undefined && a.order === undefined) return 1;
+      // 卡得一样狠的时候，先看练得快的（v0.122.0）：同样的次数，快的说明这一步已经吃透了
+      if (b.hardest.count !== a.hardest.count) return b.hardest.count - a.hardest.count;
+      return b.bpm - a.bpm;
     });
   const stageOptions = [...new Set(hardSorted.map((item) => item.stage))]
     .filter((stage): stage is number => typeof stage === "number")
@@ -1197,6 +1202,11 @@ export default function Stats() {
                     >
                       {view.name ?? view.label}
                     </button>
+                    {(view.sessions ?? 0) > 0 && (
+                      <span className="view-meta" aria-hidden="true">
+                        练了 {view.sessions} 次
+                      </span>
+                    )}
                     <button
                       type="button"
                       className="view-del"
@@ -1338,10 +1348,15 @@ export default function Stats() {
                                 setDegreeFilter(weak);
                               }}
                               title="只看这一级——这一套里卡得最多的那一级"
+                              data-short={`第 ${setWeak.get(groupHead)!.degree} 级 ×${
+                                setWeak.get(groupHead)!.count
+                              } 次`}
                             >
-                              整体卡在
-                              {degreeName(setWeak.get(groupHead)!.degree)} ×
-                              {setWeak.get(groupHead)!.count} 次
+                              <span className="hardest-set-weak-long">
+                                整体卡在
+                                {degreeName(setWeak.get(groupHead)!.degree)} ×
+                                {setWeak.get(groupHead)!.count} 次
+                              </span>
                             </button>
                           )}
                           {setMeta.get(groupHead) && setMeta.get(groupHead)!.sessions > 0 && (
