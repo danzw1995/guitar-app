@@ -60,6 +60,13 @@ import {
   saveClosedGroups,
   type PlanExtra,
 } from "../lib/plan";
+import {
+  applySet,
+  loadSets,
+  removeSet,
+  saveSet,
+  type PlanSet,
+} from "../lib/plan-sets";
 import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
@@ -125,6 +132,11 @@ export default function Practice() {
   /** 手机上长按「拿起来」的那一条（v0.108.0）：触摸屏没有拖拽，长按之后点另一条就挪过去。 */
   const [heldId, setHeldId] = useState<string | null>(null);
   const holdTimer = useRef<number | null>(null);
+  /** 存下来的「今天这一套」（v0.112.0）：明天点一下就能把同一套加回计划。 */
+  const [sets, setSets] = useState<PlanSet[]>(() => loadSets());
+  const [namingSet, setNamingSet] = useState(false);
+  const [setName, setSetName] = useState("");
+  const [setNotice, setSetNotice] = useState("");
   /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
   const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
 
@@ -192,6 +204,43 @@ export default function Practice() {
   /** 加餐调顺序（v0.105.0）：↑↓ 给键盘和手机，拖拽给鼠标。 */
   function moveExtraBy(id: string, delta: number) {
     setExtras(moveExtra(id, delta, today));
+  }
+
+  /** 把「今天这一套」存成一个组合（v0.112.0）：同名覆盖，最多 5 套。 */
+  function storeSet() {
+    if (extras.length === 0) return;
+    setSets(
+      saveSet(
+        setName,
+        extras.map((extra) => ({
+          title: extra.title,
+          tab: extra.tab,
+          meter: extra.meter,
+          bpm: extra.bpm,
+          ...(typeof extra.stage === "number" ? { stage: extra.stage } : {}),
+        })),
+      ),
+    );
+    setNamingSet(false);
+    setSetName("");
+    setSetNotice("存好了——明天点一下这套，就能把同样的几条加回计划。");
+  }
+
+  /** 点一套组合：把里面还没加过的加进今天的计划（v0.112.0）。 */
+  function useSet(set: PlanSet) {
+    const added = applySet(set, today);
+    setExtras(loadExtras(today));
+    window.dispatchEvent(new Event("guitar:plan"));
+    setSetNotice(
+      added > 0
+        ? `「${set.name}」加进来 ${added} 条。`
+        : `「${set.name}」里的几条今天已经在计划里了。`,
+    );
+  }
+
+  function dropSet(id: string) {
+    setSets(removeSet(id));
+    setSetNotice("");
   }
 
   /** 拖到另一条身上：按落点重排，落点之后的整体后移。`after` 决定插在它前面还是后面。 */
@@ -812,10 +861,11 @@ export default function Practice() {
         })}
       </ol>
 
-      {extras.length > 0 && (
+      {/* 加餐为空时也留着这一块：存过的组合还得能点回来（v0.112.0） */}
+      {(extras.length > 0 || sets.length > 0) && (
         <>
           <h3 className="practice-h3" id="practice-extras">
-            今天自己加的 {extras.length} 条
+            {extras.length > 0 ? `今天自己加的 ${extras.length} 条` : "今天还没自己加"}
             <span className="practice-h3-hint">
               跟练里切出来的那一小节 / 练习库里加的，练完也算今天的量
             </span>
@@ -825,6 +875,73 @@ export default function Practice() {
               已拿起「{extras.find((item) => item.id === heldId)?.title ?? ""}」：点另一条放到它前面，点自己取消。
             </p>
           )}
+          {/* 存成组合（v0.112.0）：计划表每天清空，这套安排明天大概还想要 */}
+          <div className="plan-sets">
+            <span className="plan-sets-label">今天这一套</span>
+            {sets.map((set) => (
+              <span key={set.id} className="set-pill">
+                <button
+                  type="button"
+                  className="set-apply"
+                  onClick={() => useSet(set)}
+                  title={`把「${set.name}」里的 ${set.items.length} 条加进今天的计划`}
+                >
+                  {set.name}
+                </button>
+                <button
+                  type="button"
+                  className="set-del"
+                  aria-label={`删掉组合「${set.name}」`}
+                  onClick={() => dropSet(set.id)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {!namingSet && extras.length > 0 && (
+              <button
+                type="button"
+                className="chip set-save"
+                onClick={() => setNamingSet(true)}
+              >
+                存成组合
+              </button>
+            )}
+            {namingSet && (
+              <span className="set-namer">
+                <input
+                  type="text"
+                  className="set-name"
+                  value={setName}
+                  maxLength={12}
+                  placeholder={`${extras.length} 条`}
+                  aria-label="给这一套起个名字"
+                  onChange={(event) => setSetName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") storeSet();
+                    if (event.key === "Escape") {
+                      setNamingSet(false);
+                      setSetName("");
+                    }
+                  }}
+                />
+                <button type="button" className="chip set-save" onClick={storeSet}>
+                  存
+                </button>
+                <button
+                  type="button"
+                  className="btn-quiet set-cancel"
+                  onClick={() => {
+                    setNamingSet(false);
+                    setSetName("");
+                  }}
+                >
+                  取消
+                </button>
+              </span>
+            )}
+          </div>
+          {setNotice && <p className="plan-sets-note">{setNotice}</p>}
           <ol className="practice-list practice-extras">
             {extras.map((extra, index) => {
               const extraDone = done.has(extra.id);

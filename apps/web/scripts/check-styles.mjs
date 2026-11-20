@@ -1091,6 +1091,18 @@ for (const selector of ["select", "input", "textarea"]) {
       parseFloat(spotsToggle.get("min-height") ?? "0") >= 40,
     `pill=${viewPill.get("border-radius") ?? "未设置"} del=${viewDel.get("min-height") ?? "未设置"} spots=${spotsToggle.get("min-height") ?? "未设置"}`,
   );
+
+  // v0.112.0：「今天这一套」存成的组合也是胶囊；起名字那个输入框够 40 高，手机上点得到
+  const setPill = narrowDecls(".set-pill");
+  const setName = narrowDecls(".set-name");
+  const viewName = narrowDecls(".view-name");
+  expect(
+    "存成组合是圆角胶囊，起名字的输入框够 40 高",
+    (setPill.get("border-radius") ?? "") === "999px" &&
+      parseFloat(setName.get("height") ?? "0") >= 40 &&
+      parseFloat(viewName.get("height") ?? "0") >= 40,
+    `set=${setPill.get("border-radius") ?? "未设置"} set-name=${setName.get("height") ?? "未设置"} view-name=${viewName.get("height") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

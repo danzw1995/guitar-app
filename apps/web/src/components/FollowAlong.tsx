@@ -109,7 +109,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     : null;
 
   /** 点级数方块：只反复练那一小节（v0.98.0）。没在跑就顺手开始。 */
-  function practiceBar(wanted: number): void {
+  function practiceBar(wanted: number, count = true): void {
     const next = Math.min(Math.max(1, wanted), totalBars);
     setLoopOn(true);
     setLoopFrom(next);
@@ -119,7 +119,7 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     const row = degrees.find(
       (item) => Math.floor(item.beat / target.tab.beatsPerBar) + 1 === next,
     );
-    if (row) {
+    if (row && count) {
       const key = String(next);
       const previous = hardRef.current.get(key);
       hardRef.current.set(key, {
@@ -170,6 +170,19 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
     addExtra({ title, tab, meter: `${tab.beatsPerBar}/4`, bpm });
     setPlanSpots((list) => (list.includes(spotKey(hit)) ? list : [...list, spotKey(hit)]));
     window.dispatchEvent(new Event("guitar:plan"));
+  }
+
+  /**
+   * 回执里直接「只练这一处」（v0.112.0）。
+   *
+   * 以前要单练某小节得回上面的级数方块再点一下；回执关掉就看不到那些方块的当前状态了，
+   * 手指上还记着刚才是哪一小节，所以在这里给一个入口：收起回执、把 A-B 循环挪到这一小节。
+   */
+  function practiceSpot(hit: FollowHardest): void {
+    setDone(null);
+    setSpotsOpen(false);
+    // 只是把循环挪过去，不再给「卡了几次」加一——刚才那一下已经记过了
+    practiceBar(hit.bar, false);
   }
 
   const { running, bar, pass, active, countingIn, start, stop } = useMetronome({
@@ -611,6 +624,14 @@ export default function FollowAlong({ target, best, onFinish, onClose }: FollowA
                         第 {spot.bar} 小节 · {degreeName(spot.degree)}（{spot.name}）
                       </span>
                       <span className="follow-spot-count">点了 {spot.count} 次</span>
+                      <button
+                        type="button"
+                        className="btn-quiet"
+                        onClick={() => practiceSpot(spot)}
+                        title="把这一小节单独反复练，不用再回上面点方块"
+                      >
+                        只练这一处
+                      </button>
                       <button
                         type="button"
                         className="btn-quiet"

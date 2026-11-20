@@ -31,7 +31,7 @@ import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../l
 import { loadPatterns } from "../lib/patterns";
 import { loadExtras } from "../lib/plan";
 import { fmt, fmtSpan } from "../lib/format";
-import { loadViews, removeView, saveView, type StatsView } from "../lib/stats-views";
+import { loadViews, removeView, saveView, viewLabel, type StatsView } from "../lib/stats-views";
 import { degreeName } from "../lib/degrees";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
@@ -372,12 +372,21 @@ export default function Stats() {
   const currentSaved = views.some(
     (view) => view.degree === degreeFilter && view.stage === stageFilter,
   );
+  // 起名字（v0.112.0）：点「存下这组筛选」先出一个输入框，名字可以不填（不填就用拼出来的那串）
+  const [namingView, setNamingView] = useState(false);
+  const [viewName, setViewName] = useState("");
   function applyView(view: StatsView): void {
     setDegreeFilter(view.degree);
     setStageFilter(view.stage);
   }
   function storeCurrentView(): void {
-    setViews(saveView(degreeFilter, stageFilter));
+    setViews(saveView(degreeFilter, stageFilter, viewName));
+    setNamingView(false);
+    setViewName("");
+  }
+  function cancelNaming(): void {
+    setNamingView(false);
+    setViewName("");
   }
   function dropView(id: string): void {
     setViews(removeView(id));
@@ -974,7 +983,7 @@ export default function Stats() {
           {stageFilter !== null && (
             <p className="hardest-note">上面的归堆还是全部数据；阶段只筛下面按条目的列表。</p>
           )}
-          {/* 存下的视角（v0.111.0）：两排叠起来的组合存一次，以后一键复原 */}
+          {/* 存下的视角（v0.111.0）：两排叠起来的组合存一次，以后一键复原；v0.112.0 起能起名字 */}
           {(hasFilter || views.length > 0) && (
             <div className="hardest-views">
               <span className="hardest-filter-label">存的视角</span>
@@ -989,24 +998,52 @@ export default function Stats() {
                     type="button"
                     className="view-apply"
                     aria-pressed={view.degree === degreeFilter && view.stage === stageFilter}
+                    title={view.name ? `${view.name} · ${view.label}` : view.label}
                     onClick={() => applyView(view)}
                   >
-                    {view.label}
+                    {view.name ?? view.label}
                   </button>
                   <button
                     type="button"
                     className="view-del"
-                    aria-label={`删掉视角「${view.label}」`}
+                    aria-label={`删掉视角「${view.name ?? view.label}」`}
                     onClick={() => dropView(view.id)}
                   >
                     ×
                   </button>
                 </span>
               ))}
-              {hasFilter && !currentSaved && (
-                <button type="button" className="chip view-save" onClick={storeCurrentView}>
+              {hasFilter && !currentSaved && !namingView && (
+                <button
+                  type="button"
+                  className="chip view-save"
+                  onClick={() => setNamingView(true)}
+                >
                   存下这组筛选
                 </button>
+              )}
+              {namingView && (
+                <span className="view-namer">
+                  <input
+                    type="text"
+                    className="view-name"
+                    value={viewName}
+                    maxLength={12}
+                    placeholder={viewLabel(degreeFilter, stageFilter)}
+                    aria-label="给这组筛选起个名字（可以不填）"
+                    onChange={(event) => setViewName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") storeCurrentView();
+                      if (event.key === "Escape") cancelNaming();
+                    }}
+                  />
+                  <button type="button" className="chip view-save" onClick={storeCurrentView}>
+                    存
+                  </button>
+                  <button type="button" className="btn-quiet view-cancel" onClick={cancelNaming}>
+                    取消
+                  </button>
+                </span>
               )}
             </div>
           )}

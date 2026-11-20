@@ -12,12 +12,20 @@ export interface StatsView {
   id: string;
   degree: number | null;
   stage: number | null;
+  /** 系统拼出来的那一串（「第 5 级 · 第 1 阶段」），title 里一直用。 */
   label: string;
+  /** 用户自己起的名字（v0.112.0）；没起就用 label 显示。 */
+  name?: string;
   addedAt: number;
 }
 
 const STORAGE_KEY = "guitar.stats.views.v1";
 const MAX_VIEWS = 5;
+
+/** 名字截到 12 个字——chip 里放不下更长的。 */
+export function cleanViewName(name: string): string {
+  return name.trim().slice(0, 12);
+}
 
 /** 一组筛选叫什么：「第 5 级」「第 1 阶段」「第 5 级 · 第 1 阶段」。 */
 export function viewLabel(degree: number | null, stage: number | null): string {
@@ -47,11 +55,13 @@ function parse(value: unknown): StatsView[] {
     const key = `${degree ?? "-"}|${stage ?? "-"}`;
     if (seen.has(key)) continue;
     seen.add(key);
+    const name = typeof record.name === "string" ? cleanViewName(record.name) : "";
     views.push({
       id,
       degree,
       stage,
       label: viewLabel(degree, stage),
+      ...(name ? { name } : {}),
       addedAt: typeof record.addedAt === "number" ? record.addedAt : 0,
     });
   }
@@ -76,20 +86,33 @@ export function loadViews(): StatsView[] {
   }
 }
 
-/** 存一组筛选；同一组已经存过就原样返回（不重复存）。 */
-export function saveView(degree: number | null, stage: number | null): StatsView[] {
+/** 存一组筛选；同一组已经存过就原样返回（不重复存）。可以顺手起个名字（v0.112.0）。 */
+export function saveView(
+  degree: number | null,
+  stage: number | null,
+  name = "",
+): StatsView[] {
   if (degree === null && stage === null) return loadViews();
   const views = loadViews();
   const exists = views.find((view) => view.degree === degree && view.stage === stage);
   if (exists) return views;
+  const clean = cleanViewName(name);
   const next: StatsView = {
     id: `v-${Date.now().toString(36)}`,
     degree,
     stage,
     label: viewLabel(degree, stage),
+    ...(clean ? { name: clean } : {}),
     addedAt: Date.now(),
   };
   return persist([...views, next].slice(-MAX_VIEWS));
+}
+
+/** 改个名字（v0.112.0）；空名字就当没改。 */
+export function renameView(id: string, name: string): StatsView[] {
+  const clean = cleanViewName(name);
+  if (!clean) return loadViews();
+  return persist(loadViews().map((view) => (view.id === id ? { ...view, name: clean } : view)));
 }
 
 export function removeView(id: string): StatsView[] {

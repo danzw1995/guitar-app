@@ -2611,6 +2611,11 @@ try {
   await sleep(400);
   js("(() => { document.querySelector('.view-save')?.click(); return 'ok'; })()");
   await sleep(400);
+  // v0.112.0：点「存下这组筛选」先出输入框；不填名字直接回车，就存成系统拼出来的那串
+  js(
+    "(() => { document.querySelector('.view-name')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(400);
   const viewSaved = String(
     js(
       "(() => { const pills = [...document.querySelectorAll('.view-pill')].map(p => p.textContent.trim()).join('/'); const stored = (JSON.parse(localStorage.getItem('guitar.stats.views.v1') || '[]')[0] || {}).label || 'none'; const save = document.querySelectorAll('.view-save').length; return `${pills}|${stored}|${save}`; })()",
@@ -2636,6 +2641,84 @@ try {
   js("localStorage.removeItem('guitar.stats.views.v1')");
   js("sessionStorage.removeItem('guitar.stats.degree')");
   js("sessionStorage.removeItem('guitar.stats.stage')");
+
+  // 16d12) v0.112.0：「存下这组筛选」先出输入框，起完名字胶囊上就是自己的名字，tooltip 里带系统标签
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const rec = { 's0-crawl': { bestBpm: 80, sessions: 1, minutes: 2, lastAt: today, hardest: { bar: 1, degree: 5, name: 'G', count: 5 } } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(rec)); localStorage.removeItem('guitar.stats.views.v1'); sessionStorage.removeItem('guitar.stats.degree'); sessionStorage.removeItem('guitar.stats.stage'); location.hash = '#stats'; return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const rows = document.querySelectorAll('.hardest-filter'); const deg = [...rows[0].querySelectorAll('.chip')].find(c => c.textContent.includes('第 5 级')); deg?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  js("(() => { document.querySelector('.view-save')?.click(); return 'ok'; })()");
+  await sleep(400);
+  const namerUi = String(
+    js(
+      "(() => { const input = document.querySelector('.view-name'); return `${Boolean(input)}|${input?.getAttribute('placeholder') ?? ''}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const input = document.querySelector('.view-name'); if (!input) return 'none'; const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; set.call(input, '我的弱项'); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(500);
+  const viewNamed = String(
+    js(
+      "(() => { const apply = document.querySelector('.view-apply'); const stored = (JSON.parse(localStorage.getItem('guitar.stats.views.v1') || '[]')[0] || {}).name || 'none'; return `${apply?.textContent.trim() ?? ''}|${apply?.getAttribute('title') ?? ''}|${stored}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    namerUi === "true|第 5 级" && viewNamed === "我的弱项|我的弱项 · 第 5 级|我的弱项",
+    "统计页：视角能起自己的名字，系统地记着它是什么",
+    `${namerUi} · ${viewNamed}`,
+  );
+  js("localStorage.removeItem('guitar.stats.views.v1')");
+
+  // 16d13) v0.112.0：练习页「今天这一套」——存成组合，清空加餐之后点一下还能加回来
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const tab = { beatsPerBar: 4, bars: 1, bpm: [90, 90], caption: '甲', notes: [{ s: 3, f: 0, beat: 0, dur: 4 }] }; localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-s1', date: today, title: '存组合用的一条', tab, meter: '4/4', bpm: 90, addedAt: Date.now(), stage: 0 }])); localStorage.removeItem('guitar.plan.sets.v1'); location.hash = '#practice'; return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(900);
+  js("(() => { document.querySelector('.set-save')?.click(); return 'ok'; })()");
+  await sleep(350);
+  const setNameUi = String(
+    js("(() => { const input = document.querySelector('.set-name'); return `${Boolean(input)}|${input?.getAttribute('maxLength') ?? ''}`; })()"),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const input = document.querySelector('.set-name'); if (!input) return 'none'; const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set; set.call(input, '热身后两小节'); input.dispatchEvent(new Event('input', { bubbles: true })); input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(500);
+  const setSaved = String(
+    js(
+      "(() => { const pill = document.querySelector('.set-pill'); const stored = JSON.parse(localStorage.getItem('guitar.plan.sets.v1') || '[]')[0] || {}; const note = document.querySelector('.plan-sets-note')?.textContent?.trim() ?? ''; return `${pill?.textContent.trim() ?? ''}|${stored.name ?? ''}|${stored.items?.length ?? 0}|${note}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("localStorage.removeItem('guitar.plan.v1')");
+  await ab(["reload"]);
+  await sleep(900);
+  const afterClear = String(
+    js(
+      "(() => `${document.querySelectorAll('.practice-extra').length}|${document.querySelectorAll('.set-apply').length}`)()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("(() => { document.querySelector('.set-apply')?.click(); return 'ok'; })()");
+  await sleep(700);
+  const afterApply = String(
+    js(
+      "(() => `${document.querySelectorAll('.practice-extra').length}|${[...document.querySelectorAll('.practice-extra h4')].map(h => h.textContent.trim()).join(',')}`)()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    setNameUi === "true|12" &&
+      setSaved.startsWith("热身后两小节×|热身后两小节|1|") &&
+      afterClear === "0|1" &&
+      afterApply === "1|存组合用的一条",
+    "练习页：今天这一套能存成组合，清空之后点一下加回来",
+    `${setNameUi} · ${setSaved} · ${afterClear} → ${afterApply}`,
+  );
+  js("localStorage.removeItem('guitar.plan.sets.v1')");
 
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");

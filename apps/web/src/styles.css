@@ -1792,6 +1792,104 @@ button, select, input { font: inherit; color: inherit; }
   min-height: 40px;
   font-size: 12px;
 }
+
+/* 起名字（v0.112.0）：点「存下这组筛选」先出一个输入框，不填就用拼出来的那串 */
+.view-namer,
+.set-namer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-name,
+.set-name {
+  width: 132px;
+  height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.view-name:focus-visible,
+.set-name:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.view-cancel,
+.set-cancel {
+  min-height: 40px;
+  font-size: 12px;
+}
+
+/* 「今天这一套」存成的组合（v0.112.0）：和统计页的视角长一样，胶囊 + 右端 × */
+.plan-sets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.plan-sets-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.set-pill {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--panel-2);
+}
+
+.set-pill:hover {
+  border-color: var(--accent);
+}
+
+.set-apply {
+  min-height: 40px;
+  padding: 0 10px 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.set-del {
+  min-width: 32px;
+  min-height: 40px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.set-del:hover {
+  color: var(--text);
+}
+
+.set-save {
+  min-height: 40px;
+  font-size: 12px;
+}
+
+.plan-sets-note {
+  margin: -2px 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
 .pb-index {
   width: 22px;
   height: 22px;
