@@ -1215,9 +1215,14 @@ export default function Stats() {
               const last = curve.points[curve.points.length - 1];
               const head = spark.dots[spark.dots.length - 1];
               const practice = curve.id.startsWith("p:");
-              const name = practice
-                ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
-                : nameOf(curve.id);
+              // 加餐的 id 是运行时生成的（`p:extra-<base36>`），`drillNames` 里没有它——
+              // 记录里存了标题就先用标题，否则那一行只剩一串机器名（v0.127.1）
+              const recordTitle = rhythm[curve.id]?.title;
+              const name = recordTitle
+                ? `${recordTitle} · 练习页`
+                : practice
+                  ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
+                  : nameOf(curve.id);
               return (
                 <li key={curve.id} data-curve-id={curve.id}>
                   <span className="curve-name">{name}</span>
