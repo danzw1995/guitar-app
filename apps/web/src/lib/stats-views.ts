@@ -14,6 +14,8 @@ export interface StatsView {
   stage: number | null;
   /** 单独练过几次那排（v0.115.0）：0 = 不限，1 / 3 = 至少那么多次。 */
   spot?: 0 | 1 | 3;
+  /** 「卡了几次」那排（v0.123.0）：0 = 不限，2 / 4 = 至少卡过那么多次。 */
+  count?: 0 | 2 | 4;
   /** 只看某一套组合（v0.119.0）——存的是组合名，不是 id（记录里的 id 是运行时生成的）。 */
   set?: string;
   /**
@@ -50,12 +52,14 @@ export function viewLabel(
   weak = 0,
   sessions = 0,
   avgBpm = 0,
+  count: 0 | 2 | 4 = 0,
 ): string {
   const parts: string[] = [];
   if (set) parts.push(`「${set}」这套`);
   if (degree !== null) parts.push(`第 ${degree} 级`);
   if (stage !== null) parts.push(`第 ${stage + 1} 阶段`);
   if (spot > 0) parts.push(`单独练过 ≥${spot} 次`);
+  if (count > 0) parts.push(`卡过 ≥${count} 次`);
   if (weak > 0) parts.push(`整体卡在第 ${weak} 级`);
   if (sessions > 0) parts.push(`练了 ${sessions} 次`);
   if (avgBpm > 0) parts.push(`平均 ${avgBpm} BPM`);
@@ -65,6 +69,11 @@ export function viewLabel(
 /** 只认 0 / 1 / 3 三个值（v0.115.0）。 */
 function parseSpot(value: unknown): 0 | 1 | 3 {
   return value === 1 || value === 3 ? value : 0;
+}
+
+/** 只认 0 / 2 / 4 三个值（v0.123.0）。 */
+function parseCount(value: unknown): 0 | 2 | 4 {
+  return value === 2 || value === 4 ? value : 0;
 }
 
 /** 组合名截到 12 个字（v0.119.0）——和用户起名字一样长。 */
@@ -96,6 +105,7 @@ function parse(value: unknown): StatsView[] {
         ? (record.stage as number)
         : null;
     const spot = parseSpot(record.spot);
+    const count = parseCount(record.count);
     const set = cleanSet(record.set);
     const weak = parseWeak(record.weak);
     const weakCount = weak > 0 && Number.isInteger(record.weakCount) && (record.weakCount as number) > 0
@@ -109,8 +119,8 @@ function parse(value: unknown): StatsView[] {
       Number.isInteger(record.avgBpm) && (record.avgBpm as number) > 0
         ? (record.avgBpm as number)
         : 0;
-    if (!id || (degree === null && stage === null && spot === 0 && !set)) continue;
-    const key = `${set}|${degree ?? "-"}|${stage ?? "-"}|${spot}|${weak}`;
+    if (!id || (degree === null && stage === null && spot === 0 && count === 0 && !set)) continue;
+    const key = `${set}|${degree ?? "-"}|${stage ?? "-"}|${spot}|${count}|${weak}`;
     if (seen.has(key)) continue;
     seen.add(key);
     const name = typeof record.name === "string" ? cleanViewName(record.name) : "";
@@ -119,10 +129,11 @@ function parse(value: unknown): StatsView[] {
       degree,
       stage,
       spot,
+      ...(count > 0 ? { count } : {}),
       ...(set ? { set } : {}),
       ...(weak > 0 ? { weak, ...(weakCount > 0 ? { weakCount } : {}) } : {}),
       ...(sessions > 0 ? { sessions, ...(avgBpm > 0 ? { avgBpm } : {}) } : {}),
-      label: viewLabel(degree, stage, spot, set, weak, sessions, avgBpm),
+      label: viewLabel(degree, stage, spot, set, weak, sessions, avgBpm, count),
       ...(name ? { name } : {}),
       addedAt: typeof record.addedAt === "number" ? record.addedAt : 0,
     });
@@ -159,9 +170,11 @@ export function saveView(
   weakCount = 0,
   sessions = 0,
   avgBpm = 0,
+  count: 0 | 2 | 4 = 0,
 ): StatsView[] {
   const cleanSetName = cleanSet(set);
-  if (degree === null && stage === null && spot === 0 && !cleanSetName) return loadViews();
+  if (degree === null && stage === null && spot === 0 && count === 0 && !cleanSetName)
+    return loadViews();
   const cleanWeak = parseWeak(weak);
   const views = loadViews();
   const exists = views.find(
@@ -169,6 +182,7 @@ export function saveView(
       view.degree === degree &&
       view.stage === stage &&
       (view.spot ?? 0) === spot &&
+      (view.count ?? 0) === count &&
       (view.set ?? "") === cleanSetName &&
       (view.weak ?? 0) === cleanWeak,
   );
@@ -179,12 +193,13 @@ export function saveView(
     degree,
     stage,
     spot,
+    ...(count > 0 ? { count } : {}),
     ...(cleanSetName ? { set: cleanSetName } : {}),
     ...(cleanWeak > 0
       ? { weak: cleanWeak, ...(weakCount > 0 ? { weakCount } : {}) }
       : {}),
     ...(sessions > 0 ? { sessions, ...(avgBpm > 0 ? { avgBpm } : {}) } : {}),
-    label: viewLabel(degree, stage, spot, cleanSetName, cleanWeak, sessions, avgBpm),
+    label: viewLabel(degree, stage, spot, cleanSetName, cleanWeak, sessions, avgBpm, count),
     ...(clean ? { name: clean } : {}),
     addedAt: Date.now(),
   };

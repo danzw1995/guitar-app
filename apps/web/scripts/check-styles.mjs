@@ -1199,16 +1199,18 @@ for (const selector of ["select", "input", "textarea"]) {
     `min-height=${setWeakDecl.get("min-height") ?? "未设置"} cursor=${setWeakDecl.get("cursor") ?? "未设置"} num=${setMetaDecl.get("font-variant-numeric") ?? "未设置"}`,
   );
 
-  // v0.121.0：手机上那行折成两行（组合 + 只看这套 / 整体弱点 + 练了几次），
-  // 触屏没有 hover，右端那个箭头得一直显形
+  // v0.121.0 折两行 → v0.123.0 并回一行：窄屏用 flex 单行排（挤不下才自动折），
+  // 触屏没有 hover，右端那个箭头得一直显形；「只看这套」四个字在窄屏收起来
   const setRowNarrow = narrowDecls(".hardest-set-row");
   const setGoNarrow = narrowDecls(".hardest-set-go");
+  const setGoLongNarrow = narrowDecls(".hardest-set-go-long");
   expect(
-    "手机上组合那行折两行，右端提示一直显形",
-    (setRowNarrow.get("display") ?? "") === "grid" &&
-      String(setRowNarrow.get("grid-template-columns") ?? "").includes("1fr") &&
-      (setGoNarrow.get("opacity") ?? "") === "1",
-    `display=${setRowNarrow.get("display") ?? "未设置"} cols=${setRowNarrow.get("grid-template-columns") ?? "未设置"} go=${setGoNarrow.get("opacity") ?? "未设置"}`,
+    "手机上组合那行并回一行，右端箭头一直显形",
+    (setRowNarrow.get("display") ?? "") === "flex" &&
+      (setRowNarrow.get("flex-wrap") ?? "") === "wrap" &&
+      (setGoNarrow.get("opacity") ?? "") === "1" &&
+      (setGoLongNarrow.get("display") ?? "") === "none",
+    `display=${setRowNarrow.get("display") ?? "未设置"} wrap=${setRowNarrow.get("flex-wrap") ?? "未设置"} go=${setGoNarrow.get("opacity") ?? "未设置"} long=${setGoLongNarrow.get("display") ?? "未设置"}`,
   );
 
   // v0.122.0：视角胶囊上顺手写「练了 N 次」（10px，不能挤掉名字）；
@@ -1223,6 +1225,17 @@ for (const selector of ["select", "input", "textarea"]) {
       (weakLongNarrow.get("display") ?? "") === "none" &&
       String(weakShortNarrow.get("content") ?? "").includes("attr(data-short)"),
     `meta=${viewMetaDecl.get("font-size") ?? "未设置"} long=${weakLongNarrow.get("display") ?? "未设置"} short=${weakShortNarrow.get("content") ?? "未设置"}`,
+  );
+
+  // v0.123.0：「卡了几次」那排是独立的类（不混进上面两排的计数），chip 一样要够 40 高
+  const countRowDecl = narrowDecls(".hardest-count");
+  const countChipDecl = narrowDecls(".hardest-count .chip");
+  expect(
+    "「卡了几次」是第三排筛选，chip 够 40 高",
+    (countRowDecl.get("display") ?? "") === "flex" &&
+      (countRowDecl.get("flex-wrap") ?? "") === "wrap" &&
+      (px(countChipDecl.get("min-height")) ?? 0) >= 40,
+    `display=${countRowDecl.get("display") ?? "未设置"} wrap=${countRowDecl.get("flex-wrap") ?? "未设置"} chip=${countChipDecl.get("min-height") ?? "未设置"}`,
   );
 }
 

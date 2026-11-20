@@ -48,6 +48,14 @@ const STAGE_FILTER_KEY = "guitar.stats.stage";
 const SPOT_FILTER_KEY = "guitar.stats.spot";
 /** 只看某一套组合（v0.119.0）：`?g=早课`。存名字不存 id——记录里是运行时生成的。 */
 const SET_FILTER_KEY = "guitar.stats.set";
+/** 「卡了几次」那排（v0.123.0）：`?c=2`，只认 2 / 4 两档。 */
+const COUNT_FILTER_KEY = "guitar.stats.count";
+
+/** 读「卡了几次」：只认 2 / 4，其余一律当「全部」。 */
+function readCountFilter(): 0 | 2 | 4 {
+  const value = readFilter("c", COUNT_FILTER_KEY, 2, 4);
+  return value === 2 || value === 4 ? value : 0;
+}
 
 /** 读「单独练过几次」：只认 1 / 3，其余一律当「全部」。 */
 function readSpotFilter(): 0 | 1 | 3 {
@@ -91,6 +99,7 @@ function saveFilters(
   stage: number | null,
   spot: 0 | 1 | 3 = 0,
   set: string | null = null,
+  count: 0 | 2 | 4 = 0,
 ): void {
   if (degree === null) window.sessionStorage.removeItem(DEGREE_FILTER_KEY);
   else window.sessionStorage.setItem(DEGREE_FILTER_KEY, String(degree));
@@ -100,6 +109,8 @@ function saveFilters(
   else window.sessionStorage.setItem(SPOT_FILTER_KEY, String(spot));
   if (set) window.sessionStorage.setItem(SET_FILTER_KEY, set);
   else window.sessionStorage.removeItem(SET_FILTER_KEY);
+  if (count === 0) window.sessionStorage.removeItem(COUNT_FILTER_KEY);
+  else window.sessionStorage.setItem(COUNT_FILTER_KEY, String(count));
 
   const route = parseHash(window.location.hash);
   if (!route || route.tab !== "stats") return;
@@ -112,6 +123,8 @@ function saveFilters(
   else query.p = String(spot);
   if (set) query.g = set;
   else delete query.g;
+  if (count === 0) delete query.c;
+  else query.c = String(count);
   const search = new URLSearchParams(query).toString();
   const next = `#stats${route.target ? `/${route.target}` : ""}${search ? `?${search}` : ""}`;
   if (window.location.hash !== next) window.history.replaceState(null, "", next);
@@ -386,9 +399,12 @@ export default function Stats() {
   // 按组合筛（v0.118.0）：点「组合 · 早课」那一行小标题，只看这一套的条目。
   // v0.119.0 起它也进地址栏（`?g=早课`）和视角——既然能存，就该跟着一起存。
   const [setFilter, setSetFilter] = useState<string | null>(() => readSetFilter());
+  // 卡了几次（v0.123.0）：0 = 全部，2 / 4 = 至少卡过那么多次。跟「单独练过几次」不是一回事——
+  // 那个数是跟练里主动点「只练这一处」的次数，这个是跟练时卡住被记下来的次数。
+  const [countFilter, setCountFilter] = useState<0 | 2 | 4>(() => readCountFilter());
   useEffect(() => {
-    saveFilters(degreeFilter, stageFilter, spotFilter, setFilter);
-  }, [degreeFilter, stageFilter, spotFilter, setFilter]);
+    saveFilters(degreeFilter, stageFilter, spotFilter, setFilter, countFilter);
+  }, [degreeFilter, stageFilter, spotFilter, setFilter, countFilter]);
   // 存下的视角（v0.111.0）：把「第 5 级 · 第 1 阶段」这种组合存一排，一键复原
   const [views, setViews] = useState<StatsView[]>(() => loadViews());
 
@@ -458,6 +474,7 @@ export default function Stats() {
         (degreeFilter === null || item.hardest.degree === degreeFilter) &&
         (stageFilter === null || item.stage === stageFilter) &&
         (spotFilter === 0 || item.spots >= spotFilter) &&
+        (countFilter === 0 || item.hardest.count >= countFilter) &&
         (setFilter === null || item.setName === setFilter),
     )
     .slice(0, 4);
@@ -480,17 +497,22 @@ export default function Stats() {
       if (best) setWeak.set(name, best);
     }
   }
-  // 每套组合「练了几次 / 平均 BPM」（v0.120.0）：只算有记录的条目，没练过的不拉低平均。
-  const setMeta = new Map<string, { sessions: number; bpmSum: number; bpmCount: number }>();
+  // 每套组合「练了几次 / 平均 BPM / 最近一次」（v0.120.0 / v0.123.0）：只算有记录的条目，
+  // 没练过的不拉低平均；「最近一次」取这一套里最新的那个 lastAt。
+  const setMeta = new Map<
+    string,
+    { sessions: number; bpmSum: number; bpmCount: number; lastAt: string }
+  >();
   for (const record of Object.values(rhythm)) {
     const name = record.title ? setNameByTitle.get(record.title) : undefined;
     if (!name) continue;
-    const stat = setMeta.get(name) ?? { sessions: 0, bpmSum: 0, bpmCount: 0 };
+    const stat = setMeta.get(name) ?? { sessions: 0, bpmSum: 0, bpmCount: 0, lastAt: "" };
     stat.sessions += record.sessions ?? 0;
     if (record.bestBpm > 0) {
       stat.bpmSum += record.bestBpm;
       stat.bpmCount += 1;
     }
+    if (record.lastAt && record.lastAt > stat.lastAt) stat.lastAt = record.lastAt;
     setMeta.set(name, stat);
   }
   // 存下的视角（v0.111.0）：现在这组筛选有没有存过 / 能不能存
@@ -502,12 +524,17 @@ export default function Stats() {
       ? Math.round(currentMeta.bpmSum / currentMeta.bpmCount)
       : 0;
   const hasFilter =
-    degreeFilter !== null || stageFilter !== null || spotFilter !== 0 || setFilter !== null;
+    degreeFilter !== null ||
+    stageFilter !== null ||
+    spotFilter !== 0 ||
+    countFilter !== 0 ||
+    setFilter !== null;
   const currentSaved = views.some(
     (view) =>
       view.degree === degreeFilter &&
       view.stage === stageFilter &&
       (view.spot ?? 0) === spotFilter &&
+      (view.count ?? 0) === countFilter &&
       (view.set ?? "") === (setFilter ?? "") &&
       (view.weak ?? 0) === currentWeak,
   );
@@ -518,6 +545,7 @@ export default function Stats() {
     setDegreeFilter(view.degree);
     setStageFilter(view.stage);
     setSpotFilter(view.spot ?? 0);
+    setCountFilter(view.count ?? 0);
     setSetFilter(view.set ?? null);
     // 用过的视角挪到最后 = 渲染时排在最前（v0.113.0）
     setViews(promoteView(view.id));
@@ -534,6 +562,7 @@ export default function Stats() {
         setFilter ? (setWeak.get(setFilter)?.count ?? 0) : 0,
         currentSessions,
         currentAvgBpm,
+        countFilter,
       ),
     );
     setNamingView(false);
@@ -1151,6 +1180,33 @@ export default function Stats() {
           {stageFilter !== null && (
             <p className="hardest-note">上面的归堆还是全部数据；阶段只筛下面按条目的列表。</p>
           )}
+          {/* 按「卡了几次」筛（v0.123.0）：卡一两次的算手滑 / 没热开，四五次以上才是真卡住 */}
+          <div className="hardest-count" role="group" aria-label="按卡住的次数筛选最卡的条目">
+            <span className="hardest-filter-label">卡了几次</span>
+            <button
+              type="button"
+              className={`chip${countFilter === 0 ? " on" : ""}`}
+              aria-pressed={countFilter === 0}
+              onClick={() => setCountFilter(0)}
+            >
+              全部
+            </button>
+            {([2, 4] as const).map((times) => (
+              <button
+                key={times}
+                type="button"
+                className={`chip${countFilter === times ? " on" : ""}`}
+                aria-pressed={countFilter === times}
+                title={`只显示跟练时卡过 ${times} 次以上的条目`}
+                onClick={() => setCountFilter((current) => (current === times ? 0 : times))}
+              >
+                ≥{times} 次
+              </button>
+            ))}
+          </div>
+          {countFilter !== 0 && (
+            <p className="hardest-note">只留跟练时卡过 {countFilter} 次以上的条目——跟下面「单独练过」不是一回事。</p>
+          )}
           {/* 按「单独练过几次」筛（v0.114.0）：回头单练过的那几处，未必是卡得最狠的——分开看 */}
           <div className="hardest-spot" role="group" aria-label="按单独练过的次数筛选最卡的条目">
             <span className="hardest-filter-label">单独练过</span>
@@ -1189,6 +1245,7 @@ export default function Stats() {
                   view.degree === degreeFilter &&
                   view.stage === stageFilter &&
                   (view.spot ?? 0) === spotFilter &&
+                  (view.count ?? 0) === countFilter &&
                   (view.set ?? "") === (setFilter ?? "") &&
                   (view.weak ?? 0) === currentWeak;
                 return (
@@ -1242,6 +1299,7 @@ export default function Stats() {
                       currentWeak,
                       currentSessions,
                       currentAvgBpm,
+                      countFilter,
                     )}
                     aria-label="给这组筛选起个名字（可以不填）"
                     onChange={(event) => setViewName(event.target.value)}
@@ -1368,10 +1426,18 @@ export default function Stats() {
                                       setMeta.get(groupHead)!.bpmCount,
                                   )} BPM`
                                 : ""}
+                              {setMeta.get(groupHead)!.lastAt
+                                ? ` · 最近 ${setMeta.get(groupHead)!.lastAt.slice(5).replace("-", "/")}`
+                                : ""}
                             </span>
                           )}
                           <span className="hardest-set-go">
-                            {setFilter === groupHead ? "已筛" : "只看这套"} →
+                            {/* 窄屏把「只看这套」四个字收起来，只留箭头（v0.123.0）——
+                                这一行改成单行排了，四个字挤不下 */}
+                            <span className="hardest-set-go-long">
+                              {setFilter === groupHead ? "已筛" : "只看这套"}
+                            </span>
+                            <span aria-hidden="true">→</span>
                           </span>
                         </span>
                       </li>

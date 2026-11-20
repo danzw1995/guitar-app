@@ -3049,7 +3049,7 @@ try {
   await ab(["reload"]);
   await sleep(700);
   log(
-    setMetaText === "练了 2 次 · 平均 70 BPM" &&
+    setMetaText.startsWith("练了 2 次 · 平均 70 BPM") &&
       weakFiltered === "true|p:extra-m1|true|true" &&
       weakBacked === "false|p:extra-m1,p:extra-m2|true|false",
     "统计页：「整体卡在第几级」点一下筛这一级、再点退回这套全部，旁边写着练了几次、平均多快",
@@ -3073,6 +3073,43 @@ try {
     "统计页：不在计划里的条目卡得一样狠时，练得快的排前面",
     bpmOrder,
   );
+
+  // 16d25) v0.123.0：「卡了几次」是第三排筛选，能叠在其它筛选上，也能存进视角
+  js(
+    "(() => { for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); location.hash = '#stats'; return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(900);
+  js("(() => { const chip = [...document.querySelectorAll('.hardest-count .chip')].find(el => el.textContent.trim() === '≥4 次'); chip?.click(); return 'ok'; })()");
+  await sleep(400);
+  const countMeta = String(
+    js(
+      "(() => { const row = document.querySelector('.hardest-set-meta')?.textContent?.trim() ?? ''; const rows = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join(','); return `${location.hash.includes('c=4')}|${row.includes('最近 ')}|${rows}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("document.querySelector('.view-save')?.click()");
+  await sleep(300);
+  const countPlaceholder = String(
+    js("(() => document.querySelector('.view-name')?.getAttribute('placeholder') ?? '')()"),
+  ).replace(/^"|"$/g, "");
+  js("(() => { const input = document.querySelector('.view-name'); const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set; setter?.call(input, '反复卡'); input?.dispatchEvent(new Event('input', { bubbles: true })); return 'ok'; })()");
+  await sleep(250);
+  js("document.querySelector('.view-namer .view-save')?.click()");
+  await sleep(400);
+  const countStored = String(
+    js(
+      "(() => { const list = JSON.parse(localStorage.getItem('guitar.stats.views.v1') ?? '[]'); const last = list[list.length - 1] ?? {}; return `${last.count ?? 0}|${last.label ?? ''}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    countMeta.endsWith("|true|p:extra-m1,p:extra-fast,p:extra-slow,p:extra-house") &&
+      countPlaceholder === "卡过 ≥4 次" &&
+      countStored === "4|卡过 ≥4 次",
+    "统计页：「卡了几次」是第三排筛选，也能存进视角",
+    `${countMeta} · ${countPlaceholder} · ${countStored}`,
+  );
+  js("localStorage.removeItem('guitar.stats.views.v1')");
+  js("(() => { for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); return 'ok'; })()");
 
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.sets.v1')");
