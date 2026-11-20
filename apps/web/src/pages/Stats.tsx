@@ -46,11 +46,25 @@ const DEGREE_FILTER_KEY = "guitar.stats.degree";
 const STAGE_FILTER_KEY = "guitar.stats.stage";
 /** 「单独练过几次」那排（v0.115.0）：`?p=3`。 */
 const SPOT_FILTER_KEY = "guitar.stats.spot";
+/** 只看某一套组合（v0.119.0）：`?g=早课`。存名字不存 id——记录里是运行时生成的。 */
+const SET_FILTER_KEY = "guitar.stats.set";
 
 /** 读「单独练过几次」：只认 1 / 3，其余一律当「全部」。 */
 function readSpotFilter(): 0 | 1 | 3 {
   const value = readFilter("p", SPOT_FILTER_KEY, 1, 3);
   return value === 1 || value === 3 ? value : 0;
+}
+
+/** 读「只看这套」：地址栏 `?g=` 优先，否则读这次会话留下的。 */
+function readSetFilter(): string | null {
+  const clean = (raw: string | null | undefined): string | null => {
+    const text = (raw ?? "").trim().slice(0, 12);
+    return text ? text : null;
+  };
+  return (
+    clean(parseHash(window.location.hash)?.query.g) ??
+    clean(window.sessionStorage.getItem(SET_FILTER_KEY))
+  );
 }
 
 /** 读筛选：地址栏 `#stats?d=5&s=1` 优先（刷新 / 分享都还在），否则读这次会话留下的数。 */
@@ -72,13 +86,20 @@ function readFilter(param: string, sessionKey: string, min: number, max: number)
  * 地址栏不是统计页时（说明用户已经在别的页面）就不动它，只更新 sessionStorage——
  * 从练习页点回「统计」时 Tab 会把 hash 换成 `#stats`，那时靠这两个数还原。
  */
-function saveFilters(degree: number | null, stage: number | null, spot: 0 | 1 | 3 = 0): void {
+function saveFilters(
+  degree: number | null,
+  stage: number | null,
+  spot: 0 | 1 | 3 = 0,
+  set: string | null = null,
+): void {
   if (degree === null) window.sessionStorage.removeItem(DEGREE_FILTER_KEY);
   else window.sessionStorage.setItem(DEGREE_FILTER_KEY, String(degree));
   if (stage === null) window.sessionStorage.removeItem(STAGE_FILTER_KEY);
   else window.sessionStorage.setItem(STAGE_FILTER_KEY, String(stage));
   if (spot === 0) window.sessionStorage.removeItem(SPOT_FILTER_KEY);
   else window.sessionStorage.setItem(SPOT_FILTER_KEY, String(spot));
+  if (set) window.sessionStorage.setItem(SET_FILTER_KEY, set);
+  else window.sessionStorage.removeItem(SET_FILTER_KEY);
 
   const route = parseHash(window.location.hash);
   if (!route || route.tab !== "stats") return;
@@ -89,6 +110,8 @@ function saveFilters(degree: number | null, stage: number | null, spot: 0 | 1 | 
   else query.s = String(stage);
   if (spot === 0) delete query.p;
   else query.p = String(spot);
+  if (set) query.g = set;
+  else delete query.g;
   const search = new URLSearchParams(query).toString();
   const next = `#stats${route.target ? `/${route.target}` : ""}${search ? `?${search}` : ""}`;
   if (window.location.hash !== next) window.history.replaceState(null, "", next);
@@ -361,11 +384,11 @@ export default function Stats() {
   // v0.115.0 起它也算视角的一部分，跟着一起进地址栏（`?p=3`）和 sessionStorage。
   const [spotFilter, setSpotFilter] = useState<0 | 1 | 3>(() => readSpotFilter());
   // 按组合筛（v0.118.0）：点「组合 · 早课」那一行小标题，只看这一套的条目。
-  // 不进地址栏、不进视角——它是一次性的「这套我认得的」临时筛选，不是长期视角。
-  const [setFilter, setSetFilter] = useState<string | null>(null);
+  // v0.119.0 起它也进地址栏（`?g=早课`）和视角——既然能存，就该跟着一起存。
+  const [setFilter, setSetFilter] = useState<string | null>(() => readSetFilter());
   useEffect(() => {
-    saveFilters(degreeFilter, stageFilter, spotFilter);
-  }, [degreeFilter, stageFilter, spotFilter]);
+    saveFilters(degreeFilter, stageFilter, spotFilter, setFilter);
+  }, [degreeFilter, stageFilter, spotFilter, setFilter]);
   // 存下的视角（v0.111.0）：把「第 5 级 · 第 1 阶段」这种组合存一排，一键复原
   const [views, setViews] = useState<StatsView[]>(() => loadViews());
 
@@ -433,13 +456,34 @@ export default function Stats() {
         (setFilter === null || item.setName === setFilter),
     )
     .slice(0, 4);
+  // 每套组合「整体卡在哪一级」（v0.119.0）：把这一套所有条目的「卡了几次」按级数加总，
+  // 加总最多的那一级就是这套的短板。它是「这套要不要一起补」的线索，不是单条的结论。
+  const setWeak = new Map<string, { degree: number; count: number }>();
+  {
+    const buckets = new Map<string, Map<number, number>>();
+    for (const item of hardSorted) {
+      if (!item.setName) continue;
+      const bucket = buckets.get(item.setName) ?? new Map<number, number>();
+      bucket.set(item.hardest.degree, (bucket.get(item.hardest.degree) ?? 0) + item.hardest.count);
+      buckets.set(item.setName, bucket);
+    }
+    for (const [name, bucket] of buckets) {
+      let best: { degree: number; count: number } | null = null;
+      for (const [degree, count] of bucket) {
+        if (!best || count > best.count) best = { degree, count };
+      }
+      if (best) setWeak.set(name, best);
+    }
+  }
   // 存下的视角（v0.111.0）：现在这组筛选有没有存过 / 能不能存
-  const hasFilter = degreeFilter !== null || stageFilter !== null || spotFilter !== 0;
+  const hasFilter =
+    degreeFilter !== null || stageFilter !== null || spotFilter !== 0 || setFilter !== null;
   const currentSaved = views.some(
     (view) =>
       view.degree === degreeFilter &&
       view.stage === stageFilter &&
-      (view.spot ?? 0) === spotFilter,
+      (view.spot ?? 0) === spotFilter &&
+      (view.set ?? "") === (setFilter ?? ""),
   );
   // 起名字（v0.112.0）：点「存下这组筛选」先出一个输入框，名字可以不填（不填就用拼出来的那串）
   const [namingView, setNamingView] = useState(false);
@@ -448,11 +492,12 @@ export default function Stats() {
     setDegreeFilter(view.degree);
     setStageFilter(view.stage);
     setSpotFilter(view.spot ?? 0);
+    setSetFilter(view.set ?? null);
     // 用过的视角挪到最后 = 渲染时排在最前（v0.113.0）
     setViews(promoteView(view.id));
   }
   function storeCurrentView(): void {
-    setViews(saveView(degreeFilter, stageFilter, spotFilter, viewName));
+    setViews(saveView(degreeFilter, stageFilter, spotFilter, viewName, setFilter ?? ""));
     setNamingView(false);
     setViewName("");
   }
@@ -1105,7 +1150,8 @@ export default function Stats() {
                 const on =
                   view.degree === degreeFilter &&
                   view.stage === stageFilter &&
-                  (view.spot ?? 0) === spotFilter;
+                  (view.spot ?? 0) === spotFilter &&
+                  (view.set ?? "") === (setFilter ?? "");
                 return (
                   <span key={view.id} className={`view-pill${on ? " on" : ""}`}>
                     <button
@@ -1144,7 +1190,7 @@ export default function Stats() {
                     className="view-name"
                     value={viewName}
                     maxLength={12}
-                    placeholder={viewLabel(degreeFilter, stageFilter, spotFilter)}
+                    placeholder={viewLabel(degreeFilter, stageFilter, spotFilter, setFilter ?? "")}
                     aria-label="给这组筛选起个名字（可以不填）"
                     onChange={(event) => setViewName(event.target.value)}
                     onKeyDown={(event) => {
@@ -1227,7 +1273,14 @@ export default function Stats() {
                               : `只看「${groupHead}」这一套`
                           }
                         >
-                          组合 · {groupHead}
+                          <span className="hardest-set-name">组合 · {groupHead}</span>
+                          {setWeak.get(groupHead) && (
+                            <span className="hardest-set-weak">
+                              整体卡在
+                              {degreeName(setWeak.get(groupHead)!.degree)} ×
+                              {setWeak.get(groupHead)!.count} 次
+                            </span>
+                          )}
                           <span className="hardest-set-go">
                             {setFilter === groupHead ? "已筛" : "只看这套"} →
                           </span>

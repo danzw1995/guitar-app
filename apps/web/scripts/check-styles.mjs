@@ -1179,6 +1179,15 @@ for (const selector of ["select", "input", "textarea"]) {
       String(toastText.get("flex") ?? "").replace(/\s+/g, " ").trim() === "1 1 100%",
     `toast=${toastNarrow.get("left") ?? "未设置"}/${toastNarrow.get("flex-wrap") ?? "未设置"} text=${toastText.get("flex") ?? "未设置"}`,
   );
+
+  // v0.119.0：「这套整体卡在第几级」是灰字附注，别跟「只看这套」抢
+  const setWeakDecl = narrowDecls(".hardest-set-weak");
+  expect(
+    "组合标题里的「整体卡在第几级」是灰色小字",
+    parseFloat(setWeakDecl.get("font-size") ?? "0") <= 12 &&
+      (setWeakDecl.get("color") ?? "") === "var(--muted)",
+    `font-size=${setWeakDecl.get("font-size") ?? "未设置"} color=${setWeakDecl.get("color") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

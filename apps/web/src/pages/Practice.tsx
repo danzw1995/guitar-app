@@ -664,11 +664,14 @@ export default function Practice() {
     setUndoDone(null);
   }
 
-  /** 「去练这一条」（v0.118.0）：把撤回的那块滚到眼前——撤回是为了重练，不是为了把它藏起来。 */
+  /** 「去练这一条」（v0.118.0）：把撤回的那块滚到眼前——撤回是为了重练，不是为了把它藏起来。
+   *  v0.119.0 起顺手按开始计时：既然下一步就是练，别再让人多点一次。 */
   function goUndone() {
     if (!undoDone) return;
     const el = document.getElementById(undoDone.id);
     setUndoDone(null);
+    setRunningId(undoDone.id);
+    setSeconds(0);
     if (!el) return;
     el.scrollIntoView({ block: "center", behavior: "smooth" });
     el.classList.add("flash");

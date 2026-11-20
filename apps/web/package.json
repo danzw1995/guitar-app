@@ -1,6 +1,6 @@
 {
   "name": "@guitar/web",
-  "version": "0.118.2",
+  "version": "0.119.0",
   "private": true,
   "type": "module",
   "scripts": {

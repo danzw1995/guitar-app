@@ -2882,12 +2882,12 @@ try {
   await sleep(500);
   const undoMoreAfter = String(
     js(
-      "(() => `${document.querySelectorAll('.undo-toast').length}|${document.querySelectorAll('.practice-extra.flash').length}`)()",
+      "(() => `${document.querySelectorAll('.undo-toast').length}|${document.querySelectorAll('.practice-extra.flash').length}|${[...document.querySelectorAll('.practice-extra .btn')].some(b => b.textContent.trim() === '暂停')}`)()",
     ),
   ).replace(/^"|"$/g, "");
   log(
-    undoMore === "去练这一条" && undoMoreAfter === "0|1",
-    "练习页：撤回提示条上的「去练这一条」会滚到那一块并闪一下",
+    undoMore === "去练这一条" && undoMoreAfter === "0|1|true",
+    "练习页：撤回提示条上的「去练这一条」会滚到那一块并开始计时",
     `${undoMore} · ${undoMoreAfter}`,
   );
 
@@ -2986,6 +2986,43 @@ try {
     setFiltered === "true|p:extra-m1,p:extra-m2|true" && setCleared === "3|0",
     "统计页：点「组合 · 早课」只看这一套，点「看全部」放开",
     `${setFiltered} · ${setCleared}`,
+  );
+
+  // 16d22) v0.119.0：这一套也能存进视角（地址栏写 `?g=`），刷新后还在
+  js("document.querySelector('.hardest-set-btn')?.click()");
+  await sleep(300);
+  const setHash = String(js("location.hash")).replace(/^"|"$/g, "");
+  js("document.querySelector('.view-save')?.click()");
+  await sleep(300);
+  const setPlaceholder = String(
+    js("(() => document.querySelector('.view-name')?.getAttribute('placeholder') ?? '')()"),
+  ).replace(/^"|"$/g, "");
+  js("(() => { const input = document.querySelector('.view-name'); const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set; setter?.call(input, '早课短板'); input?.dispatchEvent(new Event('input', { bubbles: true })); return 'ok'; })()");
+  await sleep(250);
+  js("document.querySelector('.view-namer .view-save')?.click()");
+  await sleep(400);
+  const setStored = String(
+    js(
+      "(() => { const list = JSON.parse(localStorage.getItem('guitar.stats.views.v1') ?? '[]'); const last = list[list.length - 1] ?? {}; return `${last.set ?? ''}|${last.name ?? ''}|${last.label ?? ''}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("location.hash = '#stats'");
+  await ab(["reload"]);
+  await sleep(800);
+  js("document.querySelector('.view-apply')?.click()");
+  await sleep(400);
+  const setRestored = String(
+    js(
+      "(() => { const rows = [...document.querySelectorAll('[data-hardest-item]')].length; const pressed = document.querySelector('.hardest-set-btn')?.getAttribute('aria-pressed') ?? ''; return `${location.hash.includes('g=')}|${rows}|${pressed}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    setHash.includes("g=") &&
+      setPlaceholder === "「早课」这套" &&
+      setStored === "早课|早课短板|「早课」这套" &&
+      setRestored === "true|2|true",
+    "统计页：只看这套也能存进视角，刷新后还在",
+    `${setHash} · ${setPlaceholder} · ${setStored} · ${setRestored}`,
   );
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");

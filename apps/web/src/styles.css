@@ -2416,6 +2416,12 @@ button, select, input { font: inherit; color: inherit; }
   opacity: 0;
   transition: opacity 120ms ease-out;
 }
+/* 这套整体卡在哪一级（v0.119.0）：一次性的线索，别抢「只看这套」的注意力 */
+.hardest-set-weak {
+  color: var(--muted);
+  font-size: 11px;
+  opacity: 0.85;
+}
 .hardest-set-btn:hover .hardest-set-go,
 .hardest-set-btn:focus-visible .hardest-set-go,
 .hardest-set-btn[aria-pressed="true"] .hardest-set-go {

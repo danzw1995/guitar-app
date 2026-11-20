@@ -14,6 +14,8 @@ export interface StatsView {
   stage: number | null;
   /** 单独练过几次那排（v0.115.0）：0 = 不限，1 / 3 = 至少那么多次。 */
   spot?: 0 | 1 | 3;
+  /** 只看某一套组合（v0.119.0）——存的是组合名，不是 id（记录里的 id 是运行时生成的）。 */
+  set?: string;
   /** 系统拼出来的那一串（「第 5 级 · 第 1 阶段」），title 里一直用。 */
   label: string;
   /** 用户自己起的名字（v0.112.0）；没起就用 label 显示。 */
@@ -29,13 +31,15 @@ export function cleanViewName(name: string): string {
   return name.trim().slice(0, 12);
 }
 
-/** 一组筛选叫什么：「第 5 级」「第 1 阶段」「单独练过 ≥3 次」「第 5 级 · 第 1 阶段」。 */
+/** 一组筛选叫什么：「第 5 级」「第 1 阶段」「单独练过 ≥3 次」「「早课」这套」。 */
 export function viewLabel(
   degree: number | null,
   stage: number | null,
   spot: 0 | 1 | 3 = 0,
+  set = "",
 ): string {
   const parts: string[] = [];
+  if (set) parts.push(`「${set}」这套`);
   if (degree !== null) parts.push(`第 ${degree} 级`);
   if (stage !== null) parts.push(`第 ${stage + 1} 阶段`);
   if (spot > 0) parts.push(`单独练过 ≥${spot} 次`);
@@ -45,6 +49,11 @@ export function viewLabel(
 /** 只认 0 / 1 / 3 三个值（v0.115.0）。 */
 function parseSpot(value: unknown): 0 | 1 | 3 {
   return value === 1 || value === 3 ? value : 0;
+}
+
+/** 组合名截到 12 个字（v0.119.0）——和用户起名字一样长。 */
+function cleanSet(value: unknown): string {
+  return typeof value === "string" ? value.trim().slice(0, 12) : "";
 }
 
 function parse(value: unknown): StatsView[] {
@@ -64,8 +73,9 @@ function parse(value: unknown): StatsView[] {
         ? (record.stage as number)
         : null;
     const spot = parseSpot(record.spot);
-    if (!id || (degree === null && stage === null && spot === 0)) continue;
-    const key = `${degree ?? "-"}|${stage ?? "-"}|${spot}`;
+    const set = cleanSet(record.set);
+    if (!id || (degree === null && stage === null && spot === 0 && !set)) continue;
+    const key = `${set}|${degree ?? "-"}|${stage ?? "-"}|${spot}`;
     if (seen.has(key)) continue;
     seen.add(key);
     const name = typeof record.name === "string" ? cleanViewName(record.name) : "";
@@ -74,7 +84,8 @@ function parse(value: unknown): StatsView[] {
       degree,
       stage,
       spot,
-      label: viewLabel(degree, stage, spot),
+      ...(set ? { set } : {}),
+      label: viewLabel(degree, stage, spot, set),
       ...(name ? { name } : {}),
       addedAt: typeof record.addedAt === "number" ? record.addedAt : 0,
     });
@@ -106,11 +117,17 @@ export function saveView(
   stage: number | null,
   spot: 0 | 1 | 3 = 0,
   name = "",
+  set = "",
 ): StatsView[] {
-  if (degree === null && stage === null && spot === 0) return loadViews();
+  const cleanSetName = cleanSet(set);
+  if (degree === null && stage === null && spot === 0 && !cleanSetName) return loadViews();
   const views = loadViews();
   const exists = views.find(
-    (view) => view.degree === degree && view.stage === stage && (view.spot ?? 0) === spot,
+    (view) =>
+      view.degree === degree &&
+      view.stage === stage &&
+      (view.spot ?? 0) === spot &&
+      (view.set ?? "") === cleanSetName,
   );
   if (exists) return views;
   const clean = cleanViewName(name);
@@ -119,7 +136,8 @@ export function saveView(
     degree,
     stage,
     spot,
-    label: viewLabel(degree, stage, spot),
+    ...(cleanSetName ? { set: cleanSetName } : {}),
+    label: viewLabel(degree, stage, spot, cleanSetName),
     ...(clean ? { name: clean } : {}),
     addedAt: Date.now(),
   };
