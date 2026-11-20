@@ -34,7 +34,15 @@ import { loadPatterns } from "../lib/patterns";
 import { loadExtras } from "../lib/plan";
 import { loadSets } from "../lib/plan-sets";
 import { fmt, fmtSpan } from "../lib/format";
-import { loadViews, promoteView, removeView, saveView, viewLabel, type StatsView } from "../lib/stats-views";
+import {
+  loadViews,
+  promoteView,
+  removeView,
+  saveView,
+  viewLabel,
+  viewShortLabel,
+  type StatsView,
+} from "../lib/stats-views";
 import { degreeName } from "../lib/degrees";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
@@ -517,32 +525,49 @@ export default function Stats() {
     if (record.lastAt && record.lastAt > stat.lastAt) stat.lastAt = record.lastAt;
     setMeta.set(name, stat);
   }
-  // 这套比上周快还是慢（v0.124.0）：用跟练曲线里的点，近 7 天跟前 7 天各取一个平均值。
-  // 只算「有和弦 / 有记录」的那种点，1 天一个；两个窗口都得有数据才比得出来。
+  // 这套比上周快还是慢（v0.124.0 / 加权 v0.126.0）：跟练曲线里一天一个点，
+  // 近 7 天跟前 7 天各算一个平均；**每个条目按它的练习次数加权**——
+  // 一条练了 6 次的和一条练了 1 次的，不该各自占一半。
   const todayNumber = dayNumberOf(today);
-  const setPace = new Map<string, { recentSum: number; recentCount: number; beforeSum: number; beforeCount: number }>();
+  const setPace = new Map<
+    string,
+    { recentSum: number; recentWeight: number; beforeSum: number; beforeWeight: number }
+  >();
   for (const record of Object.values(rhythm)) {
     const name = record.title ? setNameByTitle.get(record.title) : undefined;
     if (!name) continue;
-    const stat = setPace.get(name) ?? { recentSum: 0, recentCount: 0, beforeSum: 0, beforeCount: 0 };
+    const stat = setPace.get(name) ?? { recentSum: 0, recentWeight: 0, beforeSum: 0, beforeWeight: 0 };
+    const weight = Math.max(1, record.sessions ?? 0);
+    let recentSum = 0;
+    let recentCount = 0;
+    let beforeSum = 0;
+    let beforeCount = 0;
     for (const point of record.history ?? []) {
       if (!isValidDateKey(point.date) || point.bpm <= 0) continue;
       const daysAgo = todayNumber - dayNumberOf(point.date);
       if (daysAgo >= 0 && daysAgo <= 6) {
-        stat.recentSum += point.bpm;
-        stat.recentCount += 1;
+        recentSum += point.bpm;
+        recentCount += 1;
       } else if (daysAgo >= 7 && daysAgo <= 13) {
-        stat.beforeSum += point.bpm;
-        stat.beforeCount += 1;
+        beforeSum += point.bpm;
+        beforeCount += 1;
       }
+    }
+    if (recentCount > 0) {
+      stat.recentSum += (recentSum / recentCount) * weight;
+      stat.recentWeight += weight;
+    }
+    if (beforeCount > 0) {
+      stat.beforeSum += (beforeSum / beforeCount) * weight;
+      stat.beforeWeight += weight;
     }
     setPace.set(name, stat);
   }
   /** 这套的「比上周快 / 慢 N BPM」；两个窗口缺一个就返回 null（不硬比）。 */
   const setPaceOf = (name: string): number | null => {
     const stat = setPace.get(name);
-    if (!stat || stat.recentCount === 0 || stat.beforeCount === 0) return null;
-    return Math.round(stat.recentSum / stat.recentCount - stat.beforeSum / stat.beforeCount);
+    if (!stat || stat.recentWeight === 0 || stat.beforeWeight === 0) return null;
+    return Math.round(stat.recentSum / stat.recentWeight - stat.beforeSum / stat.beforeWeight);
   };
   // 「卡了几次」那排 chip 上写「有 N 条」（v0.124.0）：点之前就知道能筛出几条，
   // 数的是「如果现在点它」会剩几条——即先套上其它几排筛选，再按次数数。
@@ -564,7 +589,7 @@ export default function Stats() {
     currentMeta && currentMeta.bpmCount > 0
       ? Math.round(currentMeta.bpmSum / currentMeta.bpmCount)
       : 0;
-  // ??????????? / ??? BPM?v0.125.0???7 ??????????????????
+  // 存这一套时它「比上周快 / 慢几 BPM」（v0.125.0）——7 天窗口会滚，这个差值得跟着视角一起存
   const currentPace = setFilter ? (setPaceOf(setFilter) ?? 0) : 0;
   const hasFilter =
     degreeFilter !== null ||
@@ -1307,11 +1332,19 @@ export default function Stats() {
                       title={view.name ? `${view.name} · ${view.label}` : view.label}
                       onClick={() => applyView(view)}
                     >
-                      {view.name ?? view.label}
+                      {viewShortLabel(view)}
                     </button>
                     {(view.sessions ?? 0) > 0 && (
                       <span className="view-meta" aria-hidden="true">
                         练了 {view.sessions} 次
+                      </span>
+                    )}
+                    {(view.pace ?? 0) !== 0 && (
+                      <span
+                        className={`view-pace${(view.pace ?? 0) > 0 ? " up" : " down"}`}
+                        aria-hidden="true"
+                      >
+                        {(view.pace ?? 0) > 0 ? `快 ${view.pace}` : `慢 ${Math.abs(view.pace ?? 0)}`}
                       </span>
                     )}
                     <button
@@ -1408,6 +1441,14 @@ export default function Stats() {
               <button type="button" className="btn-quiet" onClick={() => setSetFilter(null)}>
                 看全部
               </button>
+            </p>
+          )}
+          {hardItems.length === 0 && hasFilter && (
+            <p className="hardest-note hardest-empty">
+              {/* 空列表要说清是「没有」，不是「没加载出来」（v0.126.0） */}
+              {countFilter !== 0
+                ? `这组筛选里没有跟练时卡过 ${countFilter} 次以上的条目。`
+                : "这组筛选下没有条目。"}
             </p>
           )}
           {hardItems.length > 0 && (

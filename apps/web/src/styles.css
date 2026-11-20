@@ -2500,6 +2500,25 @@ button, select, input { font: inherit; color: inherit; }
 .hardest-set-go-short {
   display: none;
 }
+/* 视角胶囊上直接写「快 10」「慢 4」（v0.126.0）：不用点开 title 才知道当时在进步还是退步 */
+.view-pace {
+  display: flex;
+  align-items: center;
+  padding: 0 2px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.view-pace.up {
+  color: var(--accent);
+}
+/* 筛空了要说一句「没有」，而不是留白（v0.126.0） */
+.hardest-empty {
+  margin: 2px 0 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
 .hardest-set-btn:hover .hardest-set-go,
 .hardest-set-btn:focus-visible .hardest-set-go,
 .hardest-set-btn[aria-pressed="true"] .hardest-set-go {

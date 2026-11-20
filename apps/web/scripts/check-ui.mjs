@@ -3162,13 +3162,23 @@ try {
       .replace(/^"|"$/g, "")
       .replace(/\\"/g, '"'),
   );
+  // 胶囊上不该把「练了 7 次 · 比上周快 10 BPM」再印一遍——那是右边两枚小字的事（v0.126.0）
+  const pillInfo = JSON.parse(
+    String(
+      js(
+        "(() => { const pill = document.querySelector('.view-pill'); return JSON.stringify({ text: pill?.querySelector('.view-apply')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '', pace: pill?.querySelector('.view-pace')?.textContent?.trim() ?? '', meta: pill?.querySelector('.view-meta')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '' }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
   // 只看「第 3 级」：那一条只卡过 2 次，≥4 次 这枚一条都筛不出来
   js("(() => { const chip = [...document.querySelectorAll('.hardest-filter .chip')].find(el => el.textContent.trim() === '第 3 级'); chip?.click(); return 'ok'; })()");
   await sleep(400);
   const emptyChip = JSON.parse(
     String(
       js(
-        "(() => { const el = document.querySelector('.hardest-count .chip-empty'); const chips = [...document.querySelectorAll('.hardest-count .chip')].map(c => c.textContent.replace(/\\s+/g, '').trim()); return JSON.stringify({ empties: document.querySelectorAll('.hardest-count .chip-empty').length, opacity: el ? getComputedStyle(el).opacity : '', chips }); })()",
+        "(() => { const el = document.querySelector('.hardest-count .chip-empty'); const chips = [...document.querySelectorAll('.hardest-count .chip')].map(c => c.textContent.replace(/\\s+/g, '').trim()); return JSON.stringify({ empties: document.querySelectorAll('.hardest-count .chip-empty').length, opacity: el ? getComputedStyle(el).opacity : '', chips, emptyNote: document.querySelector('.hardest-empty')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '' }); })()",
       ),
     )
       .replace(/^"|"$/g, "")
@@ -3182,6 +3192,31 @@ try {
       emptyChip.chips.join("|") === "全部|≥2次1|≥4次0",
     "统计页：视角里记着「比上周快 10 BPM」，一条都筛不出来的 chip 淡下去",
     `pace=${paceView.pace} label=${paceView.label} · ${emptyChip.chips.join("|")} opacity=${emptyChip.opacity}`,
+  );
+  // 16d28) 统计页：胶囊不再重复练习量，快慢单独一枚；筛空时说一句人话（v0.126.0）
+  js("(() => { const chip = [...document.querySelectorAll('.hardest-count .chip')].find(el => el.textContent.trim().startsWith('≥4 次')); chip?.click(); return 'ok'; })()");
+  await sleep(400);
+  const emptyNote = String(
+    js(
+      "document.querySelector('.hardest-empty')?.textContent?.replace(/\\s+/g, ' ').trim() ?? ''",
+    ),
+  )
+    .replace(/^"|"$/g, "")
+    .replace(/\\"/g, '"');
+  const emptyRows = Number(
+    String(js("document.querySelectorAll('[data-hardest-item]').length"))
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    !pillInfo.text.includes("练了") &&
+      !pillInfo.text.includes("比上周") &&
+      pillInfo.pace === "快 10" &&
+      pillInfo.meta.startsWith("练了 ") &&
+      emptyRows === 0 &&
+      emptyNote.includes("卡过 4 次以上"),
+    "统计页：胶囊上快慢单独一枚，筛空时说一句「没有卡过 N 次以上的」",
+    `pill=${pillInfo.text} pace=${pillInfo.pace} meta=${pillInfo.meta} rows=${emptyRows} note=${emptyNote}`,
   );
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");

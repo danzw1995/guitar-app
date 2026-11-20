@@ -73,6 +73,25 @@ export function viewLabel(
   return parts.length > 0 ? parts.join(" · ") : "全部";
 }
 
+/**
+ * 胶囊上显示的那一小段（v0.126.0）：只留「是哪一组筛选」，
+ * 练了几次 / 平均 BPM / 比上周快慢由右边两枚小字接管，不然同一句话印两遍。
+ */
+export function viewShortLabel(view: StatsView): string {
+  if (view.name) return view.name;
+  return viewLabel(
+    view.degree ?? null,
+    view.stage ?? null,
+    view.spot ?? 0,
+    view.set ?? "",
+    view.weak ?? 0,
+    0,
+    0,
+    view.count ?? 0,
+    0,
+  );
+}
+
 /** 只认 0 / 1 / 3 三个值（v0.115.0）。 */
 function parseSpot(value: unknown): 0 | 1 | 3 {
   return value === 1 || value === 3 ? value : 0;

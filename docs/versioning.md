@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.125.0`，core `0.52.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.126.0`，core `0.52.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -142,6 +142,9 @@ v0.111.0 仍是前端一版：跟练回执里列出「这次还点了另外几�
 v0.125.0 只动前端：视角存下当时的「比上周快 / 慢 N BPM」（`StatsView.pace`）、
 0 条的 chip 淡下去（`.chip-empty`）、≤720px 把「比上周快 10 BPM」与「只看这套」
 再压成「快 10」「看」（`::after attr(data-short)`）；core 与工具都不动。
+v0.126.0 只动前端：组合行的周对比改成按练习次数加权（`Math.max(1, sessions)`）、视角胶囊
+直接显示「快 N / 慢 N」（`viewShortLabel` 让标题不再重复练习量）、筛空时补一句人话
+（`.hardest-empty`）；顺手修掉一处乱码注释；core 与工具都不动。
 v0.124.0 只动前端：组合行加「比上周快 / 慢 N BPM」（`record.history` 近 7 天 vs 前 7 天）、
 「卡了几次」chip 上写条数（`.chip-n`）、≤720px 练习量换短文案（`.hardest-set-meta-long` 收起 +
 `::after attr(data-short)`）；core 与工具都不动。

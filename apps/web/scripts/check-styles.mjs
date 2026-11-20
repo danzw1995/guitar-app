@@ -1268,6 +1268,20 @@ for (const selector of ["select", "input", "textarea"]) {
       String(paceShortNarrow.get("content") ?? "").includes("attr(data-short)"),
     `empty=${emptyChipDecl.get("opacity") ?? "未设置"} goShort=${goShortNarrow.get("display") ?? "未设置"} paceLong=${paceLongNarrow.get("display") ?? "未设置"} paceShort=${paceShortNarrow.get("content") ?? "未设置"}`,
   );
+
+  // v0.126.0：胶囊上那枚「快 26」是等宽小字（变快才亮）；筛空了那句是灰色说明，不该抢眼
+  const viewPaceDecl = narrowDecls(".view-pace");
+  const hardestEmptyDecl = narrowDecls(".hardest-empty");
+  expect(
+    "视角胶囊上的「快 26」是等宽小字，筛空了那句是灰色说明",
+    (px(viewPaceDecl.get("font-size")) ?? 99) <= 10 &&
+      viewPaceDecl.get("font-variant-numeric") === "tabular-nums" &&
+      (viewPaceDecl.get("color") ?? "") === "var(--muted)" &&
+      (narrowDecls(".view-pace.up").get("color") ?? "") === "var(--accent)" &&
+      (hardestEmptyDecl.get("color") ?? "") === "var(--muted)" &&
+      (px(hardestEmptyDecl.get("font-size")) ?? 99) <= 12,
+    `pace=${viewPaceDecl.get("font-size") ?? "未设置"} empty=${hardestEmptyDecl.get("color") ?? "未设置"}/${hardestEmptyDecl.get("font-size") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
