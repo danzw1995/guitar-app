@@ -2855,6 +2855,23 @@ try {
     `${undoneTitle} · ${undoneTag}`,
   );
 
+  // 12ab) v0.117.0：撤回之后底部有提示条，点「撤销」能把勾打回去
+  const undoToastText = String(
+    js("(() => document.querySelector('.undo-toast-text')?.textContent?.trim() ?? '')()"),
+  ).replace(/^"|"$/g, "");
+  js("(() => { document.querySelector('.undo-toast-btn')?.click(); return 'ok'; })()");
+  await sleep(600);
+  const undoToastBack = String(
+    js(
+      `(() => { const tags = document.querySelectorAll('.pb-done-tag').length; const titles = JSON.parse(localStorage.getItem('guitar.plan.done.v1') ?? '{}').titles ?? []; return \`\${tags}|\${titles.includes(${JSON.stringify(undoneTitle)})}\`; })()`,
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    undoToastText === `已撤回「${undoneTitle}」今天的完成` && undoToastBack === "1|true",
+    "练习页：撤回后有提示条，点「撤销」能把勾打回去",
+    `${undoToastText} · ${undoToastBack}`,
+  );
+
   // 16d18) v0.115.0：视角把「单独练过几次」也一起存下来
   js(
     "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const rec = { 's0-crawl': { bestBpm: 80, sessions: 1, minutes: 2, lastAt: today, title: '单弦爬格子（1-2-3-4）', hardest: { bar: 1, degree: 5, name: 'G', count: 5 }, spots: [{ bar: 2, degree: 5, name: 'G', times: 4, lastAt: today }] } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(rec)); localStorage.removeItem('guitar.stats.views.v1'); sessionStorage.removeItem('guitar.stats.degree'); sessionStorage.removeItem('guitar.stats.stage'); sessionStorage.removeItem('guitar.stats.spot'); location.hash = '#stats'; return 'ok'; })()",
@@ -2919,6 +2936,16 @@ try {
     comboRows.split(",").length === 3 && comboRows.endsWith("p:extra-house"),
     "统计页：同一套组合的条目挨在一起，不在组合里的排在后面",
     comboRows,
+  );
+
+  // 16d20) v0.117.0：组合那一堆上面有一行小标题，说明「为什么挨在一起」
+  const comboHead = String(
+    js("(() => [...document.querySelectorAll('.hardest-set')].map(el => el.textContent.trim()).join('|'))()"),
+  ).replace(/^"|"$/g, "");
+  log(
+    comboHead === "组合 · 早课",
+    "统计页：组合的条目上面有一行「组合 · 早课」",
+    comboHead,
   );
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");

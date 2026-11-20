@@ -66,7 +66,7 @@ export default function TabScore({ id, tab, className, beat }: Props) {
           className="tab-score"
           src={generated.image.dataUrl}
           alt={label}
-          style={{ width: `${generated.image.width * 2}px`, height: "auto" }}
+          style={{ width: `${generated.image.width * 2}px`, maxWidth: "100%", height: "auto" }}
           decoding="async"
         />
       ) : (

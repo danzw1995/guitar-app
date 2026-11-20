@@ -793,6 +793,12 @@ button, select, input { font: inherit; color: inherit; }
   .tab { padding: 8px 12px; }
   /* 练习块在窄屏上把标题换到下一行，按钮和计时留在同一行 */
   .pb-title { flex-basis: 100%; }
+  /* 「今天练过」跟着标题走会把它挤成两行：手机上单独占一行（v0.117.0） */
+  .pb-done-tag {
+    display: block;
+    width: fit-content;
+    margin: 2px 0 0;
+  }
   /*
    * iOS Safari 在聚焦字号 < 16px 的表单控件时会自动放大页面，
    * 且不会自动缩回。这里统一到 16px（桌面端不受影响）。
@@ -2375,6 +2381,16 @@ button, select, input { font: inherit; color: inherit; }
 .hardest-go {
   margin-left: auto;
   color: var(--muted);
+}
+/* 同一套组合的小标题（v0.117.0）：条目本来就相邻，这行把「为什么相邻」说明白 */
+.hardest-set {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  list-style: none;
+}
+.hardest-set:first-child {
+  margin-top: 0;
 }
 .hardest-jump:hover .hardest-go,
 .hardest-jump:focus-visible .hardest-go {

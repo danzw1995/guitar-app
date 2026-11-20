@@ -155,6 +155,8 @@ export default function Practice() {
   }, [log, today, extras]);
   /** 刚跳过的哪一条（底部提示 + 撤销）。`paused` = 已经升级成「这一周先不练」。 */
   const [undo, setUndo] = useState<{ id: string; label: string; paused?: boolean } | null>(null);
+  /** 刚撤回的「今天练过」（v0.117.0）：底部提示条里再点「撤销」能把它打回去。 */
+  const [undoDone, setUndoDone] = useState<{ id: string; title: string } | null>(null);
 
   /** 试听一条练习：谱面上会跟着走一条「当前拍」竖条，和节奏页同一套播放头。 */
   function audition(id: string, tab: (typeof library)[number]["tab"], bpm: number) {
@@ -642,6 +644,24 @@ export default function Practice() {
       setRunningId(null);
       setSeconds(0);
     }
+    // 撤错了还能点回来（v0.117.0）：提示条留 6 秒，撤销只把勾打回去，分钟数本来就没退
+    setUndoDone({ id: extra.id, title: extra.title });
+  }
+
+  /** 「撤销」刚才那次撤回：把 id 打回当天日志、标题也记回「今天练过」。 */
+  function redoExtraDone() {
+    if (!undoDone) return;
+    const day = log[today];
+    const next = {
+      ...log,
+      [today]: day
+        ? { ...day, done: [...day.done, undoDone.id] }
+        : { minutes: 0, stage, done: [undoDone.id] },
+    };
+    setLog(next);
+    savePractice(next);
+    markDoneTitle(undoDone.title, today);
+    setUndoDone(null);
   }
 
   function finish(drillId: string, planned: number) {
@@ -1348,6 +1368,13 @@ export default function Practice() {
           action={undo.paused ? undefined : { label: "这一周别出现", onClick: pauseBlock }}
           onUndo={undoSkip}
           onClose={() => setUndo(null)}
+        />
+      )}
+      {undoDone && (
+        <UndoToast
+          message={`已撤回「${undoDone.title}」今天的完成`}
+          onUndo={redoExtraDone}
+          onClose={() => setUndoDone(null)}
         />
       )}
     </section>

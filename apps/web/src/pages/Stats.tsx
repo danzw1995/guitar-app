@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   addDays,
   dateKeyOf,
@@ -380,12 +380,14 @@ export default function Stats() {
   const setRankById = new Map<string, number>();
   const setRankByName = new Map<string, number>();
   const setRankByTitle = new Map<string, number>();
+  const setNameByTitle = new Map<string, string>();
   for (const extra of todayExtras) {
     if (!extra.setName) continue;
     if (!setRankByName.has(extra.setName)) setRankByName.set(extra.setName, setRankByName.size);
     const rank = setRankByName.get(extra.setName)!;
     setRankById.set(extra.id, rank);
     if (!setRankByTitle.has(extra.title)) setRankByTitle.set(extra.title, rank);
+    if (!setNameByTitle.has(extra.title)) setNameByTitle.set(extra.title, extra.setName);
   }
   // 按阶段筛（v0.110.0）：练习库里的直接按 id 查，加餐 / 跟练里切出来的记录靠 `title` 回查 DRILLS。
   const stageById = new Map(DRILLS.map((drill) => [drill.id, drill.stage]));
@@ -400,6 +402,7 @@ export default function Stats() {
         order: planOrder.get(bare),
         setRank:
           setRankById.get(bare) ?? (record.title ? setRankByTitle.get(record.title) : undefined),
+        setName: record.title ? setNameByTitle.get(record.title) : undefined,
         // 「单独练过几次」（v0.114.0）：跟练里点「只练这一处」的次数合计，和 hardest.count 不是一回事
         spots: (record.spots ?? []).reduce((sum, spot) => sum + spot.times, 0),
         stage: stageById.get(bare) ?? (record.title ? stageByName.get(record.title) ?? null : null),
@@ -1190,26 +1193,38 @@ export default function Stats() {
           </ul>
           {hardItems.length > 0 && (
             <ul className="hardest-items">
-              {hardItems.map((item) => (
-                <li key={item.id} data-hardest-item={item.id}>
-                  <button
-                    type="button"
-                    className="hardest-jump"
-                    onClick={() => jumpTo(item.id)}
-                    title="跳到那一段"
-                  >
-                    <span>{titleOf(item.id)}</span>
-                    <span className="muted">
-                      第 {item.hardest.bar} 小节{degreeName(item.hardest.degree)}
-                      {item.hardest.name ? `（${item.hardest.name}）` : ""} · 单独练过{" "}
-                      {item.hardest.count} 次
-                    </span>
-                    <span className="hardest-go" aria-hidden="true">
-                      →
-                    </span>
-                  </button>
-                </li>
-              ))}
+              {hardItems.map((item, index) => {
+                // 同一套组合的条目之间插一行小标题（v0.117.0）：靠相邻顺序说话不够直白
+                const groupHead =
+                  item.setName && item.setName !== hardItems[index - 1]?.setName ? item.setName : null;
+                return (
+                  <Fragment key={item.id}>
+                    {groupHead && (
+                      <li className="hardest-set" aria-hidden="true">
+                        组合 · {groupHead}
+                      </li>
+                    )}
+                    <li data-hardest-item={item.id}>
+                      <button
+                        type="button"
+                        className="hardest-jump"
+                        onClick={() => jumpTo(item.id)}
+                        title="跳到那一段"
+                      >
+                        <span>{titleOf(item.id)}</span>
+                        <span className="muted">
+                          第 {item.hardest.bar} 小节{degreeName(item.hardest.degree)}
+                          {item.hardest.name ? `（${item.hardest.name}）` : ""} · 单独练过{" "}
+                          {item.hardest.count} 次
+                        </span>
+                        <span className="hardest-go" aria-hidden="true">
+                          →
+                        </span>
+                      </button>
+                    </li>
+                  </Fragment>
+                );
+              })}
             </ul>
           )}
           <p className="hint hardest-hint">

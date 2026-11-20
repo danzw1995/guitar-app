@@ -1146,6 +1146,17 @@ for (const selector of ["select", "input", "textarea"]) {
     (tagButton.get("border") ?? "") === "0" && (tagButton.get("cursor") ?? "") === "pointer",
     `border=${tagButton.get("border") ?? "未设置"} cursor=${tagButton.get("cursor") ?? "未设置"}`,
   );
+
+  // v0.117.0：组合的小标题（统计页）+ 手机上标签独占一行
+  const setHead = narrowDecls(".hardest-set");
+  const tagNarrow = narrowDecls(".pb-done-tag");
+  expect(
+    "统计页的组合小标题是灰色小字，手机上「今天练过」单独占一行",
+    (setHead.get("list-style") ?? "") === "none" &&
+      parseFloat(setHead.get("font-size") ?? "0") <= 12 &&
+      (tagNarrow.get("display") ?? "") === "block",
+    `set=${setHead.get("font-size") ?? "未设置"}/${setHead.get("list-style") ?? "未设置"} tag=${tagNarrow.get("display") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
