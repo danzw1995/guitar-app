@@ -1684,13 +1684,22 @@ button, select, input { font: inherit; color: inherit; }
 .pb-done-tag {
   margin-left: 8px;
   padding: 1px 6px;
+  border: 0;
   border-radius: 999px;
   background: rgba(139, 148, 158, 0.16);
   color: var(--muted);
+  font: inherit;
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
   vertical-align: 2px;
+  cursor: pointer;
+}
+
+/* 点一下撤回：悬停时给个明确的「可以点」的样子，不然谁也不知道这枚标签是按钮 */
+.pb-done-tag:hover {
+  background: rgba(139, 148, 158, 0.28);
+  color: var(--text);
 }
 
 /* 分组能收起（v0.109.0）：标题整行是按钮，够手指点 */

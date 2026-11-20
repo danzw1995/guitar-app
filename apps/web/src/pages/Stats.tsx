@@ -373,22 +373,43 @@ export default function Stats() {
   // 最卡的地方按条目排（v0.105.0）：今天计划里的那几条按练习页的顺序排在最前（v0.106.0），
   // 计划和统计页两份列表顺序对得上；剩下的才按「单独练过几次」排。
   const planOrder = new Map(todayExtras.map((extra, index) => [extra.id, index]));
+  // 同属一套组合的条目也挨在一起（v0.116.0）：练习页按「组合 · 早课」分组，统计页这里跟着排，
+  // 两边的相对顺序才不打架。序号取组合今天第一次出现在计划里的位置。
+  // 注意两套键：`setRankById` 给还在计划里的加餐用，`setRankByTitle` 给记录用——
+  // 记录的 id 是 `p:extra-…` 运行时生成的，跟计划里的 id 对不上，只能靠标题回查。
+  const setRankById = new Map<string, number>();
+  const setRankByName = new Map<string, number>();
+  const setRankByTitle = new Map<string, number>();
+  for (const extra of todayExtras) {
+    if (!extra.setName) continue;
+    if (!setRankByName.has(extra.setName)) setRankByName.set(extra.setName, setRankByName.size);
+    const rank = setRankByName.get(extra.setName)!;
+    setRankById.set(extra.id, rank);
+    if (!setRankByTitle.has(extra.title)) setRankByTitle.set(extra.title, rank);
+  }
   // 按阶段筛（v0.110.0）：练习库里的直接按 id 查，加餐 / 跟练里切出来的记录靠 `title` 回查 DRILLS。
   const stageById = new Map(DRILLS.map((drill) => [drill.id, drill.stage]));
   const stageByName = new Map(DRILLS.map((drill) => [drill.name, drill.stage]));
   const hardSorted = Object.entries(rhythm)
     .filter(([, record]) => record.hardest && record.lastAt && record.lastAt >= addDays(today, -6))
-    .map(([id, record]) => ({
-      id,
-      hardest: record.hardest!,
-      order: planOrder.get(id.replace(/^p:/, "")),
-      // 「单独练过几次」（v0.114.0）：跟练里点「只练这一处」的次数合计，和 hardest.count 不是一回事
-      spots: (record.spots ?? []).reduce((sum, spot) => sum + spot.times, 0),
-      stage:
-        stageById.get(id.replace(/^p:/, "")) ??
-        (record.title ? stageByName.get(record.title) ?? null : null),
-    }))
+    .map(([id, record]) => {
+      const bare = id.replace(/^p:/, "");
+      return {
+        id,
+        hardest: record.hardest!,
+        order: planOrder.get(bare),
+        setRank:
+          setRankById.get(bare) ?? (record.title ? setRankByTitle.get(record.title) : undefined),
+        // 「单独练过几次」（v0.114.0）：跟练里点「只练这一处」的次数合计，和 hardest.count 不是一回事
+        spots: (record.spots ?? []).reduce((sum, spot) => sum + spot.times, 0),
+        stage: stageById.get(bare) ?? (record.title ? stageByName.get(record.title) ?? null : null),
+      };
+    })
     .sort((a, b) => {
+      // 先按组合归堆：同一套的条目相邻，组合之间按它们今天进计划的先后
+      const setA = a.setRank ?? Number.MAX_SAFE_INTEGER;
+      const setB = b.setRank ?? Number.MAX_SAFE_INTEGER;
+      if (setA !== setB) return setA - setB;
       if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
       if (a.order !== undefined) return -1;
       if (b.order !== undefined) return 1;

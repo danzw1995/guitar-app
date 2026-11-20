@@ -2836,6 +2836,25 @@ try {
     `${comboGroup} · ${comboDone}`,
   );
 
+  // 12aa) v0.116.0：点那枚「今天练过」能撤回——标签消失、按钮回到「完成」、今天的标记也不算了
+  const undoneTitle = String(
+    js(
+      "(() => { const block = document.querySelector('.practice-extra.done'); return block?.querySelector('h4')?.textContent?.replace('今天练过', '').trim() ?? ''; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("(() => { document.querySelector('.pb-done-tag')?.click(); return 'ok'; })()");
+  await sleep(600);
+  const undoneTag = String(
+    js(
+      `(() => { const tags = document.querySelectorAll('.pb-done-tag').length; const allDone = [...document.querySelectorAll('.practice-extra .btn.primary')].every(b => b.textContent.trim() === '完成'); const titles = JSON.parse(localStorage.getItem('guitar.plan.done.v1') ?? '{}').titles ?? []; return \`\${tags}|\${allDone}|\${titles.includes(${JSON.stringify(undoneTitle)})}\`; })()`,
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    undoneTag === "0|true|false",
+    "练习页：点「今天练过」能撤回，按钮变回「完成」",
+    `${undoneTitle} · ${undoneTag}`,
+  );
+
   // 16d18) v0.115.0：视角把「单独练过几次」也一起存下来
   js(
     "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const rec = { 's0-crawl': { bestBpm: 80, sessions: 1, minutes: 2, lastAt: today, title: '单弦爬格子（1-2-3-4）', hardest: { bar: 1, degree: 5, name: 'G', count: 5 }, spots: [{ bar: 2, degree: 5, name: 'G', times: 4, lastAt: today }] } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(rec)); localStorage.removeItem('guitar.stats.views.v1'); sessionStorage.removeItem('guitar.stats.degree'); sessionStorage.removeItem('guitar.stats.stage'); sessionStorage.removeItem('guitar.stats.spot'); location.hash = '#stats'; return 'ok'; })()",
@@ -2884,6 +2903,25 @@ try {
   );
   js("localStorage.removeItem('guitar.stats.views.v1')");
   js("sessionStorage.removeItem('guitar.stats.spot')");
+
+  // 16d19) v0.116.0：同一套组合的条目在「最卡的地方」挨在一起，不在组合里的排在后面
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const tab = { beatsPerBar: 4, bars: 1, notes: [{ s: 3, f: 0, beat: 0, dur: 4 }] }; const plan = [{ id: 'extra-g1', date: today, title: '单弦爬格子', tab, meter: '4/4', bpm: 60, stage: 0, setName: '早课', addedAt: 1 }, { id: 'extra-g2', date: today, title: '另一条', tab, meter: '4/4', bpm: 70, stage: 2, setName: '早课', addedAt: 2 }]; localStorage.setItem('guitar.plan.v1', JSON.stringify(plan)); const rec = { 'p:extra-m1': { bestBpm: 70, sessions: 1, minutes: 2, lastAt: today, title: '另一条', hardest: { bar: 1, degree: 1, name: 'C', count: 9 } }, 'p:extra-m2': { bestBpm: 70, sessions: 1, minutes: 2, lastAt: today, title: '单弦爬格子', hardest: { bar: 1, degree: 5, name: 'G', count: 2 } }, 'p:extra-house': { bestBpm: 60, sessions: 1, minutes: 2, lastAt: today, title: '不在组合里的', hardest: { bar: 1, degree: 3, name: 'E', count: 5 } } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(rec)); location.hash = '#stats'; return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(900);
+  const comboRows = String(
+    js(
+      "(() => [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join(','))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    comboRows.split(",").length === 3 && comboRows.endsWith("p:extra-house"),
+    "统计页：同一套组合的条目挨在一起，不在组合里的排在后面",
+    comboRows,
+  );
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+  js("localStorage.removeItem('guitar.plan.v1')");
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.sets.v1')");
   js("localStorage.removeItem('guitar.plan.sets.v1')");

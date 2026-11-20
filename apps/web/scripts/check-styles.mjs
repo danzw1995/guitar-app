@@ -1138,6 +1138,14 @@ for (const selector of ["select", "input", "textarea"]) {
       parseFloat(doneTag.get("font-size") ?? "0") <= 12,
     `done=${extraDone.get("color") ?? "未设置"} tag=${doneTag.get("border-radius") ?? "未设置"}/${doneTag.get("font-size") ?? "未设置"}`,
   );
+
+  // v0.116.0：「今天练过」能点（撤回），所以要去掉浏览器默认的按钮外观
+  const tagButton = narrowDecls(".pb-done-tag");
+  expect(
+    "「今天练过」那枚标签是按钮：去掉默认边框、鼠标变手",
+    (tagButton.get("border") ?? "") === "0" && (tagButton.get("cursor") ?? "") === "pointer",
+    `border=${tagButton.get("border") ?? "未设置"} cursor=${tagButton.get("cursor") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

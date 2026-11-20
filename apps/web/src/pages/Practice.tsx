@@ -60,6 +60,7 @@ import {
   removeExtra,
   reorderExtras,
   saveClosedGroups,
+  unmarkDoneTitle,
   type PlanExtra,
 } from "../lib/plan";
 import {
@@ -606,8 +607,41 @@ export default function Practice() {
     commit(recordBlock(log, today, { drill: extra.id, minutes: used, stage }));
     // 记一笔「今天练过这一条」（v0.113.0）：删掉之后点组合还能知道它练过
     markDoneTitle(extra.title, today);
+    // 组合里的那条勾完挪到同组最后（v0.116.0）：没练的留在前面，眼动的顺序跟着走
+    sinkInSet(extra);
     setRunningId(null);
     setSeconds(0);
+  }
+
+  /** 勾掉一条组合里的加餐之后，把它挪到同一套的最后面（v0.116.0）。 */
+  function sinkInSet(extra: PlanExtra) {
+    if (!extra.setName) return;
+    const sameSet = extras.filter((item) => item.setName === extra.setName);
+    const last = sameSet[sameSet.length - 1];
+    if (!last || last.id === extra.id) return;
+    const ids = extras.map((item) => item.id).filter((id) => id !== extra.id);
+    ids.splice(ids.indexOf(last.id) + 1, 0, extra.id);
+    setExtras(reorderExtras(ids, today));
+  }
+
+  /**
+   * 撤回「今天练过」（v0.116.0）：点那枚标签就是「我还没练完 / 点错了」。
+   *
+   * 只把「做完」这个勾去掉，**分钟数不退回**——练的时间花都花了，退回分钟反而像在改账；
+   * 同时把 `guitar.plan.done.v1` 里那条标题去掉，否则「只加没练过的」还会把它当练过。
+   */
+  function undoExtra(extra: PlanExtra) {
+    const day = log[today];
+    if (day?.done.includes(extra.id)) {
+      const next = { ...log, [today]: { ...day, done: day.done.filter((id) => id !== extra.id) } };
+      setLog(next);
+      savePractice(next);
+    }
+    unmarkDoneTitle(extra.title, today);
+    if (runningId === extra.id) {
+      setRunningId(null);
+      setSeconds(0);
+    }
   }
 
   function finish(drillId: string, planned: number) {
@@ -1100,7 +1134,17 @@ export default function Practice() {
                     <div className="pb-title">
                       <h4>
                         {extra.title}
-                        {extraDone && <span className="pb-done-tag">今天练过</span>}
+                        {extraDone && (
+                          <button
+                            type="button"
+                            className="pb-done-tag"
+                            onClick={() => undoExtra(extra)}
+                            aria-label={`撤回「${extra.title}」今天的完成`}
+                            title="点一下撤回：这条还没练完 / 点错了"
+                          >
+                            今天练过
+                          </button>
+                        )}
                       </h4>
                       <p className="pb-meta">
                         {extra.meter} · {extra.bpm} BPM · 自己加的

@@ -237,3 +237,18 @@ export function markDoneTitle(title: string, today: string = dateKeyOf(new Date(
     // 存不下就下次多点一条，不影响练习。
   }
 }
+
+/** 撤回「今天练过」这一笔（v0.116.0）：点那枚标签时用，免得「只加没练过的」还把它当练过。 */
+export function unmarkDoneTitle(title: string, today: string = dateKeyOf(new Date())): void {
+  const clean = title.trim();
+  if (!clean) return;
+  const titles = loadDoneTitles(today);
+  if (!titles.includes(clean)) return;
+  try {
+    const rest = titles.filter((item) => item !== clean);
+    if (rest.length === 0) localStorage.removeItem(DONE_KEY);
+    else localStorage.setItem(DONE_KEY, JSON.stringify({ date: today, titles: rest }));
+  } catch {
+    // 同上：撤不掉只是多记了一笔，练习本身不受影响。
+  }
+}

@@ -119,8 +119,12 @@ for (const device of VIEWPORTS) {
         .slice(0, 4);
       // 热力图的格子是日历格（52 周 × 40px 放不下），不按 40×40 的点按目标要求；
       // 它另有 aria-label、方向键和「点开看明细」这条路。
+      // 「今天练过」是标题里的一枚小标签（v0.116.0），旁边还有整块的「已勾」按钮可点。
       const smallButtons = [...document.querySelectorAll("main button, main .btn")]
-        .filter((node) => !node.classList.contains("heat-cell"))
+        .filter(
+          (node) =>
+            !node.classList.contains("heat-cell") && !node.classList.contains("pb-done-tag"),
+        )
         .filter((node) => {
           const rect = node.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0 && (rect.width < 40 || rect.height < 40);
