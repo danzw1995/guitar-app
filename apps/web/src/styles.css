@@ -2489,6 +2489,17 @@ button, select, input { font: inherit; color: inherit; }
   background: rgba(232, 176, 75, 0.2);
   color: var(--accent);
 }
+/* 一条都筛不出来的那枚 chip（v0.125.0）：淡下去，别让人以为点了会有东西 */
+.chip-empty {
+  opacity: 0.55;
+}
+.chip-empty .chip-n {
+  background: rgba(139, 148, 158, 0.1);
+}
+/* 窄屏的「看」字（v0.125.0）：平时藏起来，只在手机上补回一点语义 */
+.hardest-set-go-short {
+  display: none;
+}
 .hardest-set-btn:hover .hardest-set-go,
 .hardest-set-btn:focus-visible .hardest-set-go,
 .hardest-set-btn[aria-pressed="true"] .hardest-set-go {
@@ -2532,6 +2543,9 @@ button, select, input { font: inherit; color: inherit; }
   .hardest-set-go-long {
     display: none;
   }
+  .hardest-set-go-short {
+    display: inline;
+  }
   .hardest-set-weak {
     padding: 0 4px;
   }
@@ -2558,6 +2572,13 @@ button, select, input { font: inherit; color: inherit; }
   }
   .hardest-set-pace {
     font-size: 10px;
+  }
+  /* 手机上「比上周快 10 BPM」压成「快 10」（v0.125.0）——整句会把这一行顶到第二行 */
+  .hardest-set-pace-long {
+    display: none;
+  }
+  .hardest-set-pace::after {
+    content: attr(data-short);
   }
 }
 .hardest-jump:hover .hardest-go,

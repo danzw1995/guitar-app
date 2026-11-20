@@ -564,6 +564,8 @@ export default function Stats() {
     currentMeta && currentMeta.bpmCount > 0
       ? Math.round(currentMeta.bpmSum / currentMeta.bpmCount)
       : 0;
+  // ??????????? / ??? BPM?v0.125.0???7 ??????????????????
+  const currentPace = setFilter ? (setPaceOf(setFilter) ?? 0) : 0;
   const hasFilter =
     degreeFilter !== null ||
     stageFilter !== null ||
@@ -577,7 +579,8 @@ export default function Stats() {
       (view.spot ?? 0) === spotFilter &&
       (view.count ?? 0) === countFilter &&
       (view.set ?? "") === (setFilter ?? "") &&
-      (view.weak ?? 0) === currentWeak,
+      (view.weak ?? 0) === currentWeak &&
+      (view.pace ?? 0) === currentPace,
   );
   // 起名字（v0.112.0）：点「存下这组筛选」先出一个输入框，名字可以不填（不填就用拼出来的那串）
   const [namingView, setNamingView] = useState(false);
@@ -604,6 +607,7 @@ export default function Stats() {
         currentSessions,
         currentAvgBpm,
         countFilter,
+        currentPace,
       ),
     );
     setNamingView(false);
@@ -1236,7 +1240,9 @@ export default function Stats() {
               <button
                 key={times}
                 type="button"
-                className={`chip${countFilter === times ? " on" : ""}`}
+                className={`chip${countFilter === times ? " on" : ""}${
+                  countTally[index] === 0 ? " chip-empty" : ""
+                }`}
                 aria-pressed={countFilter === times}
                 title={`只显示跟练时卡过 ${times} 次以上的条目（现在这组筛选里有 ${countTally[index]} 条）`}
                 onClick={() => setCountFilter((current) => (current === times ? 0 : times))}
@@ -1344,6 +1350,7 @@ export default function Stats() {
                       currentSessions,
                       currentAvgBpm,
                       countFilter,
+                      currentPace,
                     )}
                     aria-label="给这组筛选起个名字（可以不填）"
                     onChange={(event) => setViewName(event.target.value)}
@@ -1502,12 +1509,22 @@ export default function Stats() {
                                     ? `慢了 ${Math.abs(setPaceOf(groupHead)!)} BPM`
                                     : "一样"
                               }`}
+                              data-short={
+                                setPaceOf(groupHead)! > 0
+                                  ? `快 ${setPaceOf(groupHead)}`
+                                  : setPaceOf(groupHead)! < 0
+                                    ? `慢 ${Math.abs(setPaceOf(groupHead)!)}`
+                                    : "持平"
+                              }
                             >
-                              {setPaceOf(groupHead)! > 0
-                                ? `比上周快 ${setPaceOf(groupHead)} BPM`
-                                : setPaceOf(groupHead)! < 0
-                                  ? `比上周慢 ${Math.abs(setPaceOf(groupHead)!)} BPM`
-                                  : "跟上周一样"}
+                              {/* 窄屏只写「快 10」（v0.125.0）——整句留着会把组合那行顶到第二行 */}
+                              <span className="hardest-set-pace-long">
+                                {setPaceOf(groupHead)! > 0
+                                  ? `比上周快 ${setPaceOf(groupHead)} BPM`
+                                  : setPaceOf(groupHead)! < 0
+                                    ? `比上周慢 ${Math.abs(setPaceOf(groupHead)!)} BPM`
+                                    : "跟上周一样"}
+                              </span>
                             </span>
                           )}
                           <span className="hardest-set-go">
@@ -1515,6 +1532,10 @@ export default function Stats() {
                                 这一行改成单行排了，四个字挤不下 */}
                             <span className="hardest-set-go-long">
                               {setFilter === groupHead ? "已筛" : "只看这套"}
+                            </span>
+                            {/* 窄屏只留一个「看」字（v0.125.0）：纯箭头看不出是能点的 */}
+                            <span className="hardest-set-go-short" aria-hidden="true">
+                              看
                             </span>
                             <span aria-hidden="true">→</span>
                           </span>

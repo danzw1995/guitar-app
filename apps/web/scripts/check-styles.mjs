@@ -1252,6 +1252,22 @@ for (const selector of ["select", "input", "textarea"]) {
       String(metaShortNarrow.get("content") ?? "").includes("attr(data-short)"),
     `pace=${paceUpDecl.get("color") ?? "未设置"} chipN=${chipNDecl.get("font-size") ?? "未设置"} long=${metaLongNarrow.get("display") ?? "未设置"} short=${metaShortNarrow.get("content") ?? "未设置"}`,
   );
+
+  // v0.125.0：一条都筛不出来的 chip 淡下去；窄屏把「比上周快 10 BPM」压成「快 10」、
+  // 「只看这套」压成一个「看」字——两者都用 ::after + attr(data-short)
+  const emptyChipDecl = narrowDecls(".chip-empty");
+  // narrowDecls 会把基础规则与窄屏块合并，所以这里读到的是「窄屏下的有效值」
+  const goShortNarrow = narrowDecls(".hardest-set-go-short");
+  const paceLongNarrow = narrowDecls(".hardest-set-pace-long");
+  const paceShortNarrow = narrowDecls(".hardest-set-pace::after");
+  expect(
+    "一条都筛不出来的 chip 淡下去，手机上「快 10」「看 →」用短文案",
+    (emptyChipDecl.get("opacity") ?? "") === "0.55" &&
+      (goShortNarrow.get("display") ?? "") === "inline" &&
+      (paceLongNarrow.get("display") ?? "") === "none" &&
+      String(paceShortNarrow.get("content") ?? "").includes("attr(data-short)"),
+    `empty=${emptyChipDecl.get("opacity") ?? "未设置"} goShort=${goShortNarrow.get("display") ?? "未设置"} paceLong=${paceLongNarrow.get("display") ?? "未设置"} paceShort=${paceShortNarrow.get("content") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

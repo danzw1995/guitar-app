@@ -3141,6 +3141,53 @@ try {
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");
 
+  // 16d27) 统计页：视角里记着「比上周快 10 BPM」，一条都筛不出来的 chip 淡下去（v0.125.0）
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const day = (n) => { const x = new Date(d); x.setDate(x.getDate() - n); return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; }; const today = day(0); const tab = { beatsPerBar: 4, bars: 1, notes: [{ s: 3, f: 0, beat: 0, dur: 1 }] }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'p:extra-p1': { bestBpm: 80, sessions: 2, minutes: 6, lastAt: day(1), history: [{ date: day(12), bpm: 70 }, { date: day(11), bpm: 70 }, { date: day(2), bpm: 80 }, { date: day(1), bpm: 80 }], hardest: { bar: 2, degree: 5, name: 'G', count: 6, at: day(1) }, title: '单弦爬格子', spots: [] }, 'p:extra-p2': { bestBpm: 70, sessions: 1, minutes: 3, lastAt: day(0), history: [], hardest: { bar: 1, degree: 3, name: 'E', count: 2, at: day(0) }, title: '另一条', spots: [] } })); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-p1', date: today, title: '单弦爬格子', tab, meter: '4/4', bpm: 70, addedAt: Date.now() - 3000, setName: '早课' }, { id: 'extra-p2', date: today, title: '另一条', tab, meter: '4/4', bpm: 70, addedAt: Date.now() - 2000, setName: '早课' }])); for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); localStorage.removeItem('guitar.stats.views.v1'); location.hash = '#stats'; return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(900);
+  js("document.querySelector('.hardest-set-btn')?.click()");
+  await sleep(400);
+  js("document.querySelector('.view-save')?.click()");
+  await sleep(300);
+  js("document.querySelector('.view-namer .view-save')?.click()");
+  await sleep(400);
+  const paceView = JSON.parse(
+    String(
+      js(
+        "(() => { const list = JSON.parse(localStorage.getItem('guitar.stats.views.v1') ?? '[]'); const last = list[list.length - 1] ?? {}; return JSON.stringify({ pace: last.pace ?? 0, label: last.label ?? '' }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  // 只看「第 3 级」：那一条只卡过 2 次，≥4 次 这枚一条都筛不出来
+  js("(() => { const chip = [...document.querySelectorAll('.hardest-filter .chip')].find(el => el.textContent.trim() === '第 3 级'); chip?.click(); return 'ok'; })()");
+  await sleep(400);
+  const emptyChip = JSON.parse(
+    String(
+      js(
+        "(() => { const el = document.querySelector('.hardest-count .chip-empty'); const chips = [...document.querySelectorAll('.hardest-count .chip')].map(c => c.textContent.replace(/\\s+/g, '').trim()); return JSON.stringify({ empties: document.querySelectorAll('.hardest-count .chip-empty').length, opacity: el ? getComputedStyle(el).opacity : '', chips }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    paceView.pace === 10 &&
+      paceView.label.includes("比上周快 10 BPM") &&
+      emptyChip.empties === 1 &&
+      emptyChip.opacity === "0.55" &&
+      emptyChip.chips.join("|") === "全部|≥2次1|≥4次0",
+    "统计页：视角里记着「比上周快 10 BPM」，一条都筛不出来的 chip 淡下去",
+    `pace=${paceView.pace} label=${paceView.label} · ${emptyChip.chips.join("|")} opacity=${emptyChip.opacity}`,
+  );
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+  js("localStorage.removeItem('guitar.plan.v1')");
+  js("localStorage.removeItem('guitar.stats.views.v1')");
+  js("(() => { for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); return 'ok'; })()");
+
   // 16e) 调音页：六根空弦都在、点「开始」拿不到麦克风时要有一句人话
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '调音'); b?.click(); return 'ok'; })()",

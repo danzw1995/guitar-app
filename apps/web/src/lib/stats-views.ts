@@ -28,6 +28,11 @@ export interface StatsView {
   /** 存这一套时练了几次 / 平均多快（v0.121.0）——记录会滚出七天窗口，这两个数留着做参照。 */
   sessions?: number;
   avgBpm?: number;
+  /**
+   * 存这一套时「比上周快 / 慢几 BPM」（v0.125.0）。7 天窗口一滚，当时的对比就算不出来了，
+   * 所以把差值一起存下来——翻回旧视角时还能看见那时是不是在进步。
+   */
+  pace?: number;
   /** 系统拼出来的那一串（「第 5 级 · 第 1 阶段」），title 里一直用。 */
   label: string;
   /** 用户自己起的名字（v0.112.0）；没起就用 label 显示。 */
@@ -53,6 +58,7 @@ export function viewLabel(
   sessions = 0,
   avgBpm = 0,
   count: 0 | 2 | 4 = 0,
+  pace = 0,
 ): string {
   const parts: string[] = [];
   if (set) parts.push(`「${set}」这套`);
@@ -63,6 +69,7 @@ export function viewLabel(
   if (weak > 0) parts.push(`整体卡在第 ${weak} 级`);
   if (sessions > 0) parts.push(`练了 ${sessions} 次`);
   if (avgBpm > 0) parts.push(`平均 ${avgBpm} BPM`);
+  if (pace !== 0) parts.push(pace > 0 ? `比上周快 ${pace} BPM` : `比上周慢 ${Math.abs(pace)} BPM`);
   return parts.length > 0 ? parts.join(" · ") : "全部";
 }
 
@@ -119,6 +126,10 @@ function parse(value: unknown): StatsView[] {
       Number.isInteger(record.avgBpm) && (record.avgBpm as number) > 0
         ? (record.avgBpm as number)
         : 0;
+    const pace =
+      Number.isInteger(record.pace) && Math.abs(record.pace as number) > 0 && Math.abs(record.pace as number) <= 60
+        ? (record.pace as number)
+        : 0;
     if (!id || (degree === null && stage === null && spot === 0 && count === 0 && !set)) continue;
     const key = `${set}|${degree ?? "-"}|${stage ?? "-"}|${spot}|${count}|${weak}`;
     if (seen.has(key)) continue;
@@ -133,7 +144,8 @@ function parse(value: unknown): StatsView[] {
       ...(set ? { set } : {}),
       ...(weak > 0 ? { weak, ...(weakCount > 0 ? { weakCount } : {}) } : {}),
       ...(sessions > 0 ? { sessions, ...(avgBpm > 0 ? { avgBpm } : {}) } : {}),
-      label: viewLabel(degree, stage, spot, set, weak, sessions, avgBpm, count),
+      ...(pace !== 0 ? { pace } : {}),
+      label: viewLabel(degree, stage, spot, set, weak, sessions, avgBpm, count, pace),
       ...(name ? { name } : {}),
       addedAt: typeof record.addedAt === "number" ? record.addedAt : 0,
     });
@@ -171,6 +183,7 @@ export function saveView(
   sessions = 0,
   avgBpm = 0,
   count: 0 | 2 | 4 = 0,
+  pace = 0,
 ): StatsView[] {
   const cleanSetName = cleanSet(set);
   if (degree === null && stage === null && spot === 0 && count === 0 && !cleanSetName)
@@ -184,7 +197,8 @@ export function saveView(
       (view.spot ?? 0) === spot &&
       (view.count ?? 0) === count &&
       (view.set ?? "") === cleanSetName &&
-      (view.weak ?? 0) === cleanWeak,
+      (view.weak ?? 0) === cleanWeak &&
+      (view.pace ?? 0) === pace,
   );
   if (exists) return views;
   const clean = cleanViewName(name);
@@ -199,7 +213,8 @@ export function saveView(
       ? { weak: cleanWeak, ...(weakCount > 0 ? { weakCount } : {}) }
       : {}),
     ...(sessions > 0 ? { sessions, ...(avgBpm > 0 ? { avgBpm } : {}) } : {}),
-    label: viewLabel(degree, stage, spot, cleanSetName, cleanWeak, sessions, avgBpm, count),
+    ...(pace !== 0 ? { pace } : {}),
+    label: viewLabel(degree, stage, spot, cleanSetName, cleanWeak, sessions, avgBpm, count, pace),
     ...(clean ? { name: clean } : {}),
     addedAt: Date.now(),
   };
