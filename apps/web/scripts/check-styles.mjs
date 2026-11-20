@@ -1282,6 +1282,19 @@ for (const selector of ["select", "input", "textarea"]) {
       (px(hardestEmptyDecl.get("font-size")) ?? 99) <= 12,
     `pace=${viewPaceDecl.get("font-size") ?? "未设置"} empty=${hardestEmptyDecl.get("color") ?? "未设置"}/${hardestEmptyDecl.get("font-size") ?? "未设置"}`,
   );
+
+  // v0.127.0：「练了 N 次」能点（去掉默认边框、够 40 高）；空结果那个「放宽一档」是小药丸
+  const setMetaBtnDecl = narrowDecls(".hardest-set-meta");
+  const emptyActionDecl = narrowDecls(".hardest-empty-action");
+  expect(
+    "「练了 N 次」能点，「放宽一档」是小药丸",
+    setMetaBtnDecl.get("border") === "0" &&
+      (px(setMetaBtnDecl.get("min-height")) ?? 0) >= 40 &&
+      setMetaBtnDecl.get("cursor") === "pointer" &&
+      (px(emptyActionDecl.get("min-height")) ?? 0) >= 40 &&
+      emptyActionDecl.get("border-radius") === "999px",
+    `meta=${setMetaBtnDecl.get("min-height") ?? "未设置"} cursor=${setMetaBtnDecl.get("cursor") ?? "未设置"} action=${emptyActionDecl.get("min-height") ?? "未设置"}/${emptyActionDecl.get("border-radius") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

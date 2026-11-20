@@ -2459,12 +2459,25 @@ button, select, input { font: inherit; color: inherit; }
   border-color: var(--accent);
   color: var(--accent);
 }
-/* 这套练了几次 / 平均多快 / 最近一次（v0.120.0 / v0.123.0） */
+/* 这套练了几次 / 平均多快 / 最近一次（v0.120.0 / v0.123.0）
+   点得动（v0.127.0）：跳到下面「跟练进步」里这一套的曲线 */
 .hardest-set-meta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
+  font: inherit;
   font-size: 11px;
   font-variant-numeric: tabular-nums;
   opacity: 0.85;
+  cursor: pointer;
+}
+.hardest-set-meta:hover {
+  color: var(--text);
+  opacity: 1;
 }
 /* 比上周快 / 慢（v0.124.0）：快的用强调色（进步值得看一眼），慢的保持灰的（不用敲警钟） */
 .hardest-set-pace {
@@ -2518,6 +2531,22 @@ button, select, input { font: inherit; color: inherit; }
   margin: 2px 0 10px;
   color: var(--muted);
   font-size: 12px;
+}
+/* 筛空时那个「放宽一步」的按钮（v0.127.0）：跟文字一行，但得够高能点 */
+.hardest-empty-action {
+  margin-left: 8px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.hardest-empty-action:hover {
+  border-color: var(--accent);
 }
 .hardest-set-btn:hover .hardest-set-go,
 .hardest-set-btn:focus-visible .hardest-set-go,

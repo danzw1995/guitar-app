@@ -3218,6 +3218,71 @@ try {
     "统计页：胶囊上快慢单独一枚，筛空时说一句「没有卡过 N 次以上的」",
     `pill=${pillInfo.text} pace=${pillInfo.pace} meta=${pillInfo.meta} rows=${emptyRows} note=${emptyNote}`,
   );
+  // 16d29) 统计页：筛空时给一个「放宽一档」的按钮；「比上周」的 title 写清加权怎么算；
+  // 「练了 N 次」点一下跳到跟练曲线（v0.127.0）
+  // 先把筛选放开——上一条用例结束时列表是空的，那一排「组合 · 早课」就不渲染了
+  js("(() => { for (const sel of ['.hardest-filter', '.hardest-count']) { const all = [...document.querySelectorAll(`${sel} .chip`)].find(c => c.textContent.trim() === '全部'); all?.click(); } return 'ok'; })()");
+  await sleep(500);
+  const relaxInfo = JSON.parse(
+    String(
+      js(
+        "(() => { const paceEl = document.querySelector('.hardest-set-pace'); const meta = document.querySelector('.hardest-set-meta'); return JSON.stringify({ paceTitle: paceEl?.getAttribute('title') ?? '', metaTag: meta?.tagName ?? '', metaLabel: meta?.getAttribute('aria-label') ?? '', curves: document.querySelectorAll('.curve-list li').length }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  // 点「练了 N 次」：曲线那一行滚进视口并闪一下
+  js("document.querySelector('.hardest-set-meta')?.click()");
+  await sleep(900);
+  const curveJump = JSON.parse(
+    String(
+      js(
+        "(() => { const row = document.querySelector('.curve-list li'); const box = row?.getBoundingClientRect(); return JSON.stringify({ flashed: row?.classList.contains('flash') ?? false, inView: !!box && box.top >= 0 && box.top < innerHeight }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  // 再筛成空，点「放宽一档」
+  js("(() => { const chip = [...document.querySelectorAll('.hardest-filter .chip')].find(el => el.textContent.trim() === '第 3 级'); chip?.click(); return 'ok'; })()");
+  await sleep(300);
+  js("(() => { const chip = [...document.querySelectorAll('.hardest-count .chip')].find(el => el.textContent.trim().startsWith('≥4 次')); chip?.click(); return 'ok'; })()");
+  await sleep(400);
+  const emptyAction = JSON.parse(
+    String(
+      js(
+        "(() => { const btn = document.querySelector('.hardest-empty-action'); return JSON.stringify({ label: btn?.textContent?.trim() ?? '', h: btn ? Math.round(btn.getBoundingClientRect().height) : 0, rows: document.querySelectorAll('[data-hardest-item]').length }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  js("document.querySelector('.hardest-empty-action')?.click()");
+  await sleep(500);
+  const relaxed = JSON.parse(
+    String(
+      js(
+        "(() => { const rows = document.querySelectorAll('[data-hardest-item]').length; return JSON.stringify({ rows, hash: location.hash }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    emptyAction.label === "放宽到 ≥2 次" &&
+      emptyAction.h >= 40 &&
+      emptyAction.rows === 0 &&
+      relaxInfo.paceTitle.includes("加权平均") &&
+      relaxInfo.metaTag === "BUTTON" &&
+      relaxInfo.metaLabel.includes("跟练曲线") &&
+      relaxed.rows === 1 &&
+      relaxed.hash.includes("c=2") &&
+      curveJump.flashed &&
+      curveJump.inView,
+    "统计页：筛空能放宽一档、快慢写明加权、「练了 N 次」跳到曲线",
+    `relax=${emptyAction.label}/${emptyAction.h} paceTitle=${relaxInfo.paceTitle} meta=${relaxInfo.metaTag} rows=${relaxed.rows} hash=${relaxed.hash} curve=${curveJump.flashed}/${curveJump.inView}`,
+  );
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");
   js("localStorage.removeItem('guitar.stats.views.v1')");

@@ -563,11 +563,42 @@ export default function Stats() {
     }
     setPace.set(name, stat);
   }
-  /** 这套的「比上周快 / 慢 N BPM」；两个窗口缺一个就返回 null（不硬比）。 */
-  const setPaceOf = (name: string): number | null => {
+  /** 这套的「比上周」详情（v0.126.0 起按练习次数加权）；两个窗口缺一个就返回 null（不硬比）。 */
+  const setPaceInfoOf = (
+    name: string,
+  ): { delta: number; recentBpm: number; beforeBpm: number; recentWeight: number; beforeWeight: number } | null => {
     const stat = setPace.get(name);
     if (!stat || stat.recentWeight === 0 || stat.beforeWeight === 0) return null;
-    return Math.round(stat.recentSum / stat.recentWeight - stat.beforeSum / stat.beforeWeight);
+    const recentBpm = stat.recentSum / stat.recentWeight;
+    const beforeBpm = stat.beforeSum / stat.beforeWeight;
+    return {
+      delta: Math.round(recentBpm - beforeBpm),
+      recentBpm: Math.round(recentBpm),
+      beforeBpm: Math.round(beforeBpm),
+      recentWeight: stat.recentWeight,
+      beforeWeight: stat.beforeWeight,
+    };
+  };
+  /** 这套的「比上周快 / 慢 N BPM」；没得比就是 null。 */
+  const setPaceOf = (name: string): number | null => setPaceInfoOf(name)?.delta ?? null;
+  /** 点「练了 7 次」跳到下面「跟练进步」里这一套的那条曲线（v0.127.0）：
+   *  光看数字不知道它长什么样，能跳过去看一眼趋势才算闭环。 */
+  const jumpToCurve = (name: string) => {
+    const first = Object.entries(rhythm).find(
+      ([, record]) =>
+        record.title &&
+        setNameByTitle.get(record.title) === name &&
+        (record.history ?? []).length >= 2,
+    )?.[0];
+    const row = first
+      ? document.querySelector<HTMLElement>(`[data-curve-id="${CSS.escape(first)}"]`)
+      : null;
+    // 这一套还没有曲线（比如只练过一次）：退回到整块「跟练进步」
+    const target = row ?? document.querySelector<HTMLElement>(".curve-list");
+    if (!target) return;
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+    target.classList.add("flash");
+    window.setTimeout(() => target.classList.remove("flash"), 1200);
   };
   // 「卡了几次」那排 chip 上写「有 N 条」（v0.124.0）：点之前就知道能筛出几条，
   // 数的是「如果现在点它」会剩几条——即先套上其它几排筛选，再按次数数。
@@ -597,6 +628,24 @@ export default function Stats() {
     spotFilter !== 0 ||
     countFilter !== 0 ||
     setFilter !== null;
+  /** 筛空时给一个「放宽一步」的按钮（v0.127.0）：空列表里最需要的是下一步怎么走，
+   *  一次只放宽一档——直接「看全部」会把用户刚选的那几排一起清掉。 */
+  const relaxStep = (() => {
+    if (!hasFilter) return null;
+    if (countFilter === 4) return { label: "放宽到 ≥2 次", run: () => setCountFilter(2) };
+    if (countFilter === 2) return { label: "不限次数", run: () => setCountFilter(0) };
+    if (spotFilter !== 0) return { label: "不限「单独练过」", run: () => setSpotFilter(0) };
+    return {
+      label: "看全部",
+      run: () => {
+        setDegreeFilter(null);
+        setStageFilter(null);
+        setSpotFilter(0);
+        setCountFilter(0);
+        setSetFilter(null);
+      },
+    };
+  })();
   const currentSaved = views.some(
     (view) =>
       view.degree === degreeFilter &&
@@ -1170,7 +1219,7 @@ export default function Stats() {
                 ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
                 : nameOf(curve.id);
               return (
-                <li key={curve.id}>
+                <li key={curve.id} data-curve-id={curve.id}>
                   <span className="curve-name">{name}</span>
                   <svg
                     className="curve-svg"
@@ -1445,10 +1494,20 @@ export default function Stats() {
           )}
           {hardItems.length === 0 && hasFilter && (
             <p className="hardest-note hardest-empty">
-              {/* 空列表要说清是「没有」，不是「没加载出来」（v0.126.0） */}
+              {/* 空列表要说清是「没有」，不是「没加载出来」（v0.126.0）；
+                  后面再给一个放宽一档的按钮（v0.127.0） */}
               {countFilter !== 0
                 ? `这组筛选里没有跟练时卡过 ${countFilter} 次以上的条目。`
                 : "这组筛选下没有条目。"}
+              {relaxStep && (
+                <button
+                  type="button"
+                  className="hardest-empty-action"
+                  onClick={() => relaxStep.run()}
+                >
+                  {relaxStep.label}
+                </button>
+              )}
             </p>
           )}
           {hardItems.length > 0 && (
@@ -1457,6 +1516,8 @@ export default function Stats() {
                 // 同一套组合的条目之间插一行小标题（v0.117.0）：靠相邻顺序说话不够直白
                 const groupHead =
                   item.setName && item.setName !== hardItems[index - 1]?.setName ? item.setName : null;
+                // 这一套的「比上周」详情（v0.126.0）：标题里要把加权用的次数写清楚
+                const pace = groupHead ? setPaceInfoOf(groupHead) : null;
                 return (
                   <Fragment key={item.id}>
                     {groupHead && (
@@ -1510,8 +1571,14 @@ export default function Stats() {
                             </button>
                           )}
                           {setMeta.get(groupHead) && setMeta.get(groupHead)!.sessions > 0 && (
-                            <span
+                            <button
+                              type="button"
                               className="hardest-set-meta"
+                              // 点一下跳到下面「跟练进步」里这一套的那条曲线（v0.127.0）：
+                              // 「练了 7 次」这种数字光看没用，得能看见它长什么样。
+                              aria-label={`跳到「${groupHead}」的跟练曲线`}
+                              title="看这一套的进步曲线"
+                              onClick={() => jumpToCurve(groupHead)}
                               data-short={`${setMeta.get(groupHead)!.sessions} 次${
                                 setMeta.get(groupHead)!.bpmCount > 0
                                   ? ` · ${Math.round(
@@ -1536,34 +1603,29 @@ export default function Stats() {
                                   ? ` · 最近 ${setMeta.get(groupHead)!.lastAt.slice(5).replace("-", "/")}`
                                   : ""}
                               </span>
-                            </span>
+                            </button>
                           )}
-                          {setPaceOf(groupHead) !== null && (
+                          {pace && (
                             <span
-                              className={`hardest-set-pace${
-                                setPaceOf(groupHead)! > 0 ? " up" : setPaceOf(groupHead)! < 0 ? " down" : ""
-                              }`}
-                              title={`这一套近 7 天的平均速度和前 7 天比：${
-                                setPaceOf(groupHead)! > 0
-                                  ? `快了 ${setPaceOf(groupHead)} BPM`
-                                  : setPaceOf(groupHead)! < 0
-                                    ? `慢了 ${Math.abs(setPaceOf(groupHead)!)} BPM`
-                                    : "一样"
-                              }`}
+                              className={`hardest-set-pace${pace.delta > 0 ? " up" : pace.delta < 0 ? " down" : ""}`}
+                              // 加权怎么算的写进 title（v0.127.0）：数字有出处才可信
+                              title={`近 7 天 ${pace.recentWeight} 次练习的加权平均 ${pace.recentBpm} BPM，前 7 天 ${pace.beforeWeight} 次 ${pace.beforeBpm} BPM——差 ${
+                                pace.delta > 0 ? "+" : ""
+                              }${pace.delta} BPM（按练习次数加权，不是两边各占一半）`}
                               data-short={
-                                setPaceOf(groupHead)! > 0
-                                  ? `快 ${setPaceOf(groupHead)}`
-                                  : setPaceOf(groupHead)! < 0
-                                    ? `慢 ${Math.abs(setPaceOf(groupHead)!)}`
+                                pace.delta > 0
+                                  ? `快 ${pace.delta}`
+                                  : pace.delta < 0
+                                    ? `慢 ${Math.abs(pace.delta)}`
                                     : "持平"
                               }
                             >
                               {/* 窄屏只写「快 10」（v0.125.0）——整句留着会把组合那行顶到第二行 */}
                               <span className="hardest-set-pace-long">
-                                {setPaceOf(groupHead)! > 0
-                                  ? `比上周快 ${setPaceOf(groupHead)} BPM`
-                                  : setPaceOf(groupHead)! < 0
-                                    ? `比上周慢 ${Math.abs(setPaceOf(groupHead)!)} BPM`
+                                {pace.delta > 0
+                                  ? `比上周快 ${pace.delta} BPM`
+                                  : pace.delta < 0
+                                    ? `比上周慢 ${Math.abs(pace.delta)} BPM`
                                     : "跟上周一样"}
                               </span>
                             </span>
