@@ -2466,6 +2466,29 @@ button, select, input { font: inherit; color: inherit; }
   font-variant-numeric: tabular-nums;
   opacity: 0.85;
 }
+/* 比上周快 / 慢（v0.124.0）：快的用强调色（进步值得看一眼），慢的保持灰的（不用敲警钟） */
+.hardest-set-pace {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.hardest-set-pace.up {
+  color: var(--accent);
+}
+/* 「卡了几次」chip 角上的条数（v0.124.0）：点之前就知道能筛出几条 */
+.chip-n {
+  margin-left: 5px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(139, 148, 158, 0.18);
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.chip.on .chip-n {
+  background: rgba(232, 176, 75, 0.2);
+  color: var(--accent);
+}
 .hardest-set-btn:hover .hardest-set-go,
 .hardest-set-btn:focus-visible .hardest-set-go,
 .hardest-set-btn[aria-pressed="true"] .hardest-set-go {
@@ -2524,6 +2547,17 @@ button, select, input { font: inherit; color: inherit; }
     margin-left: auto;
     font-size: 10px;
     white-space: nowrap;
+  }
+  /* 手机上练习量只留「4 次 · 80 BPM · 11/18」（v0.124.0）——「练了 / 平均 / 最近」三个词
+     在这一行是冗余的，挤掉的却是弱点那枚按钮的位置 */
+  .hardest-set-meta-long {
+    display: none;
+  }
+  .hardest-set-meta::after {
+    content: attr(data-short);
+  }
+  .hardest-set-pace {
+    font-size: 10px;
   }
 }
 .hardest-jump:hover .hardest-go,

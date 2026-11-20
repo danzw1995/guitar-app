@@ -1237,6 +1237,21 @@ for (const selector of ["select", "input", "textarea"]) {
       (px(countChipDecl.get("min-height")) ?? 0) >= 40,
     `display=${countRowDecl.get("display") ?? "未设置"} wrap=${countRowDecl.get("flex-wrap") ?? "未设置"} chip=${countChipDecl.get("min-height") ?? "未设置"}`,
   );
+
+  // v0.124.0：组合行上的「比上周快 / 慢」用强调色（只有变快才亮），chip 角上的条数是小药丸；
+  // 手机上练习量换成「4 次 · 80 BPM · 11/18」——同样用 ::after + attr(data-short)
+  const paceUpDecl = narrowDecls(".hardest-set-pace.up");
+  const chipNDecl = narrowDecls(".chip-n");
+  const metaLongNarrow = narrowDecls(".hardest-set-meta-long");
+  const metaShortNarrow = narrowDecls(".hardest-set-meta::after");
+  expect(
+    "「比上周快」用强调色，chip 上的条数是小药丸，手机上练习量换短文案",
+    (paceUpDecl.get("color") ?? "") === "var(--accent)" &&
+      (px(chipNDecl.get("font-size")) ?? 99) <= 10 &&
+      (metaLongNarrow.get("display") ?? "") === "none" &&
+      String(metaShortNarrow.get("content") ?? "").includes("attr(data-short)"),
+    `pace=${paceUpDecl.get("color") ?? "未设置"} chipN=${chipNDecl.get("font-size") ?? "未设置"} long=${metaLongNarrow.get("display") ?? "未设置"} short=${metaShortNarrow.get("content") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

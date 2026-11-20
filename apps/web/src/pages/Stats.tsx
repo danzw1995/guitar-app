@@ -2,10 +2,12 @@ import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent } fr
 import {
   addDays,
   dateKeyOf,
+  dayNumberOf,
   DRILLS,
   FEELS,
   hardestTally,
   heatmapOf,
+  isValidDateKey,
   lastNDays,
   practiceStats,
   PROGRESSIONS,
@@ -515,6 +517,45 @@ export default function Stats() {
     if (record.lastAt && record.lastAt > stat.lastAt) stat.lastAt = record.lastAt;
     setMeta.set(name, stat);
   }
+  // 这套比上周快还是慢（v0.124.0）：用跟练曲线里的点，近 7 天跟前 7 天各取一个平均值。
+  // 只算「有和弦 / 有记录」的那种点，1 天一个；两个窗口都得有数据才比得出来。
+  const todayNumber = dayNumberOf(today);
+  const setPace = new Map<string, { recentSum: number; recentCount: number; beforeSum: number; beforeCount: number }>();
+  for (const record of Object.values(rhythm)) {
+    const name = record.title ? setNameByTitle.get(record.title) : undefined;
+    if (!name) continue;
+    const stat = setPace.get(name) ?? { recentSum: 0, recentCount: 0, beforeSum: 0, beforeCount: 0 };
+    for (const point of record.history ?? []) {
+      if (!isValidDateKey(point.date) || point.bpm <= 0) continue;
+      const daysAgo = todayNumber - dayNumberOf(point.date);
+      if (daysAgo >= 0 && daysAgo <= 6) {
+        stat.recentSum += point.bpm;
+        stat.recentCount += 1;
+      } else if (daysAgo >= 7 && daysAgo <= 13) {
+        stat.beforeSum += point.bpm;
+        stat.beforeCount += 1;
+      }
+    }
+    setPace.set(name, stat);
+  }
+  /** 这套的「比上周快 / 慢 N BPM」；两个窗口缺一个就返回 null（不硬比）。 */
+  const setPaceOf = (name: string): number | null => {
+    const stat = setPace.get(name);
+    if (!stat || stat.recentCount === 0 || stat.beforeCount === 0) return null;
+    return Math.round(stat.recentSum / stat.recentCount - stat.beforeSum / stat.beforeCount);
+  };
+  // 「卡了几次」那排 chip 上写「有 N 条」（v0.124.0）：点之前就知道能筛出几条，
+  // 数的是「如果现在点它」会剩几条——即先套上其它几排筛选，再按次数数。
+  const countPool = hardSorted.filter(
+    (item) =>
+      (degreeFilter === null || item.hardest.degree === degreeFilter) &&
+      (stageFilter === null || item.stage === stageFilter) &&
+      (spotFilter === 0 || item.spots >= spotFilter) &&
+      (setFilter === null || item.setName === setFilter),
+  );
+  const countTally = ([2, 4] as const).map(
+    (times) => countPool.filter((item) => item.hardest.count >= times).length,
+  );
   // 存下的视角（v0.111.0）：现在这组筛选有没有存过 / 能不能存
   const currentWeak = setFilter ? (setWeak.get(setFilter)?.degree ?? 0) : 0;
   const currentMeta = setFilter ? setMeta.get(setFilter) : undefined;
@@ -1191,16 +1232,19 @@ export default function Stats() {
             >
               全部
             </button>
-            {([2, 4] as const).map((times) => (
+            {([2, 4] as const).map((times, index) => (
               <button
                 key={times}
                 type="button"
                 className={`chip${countFilter === times ? " on" : ""}`}
                 aria-pressed={countFilter === times}
-                title={`只显示跟练时卡过 ${times} 次以上的条目`}
+                title={`只显示跟练时卡过 ${times} 次以上的条目（现在这组筛选里有 ${countTally[index]} 条）`}
                 onClick={() => setCountFilter((current) => (current === times ? 0 : times))}
               >
                 ≥{times} 次
+                <span className="chip-n" aria-hidden="true">
+                  {countTally[index]}
+                </span>
               </button>
             ))}
           </div>
@@ -1418,17 +1462,52 @@ export default function Stats() {
                             </button>
                           )}
                           {setMeta.get(groupHead) && setMeta.get(groupHead)!.sessions > 0 && (
-                            <span className="hardest-set-meta">
-                              练了 {setMeta.get(groupHead)!.sessions} 次
-                              {setMeta.get(groupHead)!.bpmCount > 0
-                                ? ` · 平均 ${Math.round(
-                                    setMeta.get(groupHead)!.bpmSum /
-                                      setMeta.get(groupHead)!.bpmCount,
-                                  )} BPM`
-                                : ""}
-                              {setMeta.get(groupHead)!.lastAt
-                                ? ` · 最近 ${setMeta.get(groupHead)!.lastAt.slice(5).replace("-", "/")}`
-                                : ""}
+                            <span
+                              className="hardest-set-meta"
+                              data-short={`${setMeta.get(groupHead)!.sessions} 次${
+                                setMeta.get(groupHead)!.bpmCount > 0
+                                  ? ` · ${Math.round(
+                                      setMeta.get(groupHead)!.bpmSum / setMeta.get(groupHead)!.bpmCount,
+                                    )} BPM`
+                                  : ""
+                              }${
+                                setMeta.get(groupHead)!.lastAt
+                                  ? ` · ${setMeta.get(groupHead)!.lastAt.slice(5).replace("-", "/")}`
+                                  : ""
+                              }`}
+                            >
+                              <span className="hardest-set-meta-long">
+                                练了 {setMeta.get(groupHead)!.sessions} 次
+                                {setMeta.get(groupHead)!.bpmCount > 0
+                                  ? ` · 平均 ${Math.round(
+                                      setMeta.get(groupHead)!.bpmSum /
+                                        setMeta.get(groupHead)!.bpmCount,
+                                    )} BPM`
+                                  : ""}
+                                {setMeta.get(groupHead)!.lastAt
+                                  ? ` · 最近 ${setMeta.get(groupHead)!.lastAt.slice(5).replace("-", "/")}`
+                                  : ""}
+                              </span>
+                            </span>
+                          )}
+                          {setPaceOf(groupHead) !== null && (
+                            <span
+                              className={`hardest-set-pace${
+                                setPaceOf(groupHead)! > 0 ? " up" : setPaceOf(groupHead)! < 0 ? " down" : ""
+                              }`}
+                              title={`这一套近 7 天的平均速度和前 7 天比：${
+                                setPaceOf(groupHead)! > 0
+                                  ? `快了 ${setPaceOf(groupHead)} BPM`
+                                  : setPaceOf(groupHead)! < 0
+                                    ? `慢了 ${Math.abs(setPaceOf(groupHead)!)} BPM`
+                                    : "一样"
+                              }`}
+                            >
+                              {setPaceOf(groupHead)! > 0
+                                ? `比上周快 ${setPaceOf(groupHead)} BPM`
+                                : setPaceOf(groupHead)! < 0
+                                  ? `比上周慢 ${Math.abs(setPaceOf(groupHead)!)} BPM`
+                                  : "跟上周一样"}
                             </span>
                           )}
                           <span className="hardest-set-go">

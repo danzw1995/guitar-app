@@ -3080,7 +3080,7 @@ try {
   );
   await ab(["reload"]);
   await sleep(900);
-  js("(() => { const chip = [...document.querySelectorAll('.hardest-count .chip')].find(el => el.textContent.trim() === '≥4 次'); chip?.click(); return 'ok'; })()");
+  js("(() => { const chip = [...document.querySelectorAll('.hardest-count .chip')].find(el => el.textContent.trim().startsWith('≥4 次')); chip?.click(); return 'ok'; })()");
   await sleep(400);
   const countMeta = String(
     js(
@@ -3116,6 +3116,28 @@ try {
   js("localStorage.removeItem('guitar.plan.done.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");
 
+  // 16d26) 统计页：「卡了几次」的 chip 上写着能筛出几条，组合行写着比上周快还是慢（v0.124.0）
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const day = (n) => { const x = new Date(d); x.setDate(x.getDate() - n); return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; }; const today = day(0); const tab = { beatsPerBar: 4, bars: 1, notes: [{ s: 3, f: 0, beat: 0, dur: 1 }] }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'p:extra-n1': { bestBpm: 80, sessions: 2, minutes: 6, lastAt: day(1), history: [{ date: day(12), bpm: 70 }, { date: day(11), bpm: 70 }, { date: day(2), bpm: 80 }, { date: day(1), bpm: 80 }], hardest: { bar: 2, degree: 5, name: 'G', count: 6, at: day(1) }, title: '单弦爬格子', spots: [] }, 'p:extra-n2': { bestBpm: 70, sessions: 1, minutes: 3, lastAt: day(0), history: [], hardest: { bar: 1, degree: 3, name: 'E', count: 2, at: day(0) }, title: '另一条', spots: [] } })); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-n1', date: today, title: '单弦爬格子', tab, meter: '4/4', bpm: 70, addedAt: Date.now() - 3000, setName: '早课' }, { id: 'extra-n2', date: today, title: '另一条', tab, meter: '4/4', bpm: 70, addedAt: Date.now() - 2000, setName: '早课' }])); for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); localStorage.removeItem('guitar.stats.views.v1'); location.hash = '#stats'; return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(900);
+  const paceInfo = JSON.parse(
+    String(
+      js(
+        "(() => { const pace = document.querySelector('.hardest-set-pace'); const chips = [...document.querySelectorAll('.hardest-count .chip')].map(el => el.textContent.replace(/\\s+/g, '').trim()); return JSON.stringify({ pace: pace?.textContent ?? '', color: pace ? getComputedStyle(pace).color : '', chips }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    /^比上周快 10 BPM$/.test(paceInfo.pace.trim()) &&
+      paceInfo.color === "rgb(232, 176, 75)" &&
+      paceInfo.chips.join("|") === "全部|≥2次2|≥4次1",
+    "统计页：组合行写「比上周快 10 BPM」，次数 chip 上带着能筛出几条",
+    `${paceInfo.pace} · ${paceInfo.color} · ${paceInfo.chips.join("|")}`,
+  );
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");
 
