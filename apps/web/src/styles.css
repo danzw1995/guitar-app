@@ -2399,6 +2399,8 @@ button, select, input { font: inherit; color: inherit; }
   flex-wrap: wrap;
   align-items: center;
   gap: 2px 8px;
+  /* 父级 li 是 flex，不写死 100% 的话这一行会缩到内容宽（v0.121.0 修） */
+  width: 100%;
 }
 .hardest-set-btn {
   display: flex;
@@ -2475,6 +2477,39 @@ button, select, input { font: inherit; color: inherit; }
 .hardest-set-note .btn-quiet:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+/* 手机上那行四段挤不开（v0.121.0）：折成两行——
+   第一行「组合 · 早课」+ 右端「只看这套 →」，第二行「整体卡在…」+ 右端「练了几次」。
+   用 grid 定位置，比让 flex 自己折更稳（右端的箭头不会掉到第三行）。 */
+@media (max-width: 720px) {
+  .hardest-set-row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 0;
+  }
+  .hardest-set-btn {
+    grid-column: 1 / 2;
+    grid-row: 1;
+  }
+  .hardest-set-go {
+    grid-column: 3 / 4;
+    grid-row: 1;
+    justify-self: end;
+    /* 触屏没有 hover，这个提示得一直看得见（v0.121.0） */
+    opacity: 1;
+  }
+  .hardest-set-weak {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    justify-self: start;
+  }
+  .hardest-set-meta {
+    grid-column: 3 / 4;
+    grid-row: 2;
+    justify-self: end;
+  }
 }
 .hardest-jump:hover .hardest-go,
 .hardest-jump:focus-visible .hardest-go {

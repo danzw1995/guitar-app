@@ -23,6 +23,9 @@ export interface StatsView {
   weak?: number;
   /** 那一级一共卡了几次（v0.120.0），跟 `weak` 一起来。 */
   weakCount?: number;
+  /** 存这一套时练了几次 / 平均多快（v0.121.0）——记录会滚出七天窗口，这两个数留着做参照。 */
+  sessions?: number;
+  avgBpm?: number;
   /** 系统拼出来的那一串（「第 5 级 · 第 1 阶段」），title 里一直用。 */
   label: string;
   /** 用户自己起的名字（v0.112.0）；没起就用 label 显示。 */
@@ -45,6 +48,8 @@ export function viewLabel(
   spot: 0 | 1 | 3 = 0,
   set = "",
   weak = 0,
+  sessions = 0,
+  avgBpm = 0,
 ): string {
   const parts: string[] = [];
   if (set) parts.push(`「${set}」这套`);
@@ -52,6 +57,8 @@ export function viewLabel(
   if (stage !== null) parts.push(`第 ${stage + 1} 阶段`);
   if (spot > 0) parts.push(`单独练过 ≥${spot} 次`);
   if (weak > 0) parts.push(`整体卡在第 ${weak} 级`);
+  if (sessions > 0) parts.push(`练了 ${sessions} 次`);
+  if (avgBpm > 0) parts.push(`平均 ${avgBpm} BPM`);
   return parts.length > 0 ? parts.join(" · ") : "全部";
 }
 
@@ -94,6 +101,14 @@ function parse(value: unknown): StatsView[] {
     const weakCount = weak > 0 && Number.isInteger(record.weakCount) && (record.weakCount as number) > 0
       ? (record.weakCount as number)
       : 0;
+    const sessions =
+      Number.isInteger(record.sessions) && (record.sessions as number) > 0
+        ? (record.sessions as number)
+        : 0;
+    const avgBpm =
+      Number.isInteger(record.avgBpm) && (record.avgBpm as number) > 0
+        ? (record.avgBpm as number)
+        : 0;
     if (!id || (degree === null && stage === null && spot === 0 && !set)) continue;
     const key = `${set}|${degree ?? "-"}|${stage ?? "-"}|${spot}|${weak}`;
     if (seen.has(key)) continue;
@@ -106,7 +121,8 @@ function parse(value: unknown): StatsView[] {
       spot,
       ...(set ? { set } : {}),
       ...(weak > 0 ? { weak, ...(weakCount > 0 ? { weakCount } : {}) } : {}),
-      label: viewLabel(degree, stage, spot, set, weak),
+      ...(sessions > 0 ? { sessions, ...(avgBpm > 0 ? { avgBpm } : {}) } : {}),
+      label: viewLabel(degree, stage, spot, set, weak, sessions, avgBpm),
       ...(name ? { name } : {}),
       addedAt: typeof record.addedAt === "number" ? record.addedAt : 0,
     });
@@ -141,6 +157,8 @@ export function saveView(
   set = "",
   weak = 0,
   weakCount = 0,
+  sessions = 0,
+  avgBpm = 0,
 ): StatsView[] {
   const cleanSetName = cleanSet(set);
   if (degree === null && stage === null && spot === 0 && !cleanSetName) return loadViews();
@@ -165,7 +183,8 @@ export function saveView(
     ...(cleanWeak > 0
       ? { weak: cleanWeak, ...(weakCount > 0 ? { weakCount } : {}) }
       : {}),
-    label: viewLabel(degree, stage, spot, cleanSetName, cleanWeak),
+    ...(sessions > 0 ? { sessions, ...(avgBpm > 0 ? { avgBpm } : {}) } : {}),
+    label: viewLabel(degree, stage, spot, cleanSetName, cleanWeak, sessions, avgBpm),
     ...(clean ? { name: clean } : {}),
     addedAt: Date.now(),
   };

@@ -3018,8 +3018,9 @@ try {
   ).replace(/^"|"$/g, "");
   log(
     setHash.includes("g=") &&
-      setPlaceholder === "「早课」这套 · 整体卡在第 1 级" &&
-      setStored === "早课|早课短板|「早课」这套 · 整体卡在第 1 级|1|9" &&
+      setPlaceholder === "「早课」这套 · 整体卡在第 1 级 · 练了 2 次 · 平均 70 BPM" &&
+      setStored ===
+        "早课|早课短板|「早课」这套 · 整体卡在第 1 级 · 练了 2 次 · 平均 70 BPM|1|9" &&
       setRestored === "true|2|true",
     "统计页：只看这套也能存进视角，刷新后还在",
     `${setHash} · ${setPlaceholder} · ${setStored} · ${setRestored}`,
@@ -3034,16 +3035,25 @@ try {
   await sleep(400);
   const weakFiltered = String(
     js(
-      "(() => { const weak = document.querySelector('.hardest-set-weak'); const pressed = weak?.getAttribute('aria-pressed') ?? ''; const rows = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join(','); return `${pressed}|${rows}|${location.hash.includes('d=1')}`; })()",
+      "(() => { const weak = document.querySelector('.hardest-set-weak'); const pressed = weak?.getAttribute('aria-pressed') ?? ''; const rows = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join(','); const setPressed = document.querySelector('.hardest-set-btn')?.getAttribute('aria-pressed') ?? ''; return `${pressed}|${rows}|${setPressed}|${location.hash.includes('d=1')}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("document.querySelector('.hardest-set-weak')?.click()");
+  await sleep(400);
+  const weakBacked = String(
+    js(
+      "(() => { const pressed = document.querySelector('.hardest-set-weak')?.getAttribute('aria-pressed') ?? ''; const rows = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join(','); const setPressed = document.querySelector('.hardest-set-btn')?.getAttribute('aria-pressed') ?? ''; return `${pressed}|${rows}|${setPressed}|${location.hash.includes('d=')}`; })()",
     ),
   ).replace(/^"|"$/g, "");
   js("location.hash = '#stats'");
   await ab(["reload"]);
   await sleep(700);
   log(
-    setMetaText === "练了 2 次 · 平均 70 BPM" && weakFiltered === "true|p:extra-m1|true",
-    "统计页：「整体卡在第几级」点一下就筛那一级，旁边写着练了几次、平均多快",
-    `${setMetaText} · ${weakFiltered}`,
+    setMetaText === "练了 2 次 · 平均 70 BPM" &&
+      weakFiltered === "true|p:extra-m1|true|true" &&
+      weakBacked === "false|p:extra-m1,p:extra-m2|true|false",
+    "统计页：「整体卡在第几级」点一下筛这一级、再点退回这套全部，旁边写着练了几次、平均多快",
+    `${setMetaText} · ${weakFiltered} · ${weakBacked}`,
   );
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");

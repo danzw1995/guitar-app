@@ -1198,6 +1198,18 @@ for (const selector of ["select", "input", "textarea"]) {
       (setMetaDecl.get("font-variant-numeric") ?? "") === "tabular-nums",
     `min-height=${setWeakDecl.get("min-height") ?? "未设置"} cursor=${setWeakDecl.get("cursor") ?? "未设置"} num=${setMetaDecl.get("font-variant-numeric") ?? "未设置"}`,
   );
+
+  // v0.121.0：手机上那行折成两行（组合 + 只看这套 / 整体弱点 + 练了几次），
+  // 触屏没有 hover，右端那个箭头得一直显形
+  const setRowNarrow = narrowDecls(".hardest-set-row");
+  const setGoNarrow = narrowDecls(".hardest-set-go");
+  expect(
+    "手机上组合那行折两行，右端提示一直显形",
+    (setRowNarrow.get("display") ?? "") === "grid" &&
+      String(setRowNarrow.get("grid-template-columns") ?? "").includes("1fr") &&
+      (setGoNarrow.get("opacity") ?? "") === "1",
+    `display=${setRowNarrow.get("display") ?? "未设置"} cols=${setRowNarrow.get("grid-template-columns") ?? "未设置"} go=${setGoNarrow.get("opacity") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

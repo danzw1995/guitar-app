@@ -490,6 +490,12 @@ export default function Stats() {
   }
   // 存下的视角（v0.111.0）：现在这组筛选有没有存过 / 能不能存
   const currentWeak = setFilter ? (setWeak.get(setFilter)?.degree ?? 0) : 0;
+  const currentMeta = setFilter ? setMeta.get(setFilter) : undefined;
+  const currentSessions = currentMeta?.sessions ?? 0;
+  const currentAvgBpm =
+    currentMeta && currentMeta.bpmCount > 0
+      ? Math.round(currentMeta.bpmSum / currentMeta.bpmCount)
+      : 0;
   const hasFilter =
     degreeFilter !== null || stageFilter !== null || spotFilter !== 0 || setFilter !== null;
   const currentSaved = views.some(
@@ -521,6 +527,8 @@ export default function Stats() {
         setFilter ?? "",
         currentWeak,
         setFilter ? (setWeak.get(setFilter)?.count ?? 0) : 0,
+        currentSessions,
+        currentAvgBpm,
       ),
     );
     setNamingView(false);
@@ -1222,6 +1230,8 @@ export default function Stats() {
                       spotFilter,
                       setFilter ?? "",
                       currentWeak,
+                      currentSessions,
+                      currentAvgBpm,
                     )}
                     aria-label="给这组筛选起个名字（可以不填）"
                     onChange={(event) => setViewName(event.target.value)}
@@ -1312,10 +1322,20 @@ export default function Stats() {
                             <button
                               type="button"
                               className="hardest-set-weak"
-                              aria-pressed={degreeFilter === setWeak.get(groupHead)!.degree}
+                              aria-pressed={
+                                degreeFilter === setWeak.get(groupHead)!.degree &&
+                                setFilter === groupHead
+                              }
                               onClick={() => {
                                 const weak = setWeak.get(groupHead)!.degree;
-                                setDegreeFilter(degreeFilter === weak ? null : weak);
+                                // 这枚按钮在「这一套」的行里，所以第一次点先把范围收窄到这套，
+                                // 第二次点退回「这套全部」——而不是把级数清掉变成看全部条目（v0.121.0）
+                                if (degreeFilter === weak) {
+                                  setDegreeFilter(null);
+                                  return;
+                                }
+                                setSetFilter(groupHead);
+                                setDegreeFilter(weak);
                               }}
                               title="只看这一级——这一套里卡得最多的那一级"
                             >
