@@ -1157,6 +1157,17 @@ for (const selector of ["select", "input", "textarea"]) {
       (tagNarrow.get("display") ?? "") === "block",
     `set=${setHead.get("font-size") ?? "未设置"}/${setHead.get("list-style") ?? "未设置"} tag=${tagNarrow.get("display") ?? "未设置"}`,
   );
+
+  // v0.118.0：组合那行小标题变成了按钮（点一下只看这一套）
+  const setBtn = narrowDecls(".hardest-set-btn");
+  const setBtnOn = narrowDecls('.hardest-set-btn[aria-pressed="true"]');
+  expect(
+    "组合小标题能点：整行够 40 高、按下去用强调色",
+    parseFloat(setBtn.get("min-height") ?? "0") >= 40 &&
+      (setBtn.get("border") ?? "") === "0" &&
+      (setBtnOn.get("color") ?? "") === "var(--accent)",
+    `min-height=${setBtn.get("min-height") ?? "未设置"} border=${setBtn.get("border") ?? "未设置"} on=${setBtnOn.get("color") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

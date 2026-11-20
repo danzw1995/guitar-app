@@ -2872,6 +2872,25 @@ try {
     `${undoToastText} · ${undoToastBack}`,
   );
 
+  // 12ac) v0.118.0：提示条上还有「去练这一条」——撤回是为了重练，不是为了藏起来
+  js("document.querySelector('.pb-done-tag')?.click()");
+  await sleep(400);
+  const undoMore = String(
+    js("(() => document.querySelector('.undo-toast-more')?.textContent?.trim() ?? '')()"),
+  ).replace(/^"|"$/g, "");
+  js("document.querySelector('.undo-toast-more')?.click()");
+  await sleep(500);
+  const undoMoreAfter = String(
+    js(
+      "(() => `${document.querySelectorAll('.undo-toast').length}|${document.querySelectorAll('.practice-extra.flash').length}`)()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    undoMore === "去练这一条" && undoMoreAfter === "0|1",
+    "练习页：撤回提示条上的「去练这一条」会滚到那一块并闪一下",
+    `${undoMore} · ${undoMoreAfter}`,
+  );
+
   // 16d18) v0.115.0：视角把「单独练过几次」也一起存下来
   js(
     "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const rec = { 's0-crawl': { bestBpm: 80, sessions: 1, minutes: 2, lastAt: today, title: '单弦爬格子（1-2-3-4）', hardest: { bar: 1, degree: 5, name: 'G', count: 5 }, spots: [{ bar: 2, degree: 5, name: 'G', times: 4, lastAt: today }] } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(rec)); localStorage.removeItem('guitar.stats.views.v1'); sessionStorage.removeItem('guitar.stats.degree'); sessionStorage.removeItem('guitar.stats.stage'); sessionStorage.removeItem('guitar.stats.spot'); location.hash = '#stats'; return 'ok'; })()",
@@ -2940,12 +2959,33 @@ try {
 
   // 16d20) v0.117.0：组合那一堆上面有一行小标题，说明「为什么挨在一起」
   const comboHead = String(
-    js("(() => [...document.querySelectorAll('.hardest-set')].map(el => el.textContent.trim()).join('|'))()"),
+    js("(() => [...document.querySelectorAll('.hardest-set-btn')].map(el => el.textContent.trim()).join('|'))()"),
   ).replace(/^"|"$/g, "");
   log(
-    comboHead === "组合 · 早课",
+    comboHead.startsWith("组合 · 早课"),
     "统计页：组合的条目上面有一行「组合 · 早课」",
     comboHead,
+  );
+
+  // 16d21) v0.118.0：点这行小标题就只看这一套，点「看全部」放开
+  js("document.querySelector('.hardest-set-btn')?.click()");
+  await sleep(400);
+  const setFiltered = String(
+    js(
+      "(() => { const rows = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join(','); const pressed = document.querySelector('.hardest-set-btn')?.getAttribute('aria-pressed') ?? ''; const note = document.querySelector('.hardest-set-note')?.textContent?.trim() ?? ''; return `${pressed}|${rows}|${note.length > 0}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js("document.querySelector('.hardest-set-note .btn-quiet')?.click()");
+  await sleep(400);
+  const setCleared = String(
+    js(
+      "(() => { const rows = [...document.querySelectorAll('[data-hardest-item]')].length; const note = document.querySelectorAll('.hardest-set-note').length; return `${rows}|${note}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    setFiltered === "true|p:extra-m1,p:extra-m2|true" && setCleared === "3|0",
+    "统计页：点「组合 · 早课」只看这一套，点「看全部」放开",
+    `${setFiltered} · ${setCleared}`,
   );
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");

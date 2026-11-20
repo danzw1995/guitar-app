@@ -360,6 +360,9 @@ export default function Stats() {
   // 单独练过几次（v0.114.0）：0 = 全部，1 / 3 = 至少那么多次。
   // v0.115.0 起它也算视角的一部分，跟着一起进地址栏（`?p=3`）和 sessionStorage。
   const [spotFilter, setSpotFilter] = useState<0 | 1 | 3>(() => readSpotFilter());
+  // 按组合筛（v0.118.0）：点「组合 · 早课」那一行小标题，只看这一套的条目。
+  // 不进地址栏、不进视角——它是一次性的「这套我认得的」临时筛选，不是长期视角。
+  const [setFilter, setSetFilter] = useState<string | null>(null);
   useEffect(() => {
     saveFilters(degreeFilter, stageFilter, spotFilter);
   }, [degreeFilter, stageFilter, spotFilter]);
@@ -426,7 +429,8 @@ export default function Stats() {
       (item) =>
         (degreeFilter === null || item.hardest.degree === degreeFilter) &&
         (stageFilter === null || item.stage === stageFilter) &&
-        (spotFilter === 0 || item.spots >= spotFilter),
+        (spotFilter === 0 || item.spots >= spotFilter) &&
+        (setFilter === null || item.setName === setFilter),
     )
     .slice(0, 4);
   // 存下的视角（v0.111.0）：现在这组筛选有没有存过 / 能不能存
@@ -1191,6 +1195,14 @@ export default function Stats() {
               </li>
             ))}
           </ul>
+          {setFilter !== null && (
+            <p className="hardest-note hardest-set-note">
+              只看「{setFilter}」这一套。
+              <button type="button" className="btn-quiet" onClick={() => setSetFilter(null)}>
+                看全部
+              </button>
+            </p>
+          )}
           {hardItems.length > 0 && (
             <ul className="hardest-items">
               {hardItems.map((item, index) => {
@@ -1200,8 +1212,26 @@ export default function Stats() {
                 return (
                   <Fragment key={item.id}>
                     {groupHead && (
-                      <li className="hardest-set" aria-hidden="true">
-                        组合 · {groupHead}
+                      <li className="hardest-set">
+                        <button
+                          type="button"
+                          className="hardest-set-btn"
+                          data-hardest-set={groupHead}
+                          aria-pressed={setFilter === groupHead}
+                          onClick={() =>
+                            setSetFilter(setFilter === groupHead ? null : groupHead)
+                          }
+                          title={
+                            setFilter === groupHead
+                              ? "取消筛选，看全部条目"
+                              : `只看「${groupHead}」这一套`
+                          }
+                        >
+                          组合 · {groupHead}
+                          <span className="hardest-set-go">
+                            {setFilter === groupHead ? "已筛" : "只看这套"} →
+                          </span>
+                        </button>
                       </li>
                     )}
                     <li data-hardest-item={item.id}>

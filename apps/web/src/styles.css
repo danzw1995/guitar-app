@@ -2382,7 +2382,8 @@ button, select, input { font: inherit; color: inherit; }
   margin-left: auto;
   color: var(--muted);
 }
-/* 同一套组合的小标题（v0.117.0）：条目本来就相邻，这行把「为什么相邻」说明白 */
+/* 同一套组合的小标题（v0.117.0）：条目本来就相邻，这行把「为什么相邻」说明白。
+   v0.118.0 起它是个按钮：点一下只看这一套。 */
 .hardest-set {
   margin: 6px 0 0;
   color: var(--muted);
@@ -2391,6 +2392,47 @@ button, select, input { font: inherit; color: inherit; }
 }
 .hardest-set:first-child {
   margin-top: 0;
+}
+.hardest-set-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.hardest-set-btn[aria-pressed="true"] {
+  color: var(--accent);
+}
+.hardest-set-go {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+.hardest-set-btn:hover .hardest-set-go,
+.hardest-set-btn:focus-visible .hardest-set-go,
+.hardest-set-btn[aria-pressed="true"] .hardest-set-go {
+  opacity: 1;
+}
+.hardest-set-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.hardest-set-note .btn-quiet {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 12px;
 }
 .hardest-jump:hover .hardest-go,
 .hardest-jump:focus-visible .hardest-go {

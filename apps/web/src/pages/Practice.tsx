@@ -664,6 +664,17 @@ export default function Practice() {
     setUndoDone(null);
   }
 
+  /** 「去练这一条」（v0.118.0）：把撤回的那块滚到眼前——撤回是为了重练，不是为了把它藏起来。 */
+  function goUndone() {
+    if (!undoDone) return;
+    const el = document.getElementById(undoDone.id);
+    setUndoDone(null);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("flash");
+    window.setTimeout(() => el.classList.remove("flash"), 1200);
+  }
+
   function finish(drillId: string, planned: number) {
     // 没用计时器也允许打勾：按计划时长记，别惩罚"忘了按开始"的人
     const used = seconds > 0 ? Math.max(1, Math.round(seconds / 60)) : planned;
@@ -1373,6 +1384,7 @@ export default function Practice() {
       {undoDone && (
         <UndoToast
           message={`已撤回「${undoDone.title}」今天的完成`}
+          action={{ label: "去练这一条", onClick: goUndone }}
           onUndo={redoExtraDone}
           onClose={() => setUndoDone(null)}
         />

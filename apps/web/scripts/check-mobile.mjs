@@ -201,6 +201,54 @@ for (const device of VIEWPORTS) {
     }
   }
 
+  // 计划里有一条「带谱的加餐」（v0.118.0）：运行时现画的谱曾经用内联 600px 宽把整页撑宽，
+  // 而上面 10 个页面里没有这种状态，所以单独造一次。
+  await page.evaluate(() => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const tab = {
+      beatsPerBar: 4,
+      bars: 1,
+      notes: [
+        { s: 3, f: 0, beat: 0, dur: 1 },
+        { s: 3, f: 1, beat: 1, dur: 1 },
+        { s: 3, f: 2, beat: 2, dur: 1 },
+        { s: 3, f: 3, beat: 3, dur: 1 },
+      ],
+    };
+    localStorage.setItem(
+      "guitar.plan.v1",
+      JSON.stringify([
+        { id: "extra-mobile1", date: today, title: "窄屏谱图", tab, meter: "4/4", bpm: 70, addedAt: Date.now() },
+      ]),
+    );
+  });
+  await page.goto(`${BASE}#practice`, { waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForTimeout(2200);
+  const planMetrics = await page.evaluate(() => {
+    const doc = document.documentElement;
+    const img = document.querySelector(".practice-extra img.tab-score");
+    const holder = document.querySelector(".practice-extra");
+    return {
+      vw: window.innerWidth,
+      scrollW: doc.scrollWidth,
+      imgW: img ? Math.round(img.getBoundingClientRect().width) : 0,
+      holderW: holder ? Math.round(holder.getBoundingClientRect().width) : 0,
+    };
+  });
+  check(
+    planMetrics.scrollW - planMetrics.vw <= 1,
+    "加餐里有谱：整页不横向溢出",
+    `scrollWidth ${planMetrics.scrollW} > 视口 ${planMetrics.vw}`,
+  );
+  check(
+    planMetrics.imgW > 0 && planMetrics.imgW <= planMetrics.holderW,
+    "加餐里有谱：谱图缩到容器宽，不按位图 600px 撑开",
+    `图 ${planMetrics.imgW} / 容器 ${planMetrics.holderW}`,
+  );
+  await page.evaluate(() => localStorage.removeItem("guitar.plan.v1"));
+
   await context.close();
 }
 
@@ -211,4 +259,4 @@ if (failures.length) {
   for (const failure of failures) console.log(`  - ${failure}`);
   process.exit(1);
 }
-console.log("\n手机端检查全部通过（WebKit，三个尺寸 × 10 个页面）");
+console.log("\n手机端检查全部通过（WebKit，三个尺寸 × 10 个页面 + 「加餐里有谱」那一次）");
