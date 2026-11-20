@@ -1623,6 +1623,18 @@ button, select, input { font: inherit; color: inherit; }
   margin: -4px 0 10px;
 }
 
+/* 加餐完成度按阶段 / 按组合两行（v0.114.0）：一行能折，两段之间留点空 */
+.extra-by {
+  margin: -6px 0 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.extra-by span {
+  font-variant-numeric: tabular-nums;
+}
+
 .extra-time b {
   color: var(--accent);
   font-weight: 600;
@@ -1705,14 +1717,18 @@ button, select, input { font: inherit; color: inherit; }
 }
 
 /* 按级数筛选（v0.107.0） */
-.hardest-filter {
+.hardest-filter,
+.hardest-spot {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin: 0 0 8px;
 }
 
-.hardest-filter .chip {
+/* 「单独练过几次」那排（v0.114.0）单独一个类：它不是「哪一级 / 哪一阶段」那种筛选，
+   跟上面两排的语义不一样，检查脚本也按两排来数，混进去就分不清了 */
+.hardest-filter .chip,
+.hardest-spot .chip {
   min-height: 40px;
   padding: 0 12px;
   font-size: 12px;

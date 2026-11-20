@@ -64,6 +64,7 @@ import {
 } from "../lib/plan";
 import {
   applyItems,
+  freshFirst,
   applySet,
   loadSets,
   removeSet,
@@ -238,12 +239,17 @@ export default function Practice() {
     setSetNotice("存好了——明天点一下这套，就能把同样的几条加回计划。");
   }
 
-  /** 点一套组合：把里面还没加过的加进今天的计划（v0.112.0）。 */
-  /** 点一套组合：把里面还没加过的加进今天的计划（v0.112.0）；「只加没练过的」时先筛掉今天已勾的（v0.113.0） */
+  /**
+   * 点一套组合：把里面还没加过的加进今天的计划（v0.112.0）。
+   * v0.113.0：开了「只加没练过的」就先筛掉今天已勾的。
+   * v0.114.0：没开这个开关时，今天练过的排到最后（一条不少，只是先练新的）。
+   */
   function useSet(set: PlanSet) {
+    const ordered = freshFirst(set.items, doneTitles);
+    const moved = ordered.filter((item) => doneTitles.has(item.title)).length;
     const items = skipDone
-      ? set.items.filter((item) => !doneTitles.has(item.title))
-      : set.items;
+      ? ordered.filter((item) => !doneTitles.has(item.title))
+      : ordered;
     const added = applyItems(items, today);
     setExtras(loadExtras(today));
     window.dispatchEvent(new Event("guitar:plan"));
@@ -253,7 +259,9 @@ export default function Practice() {
     }
     setSetNotice(
       added > 0
-        ? `「${set.name}」加进来 ${added} 条${skipDone ? "（跳过今天练过的）" : ""}。`
+        ? `「${set.name}」加进来 ${added} 条${
+            skipDone ? "（跳过今天练过的）" : moved > 0 ? "（今天练过的排到了后面）" : ""
+          }。`
         : `「${set.name}」里的几条今天已经在计划里了。`,
     );
   }

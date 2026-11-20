@@ -30,6 +30,7 @@ import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
 import { loadPatterns } from "../lib/patterns";
 import { loadExtras } from "../lib/plan";
+import { loadSets } from "../lib/plan-sets";
 import { fmt, fmtSpan } from "../lib/format";
 import { loadViews, promoteView, removeView, saveView, viewLabel, type StatsView } from "../lib/stats-views";
 import { degreeName } from "../lib/degrees";
@@ -315,6 +316,25 @@ export default function Stats() {
     .map(([key, minutes]) => `${key === "other" ? "其他" : `第 ${key + 1} 阶段`} ${minutes} 分钟`)
     .join(" · ");
 
+  /**
+   * 加餐按「组合」分组（v0.114.0）：同一套里的条目今天加进来几条、勾了几条。
+   *
+   * 只算今天确实在计划里的那些（`total` 是加进来的条数，不是这一套存了几条）——
+   * 一套里有 6 条、今天只加进来 2 条，写成 1/2 才对；写成 1/6 等于怪用户没加。
+   */
+  const setProgress = loadSets()
+    .map((set) => {
+      const inPlan = todayExtras.filter((extra) =>
+        set.items.some((item) => item.title === extra.title),
+      );
+      return {
+        name: set.name,
+        done: inPlan.filter((extra) => todayDoneIds.has(extra.id)).length,
+        total: inPlan.length,
+      };
+    })
+    .filter((row) => row.total > 0);
+
   // 按级数筛「最卡的条目」（v0.107.0）：null = 全部
   // 筛选状态写进地址栏（`#stats?d=5&s=1`，v0.109.0 起、v0.111.0 加了阶段），另外在 sessionStorage
   // 里留一份——从统计页跳到练习页再点回来时地址栏被 Tab 用 replaceState 换成了 `#stats`，
@@ -325,6 +345,9 @@ export default function Stats() {
   const [stageFilter, setStageFilter] = useState<number | null>(() =>
     readFilter("s", STAGE_FILTER_KEY, 0, 5),
   );
+  // 单独练过几次（v0.114.0）：0 = 全部，1 / 3 = 至少那么多次。这个不写地址栏——它更像「现在想找什么」，
+  // 不是「我的常用视角」，存下来反而要一起塞进视角的字段里。
+  const [spotFilter, setSpotFilter] = useState<0 | 1 | 3>(0);
   useEffect(() => {
     saveFilters(degreeFilter, stageFilter);
   }, [degreeFilter, stageFilter]);
@@ -347,6 +370,8 @@ export default function Stats() {
       id,
       hardest: record.hardest!,
       order: planOrder.get(id.replace(/^p:/, "")),
+      // 「单独练过几次」（v0.114.0）：跟练里点「只练这一处」的次数合计，和 hardest.count 不是一回事
+      spots: (record.spots ?? []).reduce((sum, spot) => sum + spot.times, 0),
       stage:
         stageById.get(id.replace(/^p:/, "")) ??
         (record.title ? stageByName.get(record.title) ?? null : null),
@@ -364,7 +389,8 @@ export default function Stats() {
     .filter(
       (item) =>
         (degreeFilter === null || item.hardest.degree === degreeFilter) &&
-        (stageFilter === null || item.stage === stageFilter),
+        (stageFilter === null || item.stage === stageFilter) &&
+        (spotFilter === 0 || item.spots >= spotFilter),
     )
     .slice(0, 4);
   // 存下的视角（v0.111.0）：现在这组筛选有没有存过 / 能不能存
@@ -575,14 +601,27 @@ export default function Stats() {
               {extrasDone}/{todayExtras.length}
             </b>
             <span>今天自己加的（加餐）</span>
-            {extrasByStage.length > 1 && (
-              <span className="stat-note">
-                {extrasByStage.map((row) => `${row.label} ${row.done}/${row.total}`).join(" · ")}
-              </span>
-            )}
           </button>
         )}
       </div>
+      {/* 加餐的完成度按阶段 / 按组合各拆一行（v0.111.0 / v0.114.0）。
+          不塞进那张卡里：卡只有一百多像素宽，两行小字会被折成「第 1 阶段 1/1 · 第 2 / 阶段 1/2」这样。 */}
+      {(extrasByStage.length > 1 || setProgress.length > 0) && (
+        <p className="hint extra-by">
+          {extrasByStage.length > 1 && (
+            <span>
+              按阶段：
+              {extrasByStage.map((row) => `${row.label} ${row.done}/${row.total}`).join(" · ")}
+            </span>
+          )}
+          {setProgress.length > 0 && (
+            <span>
+              按组合：
+              {setProgress.map((row) => `「${row.name}」${row.done}/${row.total}`).join(" · ")}
+            </span>
+          )}
+        </p>
+      )}
       <p className="hint week-hint">
         这一周从 {weekStats.from.slice(5).replace("-", "/")} 起算：练了 {weekStats.days} 天、{weekStats.items} 条；
         上周同期 {weekStats.prevDays} 天、{weekStats.prevMinutes} 分钟。
@@ -984,6 +1023,35 @@ export default function Stats() {
           )}
           {stageFilter !== null && (
             <p className="hardest-note">上面的归堆还是全部数据；阶段只筛下面按条目的列表。</p>
+          )}
+          {/* 按「单独练过几次」筛（v0.114.0）：回头单练过的那几处，未必是卡得最狠的——分开看 */}
+          <div className="hardest-spot" role="group" aria-label="按单独练过的次数筛选最卡的条目">
+            <span className="hardest-filter-label">单独练过</span>
+            <button
+              type="button"
+              className={`chip${spotFilter === 0 ? " on" : ""}`}
+              aria-pressed={spotFilter === 0}
+              onClick={() => setSpotFilter(0)}
+            >
+              全部
+            </button>
+            {([1, 3] as const).map((times) => (
+              <button
+                key={times}
+                type="button"
+                className={`chip${spotFilter === times ? " on" : ""}`}
+                aria-pressed={spotFilter === times}
+                title={`只显示单独练过 ${times} 次以上的条目`}
+                onClick={() => setSpotFilter((current) => (current === times ? 0 : times))}
+              >
+                ≥{times} 次
+              </button>
+            ))}
+          </div>
+          {spotFilter !== 0 && (
+            <p className="hardest-note">
+              只留「只练这一处」点过 {spotFilter} 次以上的条目——跟上面「卡了几次」不是一回事。
+            </p>
           )}
           {/* 存下的视角（v0.111.0）：两排叠起来的组合存一次，以后一键复原；v0.112.0 起能起名字 */}
           {(hasFilter || views.length > 0) && (

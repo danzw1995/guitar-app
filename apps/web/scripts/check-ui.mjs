@@ -2771,6 +2771,53 @@ try {
   );
   js("localStorage.removeItem('guitar.stats.views.v1')");
 
+  // 16d16) v0.114.0：最卡的条目还能按「单独练过几次」筛——和「卡了几次」分开算
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const rec = { 's0-crawl': { bestBpm: 80, sessions: 1, minutes: 2, lastAt: today, title: '单弦爬格子（1-2-3-4）', hardest: { bar: 1, degree: 5, name: 'G', count: 5 }, spots: [{ bar: 2, degree: 5, name: 'G', times: 4, lastAt: today }] }, 'p:extra-spot': { bestBpm: 70, sessions: 1, minutes: 3, lastAt: today, title: '另一条', hardest: { bar: 1, degree: 1, name: 'C', count: 2 }, spots: [{ bar: 1, degree: 1, name: 'C', times: 1, lastAt: today }] } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(rec)); sessionStorage.removeItem('guitar.stats.degree'); sessionStorage.removeItem('guitar.stats.stage'); location.hash = '#stats'; return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(900);
+  const spotRowsBefore = String(
+    js("(() => document.querySelectorAll('[data-hardest-item]').length)()"),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const row = document.querySelector('.hardest-spot'); const chip = [...(row?.querySelectorAll('button') ?? [])].find(b => b.textContent.trim() === '≥3 次'); chip?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const spotRowsAfter = String(
+    js(
+      "(() => { const rows = [...document.querySelectorAll('[data-hardest-item]')].map(el => el.getAttribute('data-hardest-item')).join(','); const pressed = [...document.querySelectorAll('.hardest-spot button')].filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.textContent.trim()).join('/'); const note = document.querySelectorAll('.hardest-note').length; return `${rows}|${pressed}|${note}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    spotRowsBefore === "2" && spotRowsAfter === "s0-crawl|≥3 次|1",
+    "统计页：最卡的条目能按「单独练过几次」筛",
+    `${spotRowsBefore} → ${spotRowsAfter}`,
+  );
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+
+  // 16d17) v0.114.0：组合里今天已经练过的排到最后（一条不少，只是先练新的）
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const tab = { beatsPerBar: 4, bars: 1, bpm: [90, 90], caption: '甲', notes: [{ s: 3, f: 0, beat: 0, dur: 4 }] }; const items = [{ title: '练过的', tab, meter: '4/4', bpm: 90, stage: 0 }, { title: '没练的', tab, meter: '4/4', bpm: 90, stage: 0 }]; localStorage.setItem('guitar.plan.sets.v1', JSON.stringify([{ id: 'set-order', name: '早课', items, addedAt: Date.now() }])); localStorage.removeItem('guitar.plan.v1'); localStorage.setItem('guitar.plan.done.v1', JSON.stringify({ date: today, titles: ['练过的'] })); location.hash = '#practice'; return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(900);
+  js("(() => { document.querySelector('.set-apply')?.click(); return 'ok'; })()");
+  await sleep(800);
+  const freshOrder = String(
+    js(
+      "(() => `${[...document.querySelectorAll('.practice-extra h4')].map(h => h.textContent.trim()).join(',')}|${document.querySelector('.plan-sets-note')?.textContent?.trim() ?? ''}`)()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    freshOrder === "没练的,练过的|「早课」加进来 2 条（今天练过的排到了后面）。",
+    "练习页：组合里今天练过的排到最后，一条不少",
+    freshOrder,
+  );
+  js("localStorage.removeItem('guitar.plan.sets.v1')");
+  js("localStorage.removeItem('guitar.plan.done.v1')");
+  js("localStorage.removeItem('guitar.plan.v1')");
+
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");
 

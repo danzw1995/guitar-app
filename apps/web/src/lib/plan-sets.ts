@@ -151,3 +151,15 @@ export function applyItems(items: PlanSetItem[], today: string = dateKeyOf(new D
 export function applySet(set: PlanSet, today: string = dateKeyOf(new Date())): number {
   return applyItems(set.items, today);
 }
+
+/**
+ * 今天已经练过的排到最后（v0.114.0）。
+ *
+ * 「只加没练过的」是把练过的**删掉**，这一版是另一条路：一条都不少，只是先练新的。
+ * 排序稳定（`filter` 保序），所以同一套里没练过的那几条还按原来的先后。
+ */
+export function freshFirst(items: PlanSetItem[], doneTitles: Set<string>): PlanSetItem[] {
+  const fresh = items.filter((item) => !doneTitles.has(item.title));
+  const done = items.filter((item) => doneTitles.has(item.title));
+  return [...fresh, ...done];
+}

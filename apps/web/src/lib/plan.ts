@@ -93,15 +93,18 @@ export function addExtra(
   const all = readAll().filter((item) => item.date === today);
   const same = all.find((item) => item.title === input.title);
   if (same) return all;
+  // 时间戳既是 id 也是排序键（v0.114.0）：一批一起加进来时 `Date.now()` 可能是同一毫秒，
+  // 那样 id 会撞、`addedAt` 也分不出先后（组合一次加 3 条就踩到）。至少比上一条大 1。
+  const stamp = Math.max(Date.now(), (all[all.length - 1]?.addedAt ?? 0) + 1);
   const extra: PlanExtra = {
-    id: `extra-${Date.now().toString(36)}`,
+    id: `extra-${stamp.toString(36)}`,
     date: today,
     title: input.title,
     tab: input.tab,
     meter: input.meter,
     bpm: input.bpm,
     ...(typeof input.stage === "number" ? { stage: input.stage } : {}),
-    addedAt: Date.now(),
+    addedAt: stamp,
   };
   const next = [...all, extra].slice(-MAX_PER_DAY);
   return writeAll([...readAll().filter((item) => item.date !== today), ...next]);

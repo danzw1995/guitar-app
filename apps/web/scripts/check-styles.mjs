@@ -1116,6 +1116,17 @@ for (const selector of ["select", "input", "textarea"]) {
       parseFloat(spotTimes.get("font-size") ?? "0") <= 12,
     `skip=${setSkip.get("min-height") ?? "未设置"} on=${setSkipOn.get("color") ?? "未设置"} times=${spotTimes.get("color") ?? "未设置"}/${spotTimes.get("font-size") ?? "未设置"}`,
   );
+
+  // v0.114.0：加餐的「按阶段 / 按组合」两行是一条能折的行；「单独练过」那排单独一个类、chip 够 40 高
+  const extraBy = narrowDecls(".extra-by");
+  const spotChip = narrowDecls(".hardest-spot .chip");
+  expect(
+    "加餐的阶段 / 组合两行能并排折行，「单独练过」那排的 chip 够 40 高",
+    (extraBy.get("display") ?? "") === "flex" &&
+      (extraBy.get("flex-wrap") ?? "") === "wrap" &&
+      parseFloat(spotChip.get("min-height") ?? "0") >= 40,
+    `by=${extraBy.get("display") ?? "未设置"}/${extraBy.get("flex-wrap") ?? "未设置"} spot=${spotChip.get("min-height") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
