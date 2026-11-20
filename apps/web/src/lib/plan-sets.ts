@@ -112,11 +112,12 @@ export function loadSets(): PlanSet[] {
   }
 }
 
-/** 存一套（同名就覆盖），最多 5 套，超出丢最早的。 */
+/** 存一套（同名就覆盖），最多 5 套，超出丢最早的。不填名字就用「今天的 N 条」兜住。 */
 export function saveSet(name: string, items: PlanSetItem[]): PlanSet[] {
-  const clean = cleanSetName(name);
+  if (items.length === 0) return loadSets();
+  const typed = cleanSetName(name);
+  const clean = typed || `今天的 ${items.length} 条`;
   const list = loadSets().filter((set) => set.name !== clean);
-  if (!clean || items.length === 0) return list;
   const next: PlanSet[] = [
     ...list,
     {
