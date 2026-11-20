@@ -1675,6 +1675,24 @@ button, select, input { font: inherit; color: inherit; }
   border-style: dashed;
 }
 
+/* 从组合加进来、今天已经练过的：标题淡下去 + 一枚小标签（v0.115.0）
+   只淡标题、不淡整块——谱子和按钮还要能正常看和点 */
+.practice-extra.done h4 {
+  color: var(--muted);
+}
+
+.pb-done-tag {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(139, 148, 158, 0.16);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  vertical-align: 2px;
+}
+
 /* 分组能收起（v0.109.0）：标题整行是按钮，够手指点 */
 .extras-group-toggle {
   display: flex;

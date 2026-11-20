@@ -90,8 +90,10 @@ function clock(totalSeconds: number): string {
  *
  * 练习库加进来的带 `stage`（v0.107.0 起），「我的谱」加的、跟练里切出来的小节没有，
  * 统一归到「其他」——分组只影响显示，`extras` 的顺序就是用户拖出来的顺序。
+ * 从组合加进来的先按组合名归（v0.115.0）：同一套的条目摆在一起，比按阶段更贴近用户心里的分组。
  */
 function groupKeyOf(extra: PlanExtra): string {
+  if (extra.setName) return `set-${extra.setName}`;
   return typeof extra.stage === "number" ? `stage-${extra.stage}` : "other";
 }
 
@@ -250,7 +252,7 @@ export default function Practice() {
     const items = skipDone
       ? ordered.filter((item) => !doneTitles.has(item.title))
       : ordered;
-    const added = applyItems(items, today);
+    const added = applyItems(items, today, set.name);
     setExtras(loadExtras(today));
     window.dispatchEvent(new Event("guitar:plan"));
     if (skipDone && added === 0) {
@@ -359,9 +361,11 @@ export default function Practice() {
           count,
           minutes,
           heading:
-            typeof extra.stage === "number"
-              ? `第 ${extra.stage + 1} 阶段 · ${stageOf(extra.stage).name}`
-              : "其他 · 自己存的谱、跟练里切的",
+            typeof extra.setName === "string" && extra.setName
+              ? `组合 · ${extra.setName}`
+              : typeof extra.stage === "number"
+                ? `第 ${extra.stage + 1} 阶段 · ${stageOf(extra.stage).name}`
+                : "其他 · 自己存的谱、跟练里切的",
         };
       }
       return null;
@@ -1094,9 +1098,13 @@ export default function Practice() {
                       {index + 1}
                     </span>
                     <div className="pb-title">
-                      <h4>{extra.title}</h4>
+                      <h4>
+                        {extra.title}
+                        {extraDone && <span className="pb-done-tag">今天练过</span>}
+                      </h4>
                       <p className="pb-meta">
                         {extra.meter} · {extra.bpm} BPM · 自己加的
+                        {extra.setName ? ` · 来自「${extra.setName}」` : ""}
                       </p>
                     </div>
                     <span className="pb-move">

@@ -12,6 +12,8 @@ export interface StatsView {
   id: string;
   degree: number | null;
   stage: number | null;
+  /** 单独练过几次那排（v0.115.0）：0 = 不限，1 / 3 = 至少那么多次。 */
+  spot?: 0 | 1 | 3;
   /** 系统拼出来的那一串（「第 5 级 · 第 1 阶段」），title 里一直用。 */
   label: string;
   /** 用户自己起的名字（v0.112.0）；没起就用 label 显示。 */
@@ -27,12 +29,22 @@ export function cleanViewName(name: string): string {
   return name.trim().slice(0, 12);
 }
 
-/** 一组筛选叫什么：「第 5 级」「第 1 阶段」「第 5 级 · 第 1 阶段」。 */
-export function viewLabel(degree: number | null, stage: number | null): string {
+/** 一组筛选叫什么：「第 5 级」「第 1 阶段」「单独练过 ≥3 次」「第 5 级 · 第 1 阶段」。 */
+export function viewLabel(
+  degree: number | null,
+  stage: number | null,
+  spot: 0 | 1 | 3 = 0,
+): string {
   const parts: string[] = [];
   if (degree !== null) parts.push(`第 ${degree} 级`);
   if (stage !== null) parts.push(`第 ${stage + 1} 阶段`);
+  if (spot > 0) parts.push(`单独练过 ≥${spot} 次`);
   return parts.length > 0 ? parts.join(" · ") : "全部";
+}
+
+/** 只认 0 / 1 / 3 三个值（v0.115.0）。 */
+function parseSpot(value: unknown): 0 | 1 | 3 {
+  return value === 1 || value === 3 ? value : 0;
 }
 
 function parse(value: unknown): StatsView[] {
@@ -51,8 +63,9 @@ function parse(value: unknown): StatsView[] {
       Number.isInteger(record.stage) && (record.stage as number) >= 0 && (record.stage as number) <= 5
         ? (record.stage as number)
         : null;
-    if (!id || (degree === null && stage === null)) continue;
-    const key = `${degree ?? "-"}|${stage ?? "-"}`;
+    const spot = parseSpot(record.spot);
+    if (!id || (degree === null && stage === null && spot === 0)) continue;
+    const key = `${degree ?? "-"}|${stage ?? "-"}|${spot}`;
     if (seen.has(key)) continue;
     seen.add(key);
     const name = typeof record.name === "string" ? cleanViewName(record.name) : "";
@@ -60,7 +73,8 @@ function parse(value: unknown): StatsView[] {
       id,
       degree,
       stage,
-      label: viewLabel(degree, stage),
+      spot,
+      label: viewLabel(degree, stage, spot),
       ...(name ? { name } : {}),
       addedAt: typeof record.addedAt === "number" ? record.addedAt : 0,
     });
@@ -90,18 +104,22 @@ export function loadViews(): StatsView[] {
 export function saveView(
   degree: number | null,
   stage: number | null,
+  spot: 0 | 1 | 3 = 0,
   name = "",
 ): StatsView[] {
-  if (degree === null && stage === null) return loadViews();
+  if (degree === null && stage === null && spot === 0) return loadViews();
   const views = loadViews();
-  const exists = views.find((view) => view.degree === degree && view.stage === stage);
+  const exists = views.find(
+    (view) => view.degree === degree && view.stage === stage && (view.spot ?? 0) === spot,
+  );
   if (exists) return views;
   const clean = cleanViewName(name);
   const next: StatsView = {
     id: `v-${Date.now().toString(36)}`,
     degree,
     stage,
-    label: viewLabel(degree, stage),
+    spot,
+    label: viewLabel(degree, stage, spot),
     ...(clean ? { name: clean } : {}),
     addedAt: Date.now(),
   };

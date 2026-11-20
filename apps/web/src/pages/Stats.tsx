@@ -44,6 +44,14 @@ const WEEK_KIND_LABEL = { practice: "练习页的关卡", follow: "跟练", rhyt
 const DEGREE_FILTER_KEY = "guitar.stats.degree";
 /** 按阶段筛的值（v0.111.0）：和级数一样两头都写，`?s=1`。 */
 const STAGE_FILTER_KEY = "guitar.stats.stage";
+/** 「单独练过几次」那排（v0.115.0）：`?p=3`。 */
+const SPOT_FILTER_KEY = "guitar.stats.spot";
+
+/** 读「单独练过几次」：只认 1 / 3，其余一律当「全部」。 */
+function readSpotFilter(): 0 | 1 | 3 {
+  const value = readFilter("p", SPOT_FILTER_KEY, 1, 3);
+  return value === 1 || value === 3 ? value : 0;
+}
 
 /** 读筛选：地址栏 `#stats?d=5&s=1` 优先（刷新 / 分享都还在），否则读这次会话留下的数。 */
 function readFilter(param: string, sessionKey: string, min: number, max: number): number | null {
@@ -64,11 +72,13 @@ function readFilter(param: string, sessionKey: string, min: number, max: number)
  * 地址栏不是统计页时（说明用户已经在别的页面）就不动它，只更新 sessionStorage——
  * 从练习页点回「统计」时 Tab 会把 hash 换成 `#stats`，那时靠这两个数还原。
  */
-function saveFilters(degree: number | null, stage: number | null): void {
+function saveFilters(degree: number | null, stage: number | null, spot: 0 | 1 | 3 = 0): void {
   if (degree === null) window.sessionStorage.removeItem(DEGREE_FILTER_KEY);
   else window.sessionStorage.setItem(DEGREE_FILTER_KEY, String(degree));
   if (stage === null) window.sessionStorage.removeItem(STAGE_FILTER_KEY);
   else window.sessionStorage.setItem(STAGE_FILTER_KEY, String(stage));
+  if (spot === 0) window.sessionStorage.removeItem(SPOT_FILTER_KEY);
+  else window.sessionStorage.setItem(SPOT_FILTER_KEY, String(spot));
 
   const route = parseHash(window.location.hash);
   if (!route || route.tab !== "stats") return;
@@ -77,6 +87,8 @@ function saveFilters(degree: number | null, stage: number | null): void {
   else query.d = String(degree);
   if (stage === null) delete query.s;
   else query.s = String(stage);
+  if (spot === 0) delete query.p;
+  else query.p = String(spot);
   const search = new URLSearchParams(query).toString();
   const next = `#stats${route.target ? `/${route.target}` : ""}${search ? `?${search}` : ""}`;
   if (window.location.hash !== next) window.history.replaceState(null, "", next);
@@ -345,12 +357,12 @@ export default function Stats() {
   const [stageFilter, setStageFilter] = useState<number | null>(() =>
     readFilter("s", STAGE_FILTER_KEY, 0, 5),
   );
-  // 单独练过几次（v0.114.0）：0 = 全部，1 / 3 = 至少那么多次。这个不写地址栏——它更像「现在想找什么」，
-  // 不是「我的常用视角」，存下来反而要一起塞进视角的字段里。
-  const [spotFilter, setSpotFilter] = useState<0 | 1 | 3>(0);
+  // 单独练过几次（v0.114.0）：0 = 全部，1 / 3 = 至少那么多次。
+  // v0.115.0 起它也算视角的一部分，跟着一起进地址栏（`?p=3`）和 sessionStorage。
+  const [spotFilter, setSpotFilter] = useState<0 | 1 | 3>(() => readSpotFilter());
   useEffect(() => {
-    saveFilters(degreeFilter, stageFilter);
-  }, [degreeFilter, stageFilter]);
+    saveFilters(degreeFilter, stageFilter, spotFilter);
+  }, [degreeFilter, stageFilter, spotFilter]);
   // 存下的视角（v0.111.0）：把「第 5 级 · 第 1 阶段」这种组合存一排，一键复原
   const [views, setViews] = useState<StatsView[]>(() => loadViews());
 
@@ -394,9 +406,12 @@ export default function Stats() {
     )
     .slice(0, 4);
   // 存下的视角（v0.111.0）：现在这组筛选有没有存过 / 能不能存
-  const hasFilter = degreeFilter !== null || stageFilter !== null;
+  const hasFilter = degreeFilter !== null || stageFilter !== null || spotFilter !== 0;
   const currentSaved = views.some(
-    (view) => view.degree === degreeFilter && view.stage === stageFilter,
+    (view) =>
+      view.degree === degreeFilter &&
+      view.stage === stageFilter &&
+      (view.spot ?? 0) === spotFilter,
   );
   // 起名字（v0.112.0）：点「存下这组筛选」先出一个输入框，名字可以不填（不填就用拼出来的那串）
   const [namingView, setNamingView] = useState(false);
@@ -404,11 +419,12 @@ export default function Stats() {
   function applyView(view: StatsView): void {
     setDegreeFilter(view.degree);
     setStageFilter(view.stage);
+    setSpotFilter(view.spot ?? 0);
     // 用过的视角挪到最后 = 渲染时排在最前（v0.113.0）
     setViews(promoteView(view.id));
   }
   function storeCurrentView(): void {
-    setViews(saveView(degreeFilter, stageFilter, viewName));
+    setViews(saveView(degreeFilter, stageFilter, spotFilter, viewName));
     setNamingView(false);
     setViewName("");
   }
@@ -1057,32 +1073,33 @@ export default function Stats() {
           {(hasFilter || views.length > 0) && (
             <div className="hardest-views">
               <span className="hardest-filter-label">存的视角</span>
-              {views.map((view) => (
-                <span
-                  key={view.id}
-                  className={`view-pill${
-                    view.degree === degreeFilter && view.stage === stageFilter ? " on" : ""
-                  }`}
-                >
-                  <button
-                    type="button"
-                    className="view-apply"
-                    aria-pressed={view.degree === degreeFilter && view.stage === stageFilter}
-                    title={view.name ? `${view.name} · ${view.label}` : view.label}
-                    onClick={() => applyView(view)}
-                  >
-                    {view.name ?? view.label}
-                  </button>
-                  <button
-                    type="button"
-                    className="view-del"
-                    aria-label={`删掉视角「${view.name ?? view.label}」`}
-                    onClick={() => dropView(view.id)}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
+              {views.map((view) => {
+                const on =
+                  view.degree === degreeFilter &&
+                  view.stage === stageFilter &&
+                  (view.spot ?? 0) === spotFilter;
+                return (
+                  <span key={view.id} className={`view-pill${on ? " on" : ""}`}>
+                    <button
+                      type="button"
+                      className="view-apply"
+                      aria-pressed={on}
+                      title={view.name ? `${view.name} · ${view.label}` : view.label}
+                      onClick={() => applyView(view)}
+                    >
+                      {view.name ?? view.label}
+                    </button>
+                    <button
+                      type="button"
+                      className="view-del"
+                      aria-label={`删掉视角「${view.name ?? view.label}」`}
+                      onClick={() => dropView(view.id)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
               {hasFilter && !currentSaved && !namingView && (
                 <button
                   type="button"
@@ -1099,7 +1116,7 @@ export default function Stats() {
                     className="view-name"
                     value={viewName}
                     maxLength={12}
-                    placeholder={viewLabel(degreeFilter, stageFilter)}
+                    placeholder={viewLabel(degreeFilter, stageFilter, spotFilter)}
                     aria-label="给这组筛选起个名字（可以不填）"
                     onChange={(event) => setViewName(event.target.value)}
                     onKeyDown={(event) => {

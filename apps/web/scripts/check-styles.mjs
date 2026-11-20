@@ -1127,6 +1127,17 @@ for (const selector of ["select", "input", "textarea"]) {
       parseFloat(spotChip.get("min-height") ?? "0") >= 40,
     `by=${extraBy.get("display") ?? "未设置"}/${extraBy.get("flex-wrap") ?? "未设置"} spot=${spotChip.get("min-height") ?? "未设置"}`,
   );
+
+  // v0.115.0：练过的那条标题淡下去 + 一枚小标签（只淡标题，谱子和按钮不动）
+  const extraDone = narrowDecls(".practice-extra.done h4");
+  const doneTag = narrowDecls(".pb-done-tag");
+  expect(
+    "组合里练过的那条只淡标题，「今天练过」是小圆角标签",
+    (extraDone.get("color") ?? "") === "var(--muted)" &&
+      (doneTag.get("border-radius") ?? "") === "999px" &&
+      parseFloat(doneTag.get("font-size") ?? "0") <= 12,
+    `done=${extraDone.get("color") ?? "未设置"} tag=${doneTag.get("border-radius") ?? "未设置"}/${doneTag.get("font-size") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

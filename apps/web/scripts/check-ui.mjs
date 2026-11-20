@@ -2814,6 +2814,78 @@ try {
     "练习页：组合里今天练过的排到最后，一条不少",
     freshOrder,
   );
+
+  // 12z) v0.115.0：从组合加进来的归到「组合 · 名字」一组，勾掉的那条标题淡下去 + 「今天练过」
+  const comboGroup = String(
+    js(
+      "(() => { const head = document.querySelector('.extras-group')?.textContent?.trim().replace(/\\s+/g, ' ') ?? ''; const meta = document.querySelector('.practice-extra .pb-meta')?.textContent?.trim() ?? ''; return `${head}|${meta.includes('来自「早课」')}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const btn = document.querySelector('.practice-extra .btn.primary'); btn?.click(); return 'ok'; })()",
+  );
+  await sleep(600);
+  const comboDone = String(
+    js(
+      "(() => { const block = document.querySelector('.practice-extra.done'); if (!block) return 'none'; const tag = block.querySelector('.pb-done-tag')?.textContent?.trim() ?? ''; const color = getComputedStyle(block.querySelector('h4')).color; return `${tag}|${color}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    comboGroup === "组合 · 早课2 条收起|true" && comboDone === "今天练过|rgb(139, 148, 158)",
+    "练习页：组合的条目归到一起，练过的淡下去并标「今天练过」",
+    `${comboGroup} · ${comboDone}`,
+  );
+
+  // 16d18) v0.115.0：视角把「单独练过几次」也一起存下来
+  js(
+    "(() => { const pad = (n) => String(n).padStart(2, '0'); const d = new Date(); const today = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; const rec = { 's0-crawl': { bestBpm: 80, sessions: 1, minutes: 2, lastAt: today, title: '单弦爬格子（1-2-3-4）', hardest: { bar: 1, degree: 5, name: 'G', count: 5 }, spots: [{ bar: 2, degree: 5, name: 'G', times: 4, lastAt: today }] } }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(rec)); localStorage.removeItem('guitar.stats.views.v1'); sessionStorage.removeItem('guitar.stats.degree'); sessionStorage.removeItem('guitar.stats.stage'); sessionStorage.removeItem('guitar.stats.spot'); location.hash = '#stats'; return 'ok'; })()",
+  );
+  await ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const row = document.querySelector('.hardest-spot'); const chip = [...(row?.querySelectorAll('button') ?? [])].find(b => b.textContent.trim() === '≥3 次'); chip?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  js("(() => { document.querySelector('.view-save')?.click(); return 'ok'; })()");
+  await sleep(300);
+  const spotPlaceholder = String(
+    js("(() => document.querySelector('.view-name')?.getAttribute('placeholder') ?? '')()"),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const input = document.querySelector('.view-name'); if (!input) return 'missing'; const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set; setter?.call(input, '常卡'); input.dispatchEvent(new Event('input', { bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(300);
+  js(
+    "(() => { document.querySelector('.view-name')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(600);
+  const spotStored = String(
+    js(
+      "(() => { const v = JSON.parse(localStorage.getItem('guitar.stats.views.v1') ?? '[]'); const pill = document.querySelector('.view-pill .view-apply'); return `${v.length}|${v[0]?.spot}|${v[0]?.label}|${pill?.getAttribute('title') ?? ''}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const all = [...document.querySelectorAll('.hardest-spot button')].find(b => b.textContent.trim() === '全部'); all?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  js("(() => { document.querySelector('.view-apply')?.click(); return 'ok'; })()");
+  await sleep(500);
+  const spotRestored = String(
+    js(
+      "(() => { const pressed = [...document.querySelectorAll('.hardest-spot button')].filter(b => b.getAttribute('aria-pressed') === 'true').map(b => b.textContent.trim()).join('/'); const hash = location.hash.endsWith('p=3'); return `${pressed}|${hash}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    spotPlaceholder === "单独练过 ≥3 次" &&
+      spotStored === "1|3|单独练过 ≥3 次|常卡 · 单独练过 ≥3 次" &&
+      spotRestored === "≥3 次|true",
+    "统计页：「单独练过几次」也能存进视角，一键还原",
+    `${spotPlaceholder} · ${spotStored} · ${spotRestored}`,
+  );
+  js("localStorage.removeItem('guitar.stats.views.v1')");
+  js("sessionStorage.removeItem('guitar.stats.spot')");
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+  js("localStorage.removeItem('guitar.plan.sets.v1')");
   js("localStorage.removeItem('guitar.plan.sets.v1')");
   js("localStorage.removeItem('guitar.plan.done.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");

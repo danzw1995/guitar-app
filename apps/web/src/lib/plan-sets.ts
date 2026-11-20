@@ -140,16 +140,23 @@ export function renameSet(id: string, name: string): PlanSet[] {
   return persist(loadSets().map((set) => (set.id === id ? { ...set, name: clean } : set)));
 }
 
-/** 把几条没加过的加进今天的计划，返回加进去几条（v0.113.0 抽出来，好按「没练过的」筛）。 */
-export function applyItems(items: PlanSetItem[], today: string = dateKeyOf(new Date())): number {
+/**
+ * 把几条没加过的加进今天的计划，返回加进去几条（v0.113.0 抽出来，好按「没练过的」筛）。
+ * `setName` 会写到每条上（v0.115.0）：列表里同一套的条目就能归到一起。
+ */
+export function applyItems(
+  items: PlanSetItem[],
+  today: string = dateKeyOf(new Date()),
+  setName?: string,
+): number {
   const before = loadExtras(today).length;
-  for (const item of items) addExtra(item, today);
+  for (const item of items) addExtra({ ...item, ...(setName ? { setName } : {}) }, today);
   return Math.max(0, loadExtras(today).length - before);
 }
 
 /** 把一套里没加过的条目加进今天的计划，返回加进去几条。 */
 export function applySet(set: PlanSet, today: string = dateKeyOf(new Date())): number {
-  return applyItems(set.items, today);
+  return applyItems(set.items, today, set.name);
 }
 
 /**

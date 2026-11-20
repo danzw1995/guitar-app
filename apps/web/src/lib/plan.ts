@@ -13,6 +13,8 @@ export interface PlanExtra {
   bpm: number;
   /** 从练习库加进来的那一条属于哪个阶段（v0.107.0）；别处加进来的没有这个字段。 */
   stage?: number;
+  /** 从哪一套组合加进来的（v0.115.0）——列表里同一套的条目就能归到一起。 */
+  setName?: string;
   addedAt: number;
 }
 
@@ -55,6 +57,9 @@ function parse(raw: unknown): PlanExtra[] {
       ...(typeof extra.stage === "number" && extra.stage >= 0 && extra.stage < 6
         ? { stage: Math.round(extra.stage) }
         : {}),
+      ...(typeof extra.setName === "string" && extra.setName.trim()
+        ? { setName: extra.setName.trim().slice(0, 12) }
+        : {}),
       addedAt: typeof extra.addedAt === "number" ? extra.addedAt : 0,
     });
   }
@@ -87,7 +92,14 @@ export function loadExtras(today: string = dateKeyOf(new Date())): PlanExtra[] {
 
 /** 加一条进今天的计划；同一条（同标题同谱）已经加过就不重复加。 */
 export function addExtra(
-  input: { title: string; tab: Tab; meter: string; bpm: number; stage?: number },
+  input: {
+    title: string;
+    tab: Tab;
+    meter: string;
+    bpm: number;
+    stage?: number;
+    setName?: string;
+  },
   today: string = dateKeyOf(new Date()),
 ): PlanExtra[] {
   const all = readAll().filter((item) => item.date === today);
@@ -104,6 +116,9 @@ export function addExtra(
     meter: input.meter,
     bpm: input.bpm,
     ...(typeof input.stage === "number" ? { stage: input.stage } : {}),
+    ...(typeof input.setName === "string" && input.setName.trim()
+      ? { setName: input.setName.trim().slice(0, 12) }
+      : {}),
     addedAt: stamp,
   };
   const next = [...all, extra].slice(-MAX_PER_DAY);
@@ -161,9 +176,9 @@ export function reorderExtras(
 /** 哪些分组被收起来了（v0.110.0）——纯界面状态，和计划本身无关。 */
 const CLOSED_KEY = "guitar.extras.closed.v1";
 
-/** 只认 `stage-N` / `other` 这两种键，其余一律当没写过。 */
+/** 只认 `stage-N` / `set-名字` / `other` 这几种键，其余一律当没写过。 */
 function isGroupKey(key: string): boolean {
-  return key === "other" || /^stage-[0-9]$/.test(key);
+  return key === "other" || /^stage-[0-9]$/.test(key) || /^set-.+$/.test(key);
 }
 
 export function loadClosedGroups(): Record<string, boolean> {
