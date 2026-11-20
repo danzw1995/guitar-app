@@ -1168,6 +1168,17 @@ for (const selector of ["select", "input", "textarea"]) {
       (setBtnOn.get("color") ?? "") === "var(--accent)",
     `min-height=${setBtn.get("min-height") ?? "未设置"} border=${setBtn.get("border") ?? "未设置"} on=${setBtnOn.get("color") ?? "未设置"}`,
   );
+
+  // v0.118.1：手机上提示条撑满宽度、文字独占一行（否则折行后缩成一条窄柱）
+  const toastNarrow = narrowDecls(".undo-toast");
+  const toastText = narrowDecls(".undo-toast-text");
+  expect(
+    "手机上提示条撑满宽度，文字不截断",
+    (toastNarrow.get("flex-wrap") ?? "") === "wrap" &&
+      (toastNarrow.get("left") ?? "") === "12px" &&
+      String(toastText.get("flex") ?? "").replace(/\s+/g, " ").trim() === "1 1 100%",
+    `toast=${toastNarrow.get("left") ?? "未设置"}/${toastNarrow.get("flex-wrap") ?? "未设置"} text=${toastText.get("flex") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

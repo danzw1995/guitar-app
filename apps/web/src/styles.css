@@ -4025,6 +4025,32 @@ button, select, input { font: inherit; color: inherit; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* 手机上一条提示挤不下三个按钮：文字独占一行、按钮排到下面，
+   别把「已撤回「X」」截成省略号，也别把文字挤成一列（v0.118.1） */
+@media (max-width: 720px) {
+  .undo-toast {
+    /* fixed + left:50% 的宽度是「按内容收缩」的，折行之后会缩成一条窄柱；
+       手机上直接左右各留 12px 撑满，文字才有一整行的宽度 */
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: none;
+    transform: none;
+    flex-wrap: wrap;
+    padding: 10px 10px 8px 14px;
+  }
+  .undo-toast-text {
+    flex: 1 1 100%;
+    white-space: normal;
+    text-overflow: clip;
+    line-height: 1.4;
+  }
+  .undo-toast-more,
+  .undo-toast-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
 
 .undo-toast-btn {
   min-height: 40px;
