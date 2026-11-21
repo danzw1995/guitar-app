@@ -3348,6 +3348,26 @@ button, select, input { font: inherit; color: inherit; }
   background: var(--accent);
 }
 
+.st-halves {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.st-saved {
+  margin: 0;
+  color: var(--green);
+  font-size: 12px;
+}
+
+.st-best {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .st-scale,
 .st-suggestion {
   margin: 0;

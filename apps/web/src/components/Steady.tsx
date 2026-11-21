@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
+import { recordRun, loadRuns, bestRun, type SteadyRun } from "../lib/steady";
 
 type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
 
@@ -28,6 +29,8 @@ export default function Steady() {
   const [elapsed, setElapsed] = useState(0);
   const [report, setReport] = useState<TimingReport | null>(null);
   const [error, setError] = useState("");
+  const [runs, setRuns] = useState<SteadyRun[]>(() => loadRuns());
+  const [justSaved, setJustSaved] = useState(false);
 
   const ctxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -61,6 +64,7 @@ export default function Steady() {
     cleanup();
     setReport(null);
     setError("");
+    setJustSaved(false);
     setElapsed(0);
     chunksRef.current = [];
     framesRef.current = 0;
@@ -163,9 +167,22 @@ export default function Steady() {
       return;
     }
     setReport(next);
+    setRuns(
+      recordRun({
+        date: new Date().toISOString().slice(0, 10),
+        bpm,
+        bars,
+        stdevMs: next.stdevMs,
+        meanAbsMs: next.meanAbsMs,
+        driftMsPerBeat: next.driftMsPerBeat,
+        hits: next.hits.length,
+      }),
+    );
+    setJustSaved(true);
   }, [bpm, cleanup]);
 
   const busy = phase === "starting" || phase === "listening";
+  const best = bestRun(runs);
   // 满格 = 偏差 60 毫秒；再大就顶到头，不至于因为某一下特别离谱把别的挤成一条线
   const SCALE_MS = 60;
 
@@ -252,8 +269,22 @@ export default function Steady() {
             ))}
           </div>
           <p className="st-scale">每条是一拍：往左 = 抢在节拍器前面，往右 = 拖在后面。</p>
+          {report.stdevFirstHalfMs > 0 && report.stdevSecondHalfMs > 0 && (
+            <p className="st-halves">
+              前半段 ±{report.stdevFirstHalfMs.toFixed(0)} 毫秒 · 后半段 ±
+              {report.stdevSecondHalfMs.toFixed(0)} 毫秒
+              {report.stdevSecondHalfMs > report.stdevFirstHalfMs * 1.8 ? "（后半段开始散了）" : ""}
+            </p>
+          )}
           <p className="st-suggestion">{report.suggestion}</p>
+          {justSaved && <p className="st-saved">这一遍已经记下了。</p>}
         </div>
+      )}
+
+      {best && (
+        <p className="st-best">
+          最稳的一遍：标准差 {best.stdevMs.toFixed(0)} 毫秒 · {best.bpm} BPM · {runs.length} 遍里最好的一次
+        </p>
       )}
 
       <p className="st-tip">安静的房间、戴耳机、用拨片；速度填你实际能稳住的那个，别一上来就追快。</p>

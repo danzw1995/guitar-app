@@ -140,6 +140,10 @@ export interface TimingReport {
   stdevMs: number;
   /** 每拍漂移（毫秒 / 拍）：负数 = 越弹越快 */
   driftMsPerBeat: number;
+  /** 前半段的标准差（拍数为奇数时中间那一拍不算） */
+  stdevFirstHalfMs: number;
+  /** 后半段的标准差 */
+  stdevSecondHalfMs: number;
   /** 一共跨了几拍 */
   spanBeats: number;
   /** 稳不稳（中位数、标准差、漂移都在容忍范围内） */
@@ -224,6 +228,17 @@ export function analyzeTiming(
   }
   const driftMsPerBeat = denominator === 0 ? 0 : numerator / denominator;
 
+  // 前后两半各自稳不稳：有些人才是「越弹越急」，有些人只是后半段手累了开始抖
+  const half = Math.floor(offsets.length / 2);
+  const halfStdev = (values: number[]): number => {
+    if (values.length < 2) return 0;
+    const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const spread = values.reduce((sum, value) => sum + (value - average) ** 2, 0) / values.length;
+    return Math.sqrt(spread);
+  };
+  const stdevFirstHalfMs = halfStdev(offsets.slice(0, half));
+  const stdevSecondHalfMs = halfStdev(offsets.slice(offsets.length - half));
+
   const steady = Math.abs(medianOffsetMs) <= 8 && stdevMs <= 28 && Math.abs(driftMsPerBeat) <= 2.5;
 
   return {
@@ -236,6 +251,8 @@ export function analyzeTiming(
     meanAbsMs,
     stdevMs,
     driftMsPerBeat,
+    stdevFirstHalfMs,
+    stdevSecondHalfMs,
     spanBeats: hits[hits.length - 1].beat - hits[0].beat + 1,
     steady,
     verdict: verdictOf({ medianOffsetMs, stdevMs, driftMsPerBeat, steady }),

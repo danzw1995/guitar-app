@@ -366,3 +366,19 @@ test("合并收起的分组：哪边收起就算收起", () => {
   ).next.data["guitar.extras.closed.v1"];
   assert.deepEqual(merged, { "stage-0": true, other: true }, "false 不该把收起改回展开");
 });
+
+test("合并「稳不稳」的记录：按 id 去重，只留最近 24 遍", () => {
+  const base = { date: "2026-11-21", bpm: 70, bars: 4, stdevMs: 12, meanAbsMs: 10, driftMsPerBeat: 0, hits: 16 };
+  const mine = Array.from({ length: 20 }, (_, index) => ({ ...base, id: `s-mine-${index}` }));
+  const theirs = Array.from({ length: 20 }, (_, index) => ({ ...base, id: `s-theirs-${index}`, stdevMs: 9 }));
+  // 两边有同一条：只留一份
+  const shared = { ...base, id: "s-shared" };
+  const merged = mergeBackup(
+    { ...empty(), data: { "guitar.steady.v1": [...mine, shared] } },
+    { ...empty(), data: { "guitar.steady.v1": [shared, ...theirs] } },
+  ).next.data["guitar.steady.v1"];
+  assert.ok(Array.isArray(merged));
+  assert.equal(merged.length, 24, "上限 24 遍");
+  assert.equal(merged.filter((item) => item.id === "s-shared").length, 1, "同一条只留一份");
+  assert.equal(merged[merged.length - 1].id, "s-theirs-19", "保留导入那份里最新的");
+});

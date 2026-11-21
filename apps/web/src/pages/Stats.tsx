@@ -27,6 +27,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
+import { bestRun, loadRuns, steadyTrend } from "../lib/steady";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -835,6 +836,12 @@ export default function Stats() {
   }
 
   // 听辨（扒谱页「练」）：`guitar.ear.v1` 存最好成绩、轮数与四种题型各自的正确率
+  const steadyRuns = loadRuns();
+  const steadyBest = bestRun(steadyRuns);
+  const steadyLast = steadyRuns[steadyRuns.length - 1] ?? null;
+  const steadyPoints = steadyTrend(steadyRuns);
+  const steadySpark = steadyPoints.length >= 2 ? sparklineOf(steadyPoints, 120, 30) : null;
+
   const ear = loadEar();
   const earKinds = EAR_KINDS.map((kind) => {
     const item = ear.byKind[kind.id];
@@ -1996,6 +2003,55 @@ export default function Stats() {
             （{earDays[0][0].slice(5).replace("-", "/")} → {earDays[earDays.length - 1][0].slice(5).replace("-", "/")}）
           </span>
         </div>
+      )}
+
+      <h3 className="stat-sub">稳不稳</h3>
+      {steadyRuns.length === 0 ? (
+        <p className="hint">
+          去练习页最下面的「稳不稳」，跟着节拍器弹四小节，会算出每拍偏差的标准差。
+          <button type="button" className="btn-quiet" onClick={() => goTo("practice", "steady")}>
+            去练一遍
+          </button>
+        </p>
+      ) : (
+        <>
+          <div className="stat-grid">
+            <div className="stat-card">
+              <b>{steadyBest ? steadyBest.stdevMs.toFixed(0) + " 毫秒" : "—"}</b>
+              <span>最稳的一次 标准差</span>
+            </div>
+            <div className="stat-card">
+              <b>{steadyLast ? steadyLast.stdevMs.toFixed(0) + " 毫秒" : "—"}</b>
+              <span>最近一次 标准差</span>
+            </div>
+            <div className="stat-card">
+              <b>{steadyRuns.length} 遍</b>
+              <span>练过的遍数</span>
+            </div>
+          </div>
+          {steadySpark && (
+            <div className="ear-trend" data-steady-trend>
+              <svg
+                className="curve-svg"
+                viewBox="0 0 120 30"
+                role="img"
+                aria-label={"最近 " + steadyPoints.length + " 遍的标准差：从 " + Math.round(steadyPoints[0]) + " 毫秒到 " + Math.round(steadyPoints[steadyPoints.length - 1]) + " 毫秒，越低越稳"}
+              >
+                <path d={steadySpark.d} />
+                <circle cx={steadySpark.dots[steadySpark.dots.length - 1].x} cy={steadySpark.dots[steadySpark.dots.length - 1].y} r={2} />
+              </svg>
+              <span className="muted">
+                最近 {steadyPoints.length} 遍：{Math.round(steadyPoints[0])} → {Math.round(steadyPoints[steadyPoints.length - 1])} 毫秒（越低越稳）
+              </span>
+            </div>
+          )}
+          <p className="hint">
+            {steadyBest ? "最稳的一遍是 " + steadyBest.bpm + " BPM、" + steadyBest.bars + " 小节。" : ""}
+            <button type="button" className="btn-quiet" onClick={() => goTo("practice", "steady")}>
+              再弹一遍
+            </button>
+          </p>
+        </>
       )}
 
       <h3 className="stat-sub">最近战绩</h3>

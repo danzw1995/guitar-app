@@ -3670,6 +3670,37 @@ try {
     `${auditionA}→${auditionB} · ${zoomNotes.join("/")} · ${zoomWindow.from}-${zoomWindow.to}/${zoomWindow.width}`,
   );
 
+  // 16d38) v0.138.0：统计页「稳不稳」——最稳的一次、最近一次、趋势线
+  await js(`(() => {
+    const run = (id, date, stdev) => ({ id, date, bpm: 70, bars: 4, stdevMs: stdev, meanAbsMs: stdev, driftMsPerBeat: 0, hits: 16 });
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([run("s-1", "2026-11-10", 38), run("s-2", "2026-11-15", 24), run("s-3", "2026-11-20", 16)]));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(900);
+  const steadyStats = js(`(() => {
+    const heading = [...document.querySelectorAll("h3.stat-sub")].find((node) => node.textContent.trim() === "稳不稳");
+    if (!heading) return "missing";
+    const section = heading.parentElement;
+    const cards = [...section.querySelectorAll(".stat-card")].map((card) => card.textContent.replace(/\\s+/g, " ").trim());
+    const trend = section.querySelector("[data-steady-trend]");
+    const svg = trend?.querySelector("svg");
+    return [
+      cards.some((item) => item.includes("16 毫秒")) ? "best" : "no-best",
+      cards.some((item) => item.includes("3 遍")) ? "count" : "no-count",
+      trend ? "trend" : "no-trend",
+      String(svg?.getAttribute("aria-label") ?? "").includes("越低越稳") ? "aria" : "no-aria",
+    ].join("|");
+  })()`);
+  const steadyStatsText = String(steadyStats).replace(/^"|"$/g, "");
+  log(
+    steadyStatsText === "best|count|trend|aria",
+    "统计页：「稳不稳」列出最稳的一次、遍数，并画出标准差的趋势",
+    steadyStatsText,
+  );
+  await js(`localStorage.removeItem("guitar.steady.v1")`);
+
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);
   await sleep(900);

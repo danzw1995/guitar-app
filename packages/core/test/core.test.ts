@@ -3550,6 +3550,13 @@ test("弹给节拍器听：预备拍不进统计，离谱的一下丢掉，太�
   assert.match(wild!.verdict, /忽早忽晚/);
   assert.match(wild!.suggestion, /稳|慢一点/);
 
+  // 前后两半各自的标准差：后半段开始抖，前半段是稳的
+  const tired = [0, 3, -3, 2, -2, 30, -30, 28].map((offset, index) => interval * index + offset / 1000);
+  const tiredReport = analyzeTiming(tired, bpm, { origin: 0 });
+  assert.ok(tiredReport);
+  assert.ok(tiredReport!.stdevFirstHalfMs < 5, `前半 ${tiredReport!.stdevFirstHalfMs}`);
+  assert.ok(tiredReport!.stdevSecondHalfMs > 20, `后半 ${tiredReport!.stdevSecondHalfMs}`);
+
   // 少于 4 下：不给结论
   assert.equal(analyzeTiming([0, interval], bpm), null);
   assert.equal(analyzeTiming(onsets, 0), null);

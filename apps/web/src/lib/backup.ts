@@ -36,6 +36,7 @@ export const BACKUP_KEYS = [
   "guitar.goals.v1",
   "guitar.ear.v1",
   "guitar.patterns.v1",
+  "guitar.steady.v1",
   "guitar.plan.v1",
   "guitar.plan.sets.v1",
   "guitar.plan.done.v1",
@@ -272,6 +273,21 @@ function mergePatterns(a: unknown, b: unknown): unknown[] {
     .slice(0, 40);
 }
 
+function mergeSteady(a: unknown, b: unknown): unknown[] {
+  const out: unknown[] = [];
+  const seen = new Set<string>();
+  for (const source of [a, b]) {
+    if (!Array.isArray(source)) continue;
+    for (const item of source) {
+      if (!isDict(item) || typeof item.id !== "string") continue;
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      out.push(item);
+    }
+  }
+  return out.slice(-24);
+}
+
 function mergeEar(a: unknown, b: unknown): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   const left = isDict(a) ? a : {};
@@ -439,6 +455,8 @@ export function mergeBackup(
   if (Object.keys(ear).length) data["guitar.ear.v1"] = ear;
 
   // 我存的进行：按 id 合并（两边都是自己存的，谁也别丢）
+  const steady = mergeSteady(a["guitar.steady.v1"], b["guitar.steady.v1"]);
+  if (steady.length) data["guitar.steady.v1"] = steady;
   const patterns = mergePatterns(a["guitar.patterns.v1"], b["guitar.patterns.v1"]);
   if (patterns.length) data["guitar.patterns.v1"] = patterns;
 
