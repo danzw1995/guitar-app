@@ -196,6 +196,12 @@ export interface RhythmRecord {
    * 和 `hardest.count`（跟练时点级数方块的次数）分开算——一个是「卡」，一个是「回头练」。
    */
   spots?: SpotDrill[];
+  /**
+   * 上次圈住练的那一段（v0.132.0）：第几小节到第几小节。
+   *
+   * 一圈几小节就是那天的练法，下次打开跟练直接照着圈回去，不用再从头挑一遍。
+   */
+  seg?: { from: number; to: number };
 }
 
 /** 某一处（第 N 小节第 M 级）单独练过几次。 */
@@ -272,6 +278,17 @@ function parseSpots(value: unknown): SpotDrill[] {
   return spots.slice(-6);
 }
 
+/** 上次圈住练的那一段（v0.132.0）：两头都得是 1 起的小节号，且 from 不大于 to。 */
+function parseSeg(value: unknown): { from: number; to: number } | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const item = value as Record<string, unknown>;
+  const from = Number(item.from);
+  const to = Number(item.to);
+  if (!Number.isInteger(from) || !Number.isInteger(to)) return null;
+  if (from < 1 || to < from || to > 99) return null;
+  return { from, to };
+}
+
 function parseRecords(raw: unknown): RhythmRecords {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
 
@@ -281,6 +298,7 @@ function parseRecords(raw: unknown): RhythmRecords {
     const item = value as Record<string, unknown>;
     const bestBpm = Number(item.bestBpm);
     const spots = parseSpots(item.spots);
+    const seg = parseSeg(item.seg);
     // 只单独练过某一处、还没整段练完时 bestBpm 会是 0——这种记录也得留住（v0.113.0）
     if (!Number.isFinite(bestBpm) || bestBpm < 0) continue;
     if (bestBpm <= 0 && spots.length === 0) continue;
@@ -292,6 +310,7 @@ function parseRecords(raw: unknown): RhythmRecords {
       history: parseHistory(item.history),
       hardest: parseHardest(item.hardest),
       ...(spots.length ? { spots } : {}),
+      ...(seg ? { seg } : {}),
       ...(typeof item.title === "string" && item.title.trim()
         ? { title: item.title.trim() }
         : {}),

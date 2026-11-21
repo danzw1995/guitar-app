@@ -36,7 +36,13 @@ export interface FollowAlongProps {
   target: FollowTarget;
   /** 之前练到过的最高速度（没有就不显示）。 */
   best?: number;
-  onFinish: (result: { bpm: number; minutes: number; hardest?: FollowHardest }) => void;
+  onFinish: (result: {
+    bpm: number;
+    minutes: number;
+    hardest?: FollowHardest;
+    /** 这次圈住练的那一段（v0.132.0），下次打开照着圈回去。 */
+    seg?: { from: number; to: number };
+  }) => void;
   onClose: () => void;
   /** 点了「只练这一处」（v0.113.0）：父组件记一笔「这一处单独练过几次」。 */
   onSpot?: (spot: FollowHardest) => void;
@@ -129,6 +135,13 @@ export default function FollowAlong({
    */
   const [auditionBeat, setAuditionBeat] = useState<number | null>(null);
   const auditionTimers = useRef<number[]>([]);
+  /** 长按「上一小节 / 下一小节」连翻用的两个计时器（v0.132.0）。 */
+  const holdTimer = useRef<number | null>(null);
+  const repeatTimer = useRef<number | null>(null);
+  /** 连翻要读「现在圈在哪」，而 interval 里读到的 state 是旧的——每帧同步一份（v0.133.0）。 */
+  const loopRef = useRef({ from: loopFrom, to: loopTo });
+  loopRef.current = { from: loopFrom, to: loopTo };
+  const runningRef = useRef(false);
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -267,16 +280,41 @@ export default function FollowAlong({
    *
    * 单小节时（宽度 1）就是原来那个「上一小节 / 下一小节」；圈成 2–4 小节时按两下是
    * 3–5 小节，而不是把范围缩成一小节——「连着练这几小节」是用户特意圈的。
+   *
+   * 长按连翻走的是 `setInterval`，闭包里拿到的 state 是**按下那一刻**的旧值（连翻三次
+   * 会一直算同一个 from），所以读每次渲染都同步的 `loopRef`，不直接读 state。
    */
   function stepWindow(delta: number): void {
-    const width = Math.abs(loopTo - loopFrom) + 1;
-    const from = Math.min(Math.max(1, Math.min(loopFrom, loopTo) + delta), totalBars - width + 1);
+    const { from: a, to: b } = loopRef.current;
+    const width = Math.abs(b - a) + 1;
+    const from = Math.min(Math.max(1, Math.min(a, b) + delta), totalBars - width + 1);
     setLoopOn(true);
     setLoopFrom(from);
     setLoopTo(from + width - 1);
     loopPassRef.current = 0;
-    if (!running) start();
+    if (!runningRef.current) start();
   }
+
+  /**
+   * 长按连翻（v0.132.0）：按下去先不挪，等 400ms 才开始每 420ms 挪一格。
+   *
+   * 单点还是走 `onClick` 挪一格——按下去就挪的话，一次点击会变成两格。
+   */
+  function stopStepHold(): void {
+    if (holdTimer.current !== null) window.clearTimeout(holdTimer.current);
+    if (repeatTimer.current !== null) window.clearInterval(repeatTimer.current);
+    holdTimer.current = null;
+    repeatTimer.current = null;
+  }
+
+  function startStepHold(delta: number): void {
+    stopStepHold();
+    holdTimer.current = window.setTimeout(() => {
+      repeatTimer.current = window.setInterval(() => stepWindow(delta), 420);
+    }, 400);
+  }
+
+  useEffect(() => stopStepHold, []);
 
   const { running, bar, pass, active, countingIn, start, stop } = useMetronome({
     bpm,
@@ -287,6 +325,7 @@ export default function FollowAlong({
     countIn,
     loop,
   });
+  runningRef.current = running;
 
   // 现在弹到第几级（v0.96.0）：按起音拍往后找，找不到就退回第一个
   const degrees = useMemo(() => degreesOf(target.tab), [target.tab]);
@@ -329,6 +368,18 @@ export default function FollowAlong({
     }
     return total;
   }, [spotTimes, loopStart, loopEnd]);
+
+  /** 试听走到哪一拍、那一拍上是哪几根弦（v0.132.0）。 */
+  const auditionNotes = useMemo(() => {
+    if (auditionBeat === null || !zoomTab) return [];
+    return zoomTab.notes
+      .filter((note) => Math.floor(note.beat) === auditionBeat)
+      .map((note) => ({
+        s: note.s,
+        f: note.f,
+        label: `第 ${note.s} 弦${note.f > 0 ? `第 ${note.f} 品` : "空弦"}`,
+      }));
+  }, [auditionBeat, zoomTab]);
   const beatNow = bar * target.tab.beatsPerBar + Math.max(0, active);
   const degreeIndex = degrees.length
     ? Math.max(
@@ -388,7 +439,12 @@ export default function FollowAlong({
     // 不然「把第 N 小节存成练习」只在点过方块的这一遍里才有，等于白做。
     const spots = spotsSoFar();
     const hardest = spots[0] ?? remembered;
-    onFinish({ bpm, minutes: Math.max(1, Math.round(seconds / 60)), hardest: hardest ?? undefined });
+    onFinish({
+      bpm,
+      minutes: Math.max(1, Math.round(seconds / 60)),
+      hardest: hardest ?? undefined,
+      seg: loopOn ? { from: loopStart, to: loopEnd } : undefined,
+    });
     setDone({ bpm, hardest, spots });
     setSpotsOpen(false);
     stop();
@@ -416,6 +472,17 @@ export default function FollowAlong({
     stop();
     // 带着小节进来（v0.129.0）：重置完再圈，别被上面的 reset 清掉
     if (startBar) practiceBar(startBar, false);
+    else {
+      // 上次圈住练的那一段（v0.132.0）：照着圈回去，不用再从头挑一遍
+      const saved = loadRhythm()[target.id]?.seg;
+      if (saved) {
+        const from = Math.min(Math.max(1, saved.from), target.tab.bars);
+        const to = Math.min(Math.max(from, saved.to), target.tab.bars);
+        setLoopOn(true);
+        setLoopFrom(from);
+        setLoopTo(to);
+      }
+    }
   }, [target.id]);
 
   /** 谱面显示用的小节号：不循环时一直往下数，数到末尾绕回第 1 小节（v0.99.0）。 */
@@ -836,6 +903,10 @@ export default function FollowAlong({
                 type="button"
                 className="btn-quiet"
                 onClick={() => stepWindow(-1)}
+                onPointerDown={() => startStepHold(-1)}
+                onPointerUp={stopStepHold}
+                onPointerLeave={stopStepHold}
+                onPointerCancel={stopStepHold}
                 disabled={loopStart <= 1}
                 aria-label={`上一小节：第 ${Math.max(1, loopStart - 1)} 小节`}
               >
@@ -853,6 +924,10 @@ export default function FollowAlong({
                 type="button"
                 className="btn-quiet"
                 onClick={() => stepWindow(1)}
+                onPointerDown={() => startStepHold(1)}
+                onPointerUp={stopStepHold}
+                onPointerLeave={stopStepHold}
+                onPointerCancel={stopStepHold}
                 disabled={loopEnd >= totalBars}
                 aria-label={`下一小节：第 ${Math.min(totalBars, loopEnd + 1)} 小节`}
               >
@@ -860,6 +935,16 @@ export default function FollowAlong({
               </button>
             </div>
           </div>
+          {auditionNotes.length > 0 ? (
+            <p className="follow-zoom-now" role="status">
+              正在响：
+              {auditionNotes.map((note) => (
+                <span key={`${note.s}-${note.f}`} className="follow-zoom-note-chip">
+                  {note.label}
+                </span>
+              ))}
+            </p>
+          ) : null}
           <TabScore
             id={`${target.id}-bar-${loopStart}-${loopWidth}`}
             tab={zoomTab}

@@ -2335,6 +2335,24 @@ button, select, input { font: inherit; color: inherit; }
     white-space: normal;
   }
 }
+.follow-zoom-now {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.follow-zoom-note-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(232, 176, 75, 0.16);
+  color: var(--accent);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .follow-zoom-actions {
   display: flex;
   flex-wrap: wrap;

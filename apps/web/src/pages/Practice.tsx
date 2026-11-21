@@ -488,6 +488,7 @@ export default function Practice() {
     bpm: number;
     minutes: number;
     hardest?: { bar: number; degree: number; name: string; count: number };
+    seg?: { from: number; to: number };
   }) {
     if (!follow) return;
     const previous = records[follow.id];
@@ -507,6 +508,8 @@ export default function Practice() {
         // 加餐的名字跟着记录走（v0.104.0）：计划表第二天就清空，
         // 不存名字的话统计页「最卡的地方」过一天只剩 `p:extra-…` 这种 id
         ...(follow.id.startsWith("p:extra-") ? { title: follow.name } : {}),
+        // 上次圈住练的那一段（v0.132.0）：下次打开直接照着圈回去
+        ...(result.seg ? { seg: result.seg } : previous?.seg ? { seg: previous.seg } : {}),
       },
     };
     setRecords(next);

@@ -221,7 +221,12 @@ export default function Rhythm() {
     shownSnippets.length;
 
   /** 记成绩：跟练记录（最高速度）+ 当天练习时长（让连续天数也涨）。 */
-  function record(result: { bpm: number; minutes: number; hardest?: RhythmRecord["hardest"] }) {
+  function record(result: {
+    bpm: number;
+    minutes: number;
+    hardest?: RhythmRecord["hardest"];
+    seg?: { from: number; to: number };
+  }) {
     if (!target) return;
     const today = dateKeyOf(new Date());
     const previous = records[target.id];
@@ -238,6 +243,8 @@ export default function Rhythm() {
           : previous?.hardest
             ? { hardest: previous.hardest }
             : {}),
+        // 上次圈住练的那一段（v0.132.0）
+        ...(result.seg ? { seg: result.seg } : previous?.seg ? { seg: previous.seg } : {}),
       },
     };
     setRecords(next);

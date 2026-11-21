@@ -3550,6 +3550,55 @@ try {
     `${auditionA}→${auditionB} · ${zoomNotes.join("/")} · ${zoomWindow.from}-${zoomWindow.to}/${zoomWindow.width}`,
   );
 
+  // 16d37) 长按连翻、试听时写着「正在响」、重开照着上次那段圈回去（v0.133.0）
+  js("(() => { const rows = JSON.parse(localStorage.getItem('guitar.rhythm.v1') || '{}'); const key = Object.keys(rows).find(k => k.startsWith('p:extra-')); if (key) { rows[key].seg = { from: 2, to: 3 }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(rows)); } return key || ''; })()");
+  // 谱加长到 6 小节：长按要有地方可以连翻、第 2 小节也得有音（试听才写得出「正在响」）
+  js("(() => { const plan = JSON.parse(localStorage.getItem('guitar.plan.v1') || '[]'); if (plan[0]) { plan[0].tab = { beatsPerBar: 4, bars: 6, notes: [{ s: 3, f: 0, beat: 4, dur: 1 }, { s: 3, f: 2, beat: 5, dur: 1 }, { s: 4, f: 2, beat: 8, dur: 1 }, { s: 4, f: 3, beat: 9, dur: 1 }, { s: 5, f: 0, beat: 12, dur: 1 }] }; localStorage.setItem('guitar.plan.v1', JSON.stringify(plan)); } return 'ok'; })()");
+  ab(["open", `${URL}/?v=${Date.now()}#practice?item=extra-z1&follow=1&bar=2`]);
+  await sleep(1800);
+  const zoomHold = await (async () => {
+    const before = String(js("(() => document.querySelector('select[aria-label=\"循环从第几小节开始\"]')?.value ?? '')()")).replace(/^"|"$/g, "");
+    js(
+      "(() => { const b = [...document.querySelectorAll('.follow-zoom-actions button')].find(n => n.textContent.includes('下一小节')); b?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); return 'ok'; })()",
+    );
+    await sleep(1500);
+    js(
+      "(() => { const b = [...document.querySelectorAll('.follow-zoom-actions button')].find(n => n.textContent.includes('下一小节')); b?.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); return 'ok'; })()",
+    );
+    await sleep(400);
+    const after = String(js("(() => document.querySelector('select[aria-label=\"循环从第几小节开始\"]')?.value ?? '')()")).replace(/^"|"$/g, "");
+    return { before, after };
+  })();
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow-zoom-actions button')].find(n => n.textContent.includes('试听')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const nowText = String(js("(() => document.querySelector('.follow-zoom-now')?.textContent ?? '')()")).replace(/^"|"$/g, "");
+  js("(() => { const b = [...document.querySelectorAll('.follow .btn')].find(n => n.textContent.includes('收起')); b?.click(); return 'ok'; })()");
+  await sleep(500);
+  js(
+    "(() => { const b = [...document.querySelectorAll('.practice-extra .btn-quiet')].find(n => n.textContent.includes('跟练')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(1800);
+  const zoomRestored = JSON.parse(
+    String(
+      js(
+        "(() => JSON.stringify({ from: document.querySelector('select[aria-label=\"循环从第几小节开始\"]')?.value ?? '', to: document.querySelector('select[aria-label=\"循环到第几小节结束\"]')?.value ?? '' }))()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    Number(zoomHold.after) - Number(zoomHold.before) >= 2 &&
+      nowText.includes("正在响") &&
+      nowText.includes("弦") &&
+      zoomRestored.from === "2" &&
+      zoomRestored.to === "3",
+    "跟练面板：长按连翻、试听时写着正在响哪根弦、重开照着上次那段圈回去（v0.133.0）",
+    `${zoomHold.before}→${zoomHold.after} · ${nowText.replace(/\s+/g, " ")} · ${zoomRestored.from}-${zoomRestored.to}`,
+  );
+
   // 16d35) 圈上那枚小字点一下：直接去练那一小节（v0.131.0）
   ab(["open", `${URL}/?v=${Date.now()}#stats`]);
   await sleep(1600);

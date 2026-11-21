@@ -1355,6 +1355,18 @@ for (const selector of ["select", "input", "textarea"]) {
       String(zoomNoteDecl.get("white-space") ?? "") === "normal",
     `note=${zoomNoteDecl.get("font-size") ?? "未设置"}/${zoomNoteDecl.get("display") ?? "未设置"}/${zoomNoteDecl.get("white-space") ?? "未设置"}`,
   );
+
+  // v0.133.0：试听时「正在响：第 N 弦」那几枚是小圆片
+  const nowDecl = narrowDecls(".follow-zoom-now");
+  const nowChipDecl = narrowDecls(".follow-zoom-note-chip");
+  expect(
+    "试听时「正在响」那行能折行，弦号是强调色小圆片",
+    String(nowDecl.get("display") ?? "") === "flex" &&
+      String(nowDecl.get("flex-wrap") ?? "") === "wrap" &&
+      (px(nowChipDecl.get("border-radius")) ?? 0) >= 999 &&
+      String(nowChipDecl.get("color") ?? "") === "var(--accent)",
+    `row=${nowDecl.get("display") ?? "未设置"}/${nowDecl.get("flex-wrap") ?? "未设置"} chip=${nowChipDecl.get("border-radius") ?? "未设置"}/${nowChipDecl.get("color") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
