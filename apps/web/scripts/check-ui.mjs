@@ -3670,6 +3670,30 @@ try {
     `${auditionA}→${auditionB} · ${zoomNotes.join("/")} · ${zoomWindow.from}-${zoomWindow.to}/${zoomWindow.width}`,
   );
 
+  // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
+  await ab(["open", `${URL}#practice`]);
+  await sleep(900);
+  const steady = js(`(() => {
+    const panel = document.querySelector("#steady");
+    if (!panel) return "missing";
+    panel.scrollIntoView({ block: "center" });
+    const start = [...panel.querySelectorAll("button")].find((b) => b.textContent.trim() === "开始");
+    return [
+      panel.querySelector(".panel-head h2")?.textContent.trim(),
+      panel.querySelector("input[type=number]")?.value,
+      [...panel.querySelectorAll("select option")].map((o) => o.textContent.trim()).join("/"),
+      start ? "has-start" : "no-start",
+      panel.querySelector(".st-result") ? "has-result" : "no-result",
+      panel.querySelector(".st-hint")?.textContent.includes("戴耳机") ? "tip" : "no-tip",
+    ].join("|");
+  })()`);
+  const steadyText = String(steady).replace(/^"|"$/g, "");
+  log(
+    steadyText === "稳不稳|70|2 小节/4 小节/6 小节/8 小节|has-start|no-result|tip",
+    "练习页：「稳不稳」面板有速度、小节数、开始按钮，没弹之前不下结论",
+    steadyText,
+  );
+
   // 16d37) 长按连翻、试听时写着「正在响」、重开照着上次那段圈回去（v0.133.0）
   js("(() => { const rows = JSON.parse(localStorage.getItem('guitar.rhythm.v1') || '{}'); const key = Object.keys(rows).find(k => k.startsWith('p:extra-')); if (key) { rows[key].seg = { from: 2, to: 3 }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify(rows)); } return key || ''; })()");
   // 谱加长到 6 小节：长按要有地方可以连翻、第 2 小节也得有音（试听才写得出「正在响」）

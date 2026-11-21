@@ -76,6 +76,7 @@ import Metronome from "../components/Metronome";
 import TabScore from "../components/TabScore";
 import FollowAlong, { type FollowTarget } from "../components/FollowAlong";
 import UndoToast from "../components/UndoToast";
+import Steady from "../components/Steady";
 import { useTone } from "../hooks/useTone";
 import { meterOfTab } from "../lib/meter";
 
@@ -1413,6 +1414,8 @@ export default function Practice() {
           ))}
         </div>
       </section>
+
+      <Steady />
 
       <p className="practice-foot">
         练习和「音阶游戏」是两条线：这里练手，那里考音。两边都做，进度才完整。

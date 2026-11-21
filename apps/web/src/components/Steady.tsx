@@ -1,0 +1,262 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
+
+type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
+
+const MAX_SECONDS = 30;
+const LEAD_IN = 0.45;
+const BAR_BEATS = 4;
+
+function clickAt(ctx: AudioContext, at: number, accent: boolean): void {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "square";
+  osc.frequency.value = accent ? 1560 : 1180;
+  gain.gain.setValueAtTime(0, at);
+  gain.gain.linearRampToValueAtTime(accent ? 0.22 : 0.13, at + 0.002);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(at);
+  osc.stop(at + 0.08);
+}
+
+export default function Steady() {
+  const [bpm, setBpm] = useState(70);
+  const [bars, setBars] = useState(4);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [elapsed, setElapsed] = useState(0);
+  const [report, setReport] = useState<TimingReport | null>(null);
+  const [error, setError] = useState("");
+
+  const ctxRef = useRef<AudioContext | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const chunksRef = useRef<Float32Array[]>([]);
+  const framesRef = useRef(0);
+  const startRef = useRef(0);
+  const clickRef = useRef<number[]>([]);
+  const tickRef = useRef<number | null>(null);
+  const timerRef = useRef<number | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (timerRef.current !== null) window.clearInterval(timerRef.current);
+    if (tickRef.current !== null) window.clearInterval(tickRef.current);
+    timerRef.current = null;
+    tickRef.current = null;
+    processorRef.current?.disconnect();
+    sourceRef.current?.disconnect();
+    processorRef.current = null;
+    sourceRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    void ctxRef.current?.close().catch(() => {});
+    ctxRef.current = null;
+  }, []);
+
+  useEffect(() => cleanup, [cleanup]);
+
+  const start = useCallback(async () => {
+    cleanup();
+    setReport(null);
+    setError("");
+    setElapsed(0);
+    chunksRef.current = [];
+    framesRef.current = 0;
+    clickRef.current = [];
+
+    const Ctor: typeof AudioContext | undefined =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor || !navigator.mediaDevices?.getUserMedia) {
+      setPhase("unsupported");
+      return;
+    }
+
+    setPhase("starting");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      });
+      const ctx = new Ctor();
+      await ctx.resume();
+      streamRef.current = stream;
+      ctxRef.current = ctx;
+
+      const source = ctx.createMediaStreamSource(stream);
+      const processor = ctx.createScriptProcessor(4096, 1, 1);
+      const sink = ctx.createGain();
+      sink.gain.value = 0;
+      source.connect(processor);
+      processor.connect(sink);
+      sink.connect(ctx.destination);
+      sourceRef.current = source;
+      processorRef.current = processor;
+      startRef.current = ctx.currentTime + LEAD_IN;
+
+      processor.onaudioprocess = (event) => {
+        const data = event.inputBuffer.getChannelData(0);
+        chunksRef.current.push(new Float32Array(data));
+        framesRef.current += data.length;
+      };
+
+      const interval = 60 / bpm;
+      const beats = Math.max(BAR_BEATS, Math.round(bars) * BAR_BEATS) + 1;
+      for (let index = 0; index < beats; index += 1) {
+        const at = startRef.current + interval * index;
+        clickRef.current.push(at);
+        clickAt(ctx, at, index % BAR_BEATS === 0);
+      }
+
+      setPhase("listening");
+      const began = performance.now();
+      timerRef.current = window.setInterval(() => {
+        const seconds = (performance.now() - began) / 1000;
+        setElapsed(seconds);
+        if (seconds >= MAX_SECONDS) stop();
+      }, 200);
+    } catch (cause) {
+      const name = cause instanceof DOMException ? cause.name : "";
+      cleanup();
+      if (name === "NotAllowedError" || name === "SecurityError") setPhase("denied");
+      else if (name === "NotFoundError") setError("没找到麦克风：插上耳机麦，或者换台机器。");
+      else {
+        setPhase("error");
+        setError(cause instanceof Error ? cause.message : "打不开麦克风。");
+      }
+    }
+    // stop 在下面定义，这里通过 ref 调用；写成函数提升会让依赖数组抖动
+  }, [bars, bpm, cleanup]);
+
+  const stop = useCallback(() => {
+    const ctx = ctxRef.current;
+    const chunks = chunksRef.current;
+    const frames = framesRef.current;
+    const clicks = clickRef.current;
+    const sampleRate = ctx?.sampleRate ?? 48000;
+    const now = ctx?.currentTime ?? 0;
+
+    cleanup();
+    setPhase("idle");
+    setElapsed(0);
+
+    if (frames < sampleRate * 0.5 || chunks.length === 0) {
+      setError("这段太短了：跟着节拍器弹满四小节再点停。");
+      return;
+    }
+
+    const all = new Float32Array(frames);
+    let cursor = 0;
+    for (const chunk of chunks) {
+      all.set(chunk.subarray(0, Math.min(chunk.length, frames - cursor)), cursor);
+      cursor += chunk.length;
+      if (cursor >= frames) break;
+    }
+
+    const recordStart = now - frames / sampleRate;
+    const origin = clicks.length > 0 ? clicks[0] - recordStart : 0;
+
+    const onsets = detectOnsets(all, sampleRate);
+    const next = analyzeTiming(onsets, bpm, { beatsPerBar: BAR_BEATS, origin });
+    if (!next) {
+      setError("听得不太清：换个安静点的地方，或者把音量弹大一点再来一遍。");
+      return;
+    }
+    setReport(next);
+  }, [bpm, cleanup]);
+
+  const busy = phase === "starting" || phase === "listening";
+  // 满格 = 偏差 60 毫秒；再大就顶到头，不至于因为某一下特别离谱把别的挤成一条线
+  const SCALE_MS = 60;
+
+  return (
+    <section className="panel steady" id="steady">
+      <div className="panel-head">
+        <h2>稳不稳</h2>
+        <p>开着节拍器弹四小节，麦克风听你每一下落在哪儿：是抢了、拖了，还是越弹越急。</p>
+      </div>
+
+      <div className="st-controls">
+        <label className="st-field">
+          速度
+          <input
+            type="number"
+            min={40}
+            max={160}
+            value={bpm}
+            onChange={(event) => setBpm(Math.min(160, Math.max(40, Number(event.target.value) || 70)))}
+            disabled={busy}
+          />
+          BPM
+        </label>
+        <label className="st-field">
+          小节数
+          <select value={bars} onChange={(event) => setBars(Number(event.target.value))} disabled={busy}>
+            {[2, 4, 6, 8].map((value) => (
+              <option key={value} value={value}>
+                {value} 小节
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className={busy ? "btn" : "btn primary"} onClick={busy ? stop : start}>
+          {phase === "starting" ? "开麦克风…" : phase === "listening" ? "停，看结果" : "开始"}
+        </button>
+      </div>
+
+      <p className="st-hint" role="status">
+        {phase === "listening"
+          ? `在听… ${elapsed.toFixed(1)} 秒（最多 ${MAX_SECONDS} 秒）。节拍器响了就跟上，弹完点「停」。`
+          : phase === "denied"
+            ? "麦克风被拒绝了：地址栏左边的图标里允许一下，再点「开始」。"
+            : phase === "unsupported"
+              ? "这个浏览器没有麦克风接口（需要 https 或 localhost）。"
+              : phase === "error"
+                ? error
+                : phase === "starting"
+                  ? "正在要麦克风权限…"
+                  : report
+                    ? "结果在下面。再弹一遍可以对比标准差有没有变小。"
+                    : "建议戴耳机：外放的节拍器声会被麦克风一起录进去。"}
+      </p>
+
+      {report && (
+        <div className={`st-result${report.steady ? " ok" : ""}`}>
+          <p className="st-verdict">{report.verdict}</p>
+          <div className="st-numbers">
+            <span>
+              <b>{report.meanAbsMs.toFixed(0)}</b>
+              <i>平均偏差 毫秒</i>
+            </span>
+            <span>
+              <b>{report.stdevMs.toFixed(0)}</b>
+              <i>标准差 毫秒</i>
+            </span>
+            <span>
+              <b>{report.driftMsPerBeat.toFixed(1)}</b>
+              <i>每拍漂移 毫秒</i>
+            </span>
+            <span>
+              <b>{report.hits.length}</b>
+              <i>踩到的拍{report.dropped > 0 ? `（丢 ${report.dropped} 下）` : ""}</i>
+            </span>
+          </div>
+          <div className="st-bars" aria-hidden="true">
+            {report.offsets.map((offset, index) => (
+              <span
+                key={`${index}-${offset.toFixed(1)}`}
+                className={`st-bar${offset < 0 ? " early" : " late"}`}
+                style={{ width: `${Math.min(50, (Math.abs(offset) / SCALE_MS) * 50)}%` }}
+                title={`第 ${index + 1} 拍：${offset > 0 ? "+" : ""}${offset.toFixed(0)} 毫秒`}
+              />
+            ))}
+          </div>
+          <p className="st-scale">每条是一拍：往左 = 抢在节拍器前面，往右 = 拖在后面。</p>
+          <p className="st-suggestion">{report.suggestion}</p>
+        </div>
+      )}
+
+      <p className="st-tip">安静的房间、戴耳机、用拨片；速度填你实际能稳住的那个，别一上来就追快。</p>
+    </section>
+  );
+}

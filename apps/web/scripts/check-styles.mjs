@@ -1431,6 +1431,24 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+// ---- 稳不稳（v0.137.0）：偏早的条往左长、偏晚的往右长，稳的一遍用绿框 ----
+{
+  const early = narrowDecls(".st-bar.early");
+  const late = narrowDecls(".st-bar.late");
+  const ok = narrowDecls(".st-result.ok");
+  const bars = narrowDecls(".st-bars");
+  expect(
+    "「稳不稳」的刻度条：偏早往左长、偏晚往右长，稳的一遍用绿框",
+    early.get("margin-right") === "50%" &&
+      late.get("margin-left") === "50%" &&
+      early.get("background") === "var(--blue)" &&
+      late.get("background") === "var(--accent)" &&
+      ok.get("border-color") === "var(--green)" &&
+      Number.parseFloat(bars.get("padding") ?? "0") >= 6,
+    `early=${early.get("margin-right") ?? "未设置"} late=${late.get("margin-left") ?? "未设置"} ok=${ok.get("border-color") ?? "未设置"} pads=${bars.get("padding") ?? "未设置"}`,
+  );
+}
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

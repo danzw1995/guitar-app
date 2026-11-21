@@ -109,6 +109,8 @@ import {
   drillBeats,
   hardestTally,
   sliceTab,
+  analyzeTiming,
+  detectOnsets,
 } from "../src/index.ts";
 import {
   CIRCLE,
@@ -3457,6 +3459,102 @@ test("切一段：只留那几拍的音，拍位从 0 开始，时值不超出�
   assert.equal(empty.notes.length, 0);
   assert.equal(empty.bars, 1);
 });
+
+test("弹给节拍器听：从能量的上升沿找起音，一个音不会被切成好几个", () => {
+  const sampleRate = 8000;
+  const samples = new Float32Array(sampleRate * 2);
+  const taps = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5];
+  for (const at of taps) {
+    const start = Math.round(at * sampleRate);
+    for (let index = 0; index < 240; index += 1) {
+      // 短促的衰减：模拟一下拨弦
+      samples[start + index] = Math.sin((index / 8000) * 2 * Math.PI * 440) * Math.exp(-index / 60) * 0.8;
+    }
+  }
+
+  const onsets = detectOnsets(samples, sampleRate);
+  assert.equal(onsets.length, taps.length);
+  for (let index = 0; index < taps.length; index += 1) {
+    // 上升沿会略微晚于第一个采样，允许 30 毫秒
+    assert.ok(Math.abs(onsets[index] - taps[index]) < 0.03, `第 ${index + 1} 下偏了 ${onsets[index] - taps[index]}`);
+  }
+
+  // 全是静音：返回空表，不硬报一个「第 0 拍」
+  assert.deepEqual(detectOnsets(new Float32Array(sampleRate), sampleRate), []);
+});
+
+test("弹给节拍器听：稳的一遍标准差小，越弹越快斜率是负的", () => {
+  const bpm = 90;
+  const interval = 60 / bpm;
+  // 每拍晚 5 毫秒、抖动 ±8 毫秒：整体略拖、但稳
+  const jitter = [0, 8, -8, 3, -3, 6, -6, 2];
+  const steadyOnsets = jitter.map((offset, index) => index * interval + (5 + offset) / 1000);
+  const steady = analyzeTiming(steadyOnsets, bpm, { origin: 0 });
+  assert.ok(steady);
+  assert.equal(steady!.hits.length, steadyOnsets.length);
+  assert.ok(Math.abs(steady!.medianOffsetMs - 5) <= 3, `中位数 ${steady!.medianOffsetMs}`);
+  assert.ok(steady!.stdevMs < 15, `标准差 ${steady!.stdevMs}`);
+  assert.ok(Math.abs(steady!.driftMsPerBeat) < 2, `漂移 ${steady!.driftMsPerBeat}`);
+
+  // 12 下、每拍提前 4 毫秒：越弹越快
+  const rush = Array.from({ length: 12 }, (_, index) => index * interval - (index * 4) / 1000);
+  const rushing = analyzeTiming(rush, bpm, { origin: 0 });
+  assert.ok(rushing);
+  assert.ok(rushing!.driftMsPerBeat < -3, `漂移 ${rushing!.driftMsPerBeat}`);
+  assert.match(rushing!.verdict, /越弹越快/);
+  assert.match(rushing!.suggestion, /慢一点|降 10 BPM/);
+
+  // 不传原点 = 跟着自己弹：中位数只会在 0 附近，标准差和漂移仍有意义
+  const selfPaced = analyzeTiming(steadyOnsets, bpm);
+  assert.ok(selfPaced);
+  assert.ok(Math.abs(selfPaced!.medianOffsetMs) <= 1, `中位数 ${selfPaced!.medianOffsetMs}`);
+  assert.ok(selfPaced!.stdevMs < 15);
+});
+
+test("弹给节拍器听：预备拍不进统计，离谱的一下丢掉，太短不给结论", () => {
+  const bpm = 120;
+  const interval = 60 / bpm;
+  const onsets = [0, interval, interval * 2, interval * 3];
+  // 第 4 下之后插一下「手滑」（离拍子快半拍），再接上后面的
+  onsets.push(interval * 5 - interval * 0.5);
+  for (let index = 5; index < 10; index += 1) onsets.push(index * interval);
+
+  const report = analyzeTiming(onsets, bpm, { beatsPerBar: 4 });
+  assert.ok(report);
+  assert.equal(report!.dropped, 1);
+  assert.equal(report!.hits.length, onsets.length - 1);
+  assert.deepEqual(
+    report!.hits.map((hit) => [hit.beat, hit.bar, hit.beatInBar]),
+    [
+      [1, 1, 0],
+      [2, 1, 1],
+      [3, 1, 2],
+      [4, 1, 3],
+      [6, 2, 1],
+      [7, 2, 2],
+      [8, 2, 3],
+      [9, 3, 0],
+      [10, 3, 1],
+    ],
+  );
+
+  // 预备拍：前两拍不计入 offsets
+  const withCountIn = analyzeTiming(onsets, bpm, { beatsPerBar: 4, countInBeats: 2 });
+  assert.equal(withCountIn!.offsets.length, report!.offsets.length - 2);
+
+  // 忽早忽晚：抖动比整体偏移还大时，先说「稳」的问题，不要让用户以为自己只是拖了
+  const wildOnsets = [0, 80, -70, 60, -75, 70, -60, 85].map((offset, index) => interval * index + offset / 1000);
+  const wild = analyzeTiming(wildOnsets, bpm, { origin: 0 });
+  assert.ok(wild);
+  assert.ok(wild!.stdevMs > 28, `标准差 ${wild!.stdevMs}`);
+  assert.match(wild!.verdict, /忽早忽晚/);
+  assert.match(wild!.suggestion, /稳|慢一点/);
+
+  // 少于 4 下：不给结论
+  assert.equal(analyzeTiming([0, interval], bpm), null);
+  assert.equal(analyzeTiming(onsets, 0), null);
+});
+
 
 
 

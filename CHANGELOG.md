@@ -1,6 +1,19 @@
 # Changelog
 
 本项目遵循 [Semantic Versioning](https://semver.org/)；版本时间线以 git tag 为准。
+
+## [0.137.0] - 2026-11-21
+
+### Added
+- 练习页新增「稳不稳」：跟着节拍器弹一段，算每拍相对节拍器早了还是晚了、标准差多大、
+  有没有越弹越急；结果给一句结论 + 一条该练什么。核心是 `packages/core/src/timing.ts` 的
+  `detectOnsets()`（能量上升沿）与 `analyzeTiming()`（对齐拍子、丢手滑、算中位数 / 标准差 / 漂移）。
+- `analyzeTiming` 支持传 `origin`（第 1 拍在录音里的时间）：开着节拍器时偏差相对节拍器，
+  不传就退回「第一个起音当原点」的自评模式。
+
+### Changed
+- 「稳不稳」的刻度条按固定 60 毫秒满格，不跟「这一遍最大偏差」归一化——否则某一下特别离谱
+  会把其它条全挤成一条线。
 ## [Unreleased]
 
 ### Planned

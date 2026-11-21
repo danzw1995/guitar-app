@@ -21,6 +21,7 @@ export * from "./review.ts";
 export * from "./weekly.ts";
 export * from "./tuner.ts";
 export * from "./transcribe.ts";
+export * from "./timing.ts";
 export * from "./ear.ts";
 export * from "./chord-detect.ts";
 export * from "./hardest.ts";
