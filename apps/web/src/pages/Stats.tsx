@@ -304,7 +304,6 @@ export default function Stats() {
     .filter((item) => item.points.length >= 2)
     .sort((a, b) => b.points.length - a.points.length)
     .slice(0, 6);
-
   // 「今天自己加的」（v0.103.0）：跟练里切出来的一小节、或练习库里手动加的。
   // 它们不进计划的分母，但既然记在同一个 done 表里，就该在这儿看得出练没练。
   const todayExtras = loadExtras(today);
@@ -415,6 +414,11 @@ export default function Stats() {
   useEffect(() => {
     saveFilters(degreeFilter, stageFilter, spotFilter, setFilter, countFilter);
   }, [degreeFilter, stageFilter, spotFilter, setFilter, countFilter]);
+  // 曲线上的某一天（v0.128.0）：点曲线选中一个点，下面多一行那天的日期 / BPM / 跟上次差多少。
+  const [curvePoint, setCurvePoint] = useState<{ id: string; index: number } | null>(null);
+  // 放宽一档之后有多少条（v0.128.0）：空列表点一下「放宽到 ≥2 次」，得立刻知道现在剩几条。
+  // 提示跟着筛选快照走——再动别的筛选就自动失效，不会留下一句过期的话。
+  const [relaxNotice, setRelaxNotice] = useState<{ text: string; key: string } | null>(null);
   // 存下的视角（v0.111.0）：把「第 5 级 · 第 1 阶段」这种组合存一排，一键复原
   const [views, setViews] = useState<StatsView[]>(() => loadViews());
 
@@ -488,6 +492,14 @@ export default function Stats() {
         (setFilter === null || item.setName === setFilter),
     )
     .slice(0, 4);
+  // 只看某一套时，「跟练进步」也只留这一套的曲线（v0.128.0）：
+  // 上面筛了、下面还列别人的曲线，等于两处说的不是一件事。
+  const visibleCurves = setFilter
+    ? curves.filter((curve) => {
+        const title = rhythm[curve.id]?.title;
+        return !!title && setNameByTitle.get(title) === setFilter;
+      })
+    : curves;
   // 每套组合「整体卡在哪一级」（v0.119.0）：把这一套所有条目的「卡了几次」按级数加总，
   // 加总最多的那一级就是这套的短板。它是「这套要不要一起补」的线索，不是单条的结论。
   const setWeak = new Map<string, { degree: number; count: number }>();
@@ -600,6 +612,23 @@ export default function Stats() {
     target.classList.add("flash");
     window.setTimeout(() => target.classList.remove("flash"), 1200);
   };
+  /** 点曲线：选中离点击位置最近的那个点（v0.128.0）。再点同一个点就收起来。 */
+  const pickCurvePoint = (
+    event: { currentTarget: SVGSVGElement; clientX: number },
+    id: string,
+    count: number,
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 1;
+    const index = Math.max(0, Math.min(count - 1, Math.round(ratio * (count - 1))));
+    setCurvePoint((prev) => (prev?.id === id && prev.index === index ? null : { id, index }));
+  };
+  /** 键盘上按回车 / 空格：往后翻一天（v0.128.0）——曲线是画出来的，键盘也得有一条路。 */
+  const cycleCurvePoint = (id: string, count: number) => {
+    setCurvePoint((prev) =>
+      prev?.id === id ? { id, index: (prev.index + 1) % count } : { id, index: count - 1 },
+    );
+  };
   // 「卡了几次」那排 chip 上写「有 N 条」（v0.124.0）：点之前就知道能筛出几条，
   // 数的是「如果现在点它」会剩几条——即先套上其它几排筛选，再按次数数。
   const countPool = hardSorted.filter(
@@ -629,22 +658,74 @@ export default function Stats() {
     countFilter !== 0 ||
     setFilter !== null;
   /** 筛空时给一个「放宽一步」的按钮（v0.127.0）：空列表里最需要的是下一步怎么走，
-   *  一次只放宽一档——直接「看全部」会把用户刚选的那几排一起清掉。 */
+   *  一次只放宽一档——直接「看全部」会把用户刚选的那几排一起清掉。
+   *  v0.128.0：点完顺手报一句「放宽之后有几条」，别让人再自己数。 */
+  const filterKeyOf = (
+    degree: number | null,
+    stage: number | null,
+    spot: 0 | 1 | 3,
+    count: 0 | 2 | 4,
+    set: string | null,
+  ) => [degree ?? "-", stage ?? "-", spot, count, set ?? "-"].join("|");
+  const filterKey = filterKeyOf(degreeFilter, stageFilter, spotFilter, countFilter, setFilter);
+  /** 换一组筛选之后还剩几条（只数「最卡的地方」那张列表）。 */
+  const countWith = (
+    degree: number | null,
+    stage: number | null,
+    spot: 0 | 1 | 3,
+    count: 0 | 2 | 4,
+    set: string | null,
+  ) =>
+    hardSorted.filter(
+      (item) =>
+        (degree === null || item.hardest.degree === degree) &&
+        (stage === null || item.stage === stage) &&
+        (spot === 0 || item.spots >= spot) &&
+        (count === 0 || item.hardest.count >= count) &&
+        (set === null || item.setName === set),
+    ).length;
   const relaxStep = (() => {
     if (!hasFilter) return null;
-    if (countFilter === 4) return { label: "放宽到 ≥2 次", run: () => setCountFilter(2) };
-    if (countFilter === 2) return { label: "不限次数", run: () => setCountFilter(0) };
-    if (spotFilter !== 0) return { label: "不限「单独练过」", run: () => setSpotFilter(0) };
-    return {
-      label: "看全部",
+    const relax = (
+      label: string,
+      next: { degree: number | null; stage: number | null; spot: 0 | 1 | 3; count: 0 | 2 | 4; set: string | null },
+      apply: () => void,
+    ) => ({
+      label,
       run: () => {
-        setDegreeFilter(null);
-        setStageFilter(null);
-        setSpotFilter(0);
-        setCountFilter(0);
-        setSetFilter(null);
+        apply();
+        const left = countWith(next.degree, next.stage, next.spot, next.count, next.set);
+        setRelaxNotice({
+          text: `${label}之后有 ${left} 条。`,
+          key: filterKeyOf(next.degree, next.stage, next.spot, next.count, next.set),
+        });
       },
-    };
+    });
+    if (countFilter === 4)
+      return relax(
+        "放宽到 ≥2 次",
+        { degree: degreeFilter, stage: stageFilter, spot: spotFilter, count: 2, set: setFilter },
+        () => setCountFilter(2),
+      );
+    if (countFilter === 2)
+      return relax(
+        "不限次数",
+        { degree: degreeFilter, stage: stageFilter, spot: spotFilter, count: 0, set: setFilter },
+        () => setCountFilter(0),
+      );
+    if (spotFilter !== 0)
+      return relax(
+        "不限「单独练过」",
+        { degree: degreeFilter, stage: stageFilter, spot: 0, count: countFilter, set: setFilter },
+        () => setSpotFilter(0),
+      );
+    return relax("看全部", { degree: null, stage: null, spot: 0, count: 0, set: null }, () => {
+      setDegreeFilter(null);
+      setStageFilter(null);
+      setSpotFilter(0);
+      setCountFilter(0);
+      setSetFilter(null);
+    });
   })();
   const currentSaved = views.some(
     (view) =>
@@ -1204,11 +1285,15 @@ export default function Stats() {
         <p className="hint">还没有跟练记录。去节奏页点任意一条的「跟练」，练完点「记录成绩」。</p>
       )}
 
-      {curves.length > 0 && (
+      {visibleCurves.length > 0 && (
         <>
-          <h3 className="stat-sub">跟练进步</h3>
+          <h3 className="stat-sub">
+            跟练进步
+            {/* 只看某一套时，这里也只列这一套的曲线（v0.128.0） */}
+            {setFilter && <span className="stat-sub-note">只看「{setFilter}」</span>}
+          </h3>
           <ul className="curve-list">
-            {curves.map((curve) => {
+            {visibleCurves.map((curve) => {
               const values = curve.points.map((point) => point.bpm);
               const spark = sparklineOf(values, 120, 30);
               const first = curve.points[0];
@@ -1223,26 +1308,59 @@ export default function Stats() {
                 : practice
                   ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
                   : nameOf(curve.id);
+              const picked = curvePoint?.id === curve.id ? curve.points[curvePoint.index] : null;
+              const pickedIndex = picked ? curvePoint!.index : -1;
+              const pickedDelta =
+                picked && pickedIndex > 0 ? picked.bpm - curve.points[pickedIndex - 1].bpm : 0;
               return (
                 <li key={curve.id} data-curve-id={curve.id}>
                   <span className="curve-name">{name}</span>
                   <svg
                     className="curve-svg"
                     viewBox="0 0 120 30"
-                    role="img"
-                    aria-label={`${first.date} 的 ${first.bpm} BPM，到 ${last.date} 的 ${last.bpm} BPM，共 ${curve.points.length} 天`}
+                    // 点一下选最近的某一天（v0.128.0）；键盘上是 Tab 到这里再按回车 / 空格往下翻
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${first.date} 的 ${first.bpm} BPM，到 ${last.date} 的 ${last.bpm} BPM，共 ${curve.points.length} 天。点一下看某一天。`}
+                    onClick={(event) => pickCurvePoint(event, curve.id, curve.points.length)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      cycleCurvePoint(curve.id, curve.points.length);
+                    }}
                   >
                     <path d={spark.d} />
+                    {/* 透明底：不然点空白处（没压在线条上）不算点中这张图（v0.128.0） */}
+                    <rect x={0} y={0} width={120} height={30} fill="transparent" />
                     <circle cx={head.x} cy={head.y} r={2} />
+                    {picked && spark.dots[pickedIndex] && (
+                      <circle
+                        className="curve-picked"
+                        cx={spark.dots[pickedIndex].x}
+                        cy={spark.dots[pickedIndex].y}
+                        r={2.6}
+                      />
+                    )}
                   </svg>
                   <span className="muted">
                     {first.bpm} → {last.bpm} BPM · {curve.points.length} 天
                   </span>
+                  {picked && (
+                    <span className="curve-day" role="status">
+                      {picked.date.slice(5).replace("-", "/")} · {picked.bpm} BPM
+                      {pickedDelta !== 0 && ` · 比上一次 ${pickedDelta > 0 ? "+" : ""}${pickedDelta}`}
+                    </span>
+                  )}
                 </li>
               );
             })}
           </ul>
         </>
+      )}
+      {visibleCurves.length === 0 && setFilter && (
+        <p className="hint">
+          「{setFilter}」这一套还没有曲线——跟练两天以上才会画出来。
+        </p>
       )}
 
       {/* 最卡的地方（v0.100.0）：跟练时点开单练最多的那一级，按级数归堆 */}
@@ -1513,6 +1631,11 @@ export default function Stats() {
                   {relaxStep.label}
                 </button>
               )}
+            </p>
+          )}
+          {relaxNotice && relaxNotice.key === filterKey && (
+            <p className="hardest-note hardest-relax" role="status">
+              {relaxNotice.text}
             </p>
           )}
           {hardItems.length > 0 && (

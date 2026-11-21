@@ -711,6 +711,40 @@ button, select, input { font: inherit; color: inherit; }
 .curve-svg circle {
   fill: var(--accent);
 }
+/* 曲线点得动（v0.128.0）：点一下选最近的那天；键盘 Tab 过来按回车往后翻 */
+.curve-list .curve-svg {
+  cursor: pointer;
+}
+.curve-list .curve-svg:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.curve-svg .curve-picked {
+  fill: var(--text);
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+/* 选中的那一天：占满整行，别把三列网格挤歪 */
+.curve-day {
+  grid-column: 1 / -1;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+/* 「跟练进步」标题边上的「只看某套」（v0.128.0） */
+.stat-sub-note {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+/* 放宽一档之后那句「之后有 N 条」（v0.128.0） */
+.hardest-relax {
+  margin: -4px 0 10px;
+  color: var(--accent);
+  font-size: 12px;
+}
 .ear-trend {
   display: flex;
   flex-wrap: wrap;

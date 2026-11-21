@@ -1295,6 +1295,19 @@ for (const selector of ["select", "input", "textarea"]) {
       emptyActionDecl.get("border-radius") === "999px",
     `meta=${setMetaBtnDecl.get("min-height") ?? "未设置"} cursor=${setMetaBtnDecl.get("cursor") ?? "未设置"} action=${emptyActionDecl.get("min-height") ?? "未设置"}/${emptyActionDecl.get("border-radius") ?? "未设置"}`,
   );
+
+  // v0.128.0：曲线点得动（鼠标变手）；选中的那一天占满整行，不把三列网格挤歪
+  const curveHitDecl = narrowDecls(".curve-list .curve-svg");
+  const curveDayDecl = narrowDecls(".curve-day");
+  const relaxNoteDecl = narrowDecls(".hardest-relax");
+  expect(
+    "曲线点得动，选中的那天占满整行",
+    curveHitDecl.get("cursor") === "pointer" &&
+      (curveDayDecl.get("grid-column") ?? "") === "1 / -1" &&
+      (relaxNoteDecl.get("color") ?? "") === "var(--accent)" &&
+      (px(relaxNoteDecl.get("font-size")) ?? 99) <= 12,
+    `cursor=${curveHitDecl.get("cursor") ?? "未设置"} day=${curveDayDecl.get("grid-column") ?? "未设置"} relax=${relaxNoteDecl.get("color") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

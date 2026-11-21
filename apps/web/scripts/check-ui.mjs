@@ -3288,6 +3288,107 @@ try {
   js("localStorage.removeItem('guitar.stats.views.v1')");
   js("(() => { for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); return 'ok'; })()");
 
+  // 16d30) 统计页：点曲线某一天能看那天的涨幅；「只看某套」时曲线也跟着筛；
+  // 放宽一档之后说清剩几条（v0.128.0）
+  js(
+    "(() => { const pad = n => String(n).padStart(2, '0'); const day = n => { const x = new Date(); x.setDate(x.getDate() - n); return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; }; const tab = { beatsPerBar: 4, bars: 1, notes: [{ s: 3, f: 0, beat: 0, dur: 1 }] }; const base = Date.now(); localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'p:extra-q1': { bestBpm: 90, sessions: 3, minutes: 20, lastAt: day(1), history: [{ date: day(12), bpm: 60 }, { date: day(5), bpm: 70 }, { date: day(1), bpm: 90 }], hardest: { bar: 2, degree: 5, name: 'G', count: 6, at: day(1) }, title: '单弦爬格子' }, 'p:extra-q2': { bestBpm: 60, sessions: 2, minutes: 6, lastAt: day(0), history: [{ date: day(10), bpm: 60 }, { date: day(0), bpm: 60 }], hardest: { bar: 1, degree: 3, name: 'E', count: 2, at: day(0) }, title: '另一条' }, 'p:extra-q3': { bestBpm: 70, sessions: 1, minutes: 5, lastAt: day(2), history: [{ date: day(9), bpm: 65 }, { date: day(2), bpm: 70 }], hardest: { bar: 3, degree: 3, name: 'E', count: 3, at: day(2) } } })); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-q1', date: day(0), title: '单弦爬格子', tab, meter: '4/4', bpm: 70, addedAt: base - 3000, setName: '早课' }, { id: 'extra-q2', date: day(0), title: '另一条', tab, meter: '4/4', bpm: 70, addedAt: base - 2000, setName: '晚课' }])); localStorage.removeItem('guitar.stats.views.v1'); for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); return 'ok'; })()",
+  );
+  // 先把地址栏上的筛选清掉——上一条用例留在 `?d=3&c=2`，reload 会把它们带回来
+  js("location.hash = '#stats'");
+  await sleep(200);
+  ab(["reload"]);
+  await sleep(1000);
+  js("document.querySelector('.curve-svg')?.scrollIntoView({ block: 'center' })");
+  await sleep(300);
+  js(
+    "(() => { const svg = document.querySelector('.curve-svg'); const box = svg.getBoundingClientRect(); svg.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: box.left + box.width * 0.5, clientY: box.top + box.height * 0.5 })); return 'ok'; })()",
+  );
+  await sleep(400);
+  const curveHit = JSON.parse(
+    String(
+      js(
+        "(() => { const svg = document.querySelector('.curve-svg'); return JSON.stringify({ day: document.querySelector('.curve-day')?.textContent?.trim() ?? '', dots: document.querySelectorAll('.curve-picked').length, role: svg?.getAttribute('role') ?? '' }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  // 键盘：Tab 过来按回车也能翻（曲线是画出来的，键盘得有路）
+  js("document.querySelector('.curve-svg')?.focus()");
+  js(
+    "(() => { document.querySelector('.curve-svg')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(350);
+  const curveKey = JSON.parse(
+    String(js("(() => JSON.stringify({ day: document.querySelector('.curve-day')?.textContent?.trim() ?? '' }))()"))
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  // 只看「早课」：曲线也跟着只剩这一套的
+  js("(() => { document.querySelector('.hardest-set-btn')?.click(); return 'ok'; })()");
+  await sleep(500);
+  const curveSet = JSON.parse(
+    String(
+      js(
+        "(() => { const head = [...document.querySelectorAll('.stat-sub')].find(n => n.textContent?.includes('跟练进步')); return JSON.stringify({ head: head?.textContent?.replace(/\\s+/g, ' ').trim() ?? '', curves: document.querySelectorAll('.curve-list li').length, note: document.querySelector('.stat-sub-note')?.textContent ?? '' }); })()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  // 清掉套筛，筛到空再放宽一档：提示里要说还剩几条
+  js("(() => { document.querySelector('.hardest-set-btn')?.click(); return 'ok'; })()");
+  await sleep(400);
+  const v128Clear = JSON.parse(
+    String(js("(() => JSON.stringify({ rows: document.querySelectorAll('[data-hardest-item]').length, hash: location.hash }))()"))
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  js("(() => { const chip = [...document.querySelectorAll('.hardest-filter .chip')].find(el => el.textContent.trim() === '第 3 级'); chip?.click(); return 'ok'; })()");
+  await sleep(400);
+  const v128Degree = JSON.parse(
+    String(js("(() => JSON.stringify({ rows: document.querySelectorAll('[data-hardest-item]').length, hash: location.hash }))()"))
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  js("(() => { const chip = [...document.querySelectorAll('.hardest-count .chip')].find(el => el.textContent.trim().startsWith('≥4 次')); chip?.click(); return 'ok'; })()");
+  await sleep(400);
+  const v128Count = JSON.parse(
+    String(js("(() => JSON.stringify({ rows: document.querySelectorAll('[data-hardest-item]').length, hash: location.hash }))()"))
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  const relaxEmptyRows = Number(
+    String(js("(() => String(document.querySelectorAll('[data-hardest-item]').length))()")).replace(/^"|"$/g, ""),
+  );
+  js("document.querySelector('.hardest-empty-action')?.click()");
+  await sleep(600);
+  const relaxNote = JSON.parse(
+    String(
+      js(
+        "(() => JSON.stringify({ note: document.querySelector('.hardest-relax')?.textContent?.trim() ?? '', rows: document.querySelectorAll('[data-hardest-item]').length }))()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    curveHit.role === "button" &&
+      curveHit.day.includes("BPM") &&
+      curveHit.dots === 1 &&
+      curveKey.day.includes("BPM") &&
+      curveSet.curves === 1 &&
+      curveSet.note.includes("只看") &&
+      relaxEmptyRows === 0 &&
+      relaxNote.note.includes("之后有 2 条") &&
+      relaxNote.rows === 2,
+    "统计页：曲线点一天能看那天的涨幅，只看某套时曲线也筛，放宽后说清剩几条",
+    `hit=${curveHit.role}/${curveHit.day}/${curveHit.dots} key=${curveKey.day} set=${curveSet.curves}/${curveSet.note} empty=${relaxEmptyRows} relax=${relaxNote.note}/${relaxNote.rows} steps=${v128Clear.rows}@${v128Clear.hash} → ${v128Degree.rows}@${v128Degree.hash} → ${v128Count.rows}@${v128Count.hash}`,
+  );
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+  js("localStorage.removeItem('guitar.plan.v1')");
+  js("(() => { for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); return 'ok'; })()");
+
   // 16e) 调音页：六根空弦都在、点「开始」拿不到麦克风时要有一句人话
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '调音'); b?.click(); return 'ok'; })()",
