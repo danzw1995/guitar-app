@@ -637,14 +637,8 @@ export default function Stats() {
    * 所以交给条目所在的页面：带 `?follow=1&bar=N&item=<id>` 过去，那边挂上跟练面板、
    * 直接圈住那一小节。只有「那天的点正好是最卡的那天」才带小节，别的日子只把人送到条目上。
    */
-  const openCurveDay = (
-    event: { currentTarget: SVGSVGElement; clientX: number },
-    id: string,
-    count: number,
-  ) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 1;
-    const index = Math.max(0, Math.min(count - 1, Math.round(ratio * (count - 1))));
+  /** 按已经算好的那一天跳过去（曲线双击、圈上的小字点一下都走这里）。 */
+  const jumpToDay = (id: string, index: number) => {
     const day = rhythm[id]?.history?.[index];
     if (!day) return;
     // 同一天可能有好几条记录都留了点：去「那天最快」的那条——双击的用意是「我想复现那天」，
@@ -681,6 +675,17 @@ export default function Stats() {
       return;
     }
     goTo("rhythm", bare);
+  };
+
+  /** 曲线上的双击：按指针位置取最近的一天，再交给 `jumpToDay`。 */
+  const openCurveDay = (
+    event: { currentTarget: SVGSVGElement; clientX: number },
+    id: string,
+    count: number,
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 1;
+    jumpToDay(id, Math.max(0, Math.min(count - 1, Math.round(ratio * (count - 1)))));
   };
   // 「卡了几次」那排 chip 上写「有 N 条」（v0.124.0）：点之前就知道能筛出几条，
   // 数的是「如果现在点它」会剩几条——即先套上其它几排筛选，再按次数数。
@@ -1396,10 +1401,29 @@ export default function Stats() {
                     {/* 透明底：不然点空白处（没压在线条上）不算点中这张图（v0.128.0） */}
                     <rect x={0} y={0} width={120} height={30} fill="transparent" />
                     <circle cx={head.x} cy={head.y} r={2} />
-                    {/* 最卡的那一天的标记（v0.129.0）：空心圈叠在点上，不和「选中的点」抢位置 */}
+                    {/* 最卡的那一天的标记（v0.129.0）：空心圈叠在点上，不和「选中的点」抢位置。
+                        v0.131.0：小数字本身就能点——直接去练那一小节（键盘回车也一样）。 */}
                     {spark.dots.map((dot, index) =>
                       hardestDay && curve.points[index]?.date === hardestDay ? (
-                        <g className="curve-hard-mark" key={`hard-${dot.x}-${dot.y}`}>
+                        <g
+                          className="curve-hard-mark"
+                          key={`hard-${dot.x}-${dot.y}`}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`卡了 ${hardest!.count} 次的那天，点一下直接去练第 ${hardest!.bar} 小节`}
+                          onClick={(event) => {
+                            // 别让这次点击同时落到整张图的「选中这一天」上
+                            event.stopPropagation();
+                            jumpToDay(curve.id, index);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== "Enter" && event.key !== " ") return;
+                            event.preventDefault();
+                            jumpToDay(curve.id, index);
+                          }}
+                        >
+                          {/* 点击范围：空心圈只有 1px 描边，鼠标点在中间会穿过去落到图上的透明底 */}
+                          <circle className="curve-hard-hit" cx={dot.x} cy={dot.y} r={7} />
                           <circle className="curve-hard" cx={dot.x} cy={dot.y} r={3.4} />
                           {/* 卡了几次（v0.130.0）：小字贴着圈，y 太靠上就写到下面，别被裁掉 */}
                           <text

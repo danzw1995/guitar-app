@@ -744,6 +744,21 @@ button, select, input { font: inherit; color: inherit; }
   stroke-width: 2px;
   pointer-events: none;
 }
+/* v0.131.0：这枚小字和圈一起能点（直接去练那一小节），键盘 Tab 过去要看得见焦点 */
+.curve-hard-mark {
+  cursor: pointer;
+}
+/* 命中区：空心圈只有 1px 描边，点在中间会穿过去，给一个透明圆接住（v0.131.0） */
+.curve-hard-hit {
+  fill: transparent;
+}
+.curve-hard-mark:focus-visible {
+  outline: none;
+}
+.curve-hard-mark:focus-visible .curve-hard {
+  stroke: var(--text);
+  stroke-width: 1.6;
+}
 /* 选中的那一天：占满整行，别把三列网格挤歪 */
 .curve-day {
   grid-column: 1 / -1;
@@ -2288,9 +2303,42 @@ button, select, input { font: inherit; color: inherit; }
   height: auto;
 }
 .follow-zoom-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
   margin: 0 0 6px;
+}
+.follow-zoom-title {
+  margin: 0;
   color: var(--accent);
   font-size: 12px;
+}
+.follow-zoom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+/* `.btn-quiet` 本身没有基础规则（只在个别上下文里定义过），这里得自己写一份 */
+.follow-zoom .btn-quiet {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.follow-zoom .btn-quiet:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.follow-zoom .btn-quiet:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .follow-degree-chip {
   min-width: 40px;

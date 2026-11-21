@@ -3477,6 +3477,65 @@ try {
   js("location.hash = '#stats'");
   await sleep(300);
 
+  // 16d34) 单独放大那一小节：上一小节 / 试听 / 下一小节 三个按钮，翻到头就不让再翻（v0.131.0）
+  js(
+    "(() => { const pad = n => (n < 10 ? '0' + n : String(n)); const day = n => { const x = new Date(); x.setDate(x.getDate() - n); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); }; const tab = { beatsPerBar: 4, bars: 4, notes: [{ s: 3, f: 0, beat: 0, dur: 1 }, { s: 3, f: 2, beat: 1, dur: 1 }, { s: 4, f: 2, beat: 8, dur: 1 }, { s: 4, f: 3, beat: 9, dur: 1 }] }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'p:extra-z1': { bestBpm: 80, sessions: 2, minutes: 10, lastAt: day(1), history: [{ date: day(3), bpm: 70 }, { date: day(1), bpm: 80 }], hardest: { bar: 3, degree: 2, name: 'A', count: 4, at: day(3) }, title: '小节放大', spots: [] } })); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-z1', date: day(0), title: '小节放大', tab, meter: '4/4', bpm: 70, addedAt: Date.now(), setName: '早课' }])); return 'ok'; })()",
+  );
+  // 用带时间戳的地址做一次真正的导航：只改 hash 会被 App 的 hashchange 归一化掉（v0.131.0）
+  ab(["open", `${URL}/?v=${Date.now()}#practice?item=extra-z1&follow=1&bar=3`]);
+  await sleep(1800);
+  const zoomButtons = JSON.parse(
+    String(js("(() => JSON.stringify([...document.querySelectorAll('.follow-zoom-actions button')].map(b => b.textContent.trim())))()"))
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  js("(() => { const b = [...document.querySelectorAll('.follow-zoom-actions button')].find(n => n.textContent.includes('下一小节')); b?.click(); return 'ok'; })()");
+  await sleep(700);
+  const zoomNext = JSON.parse(
+    String(
+      js(
+        "(() => JSON.stringify({ from: document.querySelector('select[aria-label=\"循环从第几小节开始\"]')?.value ?? '', disabled: [...document.querySelectorAll('.follow-zoom-actions button')].find(n => n.textContent.includes('下一小节'))?.disabled ?? null }))()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    zoomButtons.length === 3 && zoomNext.from === "4" && zoomNext.disabled === true,
+    "跟练面板：放大那一小节有上一小节 / 试听 / 下一小节，翻到最后一小节就不让再翻",
+    `${zoomButtons.join("|")} → ${zoomNext.from}/${zoomNext.disabled}`,
+  );
+
+  // 16d35) 圈上那枚小字点一下：直接去练那一小节（v0.131.0）
+  ab(["open", `${URL}/?v=${Date.now()}#stats`]);
+  await sleep(1600);
+  for (let i = 0; i < 20 && String(js("document.querySelectorAll('.curve-hard-mark').length")) === "0"; i += 1) {
+    await sleep(200);
+  }
+  js("document.querySelector('.curve-svg')?.scrollIntoView({ block: 'center' })");
+  await sleep(300);
+  // <g> 没有 .click()（那是 HTMLElement 才有的），要自己派发一次点击事件
+  js("(() => { const el = document.querySelector('.curve-hard-mark'); if (!el) return 'no'; el.dispatchEvent(new MouseEvent('click', { bubbles: true })); return 'ok'; })()");
+  await sleep(1600);
+  const badgeJump = JSON.parse(
+    String(
+      js(
+        "(() => JSON.stringify({ hash: location.hash, follow: !!document.querySelector('.follow'), from: document.querySelector('select[aria-label=\"循环从第几小节开始\"]')?.value ?? '' }))()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    badgeJump.follow === true && badgeJump.from === "3" && !badgeJump.hash.includes("extra-z1"),
+    "统计页：圈上那枚小字点一下，直接去练卡住的那一小节",
+    `${badgeJump.hash} · ${badgeJump.follow}/${badgeJump.from}`,
+  );
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+  js("localStorage.removeItem('guitar.plan.v1')");
+  js("location.hash = '#stats'");
+  await sleep(300);
+
   // 16e) 调音页：六根空弦都在、点「开始」拿不到麦克风时要有一句人话
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '调音'); b?.click(); return 'ok'; })()",

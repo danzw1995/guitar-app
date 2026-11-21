@@ -51,7 +51,9 @@ export default function TabScore({ id, tab, className, beat, fluid }: Props) {
     () => (beatsReady && !info ? tabToAlphaTex(tab) : null),
     [beatsReady, info, tab],
   );
-  const generated = useScoreImage(tex);
+  // 单独放大一小节（fluid，v0.130.0）：先按宽一点的画布画，再交给 CSS 拉满——
+  // 一小节的谱按原尺寸只有一两百像素，直接放大只会糊。
+  const generated = useScoreImage(tex, fluid ? 560 : undefined);
   const band = beat !== null && beat !== undefined ? info?.beats[beat] : undefined;
   const width = info?.width ?? 0;
   const height = info?.height ?? 0;

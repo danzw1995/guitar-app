@@ -3,6 +3,7 @@ import type { Tab } from "@guitar/core";
 import { METERS, SUBDIVISION_LABEL, sliceTab, type Subdivision } from "@guitar/core";
 import { degreeName, degreesOf } from "../lib/degrees";
 import { useMetronome } from "../hooks/useMetronome";
+import { useTone } from "../hooks/useTone";
 import { useAudioVolume, volumeLabel } from "../lib/audio-bus";
 import { loadRhythm } from "../lib/storage";
 import { addScore } from "../lib/my-scores";
@@ -220,6 +221,19 @@ export default function FollowAlong({
     practiceBar(hit.bar, false);
   }
 
+  const { playTab: playBarTone } = useTone();
+
+  /**
+   * 只放圈住的那一小节（v0.131.0）：不开节拍器，直接把这一小节的音按当前速度弹一遍。
+   * 先停掉正在跑的节拍器——音频是单例（`claimAudio` 会停掉别人），不然界面还在「跑」、
+   * 声音却已经被试听抢走了。
+   */
+  function auditionBar(): void {
+    if (!zoomTab) return;
+    if (running) stop();
+    playBarTone(zoomTab, bpm);
+  }
+
   const { running, bar, pass, active, countingIn, start, stop } = useMetronome({
     bpm,
     meterId: meter,
@@ -232,6 +246,14 @@ export default function FollowAlong({
 
   // 现在弹到第几级（v0.96.0）：按起音拍往后找，找不到就退回第一个
   const degrees = useMemo(() => degreesOf(target.tab), [target.tab]);
+  /** 圈住的那一小节切出来（放大块、试听、上一小节/下一小节 都用这一份）。 */
+  const zoomTab = useMemo(
+    () =>
+      loopOn && loopFrom === loopTo
+        ? sliceTab(target.tab, (loopFrom - 1) * target.tab.beatsPerBar, target.tab.beatsPerBar)
+        : null,
+    [loopOn, loopFrom, loopTo, target.tab],
+  );
   /** 圈住的那一小节里有哪些音（放大块的标题里点一下是第几级）。 */
   const zoomDegree = useMemo(() => {
     if (!loopOn || loopFrom !== loopTo) return null;
@@ -719,18 +741,46 @@ export default function FollowAlong({
         只圈一小节时，把那一小节单独放大一份（v0.130.0）。
         整条谱在跟练里常常要横向扫，眼睛跟不上；圈住的这一小节单独排一遍，看清该落哪根弦。
         `sliceTab` 按时值切，跨行的谱也只取这一段。
+        v0.131.0：这块里加「试听这一小节」（不开节拍器）和「上一小节 / 下一小节」，
+        翻的时候一只手就够，不用再去动上面两个下拉。
       */}
-      {loopOn && loopFrom === loopTo ? (
+      {zoomTab ? (
         <div className="follow-zoom" data-zoom-bar={loopFrom}>
-          <p className="follow-zoom-head">
-            第 {loopFrom} 小节单独放大
-            {zoomDegree ? ` · ${degreeName(zoomDegree.degree)}（${zoomDegree.name}）` : ""}
-          </p>
-          <TabScore
-            id={`${target.id}-bar-${loopFrom}`}
-            tab={sliceTab(target.tab, (loopFrom - 1) * target.tab.beatsPerBar, target.tab.beatsPerBar)}
-            fluid
-          />
+          <div className="follow-zoom-head">
+            <p className="follow-zoom-title">
+              第 {loopFrom} 小节单独放大
+              {zoomDegree ? ` · ${degreeName(zoomDegree.degree)}（${zoomDegree.name}）` : ""}
+            </p>
+            <div className="follow-zoom-actions">
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => practiceBar(loopFrom - 1, false)}
+                disabled={loopFrom <= 1}
+                aria-label={`上一小节：第 ${Math.max(1, loopFrom - 1)} 小节`}
+              >
+                ← 上一小节
+              </button>
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={auditionBar}
+                aria-label={`只放第 ${loopFrom} 小节`}
+              >
+                试听这一小节
+              </button>
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => practiceBar(loopFrom + 1, false)}
+                disabled={loopFrom >= totalBars}
+                aria-label={`下一小节：第 ${Math.min(totalBars, loopFrom + 1)} 小节`}
+              >
+                下一小节 →
+              </button>
+            </div>
+          </div>
+          <TabScore id={`${target.id}-bar-${loopFrom}`} tab={zoomTab} fluid />
         </div>
       ) : null}
 

@@ -1334,6 +1334,16 @@ for (const selector of ["select", "input", "textarea"]) {
       (zoomFluidDecl.get("width") ?? "") === "100%",
     `count=${hardCountDecl.get("font-size") ?? "未设置"}/${hardCountDecl.get("paint-order") ?? "未设置"} zoom=${zoomBoxDecl.get("border") ?? "未设置"} fluid=${zoomFluidDecl.get("width") ?? "未设置"}`,
   );
+
+  // v0.131.0：放大块里那三个小按钮够高；圈上的小字有块透明命中区（空心圈只有 1px 描边）
+  const zoomBtnDecl = narrowDecls(".follow-zoom .btn-quiet");
+  const hitDecl = narrowDecls(".curve-hard-hit");
+  expect(
+    "放大块的小按钮够 40 高，圈上的小字有透明命中区",
+    (px(zoomBtnDecl.get("min-height")) ?? 0) >= 40 &&
+      String(hitDecl.get("fill") ?? "") === "transparent",
+    `btn=${zoomBtnDecl.get("min-height") ?? "未设置"} hit=${hitDecl.get("fill") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
