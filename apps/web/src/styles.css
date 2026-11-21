@@ -2934,6 +2934,26 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--muted);
   line-height: 1.7;
 }
+/* 键盘提示（v0.135.0）：手机上没键盘，窄屏里藏掉 */
+.follow-keys {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.follow-keys kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 10px;
+}
+@media (max-width: 900px) {
+  .follow-keys {
+    display: none;
+  }
+}
 .drill-actions {
   display: flex;
   align-items: center;
@@ -4622,10 +4642,16 @@ button, select, input { font: inherit; color: inherit; }
     left: 0;
     right: 0;
     bottom: 0;
+    max-height: 78vh;
+    overflow-y: auto;
     padding: 14px 14px calc(18px + env(safe-area-inset-bottom));
     background: #161b22;
     border-radius: 16px 16px 0 0;
     border-top: 1px solid var(--line);
+  }
+  .more-groups {
+    display: grid;
+    gap: 12px;
   }
   .more-head {
     display: flex;
@@ -4642,7 +4668,31 @@ button, select, input { font: inherit; color: inherit; }
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
+  .more-group {
+    display: grid;
+    gap: 6px;
+  }
+  .more-group-title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .more-group-hint {
+    font-weight: 400;
+    font-size: 11px;
+    opacity: 0.8;
+  }
   .more-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 10px;
+    text-align: left;
     min-height: 48px;
     border: 1px solid var(--line);
     border-radius: 10px;
@@ -4650,9 +4700,17 @@ button, select, input { font: inherit; color: inherit; }
     color: var(--text);
     font-size: 14px;
   }
+  .more-item-hint {
+    color: var(--muted);
+    font-size: 11px;
+  }
   .more-item.active {
     border-color: var(--accent);
     color: var(--accent);
+  }
+  .more-item.active .more-item-hint {
+    color: var(--accent);
+    opacity: 0.8;
   }
 }
 

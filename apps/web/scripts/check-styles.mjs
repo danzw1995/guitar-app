@@ -65,6 +65,19 @@ function narrowDecls(selector) {
   return merged;
 }
 
+/**
+ * 跟 `narrowDecls` 一样合并，但**不跳过** max-width > 720 的媒体块。
+ * 手机上才出现的东西（底部「更多」面板 ≤900px 才显示）用这个查。
+ */
+function anyDecls(selector) {
+  const merged = new Map();
+  for (const rule of rules) {
+    if (!selectorsOf(rule).includes(selector)) continue;
+    for (const [prop, value] of rule.decls) merged.set(prop, value);
+  }
+  return merged;
+}
+
 const px = (value) => {
   const m = /^(-?\d+(?:\.\d+)?)px$/.exec(String(value ?? "").trim());
   return m ? Number(m[1]) : null;
@@ -1378,6 +1391,29 @@ for (const selector of ["select", "input", "textarea"]) {
       (px(noteBtnDecl.get("min-height")) ?? 0) >= 40 &&
       String(noteRowDecl.get("flex-wrap") ?? "") === "wrap",
     `chip=${tuningChipDecl.get("min-height") ?? "未设置"} btn=${noteBtnDecl.get("min-height") ?? "未设置"} row=${noteRowDecl.get("flex-wrap") ?? "未设置"}`,
+  );
+
+  // v0.135.0：键盘提示在手机上藏掉（没键盘），桌面那一行是小灰字配键帽
+  const keysDecl = anyDecls(".follow-keys");
+  const kbdDecl = anyDecls(".follow-keys kbd");
+  expect(
+    "键盘提示在手机上藏掉，桌面是灰色小字配键帽",
+    String(keysDecl.get("display") ?? "") === "none" &&
+      (px(keysDecl.get("font-size")) ?? 99) <= 12 &&
+      String(kbdDecl.get("border") ?? "").includes("1px"),
+    `keys=${keysDecl.get("display") ?? "未设置"}/${keysDecl.get("font-size") ?? "未设置"} kbd=${kbdDecl.get("border") ?? "未设置"}`,
+  );
+
+  // v0.135.0：「更多」里每一项是两行——名字 + 一句说明，说明用灰字
+  const moreItemDecl = anyDecls(".more-item");
+  const moreHintDecl = anyDecls(".more-item-hint");
+  expect(
+    "「更多」每一项是上下两行，说明那句是灰字",
+    String(moreItemDecl.get("display") ?? "") === "flex" &&
+      String(moreItemDecl.get("flex-direction") ?? "") === "column" &&
+      String(moreHintDecl.get("color") ?? "") === "var(--muted)" &&
+      (px(moreHintDecl.get("font-size")) ?? 99) <= 12,
+    `item=${moreItemDecl.get("display") ?? "未设置"}/${moreItemDecl.get("flex-direction") ?? "未设置"} hint=${moreHintDecl.get("color") ?? "未设置"}/${moreHintDecl.get("font-size") ?? "未设置"}`,
   );
 }
 

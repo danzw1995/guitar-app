@@ -98,6 +98,38 @@ for (const device of VIEWPORTS) {
   await page.waitForTimeout(250);
   const sheetItems = await page.locator(".more-sheet .more-item").count();
   check(sheetItems === 6, "「更多」里 6 个入口", `实际 ${sheetItems} 个`);
+  // v0.135.0：六项分三组，每项带一句「点进去是干什么的」
+  const sheetGroups = await page.evaluate(() => ({
+    titles: [...document.querySelectorAll(".more-sheet .more-group-title")].map((node) =>
+      node.textContent.replace(/\s+/g, " ").trim(),
+    ),
+    hints: [...document.querySelectorAll(".more-sheet .more-item-hint")].map((node) =>
+      node.textContent.trim(),
+    ),
+    panel: (() => {
+      const box = document.querySelector(".more-sheet .more-panel")?.getBoundingClientRect();
+      return box ? Math.round(box.height) : 0;
+    })(),
+    vh: window.innerHeight,
+  }));
+  check(
+    sheetGroups.titles.length === 3 &&
+      sheetGroups.titles[0].startsWith("练琴") &&
+      sheetGroups.titles[1].startsWith("工具") &&
+      sheetGroups.titles[2].startsWith("其它"),
+    "「更多」分成练琴 / 工具 / 其它三组",
+    JSON.stringify(sheetGroups.titles),
+  );
+  check(
+    sheetGroups.hints.length === 6 && sheetGroups.hints.every((hint) => hint.length >= 4),
+    "「更多」每一项都带一句说明",
+    JSON.stringify(sheetGroups.hints),
+  );
+  check(
+    sheetGroups.panel > 0 && sheetGroups.panel <= sheetGroups.vh,
+    "「更多」面板没顶出屏幕",
+    `面板 ${sheetGroups.panel} / 视口 ${sheetGroups.vh}`,
+  );
   await page.locator(".more-sheet .more-item", { hasText: "设置" }).first().click();
   await page.waitForTimeout(600);
   check((await page.locator(".more-sheet").count()) === 0, "从「更多」选完会关掉浮层", "浮层还在");

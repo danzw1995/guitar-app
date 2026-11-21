@@ -336,7 +336,8 @@ export default function FollowAlong({
   const loopEnd = Math.max(loopFrom, loopTo);
   const zoomTab = useMemo(
     () =>
-      loopOn
+      // 圈的范围就是整条谱时不再放大——上面那张整谱已经一模一样了（v0.135.0）
+      loopOn && loopWidth < target.tab.bars
         ? sliceTab(
             target.tab,
             (loopStart - 1) * target.tab.beatsPerBar,
@@ -484,6 +485,44 @@ export default function FollowAlong({
       }
     }
   }, [target.id]);
+
+  /**
+   * 键盘操作（v0.135.0）：空格开始 / 停，← → 换一小节。
+   *
+   * 输入框和下拉里按键不抢——速度是数字框，方向键在那儿是用来改数值的；
+   * 焦点落在按钮上时空格会自己触发一次 click，这里再拦一手就成了点两次。
+   *
+   * 处理函数每帧写进 ref、effect 只挂一次：`start` / `stepWindow` 这些每次渲染都是
+   * 新函数，写进依赖数组会一路抖下去。
+   */
+  const keyHandlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  keyHandlerRef.current = (event: KeyboardEvent) => {
+    const node = event.target instanceof HTMLElement ? event.target : null;
+    const tag = node?.tagName ?? "";
+    if (node?.isContentEditable) return;
+    if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.key === " ") {
+      if (tag === "BUTTON") return;
+      event.preventDefault();
+      if (running) stop();
+      else start();
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      stepWindow(-1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      stepWindow(1);
+    }
+  };
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => keyHandlerRef.current(event);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   /** 谱面显示用的小节号：不循环时一直往下数，数到末尾绕回第 1 小节（v0.99.0）。 */
   const currentBar = loop ? bar : (bar % totalBars) + 1;
@@ -771,6 +810,11 @@ export default function FollowAlong({
             记录成绩
           </button>
         </div>
+
+        {/* 键盘提示（v0.135.0）：手机上根本用不到，窄屏里藏起来 */}
+        <p className="follow-keys">
+          键盘：<kbd>空格</kbd> 开始 / 停 · <kbd>←</kbd> <kbd>→</kbd> 换一小节（只练某几小节时）
+        </p>
       </div>
 
       {done ? (

@@ -890,6 +890,43 @@ try {
     "跟练：点级数方块会把「只练」勾到那一小节",
     loopNote,
   );
+  // 9a6c2) v0.135.0：跟练面板的键盘操作——空格开始 / 停，输入框里按键不抢
+  const keysHint = String(
+    js("(() => document.querySelector('.follow-keys')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '')()"),
+  ).replace(/^"|"$/g, "");
+  const followLabel = () =>
+    String(
+      js("(() => [...document.querySelectorAll('.follow-controls button')][0]?.textContent?.trim() ?? '')()"),
+    ).replace(/^"|"$/g, "");
+  const pressBodySpace = () =>
+    js(
+      "(() => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true })); return 'ok'; })()",
+    );
+  const before = followLabel();
+  pressBodySpace();
+  await sleep(700);
+  const afterStop = followLabel();
+  pressBodySpace();
+  await sleep(700);
+  const afterStart = followLabel();
+  js(
+    "(() => { const input = document.querySelector('.follow-controls input[type=number]'); input?.focus(); input?.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(500);
+  const afterTyping = followLabel();
+  log(
+    keysHint.includes("空格") && keysHint.includes("换一小节"),
+    "跟练：面板上写着键盘怎么用",
+    keysHint || "没有提示",
+  );
+  log(
+    before === "停止" &&
+      afterStop === "开始跟练" &&
+      afterStart === "停止" &&
+      afterTyping === "停止",
+    "跟练：空格能开始 / 停，输入框里按空格不算",
+    `${before} → ${afterStop} → ${afterStart} · 输入框里 ${afterTyping}`,
+  );
   js(
     "(() => { const b = [...document.querySelectorAll('.follow button')].find(n => n.textContent.trim() === '收起'); b?.click(); return 'ok'; })()",
   );

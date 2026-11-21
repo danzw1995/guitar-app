@@ -31,6 +31,43 @@ const TABS: { id: Tab; label: string }[] = [
 const PRIMARY: Tab[] = ["practice", "rhythm", "theory", "stats"];
 const SECONDARY: Tab[] = ["chords", "scales", "game", "tuner", "ear", "settings"];
 
+// 「更多」里分成三组：光看「和弦 / 音阶 / 调音」这些名字，不知道点进去是干什么的（v0.135.0）
+interface MoreItem {
+  id: Tab;
+  hint: string;
+}
+
+interface MoreGroup {
+  title: string;
+  hint: string;
+  items: MoreItem[];
+}
+
+const MORE_GROUPS: MoreGroup[] = [
+  {
+    title: "练琴",
+    hint: "按弦、把位、反应",
+    items: [
+      { id: "chords", hint: "和弦库 · 转换训练" },
+      { id: "scales", hint: "把位 · 五种形状" },
+      { id: "game", hint: "限时找音的位置" },
+    ],
+  },
+  {
+    title: "工具",
+    hint: "校音、听音",
+    items: [
+      { id: "tuner", hint: "麦克风校准空弦" },
+      { id: "ear", hint: "听辨 · 录音扒谱" },
+    ],
+  },
+  {
+    title: "其它",
+    hint: "调弦、备份",
+    items: [{ id: "settings", hint: "调弦 · 数据备份" }],
+  },
+];
+
 const labelOf = (id: Tab) => TABS.find((t) => t.id === id)?.label ?? id;
 
 export default function App() {
@@ -164,17 +201,28 @@ export default function App() {
                 关掉
               </button>
             </div>
-            <div className="more-grid">
-              {SECONDARY.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={tab === id ? "more-item active" : "more-item"}
-                  aria-current={tab === id ? "page" : undefined}
-                  onClick={() => go(id)}
-                >
-                  {labelOf(id)}
-                </button>
+            <div className="more-groups">
+              {MORE_GROUPS.map((group) => (
+                <section className="more-group" key={group.title} aria-label={group.title}>
+                  <h3 className="more-group-title">
+                    {group.title}
+                    <span className="more-group-hint">{group.hint}</span>
+                  </h3>
+                  <div className="more-grid">
+                    {group.items.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={tab === item.id ? "more-item active" : "more-item"}
+                        aria-current={tab === item.id ? "page" : undefined}
+                        onClick={() => go(item.id)}
+                      >
+                        <span className="more-item-label">{labelOf(item.id)}</span>
+                        <span className="more-item-hint">{item.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </div>
