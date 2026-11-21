@@ -183,7 +183,7 @@ export interface RhythmRecord {
    * 这一段里最卡的一处（v0.99.0）：跟练时点级数方块单独去练点得最多的那一小节。
    * 只记「用户自己标出来的」，不是猜的。
    */
-  hardest?: { bar: number; degree: number; name: string; count: number };
+  hardest?: { bar: number; degree: number; name: string; count: number; at?: string };
   /**
    * 「今天自己加的」那一条的名字（v0.104.0）。
    *
@@ -229,7 +229,7 @@ function parseHistory(value: unknown): BpmPoint[] {
 /** 「最卡的一处」只收站得住的数：小节 ≥1、级数 0–7、名字是字符串、次数 ≥1。 */
 function parseHardest(
   value: unknown,
-): { bar: number; degree: number; name: string; count: number } | undefined {
+): { bar: number; degree: number; name: string; count: number; at?: string } | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const item = value as Record<string, unknown>;
   const bar = Number(item.bar);
@@ -243,6 +243,8 @@ function parseHardest(
     degree: Math.round(degree),
     name: typeof item.name === "string" ? item.name : "",
     count: Math.round(count),
+    // 是哪一天卡住的（v0.129.0）：曲线上那天的点要单独标出来。老记录没有就省掉。
+    ...(typeof item.at === "string" && isValidDateKey(item.at) ? { at: item.at } : {}),
   };
 }
 

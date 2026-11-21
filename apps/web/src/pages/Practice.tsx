@@ -126,6 +126,8 @@ export default function Practice() {
   const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   const [follow, setFollow] = useState<FollowTarget | null>(null);
+  // 从统计页的曲线上双击过来时会带上「第几小节」（v0.129.0），跟练一开就把那一段圈起来
+  const [followBar, setFollowBar] = useState<number | null>(null);
   const [skips, setSkips] = useState<SkipLog>(() => loadSkips());
   const [pauses, setPauses] = useState<PauseLog>(() => loadPauses());
   /** 今天自己加的计划（跟练里切出来的那一小节，v0.102.0）。 */
@@ -177,7 +179,8 @@ export default function Practice() {
   const followKey = (id: string) => `p:${id}`;
   const best = (key: string) => records[key]?.bestBpm;
 
-  function openFollow(drill: Drill) {
+  function openFollow(drill: Drill, startBar?: number) {
+    setFollowBar(startBar ?? null);
     setFollow({
       id: followKey(drill.id),
       name: drill.name,
@@ -188,7 +191,8 @@ export default function Practice() {
   }
 
   /** 跟练「今天自己加的」那一条：键用 `p:` 前缀之外再加 `extra:`，免得和练习库的 id 撞。 */
-  function openExtra(extra: PlanExtra) {
+  function openExtra(extra: PlanExtra, startBar?: number) {
+    setFollowBar(startBar ?? null);
     setFollow({
       id: `p:${extra.id}`,
       name: extra.title,
@@ -382,6 +386,33 @@ export default function Practice() {
     saveClosedGroups(closedGroups);
   }, [closedGroups]);
 
+  /**
+   * 从统计页的曲线上双击过来（v0.129.0）：地址里带着 `?follow=1&bar=N&item=<id>`。
+   *
+   * 只在这个页面刚挂载时看一次，然后立刻把参数抹掉——否则刷新或来回切页又会弹一次面板。
+   * 条目找不到（比如那天的加餐已经删了）就什么都不做，不硬开一个空面板。
+   */
+  useEffect(() => {
+    const route = parseHash(window.location.hash);
+    const item = route?.query.item;
+    if (!item) return;
+    const drill = DRILLS.find((entry) => entry.id === item);
+    const extra = extras.find((entry) => entry.id === item);
+    const bar = Number(route?.query.bar ?? "");
+    const wanted = route?.query.follow === "1" && Number.isInteger(bar) && bar >= 1 ? bar : undefined;
+    if (wanted !== undefined) {
+      if (drill) openFollow(drill, wanted);
+      else if (extra) openExtra(extra, wanted);
+      // 面板在页面顶部，而 `#practice/<id>` 这个锚点会把页面滚到下面那条卡上——
+      // 人是奔着「练这一小节」来的，得先看见面板（v0.129.0）
+      if (drill || extra) window.scrollTo({ top: 0, behavior: "auto" });
+    }
+    // 参数抹掉，但不留锚点：留着 `#practice/<id>` 刷新会滚到那张卡，面板又被顶到屏外
+    if (window.location.hash !== "#practice") window.history.replaceState(null, "", "#practice");
+    // 只跑一次：这里用的都是挂载那一刻的值
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function toggleGroup(key: string) {
     setClosedGroups((previous) => ({ ...previous, [key]: !previous[key] }));
     // 收起的时候如果手里还拿着这一组里的某一条，直接放下，免得它被藏起来之后没法放回去
@@ -468,7 +499,11 @@ export default function Practice() {
         minutes: (previous?.minutes ?? 0) + result.minutes,
         lastAt: today,
         history: pushBpmPoint(previous?.history, today, result.bpm),
-        ...(result.hardest ? { hardest: result.hardest } : previous?.hardest ? { hardest: previous.hardest } : {}),
+        ...(result.hardest
+          ? { hardest: { ...result.hardest, at: today } }
+          : previous?.hardest
+            ? { hardest: previous.hardest }
+            : {}),
         // 加餐的名字跟着记录走（v0.104.0）：计划表第二天就清空，
         // 不存名字的话统计页「最卡的地方」过一天只剩 `p:extra-…` 这种 id
         ...(follow.id.startsWith("p:extra-") ? { title: follow.name } : {}),
@@ -779,10 +814,14 @@ export default function Practice() {
       {follow && (
         <FollowAlong
           target={follow}
+          startBar={followBar ?? undefined}
           best={best(follow.id)}
           onFinish={recordFollow}
           onSpot={recordSpot}
-          onClose={() => setFollow(null)}
+          onClose={() => {
+            setFollow(null);
+            setFollowBar(null);
+          }}
         />
       )}
 

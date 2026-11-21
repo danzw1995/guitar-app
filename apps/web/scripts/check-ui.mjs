@@ -3389,6 +3389,54 @@ try {
   js("localStorage.removeItem('guitar.plan.v1')");
   js("(() => { for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); return 'ok'; })()");
 
+  // 16d31) 统计页：最卡那天的点上有圈，双击那天直接去练那一小节（v0.129.0）
+  js(
+    "(() => { const pad = n => String(n).padStart(2, '0'); const day = n => { const x = new Date(); x.setDate(x.getDate() - n); return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; }; const tab = { beatsPerBar: 4, bars: 4, notes: [{ s: 3, f: 0, beat: 0, dur: 1 }] }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'p:extra-h1': { bestBpm: 90, sessions: 3, minutes: 20, lastAt: day(1), history: [{ date: day(12), bpm: 60 }, { date: day(2), bpm: 70 }, { date: day(1), bpm: 90 }], hardest: { bar: 3, degree: 5, name: 'G', count: 6, at: day(2) }, title: '单弦爬格子', spots: [] } })); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-h1', date: day(0), title: '单弦爬格子', tab, meter: '4/4', bpm: 70, addedAt: Date.now() - 3000, setName: '早课' }])); localStorage.removeItem('guitar.stats.views.v1'); for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); location.hash = '#stats'; return 'ok'; })()",
+  );
+  await sleep(200);
+  ab(["reload"]);
+  await sleep(1000);
+  js("document.querySelector('.curve-svg')?.scrollIntoView({ block: 'center' })");
+  await sleep(300);
+  const hardMark = Number(
+    String(js("(() => String(document.querySelectorAll('.curve-hard').length))()")).replace(/^"|"$/g, ""),
+  );
+  js(
+    "(() => { const svg = document.querySelector('.curve-svg'); const box = svg.getBoundingClientRect(); const x = box.left + box.width * 0.5; const y = box.top + box.height * 0.5; svg.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y })); return 'ok'; })()",
+  );
+  await sleep(400);
+  const hardDay = String(
+    js("(() => document.querySelector('.curve-day')?.textContent?.trim() ?? '')()"),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const svg = document.querySelector('.curve-svg'); const box = svg.getBoundingClientRect(); const x = box.left + box.width * 0.5; const y = box.top + box.height * 0.5; svg.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: x, clientY: y })); return 'ok'; })()",
+  );
+  await sleep(1400);
+  const jumpFollow = JSON.parse(
+    String(
+      js(
+        "(() => JSON.stringify({ hash: location.hash, tab: document.querySelector('nav.tabs button[aria-current=\"page\"]')?.textContent ?? '', follow: !!document.querySelector('.follow'), title: document.querySelector('.follow h3')?.textContent?.replace(/\\s+/g, ' ').trim() ?? '', from: document.querySelector('select[aria-label=\"循环从第几小节开始\"]')?.value ?? '', to: document.querySelector('select[aria-label=\"循环到第几小节结束\"]')?.value ?? '' }))()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    hardMark === 1 &&
+      hardDay.includes("那天卡在第 3 小节") &&
+      jumpFollow.tab === "练习" &&
+      jumpFollow.follow &&
+      jumpFollow.title.includes("单弦爬格子") &&
+      jumpFollow.from === "3" &&
+      jumpFollow.to === "3",
+    "统计页：最卡那天的点上有圈，双击那天直接去练那一小节",
+    `圈=${hardMark} day=${hardDay} → ${jumpFollow.hash} ${jumpFollow.tab}/${jumpFollow.follow}/${jumpFollow.from}-${jumpFollow.to}`,
+  );
+  js("localStorage.removeItem('guitar.rhythm.v1')");
+  js("localStorage.removeItem('guitar.plan.v1')");
+  js("location.hash = '#stats'");
+  await sleep(300);
+
   // 16e) 调音页：六根空弦都在、点「开始」拿不到麦克风时要有一句人话
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '调音'); b?.click(); return 'ok'; })()",

@@ -39,6 +39,8 @@ export interface FollowAlongProps {
   onClose: () => void;
   /** 点了「只练这一处」（v0.113.0）：父组件记一笔「这一处单独练过几次」。 */
   onSpot?: (spot: FollowHardest) => void;
+  /** 一打开就圈住这一小节并开练（v0.129.0）：从统计页曲线上双击过来时用。 */
+  startBar?: number;
 }
 
 function clock(seconds: number): string {
@@ -71,7 +73,14 @@ function defaultSubdivision(tab: Tab, meter: string): Subdivision {
  * 起始速度、每次加多少、几小节加一次都可以改——每个人的"卡点"不一样，
  * 有人 86 就能稳，有人得从 60 起。
  */
-export default function FollowAlong({ target, best, onFinish, onClose, onSpot }: FollowAlongProps) {
+export default function FollowAlong({
+  target,
+  best,
+  onFinish,
+  onClose,
+  onSpot,
+  startBar,
+}: FollowAlongProps) {
   const meter = target.meter ?? "4/4";
   const [startBpm, setStartBpm] = useState(target.bpm[0]);
   const [bpm, setBpm] = useState(target.bpm[0]);
@@ -117,6 +126,16 @@ export default function FollowAlong({ target, best, onFinish, onClose, onSpot }:
   const loop = loopOn
     ? { from: Math.min(loopFrom, loopTo), to: Math.max(loopFrom, loopTo) }
     : null;
+
+  /**
+   * 带着「第几小节」进来（v0.129.0）：先把那一小节圈住再开练。
+   *
+   * 只按挂载那一刻的值跑一次——父组件把这一小节设进去之后就不再管它，
+   * 用户进去自己改 A-B 也不会被拽回来。`count: false`：这不是用户手点的，不算「卡住」。
+   *
+   * **不能单独写一个 effect**：下面「换一条练习就重置」那个 effect 挂在 `[target.id]` 上，
+   * 挂载时也会跑一遍，会把这里设好的 A-B 清回 1…末小节再 `stop()`。所以并进那一个。
+   */
 
   /** 点级数方块：只反复练那一小节（v0.98.0）。没在跑就顺手开始。 */
   function practiceBar(wanted: number, count = true): void {
@@ -298,6 +317,8 @@ export default function FollowAlong({ target, best, onFinish, onClose, onSpot }:
     hardRef.current.clear();
     loopPassRef.current = 0;
     stop();
+    // 带着小节进来（v0.129.0）：重置完再圈，别被上面的 reset 清掉
+    if (startBar) practiceBar(startBar, false);
   }, [target.id]);
 
   /** 谱面显示用的小节号：不循环时一直往下数，数到末尾绕回第 1 小节（v0.99.0）。 */

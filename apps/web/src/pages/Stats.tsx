@@ -629,6 +629,40 @@ export default function Stats() {
       prev?.id === id ? { id, index: (prev.index + 1) % count } : { id, index: count - 1 },
     );
   };
+  /**
+   * 双击某一天：去练那天卡住的小节（v0.129.0）。
+   *
+   * 记录里只有「最卡的是第几小节、第几级」，谱子在本页拿不到（`RhythmRecord` 不存 tab），
+   * 所以交给条目所在的页面：带 `?follow=1&bar=N&item=<id>` 过去，那边挂上跟练面板、
+   * 直接圈住那一小节。双击前先按位置把这一天选上，省得双击落在没选中的位置上。
+   */
+  const openCurveDay = (
+    event: { currentTarget: SVGSVGElement; clientX: number },
+    id: string,
+    count: number,
+    hardestDay: string,
+    bar: number | undefined,
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 1;
+    const index = Math.max(0, Math.min(count - 1, Math.round(ratio * (count - 1))));
+    const day = rhythm[id]?.history?.[index];
+    // 只有「那天的点就是最卡的那天」才有小节可圈；别的日子只把人送到条目上
+    const targetBar = bar && day && hardestDay && day.date === hardestDay ? bar : undefined;
+    const practice = id.startsWith("p:");
+    const bare = practice ? id.slice(2) : id;
+    if (practice) {
+      const query: Record<string, string> = { item: bare };
+      if (targetBar) {
+        query.follow = "1";
+        query.bar = String(targetBar);
+      }
+      // 不传锚点：`#practice/<id>` 会把页面滚到下面那张卡上，而人是奔着面板来的（v0.129.0）
+      goTo("practice", undefined, query);
+      return;
+    }
+    goTo("rhythm", bare);
+  };
   // 「卡了几次」那排 chip 上写「有 N 条」（v0.124.0）：点之前就知道能筛出几条，
   // 数的是「如果现在点它」会剩几条——即先套上其它几排筛选，再按次数数。
   const countPool = hardSorted.filter(
@@ -1312,27 +1346,51 @@ export default function Stats() {
               const pickedIndex = picked ? curvePoint!.index : -1;
               const pickedDelta =
                 picked && pickedIndex > 0 ? picked.bpm - curve.points[pickedIndex - 1].bpm : 0;
+              // 这套记录里记下的「最卡的一处」：它发生在哪一天，那天的点就加一圈圈（v0.129.0）
+              const record = rhythm[curve.id];
+              const hardest = record?.hardest;
+              const hardestDay = hardest?.at ?? "";
+              const pickedIsHardest = !!picked && !!hardestDay && picked.date === hardestDay;
+              const label = setFilter ? `${name}（只看「${setFilter}」）` : name;
               return (
                 <li key={curve.id} data-curve-id={curve.id}>
-                  <span className="curve-name">{name}</span>
+                  <span className="curve-name" title={label}>
+                    {name}
+                  </span>
                   <svg
                     className="curve-svg"
                     viewBox="0 0 120 30"
                     // 点一下选最近的某一天（v0.128.0）；键盘上是 Tab 到这里再按回车 / 空格往下翻
                     role="button"
                     tabIndex={0}
-                    aria-label={`${first.date} 的 ${first.bpm} BPM，到 ${last.date} 的 ${last.bpm} BPM，共 ${curve.points.length} 天。点一下看某一天。`}
+                    aria-label={`${label}：${first.date} 的 ${first.bpm} BPM，到 ${last.date} 的 ${last.bpm} BPM，共 ${curve.points.length} 天。点一下看某一天，双击去练那天卡住的小节。`}
                     onClick={(event) => pickCurvePoint(event, curve.id, curve.points.length)}
+                    onDoubleClick={(event) =>
+                      openCurveDay(event, curve.id, curve.points.length, hardestDay, hardest?.bar)
+                    }
                     onKeyDown={(event) => {
                       if (event.key !== "Enter" && event.key !== " ") return;
                       event.preventDefault();
                       cycleCurvePoint(curve.id, curve.points.length);
                     }}
                   >
+                    <title>{label}</title>
                     <path d={spark.d} />
                     {/* 透明底：不然点空白处（没压在线条上）不算点中这张图（v0.128.0） */}
                     <rect x={0} y={0} width={120} height={30} fill="transparent" />
                     <circle cx={head.x} cy={head.y} r={2} />
+                    {/* 最卡的那一天的标记（v0.129.0）：空心圈叠在点上，不和「选中的点」抢位置 */}
+                    {spark.dots.map((dot, index) =>
+                      hardestDay && curve.points[index]?.date === hardestDay ? (
+                        <circle
+                          className="curve-hard"
+                          key={`hard-${dot.x}-${dot.y}`}
+                          cx={dot.x}
+                          cy={dot.y}
+                          r={3.4}
+                        />
+                      ) : null,
+                    )}
                     {picked && spark.dots[pickedIndex] && (
                       <circle
                         className="curve-picked"
@@ -1349,6 +1407,9 @@ export default function Stats() {
                     <span className="curve-day" role="status">
                       {picked.date.slice(5).replace("-", "/")} · {picked.bpm} BPM
                       {pickedDelta !== 0 && ` · 比上一次 ${pickedDelta > 0 ? "+" : ""}${pickedDelta}`}
+                      {pickedIsHardest &&
+                        ` · 那天卡在第 ${hardest!.bar} 小节${degreeName(hardest!.degree)}`}
+                      {pickedIsHardest && "（双击去练）"}
                     </span>
                   )}
                 </li>

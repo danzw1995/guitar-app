@@ -233,7 +233,11 @@ export default function Rhythm() {
         minutes: (previous?.minutes ?? 0) + result.minutes,
         lastAt: today,
         history: pushBpmPoint(previous?.history, today, result.bpm),
-        ...(result.hardest ? { hardest: result.hardest } : previous?.hardest ? { hardest: previous.hardest } : {}),
+        ...(result.hardest
+          ? { hardest: { ...result.hardest, at: today } }
+          : previous?.hardest
+            ? { hardest: previous.hardest }
+            : {}),
       },
     };
     setRecords(next);

@@ -725,6 +725,13 @@ button, select, input { font: inherit; color: inherit; }
   stroke: var(--accent);
   stroke-width: 1;
 }
+/* 最卡的那一天（v0.129.0）：空心圈叠在点上，跟「选中的点」不抢同一块颜色 */
+.curve-hard {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  opacity: 0.7;
+}
 /* 选中的那一天：占满整行，别把三列网格挤歪 */
 .curve-day {
   grid-column: 1 / -1;

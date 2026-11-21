@@ -1308,6 +1308,16 @@ for (const selector of ["select", "input", "textarea"]) {
       (px(relaxNoteDecl.get("font-size")) ?? 99) <= 12,
     `cursor=${curveHitDecl.get("cursor") ?? "未设置"} day=${curveDayDecl.get("grid-column") ?? "未设置"} relax=${relaxNoteDecl.get("color") ?? "未设置"}`,
   );
+
+  // v0.129.0：最卡那一天的圈只是描边，不填满——它和「选中的点」会叠在一起
+  const hardDotDecl = narrowDecls(".curve-hard");
+  expect(
+    "最卡那天的点画成空心圈",
+    hardDotDecl.get("fill") === "none" &&
+      (hardDotDecl.get("stroke") ?? "") === "var(--accent)" &&
+      Number.parseFloat(hardDotDecl.get("stroke-width") ?? "9") <= 1.5,
+    `fill=${hardDotDecl.get("fill") ?? "未设置"} stroke=${hardDotDecl.get("stroke") ?? "未设置"} width=${hardDotDecl.get("stroke-width") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
