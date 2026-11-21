@@ -93,3 +93,15 @@ export function steadyTrend(runs: SteadyRun[] = loadRuns(), count = 12): number[
 export function steadyWindow(runs: SteadyRun[] = loadRuns(), count = 12): SteadyRun[] {
   return runs.slice(-Math.max(2, count));
 }
+
+/** 清空全部记录（误录、玩过之后想重新开始） */
+export function clearRuns(): void {
+  persist([]);
+}
+
+/** 把一份旧记录写回去（配合「撤销」） */
+export function restoreRuns(runs: SteadyRun[]): SteadyRun[] {
+  const next = runs.slice(-MAX_RUNS);
+  persist(next);
+  return next;
+}

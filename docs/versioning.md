@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.139.0`，core `0.54.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.140.0`，core `0.54.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -168,6 +168,9 @@ v0.137.0 给 core 加了 `timing.ts`（`detectOnsets` / `analyzeTiming`）——
 v0.138.0 只动前端：「稳不稳」每弹完一遍记进 `guitar.steady.v1`（只留最近 24 遍），
 统计页多一块趋势；`TimingReport` 顺带多两个半段标准差（前后两半各自多散）。core 仍是 `0.54.0`，
 这把键也进了数据备份（第 20 把）。
+v0.140.0 只动前端：统计页的趋势线能点（点哪遍看哪遍的明细，键盘 Enter / 空格往后翻）、
+「稳不稳」的记录能清空并撤销、记住上次的速度和小节数（`Settings.steadyBpm` / `steadyBars`）。
+core 与工具都不动。
 v0.139.0 只动前端加 core 的两个字段（`TimingReport.barStdevsMs` / `worstBar`）：趋势图标出最稳与最快、
 每遍写「比上次稳了多少」、逐小节指出最散的那一节。core 仍 `0.54.0`（只加字段、不破调用）。
 v0.136.0 只动前端：设置页三档主题（跟随系统 / 深色 / 浅色），落地方式是 `<html data-theme>`

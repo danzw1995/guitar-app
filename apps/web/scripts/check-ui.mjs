@@ -3704,6 +3704,55 @@ try {
   );
   await js(`localStorage.removeItem("guitar.steady.v1")`);
 
+  // 16d39) v0.140.0：趋势点可点看那一遍的明细，能一键清空并撤销
+  await js(`(() => {
+    const run = (id, date, bpm, bars, stdev) => ({ id, date, bpm, bars, stdevMs: stdev, meanAbsMs: stdev, driftMsPerBeat: 0.4, hits: 16 });
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([
+      run("s-1", "2026-11-10", 60, 4, 38),
+      run("s-2", "2026-11-15", 70, 4, 24),
+      run("s-3", "2026-11-20", 80, 2, 16),
+    ]));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1000);
+  // React 的 setState 是异步的：派发点击之后要等一帧再读 DOM
+  const steadyClicked = js(`(() => {
+    const svg = document.querySelector(".steady-svg");
+    if (!svg) return "no-svg";
+    const rect = svg.getBoundingClientRect();
+    svg.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: rect.left + rect.width - 1, clientY: rect.top + rect.height / 2 }));
+    return "clicked";
+  })()`);
+  await sleep(300);
+  const steadyPick = js(`(() => {
+    const day = document.querySelector(".steady-day")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    const picked = document.querySelectorAll(".steady-svg .curve-picked").length;
+    return day.includes("11/20") && day.includes("±16 毫秒") && picked === 1 ? "steady-pick" : "no-pick:" + String(steadyClicked) + "|" + day + "|" + picked;
+  })()`);
+  const steadyPickText = String(steadyPick).replace(/^"|"$/g, "");
+  log(steadyPickText === "steady-pick", "统计页：点趋势线能看那一遍的日期、速度、标准差", steadyPickText);
+
+  await js(`[...document.querySelectorAll("button")].find((node) => node.textContent.trim() === "清空记录")?.click()`);
+  await sleep(300);
+  const steadyClear = js(`(() => {
+    const runs = JSON.parse(localStorage.getItem("guitar.steady.v1") ?? "[]").length;
+    const toast = document.querySelector(".undo-toast")?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    return runs + "|" + (toast.includes("清掉了 3 遍") ? "toast" : "no-toast");
+  })()`);
+  const steadyClearText = String(steadyClear).replace(/^"|"$/g, "");
+  log(steadyClearText === "0|toast", "统计页：清空「稳不稳」的记录，提示条能撤销", steadyClearText);
+  await js(`[...document.querySelectorAll(".undo-toast button")].find((node) => node.textContent.trim() === "撤销")?.click()`);
+  await sleep(400);
+  const steadyUndo = js(`(() => {
+    const runs = JSON.parse(localStorage.getItem("guitar.steady.v1") ?? "[]").length;
+    return runs === 3 ? "restored" : "lost:" + runs;
+  })()`);
+  const steadyUndoText = String(steadyUndo).replace(/^"|"$/g, "");
+  log(steadyUndoText === "restored", "统计页：点「撤销」把清掉的记录放回去", steadyUndoText);
+  await js(`localStorage.removeItem("guitar.steady.v1")`);
+
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);
   await sleep(900);

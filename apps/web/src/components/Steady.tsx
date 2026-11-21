@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
 import { recordRun, loadRuns, bestRun, type SteadyRun } from "../lib/steady";
+import { loadSettings, saveSettings } from "../lib/storage";
 
 type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
 
@@ -23,8 +24,10 @@ function clickAt(ctx: AudioContext, at: number, accent: boolean): void {
 }
 
 export default function Steady() {
-  const [bpm, setBpm] = useState(70);
-  const [bars, setBars] = useState(4);
+  // 记住上次的速度与小节数：每次打开都要重填，练同一段时很烦
+  const initial = loadSettings();
+  const [bpm, setBpm] = useState(initial.steadyBpm);
+  const [bars, setBars] = useState(initial.steadyBars);
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [report, setReport] = useState<TimingReport | null>(null);
@@ -65,6 +68,8 @@ export default function Steady() {
     setReport(null);
     setError("");
     setJustSaved(false);
+    // 开跑就把这组设置记下来，下次进来还是这一组
+    saveSettings({ ...loadSettings(), steadyBpm: bpm, steadyBars: bars });
     setElapsed(0);
     chunksRef.current = [];
     framesRef.current = 0;

@@ -52,6 +52,10 @@ export interface Settings {
   tuning: string;
   /** 深色 / 浅色 / 跟随系统。 */
   theme: ThemeMode;
+  /** 「稳不稳」上次用的速度（40–200）。 */
+  steadyBpm: number;
+  /** 「稳不稳」上次数的小节数。 */
+  steadyBars: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -62,6 +66,8 @@ export const DEFAULT_SETTINGS: Settings = {
   weeklyGoal: 0,
   tuning: "standard",
   theme: "auto",
+  steadyBpm: 70,
+  steadyBars: 4,
 };
 
 function readJson(key: string): unknown {
@@ -490,6 +496,12 @@ export function loadSettings(): Settings {
   const goal = Number(v.weeklyGoal);
   const weeklyGoal = Number.isFinite(goal) && goal > 0 ? Math.min(600, Math.round(goal)) : 0;
   const tuning = typeof v.tuning === "string" && v.tuning !== "" ? v.tuning : "standard";
+  const steadyBpmRaw = Number(v.steadyBpm);
+  const steadyBpm = Number.isFinite(steadyBpmRaw) && steadyBpmRaw >= 40 && steadyBpmRaw <= 200
+    ? Math.round(steadyBpmRaw)
+    : DEFAULT_SETTINGS.steadyBpm;
+  const steadyBarsRaw = Number(v.steadyBars);
+  const steadyBars = [2, 4, 6, 8].includes(steadyBarsRaw) ? steadyBarsRaw : DEFAULT_SETTINGS.steadyBars;
   const theme: ThemeMode =
     v.theme === "dark" || v.theme === "light" ? v.theme : "auto";
 
@@ -500,6 +512,8 @@ export function loadSettings(): Settings {
     solfegeStyle,
     weeklyGoal,
     tuning,
+    steadyBpm,
+    steadyBars,
     theme,
   };
 }
@@ -512,6 +526,8 @@ export function saveSettings(settings: Settings): void {
     solfegeStyle: settings.solfegeStyle,
     weeklyGoal: settings.weeklyGoal,
     tuning: settings.tuning,
+    steadyBpm: settings.steadyBpm,
+    steadyBars: settings.steadyBars,
     theme: settings.theme,
   });
 }

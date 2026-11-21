@@ -1462,6 +1462,13 @@ expect(
   "「比上次稳了多少」用强调色，「最散的那一小节」用灰字",
 );
 
+expect(
+  narrowDecls(".steady-svg").get("cursor") === "pointer" &&
+    narrowDecls(".steady-day").get("font-size") === "12px" &&
+    narrowDecls(".steady-day").get("flex") === "1 1 100%",
+  "趋势线（点一下看那一遍）有手型光标，明细自占一行",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

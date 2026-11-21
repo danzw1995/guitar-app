@@ -787,6 +787,24 @@ button, select, input { font: inherit; color: inherit; }
   opacity: 0.85;
 }
 
+.steady-svg {
+  cursor: pointer;
+}
+
+.steady-svg:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.steady-day {
+  flex: 1 1 100%;
+  margin-top: 2px;
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .steady-marks {
   display: inline-flex;
   align-items: center;

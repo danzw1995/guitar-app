@@ -27,7 +27,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
-import { bestRun, loadRuns, steadyTrend, steadyWindow } from "../lib/steady";
+import { bestRun, clearRuns, loadRuns, restoreRuns, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -47,6 +47,7 @@ import {
 import { degreeName } from "../lib/degrees";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
+import UndoToast from "../components/UndoToast";
 
 /** 统计页：全部来自本机 localStorage，没有账号也没有上报。 */
 const WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
@@ -836,16 +837,33 @@ export default function Stats() {
   }
 
   // 听辨（扒谱页「练」）：`guitar.ear.v1` 存最好成绩、轮数与四种题型各自的正确率
-  const steadyRuns = loadRuns();
+  // 清空 / 撤销之后要让这一块重新读一遍存储
+  const [steadyBump, setSteadyBump] = useState(0);
+  const [steadyPick, setSteadyPick] = useState<number | null>(null);
+  const [steadyUndo, setSteadyUndo] = useState<SteadyRun[] | null>(null);
+  const steadyRuns = useMemo(() => loadRuns(), [steadyBump]);
   const steadyBest = bestRun(steadyRuns);
   const steadyLast = steadyRuns[steadyRuns.length - 1] ?? null;
   const steadyPoints = steadyTrend(steadyRuns);
   const steadySpark = steadyPoints.length >= 2 ? sparklineOf(steadyPoints, 120, 30) : null;
   const steadyWindowRuns = steadyWindow(steadyRuns);
+  const steadyWinRuns = steadyWindowRuns;
   // 趋势窗里最稳的一遍（标准差最小）和最快的一遍（BPM 最高）
   const steadyBestIndex = steadyPoints.length
     ? steadyPoints.reduce((best, value, index) => (value < steadyPoints[best] ? index : best), 0)
     : -1;
+  /** 点趋势线：按横坐标取最近的那一遍（和跟练曲线的点法保持一致） */
+  function pickSteadyPoint(event: { currentTarget: SVGSVGElement; clientX: number }): void {
+    if (steadyWinRuns.length === 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const ratio = (event.clientX - rect.left) / rect.width;
+    const index = Math.max(0, Math.min(steadyWinRuns.length - 1, Math.round(ratio * (steadyWinRuns.length - 1))));
+    setSteadyPick((current) => (current === index ? null : index));
+  }
+
+  const steadyPicked =
+    steadyPick !== null && steadyWinRuns[steadyPick] ? steadyWinRuns[steadyPick] : null;
   const steadyFastIndex = steadyWindowRuns.length
     ? steadyWindowRuns.reduce((fast, run, index) => (run.bpm > steadyWindowRuns[fast].bpm ? index : fast), 0)
     : -1;
@@ -2042,7 +2060,16 @@ export default function Stats() {
               <svg
                 className="curve-svg steady-svg"
                 viewBox="0 0 120 30"
-                role="img"
+                role="button"
+                tabIndex={0}
+                onClick={(event) => pickSteadyPoint(event)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  setSteadyPick((current) =>
+                    current === null || current >= steadyWinRuns.length - 1 ? 0 : current + 1,
+                  );
+                }}
                 aria-label={
                   "最近 " + steadyPoints.length + " 遍的标准差：从 " + Math.round(steadyPoints[0]) + " 毫秒到 " + Math.round(steadyPoints[steadyPoints.length - 1]) + " 毫秒，越低越稳；" +
                   "最稳的是第 " + (steadyBestIndex + 1) + " 遍（" + Math.round(steadyPoints[steadyBestIndex]) + " 毫秒），最快的一遍是 " + (steadyWindowRuns[steadyFastIndex]?.bpm ?? 0) + " BPM"
@@ -2060,6 +2087,14 @@ export default function Stats() {
                   >
                     <title>最快的一遍：{steadyWindowRuns[steadyFastIndex]?.bpm ?? 0} BPM</title>
                   </rect>
+                )}
+                {steadyPick !== null && steadySpark.dots[steadyPick] && (
+                  <circle
+                    className="curve-picked"
+                    cx={steadySpark.dots[steadyPick].x}
+                    cy={steadySpark.dots[steadyPick].y}
+                    r={2.6}
+                  />
                 )}
                 {steadyBestIndex >= 0 && (
                   <circle
@@ -2079,6 +2114,13 @@ export default function Stats() {
                   <i className="mark-fast" aria-hidden="true" /> 最快
                 </span>
               </span>
+              {steadyPicked && (
+                <span className="steady-day" role="status">
+                  {steadyPicked.date.slice(5).replace("-", "/")} · {steadyPicked.bpm} BPM · {steadyPicked.bars} 小节 · ±
+                  {Math.round(steadyPicked.stdevMs)} 毫秒 · 漂移 {steadyPicked.driftMsPerBeat > 0 ? "+" : ""}
+                  {steadyPicked.driftMsPerBeat} 毫秒/拍 · {steadyPicked.hits} 下
+                </span>
+              )}
             </div>
           )}
           <p className="hint">
@@ -2086,8 +2128,33 @@ export default function Stats() {
             <button type="button" className="btn-quiet" onClick={() => goTo("practice", "steady")}>
               再弹一遍
             </button>
+            <button
+              type="button"
+              className="btn-quiet"
+              onClick={() => {
+                if (steadyRuns.length === 0) return;
+                setSteadyUndo(steadyRuns);
+                clearRuns();
+                setSteadyBump((value) => value + 1);
+                setSteadyPick(null);
+              }}
+            >
+              清空记录
+            </button>
           </p>
         </>
+      )}
+
+      {steadyUndo && (
+        <UndoToast
+          message={`清掉了 ${steadyUndo.length} 遍「稳不稳」的记录`}
+          onUndo={() => {
+            restoreRuns(steadyUndo);
+            setSteadyUndo(null);
+            setSteadyBump((value) => value + 1);
+          }}
+          onClose={() => setSteadyUndo(null)}
+        />
       )}
 
       <h3 className="stat-sub">最近战绩</h3>
