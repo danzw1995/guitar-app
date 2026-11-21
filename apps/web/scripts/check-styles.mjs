@@ -1476,6 +1476,12 @@ expect(
   "「顺手弹一遍」「按这个速度再弹一遍」「清掉几遍」都够 40 高",
 );
 
+expect(
+  Number.parseFloat(narrowDecls(".steady-vs").get("font-size")) === 12 &&
+    (narrowDecls(".st-linked").get("color") || "").includes("--green"),
+  "「比上一遍」那行是灰字，「已记到这条练习」是绿字",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

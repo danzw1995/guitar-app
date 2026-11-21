@@ -108,6 +108,6 @@ export function restoreRuns(runs: SteadyRun[]): SteadyRun[] {
   return next;
 }
 
-export function seedSteady(bpm: number, bars: number): void {
-  window.dispatchEvent(new CustomEvent(STEADY_EVENT, { detail: { bpm, bars } }));
+export function seedSteady(bpm: number, bars: number, id?: string): void {
+  window.dispatchEvent(new CustomEvent(STEADY_EVENT, { detail: { bpm, bars, id } }));
 }

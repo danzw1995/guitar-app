@@ -797,6 +797,11 @@ button, select, input { font: inherit; color: inherit; }
   border-radius: 4px;
 }
 
+.steady-vs {
+  flex: 1 1 100%;
+  color: var(--muted);
+  font-size: 12px;
+}
 .steady-day {
   flex: 1 1 100%;
   margin-top: 2px;
@@ -3485,6 +3490,11 @@ button, select, input { font: inherit; color: inherit; }
   font-size: 12px;
 }
 
+.st-linked {
+  margin: 2px 0 0;
+  color: var(--green);
+  font-size: 12px;
+}
 .st-best {
   margin: 10px 0 0;
   color: var(--muted);

@@ -54,6 +54,8 @@ export interface Settings {
   theme: ThemeMode;
   /** 「稳不稳」上次用的速度（40–200）。 */
   steadyBpm: number;
+  /** 「稳不稳」清空时上次选的那档（v0.142.0）：`all` / 5 / 10 */
+  steadyClear: "all" | 5 | 10;
   /** 「稳不稳」上次数的小节数。 */
   steadyBars: number;
 }
@@ -67,6 +69,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tuning: "standard",
   theme: "auto",
   steadyBpm: 70,
+  steadyClear: "all",
   steadyBars: 4,
 };
 
@@ -212,6 +215,11 @@ export interface RhythmRecord {
    */
   spots?: SpotDrill[];
   /**
+   * 这条练习「稳不稳」弹到过的最好成绩（v0.142.0）：标准差最小值，毫秒。
+   * 只有从练习页那条「顺手弹一遍」进去弹的才写回来——面板里直接弹的不知道对应哪一条。
+   */
+  steadyStdev?: number;
+  /**
    * 上次圈住练的那一段（v0.132.0）：第几小节到第几小节。
    *
    * 一圈几小节就是那天的练法，下次打开跟练直接照着圈回去，不用再从头挑一遍。
@@ -314,9 +322,14 @@ function parseRecords(raw: unknown): RhythmRecords {
     const bestBpm = Number(item.bestBpm);
     const spots = parseSpots(item.spots);
     const seg = parseSeg(item.seg);
+    const steadyStdevRaw = Number(item.steadyStdev);
+    const steadyStdev =
+      Number.isFinite(steadyStdevRaw) && steadyStdevRaw > 0 && steadyStdevRaw < 500
+        ? Math.round(steadyStdevRaw * 10) / 10
+        : null;
     // 只单独练过某一处、还没整段练完时 bestBpm 会是 0——这种记录也得留住（v0.113.0）
     if (!Number.isFinite(bestBpm) || bestBpm < 0) continue;
-    if (bestBpm <= 0 && spots.length === 0) continue;
+    if (bestBpm <= 0 && spots.length === 0 && steadyStdev === null) continue;
     records[id] = {
       bestBpm: Math.round(bestBpm),
       sessions: Number.isFinite(Number(item.sessions)) ? Number(item.sessions) : 1,
@@ -326,6 +339,7 @@ function parseRecords(raw: unknown): RhythmRecords {
       hardest: parseHardest(item.hardest),
       ...(spots.length ? { spots } : {}),
       ...(seg ? { seg } : {}),
+      ...(steadyStdev !== null ? { steadyStdev } : {}),
       ...(typeof item.title === "string" && item.title.trim()
         ? { title: item.title.trim() }
         : {}),
@@ -496,6 +510,9 @@ export function loadSettings(): Settings {
   const goal = Number(v.weeklyGoal);
   const weeklyGoal = Number.isFinite(goal) && goal > 0 ? Math.min(600, Math.round(goal)) : 0;
   const tuning = typeof v.tuning === "string" && v.tuning !== "" ? v.tuning : "standard";
+  const steadyClearRaw = v.steadyClear;
+  const steadyClear: "all" | 5 | 10 =
+    steadyClearRaw === 5 || steadyClearRaw === 10 ? steadyClearRaw : "all";
   const steadyBpmRaw = Number(v.steadyBpm);
   const steadyBpm = Number.isFinite(steadyBpmRaw) && steadyBpmRaw >= 40 && steadyBpmRaw <= 200
     ? Math.round(steadyBpmRaw)
@@ -513,6 +530,7 @@ export function loadSettings(): Settings {
     weeklyGoal,
     tuning,
     steadyBpm,
+    steadyClear,
     steadyBars,
     theme,
   };
@@ -527,6 +545,7 @@ export function saveSettings(settings: Settings): void {
     weeklyGoal: settings.weeklyGoal,
     tuning: settings.tuning,
     steadyBpm: settings.steadyBpm,
+    steadyClear: settings.steadyClear,
     steadyBars: settings.steadyBars,
     theme: settings.theme,
   });

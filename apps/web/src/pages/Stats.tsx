@@ -842,7 +842,7 @@ export default function Stats() {
   const [steadyPick, setSteadyPick] = useState<number | null>(null);
   const [steadyUndo, setSteadyUndo] = useState<SteadyRun[] | null>(null);
   /** 清掉多少遍：`all` 或者最近 N 遍（v0.141.0） */
-  const [steadyClear, setSteadyClear] = useState<"all" | 5 | 10>("all");
+  const [steadyClear, setSteadyClear] = useState<"all" | 5 | 10>(() => loadSettings().steadyClear);
   const [steadyRemoved, setSteadyRemoved] = useState(0);
   const steadyRuns = useMemo(() => loadRuns(), [steadyBump]);
   const steadyBest = bestRun(steadyRuns);
@@ -867,6 +867,34 @@ export default function Stats() {
 
   const steadyPicked =
     steadyPick !== null && steadyWinRuns[steadyPick] ? steadyWinRuns[steadyPick] : null;
+  // 这一遍跟上一遍比（v0.142.0）：速度快慢 + 同速时标准差的变化
+  const steadyPickedIndex = steadyPicked ? steadyPick ?? -1 : -1;
+  const steadyPrev = steadyPickedIndex > 0 ? steadyWinRuns[steadyPickedIndex - 1] : undefined;
+  const steadyBpmDelta = steadyPicked && steadyPrev ? steadyPicked.bpm - steadyPrev.bpm : null;
+  const steadySameBpm =
+    steadyPicked && steadyPickedIndex > 0
+      ? [...steadyWinRuns.slice(0, steadyPickedIndex)].reverse().find((run) => run.bpm === steadyPicked.bpm)
+      : undefined;
+  const steadyCompare = !steadyPicked
+    ? ""
+    : [
+        steadyBpmDelta === null || steadyBpmDelta === 0
+          ? steadyBpmDelta === null
+            ? ""
+            : "和上一遍同速"
+          : steadyBpmDelta > 0
+            ? `比上一遍快 ${steadyBpmDelta} BPM`
+            : `比上一遍慢 ${-steadyBpmDelta} BPM`,
+        steadySameBpm
+          ? (() => {
+              const diff = Math.round(steadySameBpm.stdevMs - steadyPicked.stdevMs);
+              const tail = diff === 0 ? "一样稳" : diff > 0 ? `稳了 ${diff} 毫秒` : `散了 ${-diff} 毫秒`;
+              return `同速的那遍 ±${Math.round(steadySameBpm.stdevMs)} 毫秒 → 这次 ±${Math.round(steadyPicked.stdevMs)} 毫秒（${tail}）`;
+            })()
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
   const steadyFastIndex = steadyWindowRuns.length
     ? steadyWindowRuns.reduce((fast, run, index) => (run.bpm > steadyWindowRuns[fast].bpm ? index : fast), 0)
     : -1;
@@ -2124,6 +2152,7 @@ export default function Stats() {
                     {Math.round(steadyPicked.stdevMs)} 毫秒 · 漂移 {steadyPicked.driftMsPerBeat > 0 ? "+" : ""}
                     {steadyPicked.driftMsPerBeat} 毫秒/拍 · {steadyPicked.hits} 下
                   </span>
+                  {steadyCompare && <span className="steady-vs">{steadyCompare}</span>}
                   <button
                     type="button"
                     className="btn-quiet steady-again"
@@ -2152,7 +2181,9 @@ export default function Stats() {
                 value={steadyClear}
                 onChange={(event) => {
                   const raw = event.target.value;
-                  setSteadyClear(raw === "all" ? "all" : (Number(raw) as 5 | 10));
+                  const next: "all" | 5 | 10 = raw === "all" ? "all" : (Number(raw) as 5 | 10);
+                  setSteadyClear(next);
+                  saveSettings({ ...loadSettings(), steadyClear: next });
                 }}
               >
                 <option value="all">全部 {steadyRuns.length} 遍</option>

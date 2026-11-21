@@ -3890,6 +3890,77 @@ try {
   );
   await js(`localStorage.removeItem("guitar.practice.v1")`);
 
+  // 16d43) v0.142.0：明细里说「比上一遍」，清空档位记得住，稳不稳写回那条练习
+  await js(`(() => {
+    const run = (id, date, bpm, stdev) => ({ id, date, bpm, bars: 4, stdevMs: stdev, meanAbsMs: stdev, driftMsPerBeat: 0, hits: 16 });
+    sessionStorage.setItem("chk.steady", localStorage.getItem("guitar.steady.v1") ?? "");
+    sessionStorage.setItem("chk.rhythm", localStorage.getItem("guitar.rhythm.v1") ?? "");
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([
+      run("s-1", "2026-11-18", 60, 20),
+      run("s-2", "2026-11-19", 70, 16),
+      run("s-3", "2026-11-20", 70, 10),
+    ]));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(900);
+  await js(`(() => {
+    const svg = document.querySelector(".steady-svg");
+    const rect = svg?.getBoundingClientRect();
+    if (!rect) return "no-svg";
+    svg.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: rect.left + rect.width - 1, clientY: rect.top + rect.height / 2 }));
+    return "clicked";
+  })()`);
+  await sleep(400);
+  const vsText = js(`(() => document.querySelector(".steady-vs")?.textContent?.replace(/\\s+/g, " ").trim() ?? "no-vs")()`);
+  const vs = String(vsText).replace(/^"|"$/g, "");
+  log(vs.includes("同速") && vs.includes("稳了 6 毫秒"), "统计页：明细里说「这一遍比上一遍」——同速的时候比标准差", vs);
+  await js(`(() => {
+    const pick = document.querySelector(".steady-clear-pick");
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")?.set;
+    setter?.call(pick, "5");
+    pick?.dispatchEvent(new Event("change", { bubbles: true }));
+    return "picked";
+  })()`);
+  await sleep(300);
+  await ab(["reload"]);
+  await sleep(900);
+  const keptClear = js(`(() => document.querySelector(".steady-clear-pick")?.value ?? "no-pick")()`);
+  const kept = String(keptClear).replace(/^"|"$/g, "");
+  log(kept === "5", "统计页：清空那档记得住，刷新之后还是「最近 5 遍」", kept);
+  await js(`localStorage.removeItem("guitar.steady.v1")`);
+
+  await ab(["open", `${URL}/?v=${Date.now()}#practice`]);
+  await sleep(1200);
+  await js(`(() => {
+    const src = document.querySelector(".practice-block img")?.getAttribute("src") ?? "";
+    const id = src.match(/\\/scores\\/([^.?]+)\\.png/)?.[1] ?? "";
+    if (!id) return "no-id";
+    const now = new Date();
+    const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+    localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      ["p:" + id]: { bestBpm: 0, sessions: 0, minutes: 0, lastAt: today, steadyStdev: 7, history: [] },
+    }));
+    return "p:" + id;
+  })()`);
+  await ab(["reload"]);
+  await sleep(1100);
+  const dueText = js(`(() => [...document.querySelectorAll(".pb-due")].map((node) => node.textContent.replace(/\\s+/g, " ").trim()).join(" / "))()`);
+  const due = String(dueText).replace(/^"|"$/g, "");
+  log(due.includes("稳不稳最稳 ±7 毫秒"), "练习页：「顺手弹一遍」的稳不稳写回之后，那条练习会写着最稳多少毫秒", due.includes("稳不稳") ? "due" : due.slice(0, 60) || "no-due");
+  await js(`(() => {
+    const put = (key, stored) => {
+      if (stored) localStorage.setItem(key, stored);
+      else localStorage.removeItem(key);
+    };
+    put("guitar.steady.v1", sessionStorage.getItem("chk.steady"));
+    put("guitar.rhythm.v1", sessionStorage.getItem("chk.rhythm"));
+    sessionStorage.removeItem("chk.steady");
+    sessionStorage.removeItem("chk.rhythm");
+    return "restored";
+  })()`);
+
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);
   await sleep(900);

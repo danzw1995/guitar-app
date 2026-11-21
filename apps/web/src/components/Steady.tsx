@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
 import { recordRun, loadRuns, bestRun, STEADY_EVENT, type SteadyRun } from "../lib/steady";
-import { loadSettings, saveSettings } from "../lib/storage";
+import { loadRhythm, loadSettings, saveRhythm, saveSettings } from "../lib/storage";
 import { parseHash } from "../lib/nav";
 
 type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
@@ -49,10 +49,15 @@ export default function Steady() {
   const [runs, setRuns] = useState<SteadyRun[]>(() => loadRuns());
   const [justSaved, setJustSaved] = useState(false);
 
+  const linkedRef = useRef<string | null>(null);
+  const [linkedNote, setLinkedNote] = useState("");
+
   // 同页喂参数：练习页那条「顺手弹一遍」不用换页，直接改这组数
   useEffect(() => {
     function onSeed(event: Event): void {
-      const detail = (event as CustomEvent<{ bpm?: number; bars?: number }>).detail ?? {};
+      const detail = (event as CustomEvent<{ bpm?: number; bars?: number; id?: string }>).detail ?? {};
+      linkedRef.current = typeof detail.id === "string" && detail.id ? detail.id : null;
+      setLinkedNote("");
       if (Number.isFinite(detail.bpm) && detail.bpm! >= 40 && detail.bpm! <= 200) {
         setBpm(Math.round(detail.bpm!));
       }
@@ -222,6 +227,24 @@ export default function Steady() {
         hits: next.hits.length,
       }),
     );
+    // 从练习页那条进来的，把这次的标准差写回那条练习（v0.142.0）
+    const linkId = linkedRef.current;
+    if (linkId) {
+      const all = loadRhythm();
+      const previous = all[linkId];
+      const today = new Date().toISOString().slice(0, 10);
+      const bestStdev = Math.min(previous?.steadyStdev ?? Number.POSITIVE_INFINITY, next.stdevMs);
+      all[linkId] = {
+        ...previous,
+        bestBpm: previous?.bestBpm ?? 0,
+        sessions: previous?.sessions ?? 0,
+        minutes: previous?.minutes ?? 0,
+        lastAt: previous?.lastAt || today,
+        steadyStdev: Math.round(bestStdev * 10) / 10,
+      };
+      saveRhythm(all);
+      setLinkedNote(`已记到这条练习：最稳 ±${Math.round(bestStdev)} 毫秒`);
+    }
     setJustSaved(true);
   }, [bpm, cleanup]);
 
@@ -341,6 +364,7 @@ export default function Steady() {
             </p>
           )}
                     {justSaved && <p className="st-saved">这一遍已经记下了。</p>}
+                    {linkedNote && <p className="st-linked">{linkedNote}</p>}
         </div>
       )}
 

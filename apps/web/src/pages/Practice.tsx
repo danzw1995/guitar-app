@@ -975,6 +975,9 @@ export default function Practice() {
                     {[
                       block.lastAt ? `上次练 ${block.days} 天前` : "还没练过，今天先见一面",
                       block.boost ? "跟练速度退步了，先补上" : "",
+                      records[followKey(drill.id)]?.steadyStdev
+                        ? `稳不稳最稳 ±${Math.round(records[followKey(drill.id)]!.steadyStdev!)} 毫秒`
+                        : "",
                     ]
                       .filter(Boolean)
                       .join(" · ")}
@@ -1023,7 +1026,7 @@ export default function Practice() {
                 <button
                   type="button"
                   className="pb-steady"
-                  onClick={() => seedSteady(drill.bpm ? drill.bpm[0] : 70, 4)}
+                  onClick={() => seedSteady(drill.bpm ? drill.bpm[0] : 70, 4, followKey(drill.id))}
                 >
                   顺手弹一遍，看稳不稳 →
                 </button>
