@@ -805,6 +805,53 @@ button, select, input { font: inherit; color: inherit; }
   font-variant-numeric: tabular-nums;
 }
 
+.steady-again {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.steady-again:hover {
+  border-color: var(--accent);
+}
+.steady-clear {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.steady-clear-pick {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.pb-steady {
+  align-self: flex-start;
+  margin: 2px 0;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pb-steady:hover {
+  border-color: var(--accent);
+}
+
 .steady-marks {
   display: inline-flex;
   align-items: center;

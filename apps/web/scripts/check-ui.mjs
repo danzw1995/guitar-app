@@ -3734,7 +3734,12 @@ try {
   const steadyPickText = String(steadyPick).replace(/^"|"$/g, "");
   log(steadyPickText === "steady-pick", "统计页：点趋势线能看那一遍的日期、速度、标准差", steadyPickText);
 
-  await js(`[...document.querySelectorAll("button")].find((node) => node.textContent.trim() === "清空记录")?.click()`);
+  await js(`(() => {
+    const box = document.querySelector(".steady-clear");
+    const button = [...(box?.querySelectorAll("button") ?? [])].find((node) => node.textContent.trim() === "清掉");
+    button?.click();
+    return "clicked";
+  })()`);
   await sleep(300);
   const steadyClear = js(`(() => {
     const runs = JSON.parse(localStorage.getItem("guitar.steady.v1") ?? "[]").length;
@@ -3752,6 +3757,138 @@ try {
   const steadyUndoText = String(steadyUndo).replace(/^"|"$/g, "");
   log(steadyUndoText === "restored", "统计页：点「撤销」把清掉的记录放回去", steadyUndoText);
   await js(`localStorage.removeItem("guitar.steady.v1")`);
+
+  // 16d40) v0.141.0：清掉「最近 5 遍」，撤销能放回全部
+  await js(`(() => {
+    const run = (index) => ({
+      id: "s-" + index,
+      date: "2026-11-" + String(10 + index).padStart(2, "0"),
+      bpm: 70,
+      bars: 4,
+      stdevMs: 40 - index * 2,
+      meanAbsMs: 30,
+      driftMsPerBeat: 0,
+      hits: 16,
+    });
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([...Array(8)].map((_, index) => run(index))));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(900);
+  const clearPicked = js(`(() => {
+    const pick = document.querySelector(".steady-clear-pick");
+    if (!pick) return "no-pick";
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")?.set;
+    setter?.call(pick, "5");
+    pick.dispatchEvent(new Event("change", { bubbles: true }));
+    return "picked";
+  })()`);
+  await sleep(300);
+  await js(`(() => {
+    const box = document.querySelector(".steady-clear");
+    const button = [...(box?.querySelectorAll("button") ?? [])].find((node) => node.textContent.trim() === "清掉");
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    return "clicked";
+  })()`);
+  await sleep(400);
+  const clearState = js(`(() => {
+    const rows = JSON.parse(localStorage.getItem("guitar.steady.v1") || "[]");
+    const toast = document.querySelector(".undo-toast")?.textContent?.replace(/\\s+/g, " ").trim() ?? "";
+    const ok = toast.includes("清掉了 5 遍") && toast.includes("还剩 3 遍") ? "toast" : toast || "no-toast";
+    return rows.length + "|" + ok;
+  })()`);
+  const clearText = String(clearState).replace(/^"|"$/g, "");
+  log(clearText === "3|toast", "统计页：清「最近 5 遍」只清 5 遍，提示条说清还剩几遍", clearText);
+  await js(`(() => {
+    const button = [...document.querySelectorAll(".undo-toast button")].find((node) => node.textContent.trim() === "撤销");
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    return "undo";
+  })()`);
+  await sleep(400);
+  const clearedUndo = js(`(() => String(JSON.parse(localStorage.getItem("guitar.steady.v1") || "[]").length))()`);
+  const clearedUndoText = String(clearedUndo).replace(/^"|"$/g, "");
+  log(clearedUndoText === "8", "统计页：撤销把清掉的 5 遍放回全部 8 遍", clearedUndoText);
+  await js(`localStorage.removeItem("guitar.steady.v1")`);
+
+  // 16d41) v0.141.0：点过的那一遍能「按这个速度再弹一遍」，回到练习页且速度已填好
+  await js(`(() => {
+    const run = (id, date, bpm, bars) => ({ id, date, bpm, bars, stdevMs: 18, meanAbsMs: 16, driftMsPerBeat: 0, hits: 16 });
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([
+      run("s-1", "2026-11-18", 70, 4),
+      run("s-2", "2026-11-21", 88, 2),
+    ]));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(900);
+  await js(`(() => {
+    const svg = document.querySelector(".steady-svg");
+    const rect = svg?.getBoundingClientRect();
+    if (!rect) return "no-svg";
+    svg.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: rect.left + rect.width - 1, clientY: rect.top + rect.height / 2 }));
+    return "clicked";
+  })()`);
+  await sleep(300);
+  await js(`(() => {
+    const button = [...document.querySelectorAll(".steady-again")].find(Boolean);
+    button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    return "again";
+  })()`);
+  await sleep(900);
+  const againState = js(`(() => {
+    const bpmInput = document.querySelector(".st-controls input[type=number]");
+    return [
+      document.querySelector(".panel-head h2")?.textContent?.trim() ?? "",
+      document.querySelector(".steady-bpm")?.textContent ?? "",
+      bpmInput ? bpmInput.value : "no-input",
+      document.querySelector("#steady") ? "panel" : "no-panel",
+    ].join("|");
+  })()`);
+  const againText = String(againState).replace(/^"|"$/g, "");
+  log(
+    againText.endsWith("|88|panel"),
+    "统计页：点过的那一遍能「按这个速度再弹一遍」，练习页的速度已经填成 88",
+    againText,
+  );
+  await js(`localStorage.removeItem("guitar.steady.v1")`);
+
+  // 16d42) v0.141.0：勾掉一条之后，旁边给「顺手弹一遍，看稳不稳」
+  await js(`localStorage.removeItem("guitar.practice.v1")`);
+  await ab(["open", `${URL}/?v=${Date.now()}#practice`]);
+  await sleep(1200);
+  const planIds = js(`(() => {
+    const ids = [...document.querySelectorAll(".practice-block img")]
+      .map((node) => (node.getAttribute("src") || "").match(/\\/scores\\/([^.?]+)\\.png/)?.[1] ?? "")
+      .filter(Boolean);
+    const now = new Date();
+    const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+    localStorage.setItem("guitar.practice.v1", JSON.stringify({ [today]: { minutes: 12, stage: 0, done: ids, feel: "ok" } }));
+    return ids.length ? "seeded" : "no-ids";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1000);
+  const steadyChip = js(`(() => {
+    const chip = document.querySelector(".pb-steady");
+    if (!chip) return "no-chip";
+    chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    return "chip";
+  })()`);
+  await sleep(700);
+  const chipState = js(`(() => {
+    const input = document.querySelector(".st-controls input[type=number]");
+    return input ? input.value : "no-input";
+  })()`);
+  const chipLabel = String(steadyChip).replace(/^"|"$/g, "");
+  const chipText = String(chipState).replace(/^"|"$/g, "");
+  const planSeed = String(planIds).replace(/^"|"$/g, "");
+  log(
+    planSeed === "seeded" && chipLabel === "chip" && /^\d+$/.test(chipText),
+    "练习页：勾掉一条之后「顺手弹一遍」能点，面板速度跟着填好",
+    planSeed + "|" + chipLabel + "|" + chipText,
+  );
+  await js(`localStorage.removeItem("guitar.practice.v1")`);
 
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);

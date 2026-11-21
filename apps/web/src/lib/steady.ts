@@ -5,6 +5,8 @@
  */
 
 export const STEADY_KEY = "guitar.steady.v1";
+/** 在页面内给「稳不稳」面板喂一组速度 / 小节数（v0.141.0） */
+export const STEADY_EVENT = "guitar:steady";
 export const MAX_RUNS = 24;
 
 export interface SteadyRun {
@@ -104,4 +106,8 @@ export function restoreRuns(runs: SteadyRun[]): SteadyRun[] {
   const next = runs.slice(-MAX_RUNS);
   persist(next);
   return next;
+}
+
+export function seedSteady(bpm: number, bars: number): void {
+  window.dispatchEvent(new CustomEvent(STEADY_EVENT, { detail: { bpm, bars } }));
 }

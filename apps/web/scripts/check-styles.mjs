@@ -1469,6 +1469,13 @@ expect(
   "趋势线（点一下看那一遍）有手型光标，明细自占一行",
 );
 
+expect(
+  Number.parseFloat(narrowDecls(".pb-steady").get("min-height")) >= 40 &&
+    Number.parseFloat(narrowDecls(".steady-again").get("min-height")) >= 40 &&
+    Number.parseFloat(narrowDecls(".steady-clear-pick").get("min-height")) >= 40,
+  "「顺手弹一遍」「按这个速度再弹一遍」「清掉几遍」都够 40 高",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

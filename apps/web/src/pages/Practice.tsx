@@ -79,6 +79,7 @@ import UndoToast from "../components/UndoToast";
 import Steady from "../components/Steady";
 import { useTone } from "../hooks/useTone";
 import { meterOfTab } from "../lib/meter";
+import { seedSteady } from "../lib/steady";
 
 /** 秒 → mm:ss。 */
 function clock(totalSeconds: number): string {
@@ -1017,6 +1018,16 @@ export default function Practice() {
                   {isDone ? "已勾" : "完成"}
                 </button>
               </div>
+
+              {isDone && (
+                <button
+                  type="button"
+                  className="pb-steady"
+                  onClick={() => seedSteady(drill.bpm ? drill.bpm[0] : 70, 4)}
+                >
+                  顺手弹一遍，看稳不稳 →
+                </button>
+              )}
 
               <TabScore id={drill.id} tab={drill.tab} beat={beatOf(drill.id)} />
 

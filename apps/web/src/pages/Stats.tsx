@@ -27,7 +27,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
-import { bestRun, clearRuns, loadRuns, restoreRuns, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
+import { bestRun, loadRuns, restoreRuns, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -841,6 +841,9 @@ export default function Stats() {
   const [steadyBump, setSteadyBump] = useState(0);
   const [steadyPick, setSteadyPick] = useState<number | null>(null);
   const [steadyUndo, setSteadyUndo] = useState<SteadyRun[] | null>(null);
+  /** 清掉多少遍：`all` 或者最近 N 遍（v0.141.0） */
+  const [steadyClear, setSteadyClear] = useState<"all" | 5 | 10>("all");
+  const [steadyRemoved, setSteadyRemoved] = useState(0);
   const steadyRuns = useMemo(() => loadRuns(), [steadyBump]);
   const steadyBest = bestRun(steadyRuns);
   const steadyLast = steadyRuns[steadyRuns.length - 1] ?? null;
@@ -2115,11 +2118,25 @@ export default function Stats() {
                 </span>
               </span>
               {steadyPicked && (
-                <span className="steady-day" role="status">
-                  {steadyPicked.date.slice(5).replace("-", "/")} · {steadyPicked.bpm} BPM · {steadyPicked.bars} 小节 · ±
-                  {Math.round(steadyPicked.stdevMs)} 毫秒 · 漂移 {steadyPicked.driftMsPerBeat > 0 ? "+" : ""}
-                  {steadyPicked.driftMsPerBeat} 毫秒/拍 · {steadyPicked.hits} 下
-                </span>
+                <>
+                  <span className="steady-day" role="status">
+                    {steadyPicked.date.slice(5).replace("-", "/")} · {steadyPicked.bpm} BPM · {steadyPicked.bars} 小节 · ±
+                    {Math.round(steadyPicked.stdevMs)} 毫秒 · 漂移 {steadyPicked.driftMsPerBeat > 0 ? "+" : ""}
+                    {steadyPicked.driftMsPerBeat} 毫秒/拍 · {steadyPicked.hits} 下
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-quiet steady-again"
+                    onClick={() =>
+                      goTo("practice", "steady", {
+                        sb: String(steadyPicked.bpm),
+                        sbar: String(steadyPicked.bars),
+                      })
+                    }
+                  >
+                    按这个速度再弹一遍
+                  </button>
+                </>
               )}
             </div>
           )}
@@ -2128,26 +2145,43 @@ export default function Stats() {
             <button type="button" className="btn-quiet" onClick={() => goTo("practice", "steady")}>
               再弹一遍
             </button>
-            <button
-              type="button"
-              className="btn-quiet"
-              onClick={() => {
-                if (steadyRuns.length === 0) return;
-                setSteadyUndo(steadyRuns);
-                clearRuns();
-                setSteadyBump((value) => value + 1);
-                setSteadyPick(null);
-              }}
-            >
-              清空记录
-            </button>
+            <span className="steady-clear">
+              <select
+                className="steady-clear-pick"
+                aria-label="清掉多少遍「稳不稳」的记录"
+                value={steadyClear}
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  setSteadyClear(raw === "all" ? "all" : (Number(raw) as 5 | 10));
+                }}
+              >
+                <option value="all">全部 {steadyRuns.length} 遍</option>
+                <option value="5">最近 5 遍</option>
+                <option value="10">最近 10 遍</option>
+              </select>
+              <button
+                type="button"
+                className="btn-quiet"
+                onClick={() => {
+                  if (steadyRuns.length === 0) return;
+                  const removeCount = steadyClear === "all" ? steadyRuns.length : Math.min(steadyClear, steadyRuns.length);
+                  setSteadyUndo(steadyRuns);
+                  setSteadyRemoved(removeCount);
+                  restoreRuns(steadyRuns.slice(0, steadyRuns.length - removeCount));
+                  setSteadyBump((value) => value + 1);
+                  setSteadyPick(null);
+                }}
+              >
+                清掉
+              </button>
+            </span>
           </p>
         </>
       )}
 
       {steadyUndo && (
         <UndoToast
-          message={`清掉了 ${steadyUndo.length} 遍「稳不稳」的记录`}
+          message={`清掉了 ${steadyRemoved} 遍「稳不稳」的记录（还剩 ${Math.max(0, steadyUndo.length - steadyRemoved)} 遍）`}
           onUndo={() => {
             restoreRuns(steadyUndo);
             setSteadyUndo(null);

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
-import { recordRun, loadRuns, bestRun, type SteadyRun } from "../lib/steady";
+import { recordRun, loadRuns, bestRun, STEADY_EVENT, type SteadyRun } from "../lib/steady";
 import { loadSettings, saveSettings } from "../lib/storage";
+import { parseHash } from "../lib/nav";
 
 type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
 
@@ -26,14 +27,49 @@ function clickAt(ctx: AudioContext, at: number, accent: boolean): void {
 export default function Steady() {
   // 记住上次的速度与小节数：每次打开都要重填，练同一段时很烦
   const initial = loadSettings();
-  const [bpm, setBpm] = useState(initial.steadyBpm);
-  const [bars, setBars] = useState(initial.steadyBars);
+  /**
+   * 从统计页那枚「按这个速度再弹一遍」带过来的种子（`#practice/steady?sb=80&sbar=4`）。
+   * 读一次就好——挂载时的 hash 就是全部依据。
+   */
+  const seeded = useMemo(() => {
+    const query = parseHash(window.location.hash)?.query ?? {};
+    const bpmValue = Number(query.sb);
+    const barsValue = Number(query.sbar);
+    return {
+      bpm: Number.isFinite(bpmValue) && bpmValue >= 40 && bpmValue <= 200 ? Math.round(bpmValue) : null,
+      bars: [2, 4, 6, 8].includes(barsValue) ? barsValue : null,
+    };
+  }, []);
+  const [bpm, setBpm] = useState(seeded.bpm ?? initial.steadyBpm);
+  const [bars, setBars] = useState(seeded.bars ?? initial.steadyBars);
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [report, setReport] = useState<TimingReport | null>(null);
   const [error, setError] = useState("");
   const [runs, setRuns] = useState<SteadyRun[]>(() => loadRuns());
   const [justSaved, setJustSaved] = useState(false);
+
+  // 同页喂参数：练习页那条「顺手弹一遍」不用换页，直接改这组数
+  useEffect(() => {
+    function onSeed(event: Event): void {
+      const detail = (event as CustomEvent<{ bpm?: number; bars?: number }>).detail ?? {};
+      if (Number.isFinite(detail.bpm) && detail.bpm! >= 40 && detail.bpm! <= 200) {
+        setBpm(Math.round(detail.bpm!));
+      }
+      if (detail.bars && [2, 4, 6, 8].includes(detail.bars)) setBars(detail.bars);
+      document.getElementById("steady")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+    window.addEventListener(STEADY_EVENT, onSeed);
+    return () => window.removeEventListener(STEADY_EVENT, onSeed);
+  }, []);
+
+  // 种子只用一次：留着 `?sb=&sbar=`，刷新会又把它盖回上次存的值
+  useEffect(() => {
+    if (seeded.bpm === null && seeded.bars === null) return;
+    if (window.location.hash !== "#practice/steady") {
+      window.history.replaceState(null, "", "#practice/steady");
+    }
+  }, [seeded]);
 
   const ctxRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
