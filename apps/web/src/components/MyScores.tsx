@@ -4,8 +4,11 @@ import {
   SHARP_NAMES,
   STANDARD_TUNING,
   degreeInKey,
+  noteName,
+  positionsFor,
   tabToAlphaTex,
   type Tab,
+  type TabNote,
 } from "@guitar/core";
 import type { FollowTarget } from "./FollowAlong";
 import type { ScoreImage } from "../lib/score-image";
@@ -272,6 +275,52 @@ function ScoreCard({
     setEditing(false);
   }
 
+  // 扒出来的谱可以逐音改（v0.134.0）：扒错一个音没必要整条重来
+  const canEditNotes = storedSource === "transcribe" && !!earTab && !!tab;
+  const [fixing, setFixing] = useState(false);
+  const [draftNotes, setDraftNotes] = useState<TabNote[] | null>(null);
+  const editingNotes = fixing && draftNotes ? draftNotes : null;
+
+  function openFix() {
+    if (!tab) return;
+    setDraftNotes(tab.notes.map((note) => ({ ...note })));
+    setFixing(true);
+  }
+
+  function patchNote(index: number, patch: Partial<TabNote> | null) {
+    setDraftNotes((list) => {
+      if (!list) return list;
+      const next = list.slice();
+      if (patch === null) next.splice(index, 1);
+      else next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  }
+
+  /** 同一个音高在别的弦上按是什么样（换弦要把品一起换，否则音就变了） */
+  function otherShape(s: number, f: number): { s: number; f: number } | null {
+    const midi = STANDARD_TUNING.strings[s - 1] + f;
+    const options = positionsFor(midi, 15).filter((item) => item.s !== s || item.f !== f);
+    return options[0] ?? null;
+  }
+
+  function saveNotes() {
+    if (!earTab || !draftNotes) return;
+    const notes = draftNotes
+      .slice()
+      .sort((left, right) => left.beat - right.beat || left.s - right.s);
+    updateScore(score.id, {
+      title: score.title,
+      ascii: score.ascii,
+      tab: { ...earTab, notes },
+      meter,
+      bpm,
+    });
+    window.dispatchEvent(new Event("guitar:scores"));
+    setFixing(false);
+    setDraftNotes(null);
+  }
+
   /** 级数按哪个调算：null = 跟着第一个和弦的根音（v0.95.0）；选过的记在这条记录上（v0.96.0）。 */
   const [keyPick, setKeyPick] = useState<number | null>(score.keyPc ?? null);
   // 和弦谱：按拍把音归回一个个和弦，点一下单独听那一个（v0.87.0）；级数跟着调走（v0.94.0）
@@ -313,7 +362,7 @@ function ScoreCard({
               ? "从一段扫弦切出来的和弦谱 · 只能试听、导出，不能编辑"
               : storedSource === "slice"
                 ? "从跟练里切出来的一小节 · 只能试听、导出，不能编辑"
-                : "扒出来的 · 只能试听、导出，不能编辑"}
+                : "扒出来的 · 能试听、导出，也能逐音改（点「改音」）"}
         </p>
       )}
       {storedSource === "chord" && score.chordName ? (
@@ -382,6 +431,89 @@ function ScoreCard({
           <button type="button" className="btn" onClick={saveTiming}>
             存
           </button>
+        </div>
+      )}
+      {canEditNotes && (
+        <div className="my-note-edit">
+          {!fixing ? (
+            <button type="button" className="btn-quiet my-note-open" onClick={openFix}>
+              改音
+            </button>
+          ) : (
+            <>
+              <p className="my-note-head">
+                哪个音不对就改哪个：品数错了调品，弦按错了换弦。改完点「存下改动」，图会重画。
+              </p>
+              <ol className="my-note-list">
+                {(editingNotes ?? []).map((note, index) => {
+                  const midi = STANDARD_TUNING.strings[note.s - 1] + note.f;
+                  const alt = otherShape(note.s, note.f);
+                  return (
+                    <li key={`${note.s}-${note.f}-${note.beat}-${index}`} className="my-note-row">
+                      <span className="my-note-at">第 {Math.floor(note.beat) + 1} 拍</span>
+                      <span className="my-note-pos">
+                        {note.s} 弦 {note.f === 0 ? "空弦" : `${note.f} 品`}
+                      </span>
+                      <span className="my-note-pitch">{noteName(midi)}</span>
+                      <span className="my-note-buttons">
+                        <button
+                          type="button"
+                          className="btn-quiet my-note-btn"
+                          aria-label={`第 ${Math.floor(note.beat) + 1} 拍降一品`}
+                          disabled={note.f === 0}
+                          onClick={() => patchNote(index, { f: Math.max(0, note.f - 1) })}
+                        >
+                          − 品
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-quiet my-note-btn"
+                          aria-label={`第 ${Math.floor(note.beat) + 1} 拍升一品`}
+                          disabled={note.f >= 15}
+                          onClick={() => patchNote(index, { f: Math.min(15, note.f + 1) })}
+                        >
+                          + 品
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-quiet my-note-btn"
+                          aria-label={`第 ${Math.floor(note.beat) + 1} 拍换到别的弦上`}
+                          disabled={!alt}
+                          onClick={() => alt && patchNote(index, alt)}
+                        >
+                          换弦
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-quiet my-note-btn"
+                          aria-label={`删掉第 ${Math.floor(note.beat) + 1} 拍这个音`}
+                          onClick={() => patchNote(index, null)}
+                        >
+                          去掉
+                        </button>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+              <div className="my-note-actions">
+                <button type="button" className="btn primary" onClick={saveNotes}>
+                  存下改动
+                </button>
+                <button
+                  type="button"
+                  className="btn-quiet"
+                  onClick={() => {
+                    setFixing(false);
+                    setDraftNotes(null);
+                  }}
+                >
+                  不改了
+                </button>
+                <span className="my-note-count">共 {(editingNotes ?? []).length} 个音</span>
+              </div>
+            </>
+          )}
         </div>
       )}
       {parsed?.error ? (

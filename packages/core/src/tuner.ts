@@ -30,6 +30,52 @@ export const TUNER_STRINGS: TuningString[] = STANDARD_TUNING.strings
   }))
   .sort((a, b) => b.string - a.string);
 
+/** 一套调弦：`strings` 是 6 弦到 1 弦的 MIDI 编号 */
+export interface TuningPreset {
+  id: string;
+  /** 界面上按钮的文字 */
+  label: string;
+  /** 六个音名，按 6 弦 → 1 弦写，跟吉他手念的顺序一致 */
+  detail: string;
+  strings: number[];
+}
+
+/**
+ * 常用的几套调弦。
+ *
+ * 标准那套从 `STANDARD_TUNING` 推出来，不另写一份；其余几套直接写死六个 MIDI——
+ * 它们本来就是「把某几根弦挪几个半音」，写成整数比写音名好核对。
+ */
+export const TUNING_PRESETS: TuningPreset[] = [
+  {
+    id: "standard",
+    label: "标准",
+    detail: "E A D G B E",
+    strings: TUNER_STRINGS.map((item) => item.midi),
+  },
+  { id: "dropD", label: "Drop D", detail: "D A D G B E", strings: [38, 45, 50, 55, 59, 64] },
+  { id: "halfDown", label: "降半音", detail: "Eb Ab Db Gb Bb Eb", strings: [39, 44, 49, 54, 58, 63] },
+  { id: "openG", label: "开放 G", detail: "D G D G B D", strings: [38, 43, 50, 55, 59, 62] },
+];
+
+/** 按 id 取一套调弦，认不出来就用标准调弦（存下来的 id 可能是旧版本写的） */
+export function tuningPreset(id: string): TuningPreset {
+  return TUNING_PRESETS.find((preset) => preset.id === id) ?? TUNING_PRESETS[0];
+}
+
+/** 把一套调弦翻成「每根弦的目标」，形状跟 `TUNER_STRINGS` 一样，可以直接喂给 `tunerReading` */
+export function stringsOf(preset: TuningPreset = TUNING_PRESETS[0]): TuningString[] {
+  return preset.strings
+    .map((midi, index) => ({
+      // `strings` 是 6 弦 → 1 弦，index 0 是 6 弦
+      string: preset.strings.length - index,
+      name: SHARP_NAMES[((midi % 12) + 12) % 12],
+      octave: Math.floor(midi / 12) - 1,
+      midi,
+    }))
+    .sort((a, b) => b.string - a.string);
+}
+
 /** MIDI 编号 → 频率（A4 = 69 = 440Hz） */
 export function frequencyOfMidi(midi: number): number {
   return 440 * Math.pow(2, (midi - 69) / 12);
@@ -64,11 +110,11 @@ export interface StringReading {
   cents: number;
 }
 
-/** 离这个频率最近的那根空弦（只看音分距离，跨八度也算） */
-export function nearestString(freq: number): StringReading | null {
+/** 离这个频率最近的那根空弦（只看音分距离，跨八度也算）。不传 `strings` 就用标准调弦。 */
+export function nearestString(freq: number, strings: TuningString[] = TUNER_STRINGS): StringReading | null {
   if (!(freq > 0)) return null;
   let best: StringReading | null = null;
-  for (const item of TUNER_STRINGS) {
+  for (const item of strings) {
     const target = frequencyOfMidi(item.midi);
     const cents = centsOff(freq, target);
     if (!best || Math.abs(cents) < Math.abs(best.cents)) {
@@ -101,7 +147,11 @@ export const STRING_RANGE_CENTS = 250;
  * 注意「最近的音名」和「最近的空弦」不是一回事：E2 高了 60 音分，最近的音名已经是 F2，
  * 但你要调的仍然是 6 弦（偏低 60 音分）。所以提示以**弦**为准，音名只用来兜底。
  */
-export function tunerReading(freq: number, toleranceCents = 5): TunerReading | null {
+export function tunerReading(
+  freq: number,
+  toleranceCents = 5,
+  strings: TuningString[] = TUNER_STRINGS,
+): TunerReading | null {
   if (!(freq > 0) || !Number.isFinite(freq)) return null;
 
   const midi = midiOfFrequency(freq);
@@ -109,7 +159,7 @@ export function tunerReading(freq: number, toleranceCents = 5): TunerReading | n
   const note = SHARP_NAMES[((nearestMidi % 12) + 12) % 12];
   const octave = Math.floor(nearestMidi / 12) - 1;
 
-  const string = nearestString(freq);
+  const string = nearestString(freq, strings);
   const usable = string && Math.abs(string.cents) <= STRING_RANGE_CENTS ? string : null;
 
   if (!usable) {
@@ -119,7 +169,7 @@ export function tunerReading(freq: number, toleranceCents = 5): TunerReading | n
       octave,
       string: null,
       inTune: false,
-      hint: "离标准调弦的六根空弦都有点远——弹单根空弦试试",
+      hint: "离这套调弦的空弦都有点远——弹单根空弦试试",
     };
   }
 

@@ -574,6 +574,22 @@ button, select, input { font: inherit; color: inherit; }
   background: var(--muted);
   transition: width 90ms linear;
 }
+.tuner-tunings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.tuner-tunings-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.tuner-tunings .chip {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 12px;
+}
 .tuner-strings {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -3441,6 +3457,97 @@ button, select, input { font: inherit; color: inherit; }
   margin: 0 0 8px;
   color: var(--muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.my-note-edit {
+  margin: 0 0 10px;
+}
+.my-note-open {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.my-note-open:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.my-note-head {
+  margin: 0 0 8px;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 12px;
+}
+.my-note-list {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.my-note-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 6px 10px;
+  border-left: 2px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 0 8px 8px 0;
+  font-size: 12px;
+}
+.my-note-at,
+.my-note-pos,
+.my-note-pitch {
+  font-variant-numeric: tabular-nums;
+}
+.my-note-at {
+  color: var(--muted);
+  min-width: 48px;
+}
+.my-note-pitch {
+  color: var(--accent);
+}
+.my-note-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: auto;
+}
+.my-note-btn {
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.my-note-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.my-note-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.my-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.my-note-count {
+  color: var(--muted);
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 .my-pattern .tab-score {

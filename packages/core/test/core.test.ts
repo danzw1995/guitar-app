@@ -51,7 +51,9 @@ import {
   mondayOf,
   nearestString,
   smoothFreqs,
+  stringsOf,
   tunerReading,
+  tuningPreset,
   weekSummaryOf,
   goalProgress,
   weekPace,
@@ -2508,6 +2510,46 @@ test("调音器：读数以弦为准，音名只兜底", () => {
 
   assert.equal(tunerReading(0), null);
   assert.equal(tunerReading(Number.NaN), null);
+});
+
+test("调音器：换一套调弦，6 弦就不是 E2 了", () => {
+  const standard = stringsOf(tuningPreset("standard"));
+  const dropD = stringsOf(tuningPreset("dropD"));
+  assert.equal(standard.length, 6);
+  assert.deepEqual(
+    standard.map((item) => item.midi),
+    [40, 45, 50, 55, 59, 64],
+    "标准调弦从 6 弦到 1 弦：E2 A2 D3 G3 B3 E4",
+  );
+
+  const sixth = dropD.find((item) => item.string === 6);
+  assert.equal(sixth?.midi, 38, "Drop D 的 6 弦降到 D2");
+  assert.equal(sixth?.name, "D");
+  assert.equal(sixth?.octave, 2);
+
+  // 弹一个 D2：标准调弦里它是「6 弦偏低 200 音分」，Drop D 里就是准的
+  const d2 = frequencyOfMidi(38);
+  assert.equal(tunerReading(d2, 5, standard)?.string?.string, 6);
+  assert.equal(tunerReading(d2, 5, standard)?.inTune, false);
+  const dropped = tunerReading(d2, 5, dropD);
+  assert.equal(dropped?.inTune, true);
+  assert.equal(dropped?.hint, "6 弦 D2 准了");
+
+  // 降半音：整套往下挪一个半音，1 弦成了 Eb4
+  const half = stringsOf(tuningPreset("halfDown"));
+  const first = half.find((item) => item.string === 1);
+  assert.equal(first?.midi, 63);
+  assert.equal(first?.name, "D#");
+
+  // 开放 G：6 弦 D2、5 弦 G2、1 弦 D4
+  const openG = stringsOf(tuningPreset("openG"));
+  assert.deepEqual(
+    openG.map((item) => item.midi),
+    [38, 43, 50, 55, 59, 62],
+  );
+
+  // 认不出来的 id 退回标准（存下来的 id 可能来自旧版本）
+  assert.equal(tuningPreset("不存在的调弦").id, "standard");
 });
 
 test("调音器：从采样里找基频（静音不硬给一个音）", () => {

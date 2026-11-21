@@ -603,9 +603,51 @@ try {
       earCard.includes("试听") &&
       earCard.includes("导出 PNG") &&
       !earCard.includes("编辑"),
-    "我的谱：扒出来的谱也在列表里，只读（没有「编辑」）",
+    "我的谱：扒出来的谱也在列表里（带说明、没有「编辑」）",
     earCard,
   );
+  js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
+
+  // 9a2b) 扒出来的谱能逐音改：点「改音」→ 第一行升一品 → 存下改动，写回记录
+  js(
+    `(() => { localStorage.setItem('guitar.scores.v1', JSON.stringify([{ id: 'my-fix1', title: '扒谱 · 试改', ascii: '', source: 'transcribe', tab: { beatsPerBar: 4, bars: 1, notes: [{ s: 2, f: 1, beat: 0, dur: 1 }, { s: 1, f: 0, beat: 1, dur: 1 }, { s: 1, f: 3, beat: 2, dur: 1 }] }, meter: '4/4', bpm: 90, createdAt: Date.now() }])); return 'ok'; })()`,
+  );
+  ab(["reload"]);
+  await sleep(900);
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js(
+    "(() => { document.querySelector('.my-card')?.scrollIntoView({ block: 'center' }); return 'ok'; })()",
+  );
+  await sleep(600);
+  js("(() => { document.querySelector('.my-note-open')?.click(); return 'ok'; })()");
+  await sleep(400);
+  const fixPanel = String(
+    js(
+      "(() => { const rows = [...document.querySelectorAll('.my-note-row')].map(n => n.querySelector('.my-note-pos')?.textContent?.trim() ?? ''); const btns = [...document.querySelectorAll('.my-note-row:first-child .my-note-btn')].map(n => n.textContent.trim()).join(','); return [rows.length, rows[0] ?? '', btns].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    fixPanel.startsWith("3|2 弦 1 品|") && fixPanel.includes("换弦") && fixPanel.includes("去掉"),
+    "我的谱：扒出来的谱能改音（逐行列出弦和品）",
+    fixPanel,
+  );
+  js(
+    "(() => { const btn = [...document.querySelectorAll('.my-note-row:first-child .my-note-btn')].find(n => n.textContent.includes('+ 品')); btn?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+  js(
+    "(() => { const btn = [...document.querySelectorAll('.my-note-actions button')].find(n => n.textContent.includes('存下改动')); btn?.click(); return 'ok'; })()",
+  );
+  await sleep(1600);
+  const fixed = String(
+    js(
+      "(() => { const list = JSON.parse(localStorage.getItem('guitar.scores.v1') ?? '[]'); const card = list.find(i => i.id === 'my-fix1'); const first = card?.tab?.notes?.[0]; return [first ? `${first.s}:${first.f}` : 'none', document.querySelector('.my-note-row') ? 'open' : 'closed'].join('|'); })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(fixed === "2:2|closed", "我的谱：改完点「存下改动」，品数写回记录、面板收起", fixed);
   js("(() => { localStorage.removeItem('guitar.scores.v1'); return 'ok'; })()");
 
   // 9a3) 我的谱里的和弦卡能跳回和弦页看指法（#chords/chord-Am）
@@ -3670,6 +3712,33 @@ try {
     "调音页：点「开始」后要么在听，要么说清为什么听不了",
     tunerState.tip.slice(0, 40) || tunerState.hint,
   );
+
+  // 16e2) 调弦预设：默认标准，切到 Drop D 后 6 弦变成 D2，选择记在设置里
+  const tuningChips = String(
+    js(
+      "(() => [...document.querySelectorAll('.tuner-tunings .chip')].map(n => n.textContent.trim() + (n.getAttribute('aria-pressed') === 'true' ? '*' : '')).join(','))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.tuner-tunings .chip')].find(n => n.textContent.trim() === 'Drop D'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const dropD = String(
+    js(
+      `(() => { const first = document.querySelector('.tuner-string')?.getAttribute('aria-label') ?? ''; const foot = document.querySelector('.tuner-foot')?.textContent ?? ''; const settings = JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}'); return [first, foot.includes('Drop D') ? 'drop' : 'nodrop', settings.tuning ?? 'none'].join('|'); })()`,
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    tuningChips.startsWith("标准*,Drop D") &&
+      dropD.startsWith("6 弦 D2") &&
+      dropD.endsWith("|drop|dropD"),
+    "调音页：换一套调弦，六根弦的目标音跟着变，选择记在设置里",
+    `${tuningChips} → ${dropD}`,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.tuner-tunings .chip')].find(n => n.textContent.trim() === '标准'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
 
 
 

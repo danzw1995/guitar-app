@@ -13,6 +13,11 @@ import { isValidDateKey } from "@guitar/core";
  * - 今天跳过的练习：同一天取并集（不因为导入把「今天不想练」又冒出来）；
  * - 这一周先不练：同一条取更晚的截止日（不会因为导入提前恢复）；
  * - 和弦转换：跟跟练同一套规则（最快速度取高、日期取晚）；
+ * - 今日加餐：按 id 去重（两边都留，最多 20 条）；
+ * - 存的组合：同名以更新那份为准（跟 `saveSet` 的覆盖语义一致），最多 5 套；
+ * - 今天练过哪几条：同一天取并集，不同天取更晚的；
+ * - 存的视角：按 id 去重、同名只留一枚，最多 5 个；
+ * - 收起的分组：哪边收起就算收起（不会因为导入又弹开）；
  * - 设置 / 音量 / 新手引导：以导入的为准（换设备时要恢复的就是这些）。
  */
 
@@ -31,6 +36,11 @@ export const BACKUP_KEYS = [
   "guitar.goals.v1",
   "guitar.ear.v1",
   "guitar.patterns.v1",
+  "guitar.plan.v1",
+  "guitar.plan.sets.v1",
+  "guitar.plan.done.v1",
+  "guitar.stats.views.v1",
+  "guitar.extras.closed.v1",
 ] as const;
 
 export type BackupKey = (typeof BACKUP_KEYS)[number];
@@ -295,6 +305,97 @@ function mergeEar(a: unknown, b: unknown): Record<string, unknown> {
   return out;
 }
 
+/** 今日加餐：按 id 去重，两边都留（读的时候按当天筛，历史日期留着也无害）。 */
+function mergePlanExtras(a: unknown, b: unknown): unknown[] {
+  const out: unknown[] = [];
+  const seen = new Set<string>();
+  for (const source of [a, b]) {
+    if (!Array.isArray(source)) continue;
+    for (const item of source) {
+      if (!isDict(item) || typeof item.id !== "string" || item.id === "") continue;
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      out.push(item);
+    }
+  }
+  return out
+    .sort(
+      (left, right) =>
+        num((left as { addedAt?: number }).addedAt) - num((right as { addedAt?: number }).addedAt),
+    )
+    .slice(-20);
+}
+
+/** 存的组合：同一个名字以更新那份为准（跟 `saveSet` 的覆盖语义一致），最多 5 套。 */
+function mergePlanSets(a: unknown, b: unknown): unknown[] {
+  const byName = new Map<string, Dict>();
+  for (const source of [a, b]) {
+    if (!Array.isArray(source)) continue;
+    for (const item of source) {
+      if (!isDict(item) || typeof item.name !== "string") continue;
+      const name = item.name.trim().slice(0, 12);
+      if (name === "") continue;
+      const mine = byName.get(name);
+      if (!mine || num(item.addedAt) >= num(mine.addedAt)) byName.set(name, item);
+    }
+  }
+  return [...byName.values()]
+    .sort((left, right) => num(left.addedAt) - num(right.addedAt))
+    .slice(-5);
+}
+
+/** 今天练过哪几条：同一天取并集；不是同一天就以更晚的那份为准（这个标记只对当天有意义）。 */
+function mergePlanDone(a: unknown, b: unknown): Dict {
+  const left = isDict(a) ? a : {};
+  const right = isDict(b) ? b : {};
+  const dateOf = (source: Dict): string =>
+    typeof source.date === "string" && isValidDateKey(source.date) ? source.date : "";
+  const date = dateOf(left) >= dateOf(right) ? dateOf(left) : dateOf(right);
+  if (date === "") return {};
+  const titles = new Set<string>();
+  for (const source of [left, right]) {
+    if (dateOf(source) !== date || !Array.isArray(source.titles)) continue;
+    for (const title of source.titles) {
+      if (typeof title === "string" && title !== "") titles.add(title);
+    }
+  }
+  return { date, titles: [...titles] };
+}
+
+/** 存下的视角：按 id 去重，同一个名字只留一枚，最多 5 个。 */
+function mergeStatsViews(a: unknown, b: unknown): unknown[] {
+  const out: unknown[] = [];
+  const ids = new Set<string>();
+  const names = new Set<string>();
+  for (const source of [a, b]) {
+    if (!Array.isArray(source)) continue;
+    for (const item of source) {
+      if (!isDict(item) || typeof item.id !== "string" || item.id === "") continue;
+      if (ids.has(item.id)) continue;
+      const name = typeof item.name === "string" ? item.name.trim() : "";
+      if (name !== "" && names.has(name)) continue;
+      ids.add(item.id);
+      if (name !== "") names.add(name);
+      out.push(item);
+    }
+  }
+  return out
+    .sort((left, right) => num((left as { addedAt?: number }).addedAt) - num((right as { addedAt?: number }).addedAt))
+    .slice(-5);
+}
+
+/** 收起的分组：哪边收起就算收起（不会因为导入又弹开）。 */
+function mergeClosedGroups(a: unknown, b: unknown): Record<string, true> {
+  const out: Record<string, true> = {};
+  for (const source of [a, b]) {
+    if (!isDict(source)) continue;
+    for (const [key, value] of Object.entries(source)) {
+      if (value === true) out[key] = true;
+    }
+  }
+  return out;
+}
+
 /** 纯函数：把导入的备份合进当前的，返回合并后的备份与摘要。 */
 export function mergeBackup(
   current: BackupFile,
@@ -340,6 +441,28 @@ export function mergeBackup(
   // 我存的进行：按 id 合并（两边都是自己存的，谁也别丢）
   const patterns = mergePatterns(a["guitar.patterns.v1"], b["guitar.patterns.v1"]);
   if (patterns.length) data["guitar.patterns.v1"] = patterns;
+
+  // 今日计划 / 组合 / 今天练过哪几条：都是自己攒的，合并就是「并集 + 同名以新的为准」
+  // 合完是空的就把键删掉——`data` 是从本机那份摊开的，留着原样会把坏数据又写回去
+  const extras = mergePlanExtras(a["guitar.plan.v1"], b["guitar.plan.v1"]);
+  if (extras.length) data["guitar.plan.v1"] = extras;
+  else delete data["guitar.plan.v1"];
+
+  const planSets = mergePlanSets(a["guitar.plan.sets.v1"], b["guitar.plan.sets.v1"]);
+  if (planSets.length) data["guitar.plan.sets.v1"] = planSets;
+  else delete data["guitar.plan.sets.v1"];
+
+  const planDone = mergePlanDone(a["guitar.plan.done.v1"], b["guitar.plan.done.v1"]);
+  if (Object.keys(planDone).length) data["guitar.plan.done.v1"] = planDone;
+  else delete data["guitar.plan.done.v1"];
+
+  const views = mergeStatsViews(a["guitar.stats.views.v1"], b["guitar.stats.views.v1"]);
+  if (views.length) data["guitar.stats.views.v1"] = views;
+  else delete data["guitar.stats.views.v1"];
+
+  const closed = mergeClosedGroups(a["guitar.extras.closed.v1"], b["guitar.extras.closed.v1"]);
+  if (Object.keys(closed).length) data["guitar.extras.closed.v1"] = closed;
+  else delete data["guitar.extras.closed.v1"];
 
   for (const key of ["guitar.settings.v1", "guitar.audio.v1", "guitar.onboarded.v1"] as const) {
     if (b[key] !== undefined) data[key] = b[key];

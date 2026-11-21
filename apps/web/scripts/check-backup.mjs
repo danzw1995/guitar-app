@@ -234,3 +234,135 @@ test("合并我存的进行：按 id 去重，两边都留着", () => {
     "按存下来的时间倒序",
   );
 });
+
+test("合并今日加餐：按 id 去重，两边都留着", () => {
+  const tab = { beatsPerBar: 4, bars: 1, notes: [{ s: 5, f: 3, beat: 0, dur: 4 }] };
+  const current = {
+    ...empty(),
+    data: {
+      "guitar.plan.v1": [
+        { id: "extra-a", date: "2026-11-21", title: "单弦爬格子", tab, meter: "4/4", bpm: 70, addedAt: 1 },
+        { id: "extra-b", date: "2026-11-21", title: "另一条", tab, meter: "4/4", bpm: 80, addedAt: 2 },
+      ],
+    },
+  };
+  const incoming = {
+    ...empty(),
+    data: {
+      "guitar.plan.v1": [
+        { id: "extra-b", date: "2026-11-21", title: "另一条", tab, meter: "4/4", bpm: 80, addedAt: 2 },
+        { id: "extra-c", date: "2026-11-21", title: "和声", tab, meter: "4/4", bpm: 90, addedAt: 3 },
+        { id: "", date: "2026-11-21", title: "没 id 的进不来", tab, meter: "4/4", bpm: 60, addedAt: 4 },
+      ],
+    },
+  };
+  const extras = mergeBackup(current, incoming).next.data["guitar.plan.v1"];
+  assert.deepEqual(
+    extras.map((item) => item.id),
+    ["extra-a", "extra-b", "extra-c"],
+    "同一条不重复，三条都在，按加入时间排",
+  );
+});
+
+test("合并存的组合：同名以更新的为准，最多留 5 套", () => {
+  const item = { title: "单弦爬格子", tab: { beatsPerBar: 4, bars: 1, notes: [] }, meter: "4/4", bpm: 70 };
+  const current = {
+    ...empty(),
+    data: {
+      "guitar.plan.sets.v1": [
+        { id: "set-1", name: "早课", items: [item], addedAt: 10 },
+        { id: "set-2", name: "晚课", items: [item], addedAt: 20 },
+      ],
+    },
+  };
+  const incoming = {
+    ...empty(),
+    data: {
+      "guitar.plan.sets.v1": [
+        { id: "set-1", name: "早课", items: [item, item], addedAt: 30 },
+        ...Array.from({ length: 4 }, (_, i) => ({
+          id: `set-x${i}`,
+          name: `加练${i}`,
+          items: [item],
+          addedAt: 40 + i,
+        })),
+      ],
+    },
+  };
+  const sets = mergeBackup(current, incoming).next.data["guitar.plan.sets.v1"];
+  assert.equal(sets.length, 5, "上限 5 套");
+  const morning = sets.find((set) => set.name === "早课");
+  assert.equal(morning.id, "set-1");
+  assert.equal(morning.items.length, 2, "同名的取更新那份（两条）");
+  assert.equal(
+    sets.some((set) => set.name === "晚课"),
+    false,
+    "超出 5 套时按时间留新的，最老的落选",
+  );
+});
+
+test("合并「今天练过」：同一天取并集，不同天取更晚的那天", () => {
+  const sameDay = mergeBackup(
+    { ...empty(), data: { "guitar.plan.done.v1": { date: "2026-11-21", titles: ["a"] } } },
+    { ...empty(), data: { "guitar.plan.done.v1": { date: "2026-11-21", titles: ["b", "a"] } } },
+  ).next.data["guitar.plan.done.v1"];
+  assert.equal(sameDay.date, "2026-11-21");
+  assert.deepEqual([...sameDay.titles].sort(), ["a", "b"], "同一天两份要并起来");
+
+  const newer = mergeBackup(
+    { ...empty(), data: { "guitar.plan.done.v1": { date: "2026-11-20", titles: ["旧的"] } } },
+    { ...empty(), data: { "guitar.plan.done.v1": { date: "2026-11-21", titles: ["新的"] } } },
+  ).next.data["guitar.plan.done.v1"];
+  assert.equal(newer.date, "2026-11-21", "跨天以更晚的为准");
+  assert.deepEqual(newer.titles, ["新的"], "旧那天的标记不该混进来");
+
+  const broken = mergeBackup(
+    { ...empty(), data: { "guitar.plan.done.v1": { date: "不是日期", titles: ["x"] } } },
+    { ...empty(), data: {} },
+  ).next.data["guitar.plan.done.v1"];
+  assert.equal(broken, undefined, "坏日期整条丢掉");
+});
+
+test("合并存的视角：按 id 去重，同一个名字只留一枚", () => {
+  const current = {
+    ...empty(),
+    data: {
+      "guitar.stats.views.v1": [
+        { id: "v-1", name: "我的弱项", label: "第 5 级", addedAt: 10 },
+        { id: "v-2", label: "第 2 阶段", addedAt: 20 },
+      ],
+    },
+  };
+  const incoming = {
+    ...empty(),
+    data: {
+      "guitar.stats.views.v1": [
+        { id: "v-1", name: "我的弱项", label: "第 5 级", addedAt: 10 },
+        { id: "v-9", name: "我的弱项", label: "第 2 阶段", addedAt: 30 },
+        { id: "v-3", label: "第 3 级", addedAt: 40 },
+        { id: "v-4", label: "第 4 级", addedAt: 50 },
+        { id: "v-5", label: "第 5 级", addedAt: 60 },
+      ],
+    },
+  };
+  const views = mergeBackup(current, incoming).next.data["guitar.stats.views.v1"];
+  assert.equal(views.length, 5, "上限 5 个");
+  assert.equal(
+    views.filter((view) => view.name === "我的弱项").length,
+    1,
+    "同名只看成一枚",
+  );
+  assert.deepEqual(
+    views.map((view) => view.id),
+    ["v-1", "v-2", "v-3", "v-4", "v-5"],
+    "按存下来的时间排，最新的一批留下",
+  );
+});
+
+test("合并收起的分组：哪边收起就算收起", () => {
+  const merged = mergeBackup(
+    { ...empty(), data: { "guitar.extras.closed.v1": { "stage-0": true } } },
+    { ...empty(), data: { "guitar.extras.closed.v1": { other: true, "stage-1": false } } },
+  ).next.data["guitar.extras.closed.v1"];
+  assert.deepEqual(merged, { "stage-0": true, other: true }, "false 不该把收起改回展开");
+});

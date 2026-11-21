@@ -1367,6 +1367,18 @@ for (const selector of ["select", "input", "textarea"]) {
       String(nowChipDecl.get("color") ?? "") === "var(--accent)",
     `row=${nowDecl.get("display") ?? "未设置"}/${nowDecl.get("flex-wrap") ?? "未设置"} chip=${nowChipDecl.get("border-radius") ?? "未设置"}/${nowChipDecl.get("color") ?? "未设置"}`,
   );
+
+  // v0.134.0：调弦预设的 chip 与「改音」那一排按钮都够 40 高
+  const tuningChipDecl = narrowDecls(".tuner-tunings .chip");
+  const noteBtnDecl = narrowDecls(".my-note-btn");
+  const noteRowDecl = narrowDecls(".my-note-row");
+  expect(
+    "调弦 chip 和「改音」的按钮都够 40 高，一行放不下能折行",
+    (px(tuningChipDecl.get("min-height")) ?? 0) >= 40 &&
+      (px(noteBtnDecl.get("min-height")) ?? 0) >= 40 &&
+      String(noteRowDecl.get("flex-wrap") ?? "") === "wrap",
+    `chip=${tuningChipDecl.get("min-height") ?? "未设置"} btn=${noteBtnDecl.get("min-height") ?? "未设置"} row=${noteRowDecl.get("flex-wrap") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  TUNER_STRINGS,
+  TUNING_PRESETS,
   detectPitch,
   frequencyOfMidi,
   smoothFreqs,
+  stringsOf,
   tunerReading,
+  tuningPreset,
   type TunerReading,
 } from "@guitar/core";
 import { useTone } from "../hooks/useTone";
+import { loadSettings, saveSettings } from "../lib/storage";
 
 /** 指针条的左右范围：±50 音分，再多就看不出来了（耳朵也听不出来） */
 const SCALE_CENTS = 50;
@@ -24,7 +27,18 @@ export default function Tuner() {
   const [reading, setReading] = useState<TunerReading | null>(null);
   const [level, setLevel] = useState(0);
   const [activeString, setActiveString] = useState<number | null>(null);
+  const [presetId, setPresetId] = useState(() => loadSettings().tuning);
   const { play } = useTone();
+
+  const preset = useMemo(() => tuningPreset(presetId), [presetId]);
+  const strings = useMemo(() => stringsOf(preset), [preset]);
+
+  const pickPreset = useCallback((id: string) => {
+    setPresetId(id);
+    setActiveString(null);
+    // 记住上次用的那套：换弦前一天调一半，第二天打开还要从同一套接着调
+    saveSettings({ ...loadSettings(), tuning: id });
+  }, []);
 
   const streamRef = useRef<MediaStream | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
@@ -103,7 +117,7 @@ export default function Tuner() {
           if (now - lastPaintRef.current >= PAINT_MS) {
             lastPaintRef.current = now;
             const smoothed = smoothFreqs(freqsRef.current, 5);
-            setReading(smoothed > 0 ? tunerReading(smoothed) : null);
+            setReading(smoothed > 0 ? tunerReading(smoothed, 5, strings) : null);
             let peak = 0;
             for (let i = 0; i < buffer.length; i++) peak = Math.max(peak, Math.abs(buffer[i]));
             setLevel(Math.min(1, peak * 3));
@@ -125,7 +139,7 @@ export default function Tuner() {
       }
       teardown();
     }
-  }, [teardown]);
+  }, [teardown, strings]);
 
   const stop = useCallback(() => {
     teardown();
@@ -157,7 +171,7 @@ export default function Tuner() {
     <section className="panel tuner">
       <div className="panel-head">
         <h2>调音器</h2>
-        <p>标准调弦 EADGBE。拨一根空弦，指针在中间就是准的（±5 音分以内算准）。</p>
+        <p>拨一根空弦，指针在中间就是准的（±5 音分以内算准）。换调弦以后按那一套的空弦音算。</p>
       </div>
 
       <div className={`tuner-stage${phase === "listening" ? " live" : ""}`}>
@@ -171,7 +185,7 @@ export default function Tuner() {
               </span>
             </>
           ) : (
-            <span className="tuner-string-name muted">{phase === "listening" ? "—" : "EADGBE"}</span>
+            <span className="tuner-string-name muted">{phase === "listening" ? "—" : preset.detail}</span>
           )}
         </div>
 
@@ -205,8 +219,24 @@ export default function Tuner() {
         </div>
       </div>
 
+      <div className="tuner-tunings" role="group" aria-label="调弦">
+        <span className="tuner-tunings-label">调弦</span>
+        {TUNING_PRESETS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={preset.id === item.id ? "chip on" : "chip"}
+            aria-pressed={preset.id === item.id}
+            title={item.detail}
+            onClick={() => pickPreset(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       <div className="tuner-strings" role="group" aria-label="六根空弦">
-        {TUNER_STRINGS.map((item) => (
+        {strings.map((item) => (
           <button
             key={item.string}
             type="button"
@@ -214,7 +244,7 @@ export default function Tuner() {
               activeString === item.string ? "tuner-string active" : "tuner-string"
             }
             aria-pressed={activeString === item.string}
-            aria-label={`${item.string} 弦 ${item.name}${item.octave}，点一下听标准音`}
+            aria-label={`${item.string} 弦 ${item.name}${item.octave}，点一下听这一根的声音`}
             onClick={() => {
               setActiveString(item.string);
               // 响三下，够把弦拧到位；一声太短，听不出有没有对上
@@ -249,10 +279,11 @@ export default function Tuner() {
       </div>
 
       <p className="tuner-foot">
-        标准音是 A4 = 440Hz，六根空弦分别是 E2 {Math.round(frequencyOfMidi(40))}Hz、A2{" "}
-        {Math.round(frequencyOfMidi(45))}Hz、D3 {Math.round(frequencyOfMidi(50))}Hz、G3{" "}
-        {Math.round(frequencyOfMidi(55))}Hz、B3 {Math.round(frequencyOfMidi(59))}Hz、E4{" "}
-        {Math.round(frequencyOfMidi(64))}Hz。
+        {preset.label}：{preset.detail}，从 6 弦到 1 弦分别是{" "}
+        {strings
+          .map((item) => `${item.name}${item.octave} ${Math.round(frequencyOfMidi(item.midi))}Hz`)
+          .join("、")}
+        （A4 = 440Hz）。
       </p>
     </section>
   );

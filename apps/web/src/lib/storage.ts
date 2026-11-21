@@ -45,6 +45,8 @@ export interface Settings {
   solfegeStyle: SolfegeStyle;
   /** 每周目标分钟数；0 = 不设目标（统计页就不画进度条）。 */
   weeklyGoal: number;
+  /** 调音器上次用的那套调弦（`TUNING_PRESETS` 的 id，认不出来当标准）。 */
+  tuning: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   solfegeSystem: "movable",
   solfegeStyle: "number",
   weeklyGoal: 0,
+  tuning: "standard",
 };
 
 function readJson(key: string): unknown {
@@ -480,8 +483,16 @@ export function loadSettings(): Settings {
   const solfegeStyle: SolfegeStyle = v.solfegeStyle === "syllable" ? "syllable" : "number";
   const goal = Number(v.weeklyGoal);
   const weeklyGoal = Number.isFinite(goal) && goal > 0 ? Math.min(600, Math.round(goal)) : 0;
+  const tuning = typeof v.tuning === "string" && v.tuning !== "" ? v.tuning : "standard";
 
-  return { strictSpelling: v.strictSpelling === true, labels, solfegeSystem, solfegeStyle, weeklyGoal };
+  return {
+    strictSpelling: v.strictSpelling === true,
+    labels,
+    solfegeSystem,
+    solfegeStyle,
+    weeklyGoal,
+    tuning,
+  };
 }
 
 export function saveSettings(settings: Settings): void {
@@ -491,6 +502,7 @@ export function saveSettings(settings: Settings): void {
     solfegeSystem: settings.solfegeSystem,
     solfegeStyle: settings.solfegeStyle,
     weeklyGoal: settings.weeklyGoal,
+    tuning: settings.tuning,
   });
 }
 
