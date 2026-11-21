@@ -54,9 +54,20 @@ export default function TabScore({ id, tab, className, beat, fluid }: Props) {
   // 单独放大一小节（fluid，v0.130.0）：先按宽一点的画布画，再交给 CSS 拉满——
   // 一小节的谱按原尺寸只有一两百像素，直接放大只会糊。
   const generated = useScoreImage(tex, fluid ? 560 : undefined);
-  const band = beat !== null && beat !== undefined ? info?.beats[beat] : undefined;
-  const width = info?.width ?? 0;
-  const height = info?.height ?? 0;
+  /**
+   * 当前拍竖条用哪份坐标（v0.132.0）。
+   *
+   * 静态图从 `beats.json` 拿；现画的图（单独放大那一小节就是）自己在 `ScoreImage.beats`
+   * 里带着一套，坐标与 `width/height` 同一套单位——所以试听时也能看到竖条跟着走。
+   */
+  const bandInfo = info
+    ? { beats: info.beats, width: info.width, height: info.height }
+    : generated.image
+      ? { beats: generated.image.beats ?? [], width: generated.image.width, height: generated.image.height }
+      : null;
+  const band = beat !== null && beat !== undefined ? bandInfo?.beats[beat] : undefined;
+  const width = bandInfo?.width ?? 0;
+  const height = bandInfo?.height ?? 0;
   // 长谱会折成两三行：高亮条只覆盖「这一拍所在的那一行」，否则每一行的同一列都会被照亮。
   const bandTop = band && height > 0 && band.y !== undefined ? (band.y / height) * 100 : null;
   const bandHeight = band && height > 0 && band.h !== undefined ? (band.h / height) * 100 : null;

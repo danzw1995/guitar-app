@@ -123,6 +123,13 @@ export default function FollowAlong({
     return Object.fromEntries(rows.map((row) => [`${row.bar}-${row.degree}`, row.times]));
   });
 
+  /**
+   * 试听那一段时，谱面上那条竖条走到第几拍（v0.132.0）。
+   * 试听不开节拍器，也就没有 `useMetronome` 的 `active`，所以按拍自己排一串定时器推着走。
+   */
+  const [auditionBeat, setAuditionBeat] = useState<number | null>(null);
+  const auditionTimers = useRef<number[]>([]);
+
   const totalBars = target.tab.bars;
   const loop = loopOn
     ? { from: Math.min(loopFrom, loopTo), to: Math.max(loopFrom, loopTo) }
@@ -224,14 +231,51 @@ export default function FollowAlong({
   const { playTab: playBarTone } = useTone();
 
   /**
-   * 只放圈住的那一小节（v0.131.0）：不开节拍器，直接把这一小节的音按当前速度弹一遍。
+   * 只放圈住的那一段（v0.131.0）：不开节拍器，直接把这一段按当前速度弹一遍。
    * 先停掉正在跑的节拍器——音频是单例（`claimAudio` 会停掉别人），不然界面还在「跑」、
    * 声音却已经被试听抢走了。
+   *
+   * v0.132.0：弹的时候谱面上那条竖条要跟着走，所以按拍排一串定时器（一拍一个）。
    */
   function auditionBar(): void {
     if (!zoomTab) return;
     if (running) stop();
+    clearAuditionTimers();
+    const total = zoomTab.beatsPerBar * Math.max(1, zoomTab.bars);
+    const beatMs = 60000 / bpm;
+    setAuditionBeat(0);
+    for (let index = 1; index < total; index += 1) {
+      auditionTimers.current.push(
+        window.setTimeout(() => setAuditionBeat(index), index * beatMs),
+      );
+    }
+    auditionTimers.current.push(
+      window.setTimeout(() => setAuditionBeat(null), total * beatMs + 150),
+    );
     playBarTone(zoomTab, bpm);
+  }
+
+  function clearAuditionTimers(): void {
+    for (const id of auditionTimers.current) window.clearTimeout(id);
+    auditionTimers.current = [];
+  }
+
+  useEffect(() => clearAuditionTimers, []);
+
+  /**
+   * 翻一段（v0.132.0）：把 A-B 的起止**一起**往前/往后挪一小节，窗口宽度不变。
+   *
+   * 单小节时（宽度 1）就是原来那个「上一小节 / 下一小节」；圈成 2–4 小节时按两下是
+   * 3–5 小节，而不是把范围缩成一小节——「连着练这几小节」是用户特意圈的。
+   */
+  function stepWindow(delta: number): void {
+    const width = Math.abs(loopTo - loopFrom) + 1;
+    const from = Math.min(Math.max(1, Math.min(loopFrom, loopTo) + delta), totalBars - width + 1);
+    setLoopOn(true);
+    setLoopFrom(from);
+    setLoopTo(from + width - 1);
+    loopPassRef.current = 0;
+    if (!running) start();
   }
 
   const { running, bar, pass, active, countingIn, start, stop } = useMetronome({
@@ -246,25 +290,45 @@ export default function FollowAlong({
 
   // 现在弹到第几级（v0.96.0）：按起音拍往后找，找不到就退回第一个
   const degrees = useMemo(() => degreesOf(target.tab), [target.tab]);
-  /** 圈住的那一小节切出来（放大块、试听、上一小节/下一小节 都用这一份）。 */
+  /** 圈住的那一段切出来（放大块、试听、上一小节/下一小节 都用这一份）。
+   * v0.132.0 起跟着 A-B 的**整段**走，不只单小节。 */
+  const loopWidth = Math.abs(loopTo - loopFrom) + 1;
+  const loopStart = Math.min(loopFrom, loopTo);
+  const loopEnd = Math.max(loopFrom, loopTo);
   const zoomTab = useMemo(
     () =>
-      loopOn && loopFrom === loopTo
-        ? sliceTab(target.tab, (loopFrom - 1) * target.tab.beatsPerBar, target.tab.beatsPerBar)
+      loopOn
+        ? sliceTab(
+            target.tab,
+            (loopStart - 1) * target.tab.beatsPerBar,
+            loopWidth * target.tab.beatsPerBar,
+          )
         : null,
-    [loopOn, loopFrom, loopTo, target.tab],
+    [loopOn, loopStart, loopWidth, target.tab],
   );
   /** 圈住的那一小节里有哪些音（放大块的标题里点一下是第几级）。 */
   const zoomDegree = useMemo(() => {
-    if (!loopOn || loopFrom !== loopTo) return null;
+    if (!loopOn || loopWidth !== 1) return null;
     return (
       degrees.find(
-        (item) => Math.floor(item.beat / target.tab.beatsPerBar) + 1 === loopFrom,
+        (item) => Math.floor(item.beat / target.tab.beatsPerBar) + 1 === loopStart,
       ) ?? null
     );
-    // loopFrom / loopTo 是变化源，degrees 跟着 target 走
+    // loopStart / loopWidth 是变化源，degrees 跟着 target 走
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [degrees, loopOn, loopFrom, loopTo, target.tab.beatsPerBar]);
+  }, [degrees, loopOn, loopStart, loopWidth, target.tab.beatsPerBar]);
+  /** 圈住的那一段里，有没有「上次最卡」的那一处（v0.132.0）。 */
+  const zoomRemembered =
+    remembered && remembered.bar >= loopStart && remembered.bar <= loopEnd ? remembered : null;
+  /** 这一段里「只练这一处」一共单独练过几次（v0.132.0）。 */
+  const zoomSpotTimes = useMemo(() => {
+    let total = 0;
+    for (const [key, times] of Object.entries(spotTimes)) {
+      const bar = Number(key.split("-")[0]);
+      if (bar >= loopStart && bar <= loopEnd) total += times;
+    }
+    return total;
+  }, [spotTimes, loopStart, loopEnd]);
   const beatNow = bar * target.tab.beatsPerBar + Math.max(0, active);
   const degreeIndex = degrees.length
     ? Math.max(
@@ -743,21 +807,37 @@ export default function FollowAlong({
         `sliceTab` 按时值切，跨行的谱也只取这一段。
         v0.131.0：这块里加「试听这一小节」（不开节拍器）和「上一小节 / 下一小节」，
         翻的时候一只手就够，不用再去动上面两个下拉。
+        v0.132.0：范围不再限死一小节——A-B 圈成 2–4 小节时这里就画整段，箭头把起止
+        一起平移（3–5、4–6……）；试听时谱面上那条竖条按拍跟着走。
       */}
       {zoomTab ? (
-        <div className="follow-zoom" data-zoom-bar={loopFrom}>
+        <div className="follow-zoom" data-zoom-bar={loopStart} data-zoom-width={loopWidth}>
           <div className="follow-zoom-head">
             <p className="follow-zoom-title">
-              第 {loopFrom} 小节单独放大
+              {loopWidth === 1
+                ? `第 ${loopStart} 小节单独放大`
+                : `第 ${loopStart}–${loopEnd} 小节（${loopWidth} 小节连着练）`}
               {zoomDegree ? ` · ${degreeName(zoomDegree.degree)}（${zoomDegree.name}）` : ""}
+              {zoomRemembered ? (
+                <span className="follow-zoom-note">
+                  上次最卡：第 {zoomRemembered.bar} 小节
+                  {zoomRemembered.degree > 0
+                    ? `第 ${zoomRemembered.degree} 级（${zoomRemembered.name}）`
+                    : "（调外音）"}
+                  {zoomRemembered.count > 0 ? ` · 卡了 ${zoomRemembered.count} 次` : ""}
+                </span>
+              ) : null}
+              {zoomSpotTimes > 0 ? (
+                <span className="follow-zoom-note">这一段单独练过 {zoomSpotTimes} 次</span>
+              ) : null}
             </p>
             <div className="follow-zoom-actions">
               <button
                 type="button"
                 className="btn-quiet"
-                onClick={() => practiceBar(loopFrom - 1, false)}
-                disabled={loopFrom <= 1}
-                aria-label={`上一小节：第 ${Math.max(1, loopFrom - 1)} 小节`}
+                onClick={() => stepWindow(-1)}
+                disabled={loopStart <= 1}
+                aria-label={`上一小节：第 ${Math.max(1, loopStart - 1)} 小节`}
               >
                 ← 上一小节
               </button>
@@ -765,22 +845,27 @@ export default function FollowAlong({
                 type="button"
                 className="btn-quiet"
                 onClick={auditionBar}
-                aria-label={`只放第 ${loopFrom} 小节`}
+                aria-label={loopWidth === 1 ? `只放第 ${loopStart} 小节` : `放第 ${loopStart}–${loopEnd} 小节`}
               >
-                试听这一小节
+                {loopWidth === 1 ? "试听这一小节" : "试听这一段"}
               </button>
               <button
                 type="button"
                 className="btn-quiet"
-                onClick={() => practiceBar(loopFrom + 1, false)}
-                disabled={loopFrom >= totalBars}
-                aria-label={`下一小节：第 ${Math.min(totalBars, loopFrom + 1)} 小节`}
+                onClick={() => stepWindow(1)}
+                disabled={loopEnd >= totalBars}
+                aria-label={`下一小节：第 ${Math.min(totalBars, loopEnd + 1)} 小节`}
               >
                 下一小节 →
               </button>
             </div>
           </div>
-          <TabScore id={`${target.id}-bar-${loopFrom}`} tab={zoomTab} fluid />
+          <TabScore
+            id={`${target.id}-bar-${loopStart}-${loopWidth}`}
+            tab={zoomTab}
+            fluid
+            beat={auditionBeat}
+          />
         </div>
       ) : null}
 

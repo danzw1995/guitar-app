@@ -1344,6 +1344,17 @@ for (const selector of ["select", "input", "textarea"]) {
       String(hitDecl.get("fill") ?? "") === "transparent",
     `btn=${zoomBtnDecl.get("min-height") ?? "未设置"} hit=${hitDecl.get("fill") ?? "未设置"}`,
   );
+
+  // v0.132.0：放大块标题边上的「上次最卡 / 单独练过」是灰色小字，窄屏各占一行
+  const zoomNoteDecl = narrowDecls(".follow-zoom-note");
+  expect(
+    "放大块的「上次最卡 / 单独练过」是小字，手机上各占一行",
+    (px(zoomNoteDecl.get("font-size")) ?? 99) <= 12 &&
+      String(zoomNoteDecl.get("color") ?? "") === "var(--muted)" &&
+      String(zoomNoteDecl.get("display") ?? "") === "block" &&
+      String(zoomNoteDecl.get("white-space") ?? "") === "normal",
+    `note=${zoomNoteDecl.get("font-size") ?? "未设置"}/${zoomNoteDecl.get("display") ?? "未设置"}/${zoomNoteDecl.get("white-space") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

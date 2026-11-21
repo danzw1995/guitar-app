@@ -3479,7 +3479,7 @@ try {
 
   // 16d34) 单独放大那一小节：上一小节 / 试听 / 下一小节 三个按钮，翻到头就不让再翻（v0.131.0）
   js(
-    "(() => { const pad = n => (n < 10 ? '0' + n : String(n)); const day = n => { const x = new Date(); x.setDate(x.getDate() - n); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); }; const tab = { beatsPerBar: 4, bars: 4, notes: [{ s: 3, f: 0, beat: 0, dur: 1 }, { s: 3, f: 2, beat: 1, dur: 1 }, { s: 4, f: 2, beat: 8, dur: 1 }, { s: 4, f: 3, beat: 9, dur: 1 }] }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'p:extra-z1': { bestBpm: 80, sessions: 2, minutes: 10, lastAt: day(1), history: [{ date: day(3), bpm: 70 }, { date: day(1), bpm: 80 }], hardest: { bar: 3, degree: 2, name: 'A', count: 4, at: day(3) }, title: '小节放大', spots: [] } })); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-z1', date: day(0), title: '小节放大', tab, meter: '4/4', bpm: 70, addedAt: Date.now(), setName: '早课' }])); return 'ok'; })()",
+    "(() => { const pad = n => (n < 10 ? '0' + n : String(n)); const day = n => { const x = new Date(); x.setDate(x.getDate() - n); return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()); }; const tab = { beatsPerBar: 4, bars: 4, notes: [{ s: 3, f: 0, beat: 0, dur: 1 }, { s: 3, f: 2, beat: 1, dur: 1 }, { s: 4, f: 2, beat: 8, dur: 1 }, { s: 4, f: 3, beat: 9, dur: 1 }] }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'p:extra-z1': { bestBpm: 80, sessions: 2, minutes: 10, lastAt: day(1), history: [{ date: day(3), bpm: 70 }, { date: day(1), bpm: 80 }], hardest: { bar: 3, degree: 2, name: 'A', count: 4, at: day(3) }, title: '小节放大', spots: [{ bar: 3, degree: 2, name: 'A', times: 2, lastAt: day(3) }] } })); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-z1', date: day(0), title: '小节放大', tab, meter: '4/4', bpm: 70, addedAt: Date.now(), setName: '早课' }])); return 'ok'; })()",
   );
   // 用带时间戳的地址做一次真正的导航：只改 hash 会被 App 的 hashchange 归一化掉（v0.131.0）
   ab(["open", `${URL}/?v=${Date.now()}#practice?item=extra-z1&follow=1&bar=3`]);
@@ -3504,6 +3504,50 @@ try {
     zoomButtons.length === 3 && zoomNext.from === "4" && zoomNext.disabled === true,
     "跟练面板：放大那一小节有上一小节 / 试听 / 下一小节，翻到最后一小节就不让再翻",
     `${zoomButtons.join("|")} → ${zoomNext.from}/${zoomNext.disabled}`,
+  );
+
+  // 16d36) 试听时竖条跟着走；圈成多小节时放大块画整段，箭头把起止一起平移（v0.132.0）
+  ab(["open", `${URL}/?v=${Date.now()}#practice?item=extra-z1&follow=1&bar=3`]);
+  await sleep(1800);
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow-zoom-actions button')].find(n => n.textContent.includes('试听')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const auditionA = String(js("(() => document.querySelector('.follow-zoom .tab-score-beat')?.style?.left ?? '')()")).replace(/^"|"$/g, "");
+  await sleep(900);
+  const auditionB = String(js("(() => document.querySelector('.follow-zoom .tab-score-beat')?.style?.left ?? '')()")).replace(/^"|"$/g, "");
+  const zoomNotes = JSON.parse(
+    String(js("(() => JSON.stringify([...document.querySelectorAll('.follow-zoom-note')].map(n => n.textContent.replace(/\\s+/g, ' ').trim())))()"))
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  js("(() => { const s = document.querySelector('select[aria-label=\"循环从第几小节开始\"]'); s.value = '1'; s.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()");
+  await sleep(250);
+  js("(() => { const s = document.querySelector('select[aria-label=\"循环到第几小节结束\"]'); s.value = '3'; s.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()");
+  await sleep(500);
+  js("(() => { const b = [...document.querySelectorAll('.follow-zoom-actions button')].find(n => n.textContent.includes('下一小节')); b?.click(); return 'ok'; })()");
+  await sleep(700);
+  const zoomWindow = JSON.parse(
+    String(
+      js(
+        "(() => JSON.stringify({ head: document.querySelector('.follow-zoom-title')?.textContent.replace(/\\s+/g, ' ').trim() ?? '', from: document.querySelector('select[aria-label=\"循环从第几小节开始\"]')?.value ?? '', to: document.querySelector('select[aria-label=\"循环到第几小节结束\"]')?.value ?? '', width: document.querySelector('.follow-zoom')?.getAttribute('data-zoom-width') ?? '' }))()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    auditionA !== "" &&
+      auditionB !== "" &&
+      auditionA !== auditionB &&
+      zoomNotes.some((n) => n.includes("上次最卡")) &&
+      zoomNotes.some((n) => n.includes("单独练过")) &&
+      zoomWindow.from === "2" &&
+      zoomWindow.to === "4" &&
+      zoomWindow.width === "3" &&
+      zoomWindow.head.startsWith("第 2–4 小节"),
+    "跟练面板：试听时竖条跟着走，圈成多小节时箭头把起止一起平移（v0.132.0）",
+    `${auditionA}→${auditionB} · ${zoomNotes.join("/")} · ${zoomWindow.from}-${zoomWindow.to}/${zoomWindow.width}`,
   );
 
   // 16d35) 圈上那枚小字点一下：直接去练那一小节（v0.131.0）

@@ -2321,6 +2321,20 @@ button, select, input { font: inherit; color: inherit; }
   color: var(--accent);
   font-size: 12px;
 }
+.follow-zoom-note {
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  /* 窄屏两个提示都挺长，各自另起一行，别把标题挤成一串 */
+  .follow-zoom-note {
+    display: block;
+    margin-left: 0;
+    white-space: normal;
+  }
+}
 .follow-zoom-actions {
   display: flex;
   flex-wrap: wrap;
