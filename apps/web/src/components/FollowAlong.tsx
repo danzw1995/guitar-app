@@ -232,6 +232,17 @@ export default function FollowAlong({
 
   // 现在弹到第几级（v0.96.0）：按起音拍往后找，找不到就退回第一个
   const degrees = useMemo(() => degreesOf(target.tab), [target.tab]);
+  /** 圈住的那一小节里有哪些音（放大块的标题里点一下是第几级）。 */
+  const zoomDegree = useMemo(() => {
+    if (!loopOn || loopFrom !== loopTo) return null;
+    return (
+      degrees.find(
+        (item) => Math.floor(item.beat / target.tab.beatsPerBar) + 1 === loopFrom,
+      ) ?? null
+    );
+    // loopFrom / loopTo 是变化源，degrees 跟着 target 走
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [degrees, loopOn, loopFrom, loopTo, target.tab.beatsPerBar]);
   const beatNow = bar * target.tab.beatsPerBar + Math.max(0, active);
   const degreeIndex = degrees.length
     ? Math.max(
@@ -703,6 +714,25 @@ export default function FollowAlong({
       ) : null}
 
       <TabScore id={target.id} tab={target.tab} />
+
+      {/*
+        只圈一小节时，把那一小节单独放大一份（v0.130.0）。
+        整条谱在跟练里常常要横向扫，眼睛跟不上；圈住的这一小节单独排一遍，看清该落哪根弦。
+        `sliceTab` 按时值切，跨行的谱也只取这一段。
+      */}
+      {loopOn && loopFrom === loopTo ? (
+        <div className="follow-zoom" data-zoom-bar={loopFrom}>
+          <p className="follow-zoom-head">
+            第 {loopFrom} 小节单独放大
+            {zoomDegree ? ` · ${degreeName(zoomDegree.degree)}（${zoomDegree.name}）` : ""}
+          </p>
+          <TabScore
+            id={`${target.id}-bar-${loopFrom}`}
+            tab={sliceTab(target.tab, (loopFrom - 1) * target.tab.beatsPerBar, target.tab.beatsPerBar)}
+            fluid
+          />
+        </div>
+      ) : null}
 
       <p className="follow-hint">
         先跟着节拍器把这一遍弹稳；稳不住就按「停止」，把速度退回去再练。

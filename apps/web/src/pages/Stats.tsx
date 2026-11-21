@@ -630,27 +630,46 @@ export default function Stats() {
     );
   };
   /**
-   * 双击某一天：去练那天卡住的小节（v0.129.0）。
+   * 双击某一天：去练那天的小节（v0.129.0），并且在那天有多条记录时挑「速度最接近」的那一条
+   * （v0.130.0——同一套里两条曲线常在同一天都有点，双击的是哪条得看那天的速度）。
    *
    * 记录里只有「最卡的是第几小节、第几级」，谱子在本页拿不到（`RhythmRecord` 不存 tab），
    * 所以交给条目所在的页面：带 `?follow=1&bar=N&item=<id>` 过去，那边挂上跟练面板、
-   * 直接圈住那一小节。双击前先按位置把这一天选上，省得双击落在没选中的位置上。
+   * 直接圈住那一小节。只有「那天的点正好是最卡的那天」才带小节，别的日子只把人送到条目上。
    */
   const openCurveDay = (
     event: { currentTarget: SVGSVGElement; clientX: number },
     id: string,
     count: number,
-    hardestDay: string,
-    bar: number | undefined,
   ) => {
     const rect = event.currentTarget.getBoundingClientRect();
     const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 1;
     const index = Math.max(0, Math.min(count - 1, Math.round(ratio * (count - 1))));
     const day = rhythm[id]?.history?.[index];
-    // 只有「那天的点就是最卡的那天」才有小节可圈；别的日子只把人送到条目上
-    const targetBar = bar && day && hardestDay && day.date === hardestDay ? bar : undefined;
-    const practice = id.startsWith("p:");
-    const bare = practice ? id.slice(2) : id;
+    if (!day) return;
+    // 同一天可能有好几条记录都留了点：去「那天最快」的那条——双击的用意是「我想复现那天」，
+    // 一天里最快的那次最值得复现；一样快就留在你点的这条上。
+    // 只在「有套」的前提下跨条目找：没套的条目彼此无关，乱跳会把人送到别的练习上。
+    const setName = rhythm[id]?.title ? (setNameByTitle.get(rhythm[id].title ?? "") ?? "") : "";
+    const candidates = (setName
+      ? Object.entries(rhythm).map(([key, record]) => ({ key, record }))
+      : [{ key: id, record: rhythm[id] }])
+      .map((entry) => {
+        if (!entry.record) return null;
+        if (setName && setNameByTitle.get(entry.record.title ?? "") !== setName) return null;
+        const point = entry.record.history?.find((item) => item.date === day.date);
+        if (!point) return null;
+        return { key: entry.key, record: entry.record, bpm: point.bpm };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+      .sort((left, right) => right.bpm - left.bpm || (left.key === id ? -1 : right.key === id ? 1 : 0));
+    const chosen = candidates[0] ?? { key: id, record: rhythm[id] };
+    const practice = chosen.key.startsWith("p:");
+    const bare = practice ? chosen.key.slice(2) : chosen.key;
+    const targetBar =
+      chosen.record?.hardest?.bar && chosen.record.hardest.at === day.date
+        ? chosen.record.hardest.bar
+        : undefined;
     if (practice) {
       const query: Record<string, string> = { item: bare };
       if (targetBar) {
@@ -1365,9 +1384,7 @@ export default function Stats() {
                     tabIndex={0}
                     aria-label={`${label}：${first.date} 的 ${first.bpm} BPM，到 ${last.date} 的 ${last.bpm} BPM，共 ${curve.points.length} 天。点一下看某一天，双击去练那天卡住的小节。`}
                     onClick={(event) => pickCurvePoint(event, curve.id, curve.points.length)}
-                    onDoubleClick={(event) =>
-                      openCurveDay(event, curve.id, curve.points.length, hardestDay, hardest?.bar)
-                    }
+                    onDoubleClick={(event) => openCurveDay(event, curve.id, curve.points.length)}
                     onKeyDown={(event) => {
                       if (event.key !== "Enter" && event.key !== " ") return;
                       event.preventDefault();
@@ -1382,13 +1399,17 @@ export default function Stats() {
                     {/* 最卡的那一天的标记（v0.129.0）：空心圈叠在点上，不和「选中的点」抢位置 */}
                     {spark.dots.map((dot, index) =>
                       hardestDay && curve.points[index]?.date === hardestDay ? (
-                        <circle
-                          className="curve-hard"
-                          key={`hard-${dot.x}-${dot.y}`}
-                          cx={dot.x}
-                          cy={dot.y}
-                          r={3.4}
-                        />
+                        <g className="curve-hard-mark" key={`hard-${dot.x}-${dot.y}`}>
+                          <circle className="curve-hard" cx={dot.x} cy={dot.y} r={3.4} />
+                          {/* 卡了几次（v0.130.0）：小字贴着圈，y 太靠上就写到下面，别被裁掉 */}
+                          <text
+                            className="curve-hard-n"
+                            x={dot.x}
+                            y={dot.y < 9 ? dot.y + 10 : dot.y - 5}
+                          >
+                            {hardest!.count}
+                          </text>
+                        </g>
                       ) : null,
                     )}
                     {picked && spark.dots[pickedIndex] && (

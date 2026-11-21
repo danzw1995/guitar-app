@@ -732,6 +732,18 @@ button, select, input { font: inherit; color: inherit; }
   stroke-width: 1;
   opacity: 0.7;
 }
+/* 卡了几次（v0.130.0）：贴着圈的小字，先描一圈底色再填字，压在折线上也看得清 */
+.curve-hard-n {
+  fill: var(--accent);
+  font-size: 6px;
+  font-weight: 600;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  paint-order: stroke;
+  stroke: #0d1117;
+  stroke-width: 2px;
+  pointer-events: none;
+}
 /* 选中的那一天：占满整行，别把三列网格挤歪 */
 .curve-day {
   grid-column: 1 / -1;
@@ -2253,6 +2265,32 @@ button, select, input { font: inherit; color: inherit; }
   margin-top: 6px;
   /* 一行独占（v0.98.0）：方块变按钮后够宽了，挤在速度那一行会把 BPM 挤走 */
   flex-basis: 100%;
+}
+/* 只圈一小节时单独放大那一份（v0.130.0）：跟上面的整条谱分开，别让人以为是一样的宽度 */
+.follow-zoom {
+  margin: 10px auto 0;
+  /* 一份谱只占这么宽，别在整块面板里被拉成一长条留白 */
+  max-width: 680px;
+  padding: 10px 12px 6px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+.follow-zoom .tab-score {
+  display: block;
+  margin: 0 auto;
+}
+/* `fluid` 的谱图拉满这块（v0.130.0）：一行小节的谱按原尺寸画出来只有四五百像素，
+   放在这块宽框里反而比上面整条谱显小；拉满到 680 才真正是「放大」。 */
+.follow-zoom .tab-score.fluid {
+  width: 100%;
+  max-width: 680px;
+  height: auto;
+}
+.follow-zoom-head {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 12px;
 }
 .follow-degree-chip {
   min-width: 40px;

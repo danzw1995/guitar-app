@@ -11,6 +11,14 @@ interface Props {
   className?: string;
   /** 正在播第几拍（从 0 数）；播放时谱面上会有一条跟着走的竖条。 */
   beat?: number | null;
+  /**
+   * 让谱图撑满容器宽度（v0.130.0）。
+   *
+   * 现画的谱默认按位图 1:1 显示（`width: 位图宽 * 2`），一行小节的谱本来只有四五百像素，
+   * 塞进跟练面板里那块宽框就显得比上面整条谱还小。`fluid` 时不写内联宽度，
+   * 交给 CSS 拉满——单独放大一小节要用它。
+   */
+  fluid?: boolean;
 }
 
 /**
@@ -32,7 +40,7 @@ interface Props {
  * 生成的）在这里退回现画一张（v0.98.0）——以前会去拿一个不存在的 PNG，跟练面板上
  * 就是一块碎图。现画的图没有 `beats.json` 的拍位置，所以不画竖条。
  */
-export default function TabScore({ id, tab, className, beat }: Props) {
+export default function TabScore({ id, tab, className, beat, fluid }: Props) {
   const label = useMemo(() => tabAriaLabel(tab), [tab]);
   const beats = useScoreBeats();
   const beatsReady = useScoreBeatsReady();
@@ -55,7 +63,7 @@ export default function TabScore({ id, tab, className, beat }: Props) {
     <span className={className ? `tab-score-wrap ${className}` : "tab-score-wrap"}>
       {info || !beatsReady ? (
         <img
-          className="tab-score"
+          className={fluid ? "tab-score fluid" : "tab-score"}
           src={`${import.meta.env.BASE_URL}scores/${id}.png?v=${SCORES_VERSION}`}
           alt={label}
           loading="lazy"
@@ -63,10 +71,14 @@ export default function TabScore({ id, tab, className, beat }: Props) {
         />
       ) : generated.image ? (
         <img
-          className="tab-score"
+          className={fluid ? "tab-score fluid" : "tab-score"}
           src={generated.image.dataUrl}
           alt={label}
-          style={{ width: `${generated.image.width * 2}px`, maxWidth: "100%", height: "auto" }}
+          style={
+            fluid
+              ? { width: "100%", height: "auto" }
+              : { width: `${generated.image.width * 2}px`, maxWidth: "100%", height: "auto" }
+          }
           decoding="async"
         />
       ) : (

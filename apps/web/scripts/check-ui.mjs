@@ -3408,6 +3408,10 @@ try {
   const hardDay = String(
     js("(() => document.querySelector('.curve-day')?.textContent?.trim() ?? '')()"),
   ).replace(/^"|"$/g, "");
+  // 圈上的「卡了几次」要在双击跳走之前读——跳走之后这张图就不在页面上了
+  const hardCountText = String(
+    js("(() => document.querySelector('.curve-hard-n')?.textContent ?? '')()"),
+  ).replace(/^"|"$/g, "");
   js(
     "(() => { const svg = document.querySelector('.curve-svg'); const box = svg.getBoundingClientRect(); const x = box.left + box.width * 0.5; const y = box.top + box.height * 0.5; svg.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: x, clientY: y })); return 'ok'; })()",
   );
@@ -3431,6 +3435,42 @@ try {
       jumpFollow.to === "3",
     "统计页：最卡那天的点上有圈，双击那天直接去练那一小节",
     `圈=${hardMark} day=${hardDay} → ${jumpFollow.hash} ${jumpFollow.tab}/${jumpFollow.follow}/${jumpFollow.from}-${jumpFollow.to}`,
+  );
+
+  // 16d32) 圈上写着「卡了几次」，面板里把那一小节单独放大一份（v0.130.0）
+  const hardCountInfo = JSON.parse(
+    String(
+      js(
+        "(() => JSON.stringify({ zoom: document.querySelector('.follow-zoom-head')?.textContent?.trim() ?? '', zoomImg: !!document.querySelector('.follow-zoom img') }))()",
+      ),
+    )
+      .replace(/^"|"$/g, "")
+      .replace(/\\"/g, '"'),
+  );
+  log(
+    hardCountText === "6" && hardCountInfo.zoom.includes("第 3 小节单独放大") && hardCountInfo.zoomImg,
+    "统计页：圈上写着卡了几次，面板里那一小节单独放大",
+    `${hardCountText} 次 · ${hardCountInfo.zoom}`,
+  );
+
+  // 16d33) 双击普通一天（不是最卡那天）→ 去那套里那天最快的那一条
+  js(
+    "(() => { const pad = n => String(n).padStart(2, '0'); const day = n => { const x = new Date(); x.setDate(x.getDate() - n); return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`; }; const tab = { beatsPerBar: 4, bars: 1, notes: [{ s: 3, f: 0, beat: 0, dur: 4 }] }; localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'r-a': { bestBpm: 70, sessions: 2, minutes: 12, lastAt: day(3), history: [{ date: day(9), bpm: 50 }, { date: day(3), bpm: 70 }], title: '曲甲', spots: [] }, 'r-b': { bestBpm: 88, sessions: 1, minutes: 6, lastAt: day(3), history: [{ date: day(3), bpm: 88 }], title: '曲乙', spots: [] } })); localStorage.setItem('guitar.plan.v1', JSON.stringify([{ id: 'extra-qa', date: day(0), title: '曲甲', tab, meter: '4/4', bpm: 70, addedAt: Date.now() - 3000, setName: '晚课' }, { id: 'extra-qb', date: day(0), title: '曲乙', tab, meter: '4/4', bpm: 88, addedAt: Date.now() - 2000, setName: '晚课' }])); localStorage.removeItem('guitar.stats.views.v1'); for (const key of ['degree', 'stage', 'spot', 'set', 'count']) sessionStorage.removeItem(`guitar.stats.${key}`); location.hash = '#stats'; return 'ok'; })()",
+  );
+  await sleep(200);
+  ab(["reload"]);
+  await sleep(1000);
+  js("document.querySelector('.curve-svg')?.scrollIntoView({ block: 'center' })");
+  await sleep(300);
+  js(
+    "(() => { const svg = document.querySelector('.curve-svg'); const box = svg.getBoundingClientRect(); const x = box.left + box.width - 2; const y = box.top + box.height * 0.5; svg.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, clientX: x, clientY: y })); return 'ok'; })()",
+  );
+  await sleep(1400);
+  const fastest = String(js("location.hash")).replace(/^"|"$/g, "");
+  log(
+    fastest.includes("r-b"),
+    "统计页：双击普通一天，去那套里那天最快的那条",
+    `→ ${fastest}`,
   );
   js("localStorage.removeItem('guitar.rhythm.v1')");
   js("localStorage.removeItem('guitar.plan.v1')");

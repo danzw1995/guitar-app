@@ -1318,6 +1318,22 @@ for (const selector of ["select", "input", "textarea"]) {
       Number.parseFloat(hardDotDecl.get("stroke-width") ?? "9") <= 1.5,
     `fill=${hardDotDecl.get("fill") ?? "未设置"} stroke=${hardDotDecl.get("stroke") ?? "未设置"} width=${hardDotDecl.get("stroke-width") ?? "未设置"}`,
   );
+
+  // v0.130.0：圈上「卡了几次」是小字、先描一圈底色（压在折线上也看得清）；
+  // 单独放大那一小节用虚线圆角框，谱图拉满这块宽度
+  const hardCountDecl = narrowDecls(".curve-hard-n");
+  const zoomBoxDecl = narrowDecls(".follow-zoom");
+  const zoomFluidDecl = narrowDecls(".follow-zoom .tab-score.fluid");
+  expect(
+    "圈上的次数是小字带底色，放大那一小节是虚线框里拉满的谱",
+    (px(hardCountDecl.get("font-size")) ?? 99) <= 7 &&
+      String(hardCountDecl.get("paint-order") ?? "") === "stroke" &&
+      (hardCountDecl.get("stroke") ?? "") === "#0d1117" &&
+      String(zoomBoxDecl.get("border") ?? "").includes("dashed") &&
+      (px(zoomBoxDecl.get("border-radius")) ?? 0) >= 8 &&
+      (zoomFluidDecl.get("width") ?? "") === "100%",
+    `count=${hardCountDecl.get("font-size") ?? "未设置"}/${hardCountDecl.get("paint-order") ?? "未设置"} zoom=${zoomBoxDecl.get("border") ?? "未设置"} fluid=${zoomFluidDecl.get("width") ?? "未设置"}`,
+  );
 }
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

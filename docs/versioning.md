@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.129.0`，core `0.52.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.130.0`，core `0.52.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -152,6 +152,9 @@ v0.129.0 只动前端与存储模型：「最卡的一处」多一个可选 `har
 里校验日期）、曲线上那天的点加空心圈（`.curve-hard`）、双击那天带着
 `#practice/<id>?item=&follow=1&bar=N` 过去并让跟练面板圈住那一小节（`FollowAlongProps.startBar`，
 挂在 reset effect 末尾而不是单独一个 effect）；core 与工具都不动。
+v0.130.0 只动前端：最卡那天的圈上加「卡了几次」的小字（`.curve-hard-n`）、跟练面板里 A/B 圈成
+同一小节时用 core 的 `sliceTab` 把那一小节单独切出来放大（`TabScore` 新增 `fluid`，不写内联宽度）、
+双击普通一天改成去同一套里那天最快的记录；core 与工具都不动（`sliceTab` 早就在 core 里）。
 v0.127.0 只动前端：「练了 N 次」变成按钮跳「跟练进步」曲线（`data-curve-id`）、筛空的说明
 后面挂「放宽一档」按钮（一次只放宽一档）、「比上周」的 `title` 写清加权用的次数与两边均值；
 core 与工具都不动。
