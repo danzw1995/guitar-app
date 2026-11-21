@@ -286,7 +286,10 @@ export default function Stats() {
   // 练习页的跟练用 `p:` 前缀存在同一张表里，这里只数节奏页那 103 条。
   const rhythm = loadRhythm();
   const rhythmItems = Object.entries(rhythm).filter(([id]) => !id.startsWith("p:"));
-  const practiceFollows = Object.keys(rhythm).filter((id) => id.startsWith("p:"));
+  // 只跟「稳不稳」进来过的那条也会留记录（v0.142.0），没跟练过就不算一条
+  const practiceFollows = Object.keys(rhythm).filter(
+    (id) => id.startsWith("p:") && ((rhythm[id]?.sessions ?? 0) > 0 || (rhythm[id]?.bestBpm ?? 0) > 0),
+  );
   const rhythmMinutes = Math.round(rhythmItems.reduce((sum, [, item]) => sum + item.minutes, 0));
   const rhythmSessions = rhythmItems.reduce((sum, [, item]) => sum + item.sessions, 0);
   const topRhythm = rhythmItems
