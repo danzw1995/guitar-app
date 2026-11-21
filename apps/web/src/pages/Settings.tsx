@@ -13,7 +13,15 @@ import {
   loadSettings,
   saveSettings,
   type Settings as AppSettings,
+  type ThemeMode,
 } from "../lib/storage";
+import { THEME_EVENT } from "../hooks/useTheme";
+
+const THEMES: { id: ThemeMode; label: string; hint: string }[] = [
+  { id: "auto", label: "跟随系统", hint: "系统切深色 / 浅色时跟着变" },
+  { id: "dark", label: "深色", hint: "一直是这块深色" },
+  { id: "light", label: "浅色", hint: "白底，白天在亮处看得清" },
+];
 
 /** 全局设置：一次改完，音阶页 / 游戏页都跟着变。 */
 export default function Settings() {
@@ -27,6 +35,12 @@ export default function Settings() {
   function update(next: AppSettings) {
     setSettings(next);
     saveSettings(next);
+  }
+
+  /** 换主题：存设置之后让 `useTheme` 重读一次，`<html data-theme>` 立刻跟变。 */
+  function pickTheme(theme: ThemeMode) {
+    update({ ...settings, theme });
+    window.dispatchEvent(new Event(THEME_EVENT));
   }
 
   function replayGuide() {
@@ -87,6 +101,27 @@ export default function Settings() {
 
       <div className="settings">
         <LabelControls settings={settings} onChange={update} />
+
+        <div className="settings-row theme-row">
+          <span>
+            主题
+            <span className="muted"> · 深色 / 浅色 / 跟随系统，整个 app 一起换</span>
+          </span>
+          <span className="theme-chips" role="group" aria-label="选择主题">
+            {THEMES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`chip${settings.theme === item.id ? " on" : ""}`}
+                aria-pressed={settings.theme === item.id}
+                title={item.hint}
+                onClick={() => pickTheme(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </span>
+        </div>
 
         <label className="settings-row">
           <span>

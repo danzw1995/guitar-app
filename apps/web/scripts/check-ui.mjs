@@ -103,6 +103,15 @@ try {
     log(gone === "false", "新手引导能关掉（它盖住了整页）");
   }
 
+  // 1a) 固定成深色：本套断言里有不少是比颜色值的（强调色、灰字），
+  // 跟随系统时无头浏览器可能报「浅色」，颜色一换就全对不上。
+  js(
+    "(() => { const raw = JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}'); raw.theme = 'dark'; localStorage.setItem('guitar.settings.v1', JSON.stringify(raw)); window.dispatchEvent(new Event('guitar:theme')); return 'ok'; })()",
+  );
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const pinnedDark = js("document.documentElement.dataset.theme ?? ''");
+  log(pinnedDark === '"dark"', "冒烟用深色主题跑（比颜色的断言才有意义）", String(pinnedDark));
+
   // 1b) 落地页就是「练习」：新打开的人第一眼看到今日三条，不是先落在音阶游戏里
   const landing = js(
     "(() => { const cur = document.querySelector('nav.tabs button[aria-current=\"page\"]'); const h = document.querySelector('.panel-head h2'); return (cur?.textContent ?? '') + '|' + (h?.textContent ?? ''); })()",
@@ -2256,6 +2265,38 @@ try {
     hasBackupButtons === "导出备份+导入备份" && /^已导出 guitar-lab-backup-\d{4}-\d{2}-\d{2}\.json/.test(backupNote),
     "设置页：能导出备份，并提示导出的文件名",
     `${hasBackupButtons} / ${backupNote}`,
+  );
+
+  // 15a) v0.136.0：设置页能换主题，样式立刻跟着换、选择存进设置
+  const themeChips = String(
+    js(
+      "(() => [...document.querySelectorAll('.theme-chips .chip')].map(n => n.textContent.trim() + (n.getAttribute('aria-pressed') === 'true' ? '*' : '')).join(','))()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.theme-chips .chip')].find(n => n.textContent.trim() === '浅色'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const lightState = String(
+    js(
+      "(() => { const root = document.documentElement; const style = getComputedStyle(root); const saved = JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}'); return `${root.dataset.theme}|${style.getPropertyValue('--bg').trim()}|${saved.theme ?? '-'}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  js(
+    "(() => { const b = [...document.querySelectorAll('.theme-chips .chip')].find(n => n.textContent.trim() === '深色'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const backToDark = String(
+    js(
+      "(() => { const root = document.documentElement; const style = getComputedStyle(root); const saved = JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}'); return `${saved.theme ?? '-'}|${root.dataset.theme}|${style.getPropertyValue('--bg').trim()}`; })()",
+    ),
+  ).replace(/^"|"$/g, "");
+  log(
+    /^(跟随系统|深色|浅色)\*,(深色|浅色|跟随系统),(深色|浅色|跟随系统)$/.test(themeChips) &&
+      lightState === "light|#f6f7f9|light" &&
+      backToDark === "dark|dark|#0d1117",
+    "设置页：三档主题，选浅色立刻变白底、选回深色也立刻恢复",
+    `${themeChips} / ${lightState} / ${backToDark}`,
   );
 
   // 15) 跟练：预备拍与 A-B 循环（开始先数预备小节，再进「第 N 小节」）

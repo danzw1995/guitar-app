@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.135.0`，core `0.53.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.136.0`，core `0.53.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -162,6 +162,10 @@ v0.132.0 只动前端：试听那一段时谱面上的当前拍竖条跟着走�
 v0.134.0 给 core 加了调弦预设（`TUNING_PRESETS` / `tuningPreset()` / `stringsOf()`，
 `tunerReading()` 与 `nearestString()` 多一个可选的 `strings` 参数，旧的单参调用不变），
 新导出算 MINOR，core 到 `0.53.0`；前端还加了「我的谱」里扒出来的谱逐音改、备份补 5 把键。
+v0.136.0 只动前端：设置页三档主题（跟随系统 / 深色 / 浅色），落地方式是 `<html data-theme>`
+加一份调色板覆盖，布局不动；散在 CSS 里的写死色值收进 `--input-bg` / `--deep` / `--halo` /
+`--on-accent` / `--line-strong` / `--heat-empty` 几个变量。浅色下六线谱 PNG 用
+`filter: invert(1) hue-rotate(180deg)` 反色，不另生成一套图。core 与工具都不动。
 v0.135.0 只动前端：跟练面板加键盘操作（空格开始 / 停、← → 平移 A-B 起止，处理函数写进 ref，
 `keydown` 只挂一次）、手机「更多」分三组且每项带一句说明（`more-panel` 限高 78vh 自己滚）、
 A-B 覆盖整条谱时不再画「单独放大」那一块；core 与工具都不动。

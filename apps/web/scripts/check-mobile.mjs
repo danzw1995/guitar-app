@@ -46,6 +46,11 @@ for (const device of VIEWPORTS) {
     if (message.type() === "error") console.log(`  [console] ${message.text().slice(0, 120)}`);
   });
 
+  // 固定深色：这套检查量的是布局与不溢出，颜色别跟着系统飘
+  await page.addInitScript(() => {
+    localStorage.setItem("guitar.settings.v1", JSON.stringify({ theme: "dark" }));
+  });
+
   await page.goto(BASE, { waitUntil: "networkidle" });
   await page.waitForTimeout(800);
   const know = page.getByRole("button", { name: "知道了" });

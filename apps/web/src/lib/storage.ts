@@ -37,6 +37,9 @@ export type DailyMap = Record<string, LevelProgress>;
 /** 指板上显示什么：音名 / 唱名 / 两者。 */
 export type LabelMode = "name" | "solfege" | "both";
 
+/** 主题：跟随系统 / 一直深色 / 一直浅色（v0.136.0）。 */
+export type ThemeMode = "auto" | "dark" | "light";
+
 export interface Settings {
   /** 严格拼写：拼错算错，拿不到 2 星以上。 */
   strictSpelling: boolean;
@@ -47,6 +50,8 @@ export interface Settings {
   weeklyGoal: number;
   /** 调音器上次用的那套调弦（`TUNING_PRESETS` 的 id，认不出来当标准）。 */
   tuning: string;
+  /** 深色 / 浅色 / 跟随系统。 */
+  theme: ThemeMode;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -56,6 +61,7 @@ export const DEFAULT_SETTINGS: Settings = {
   solfegeStyle: "number",
   weeklyGoal: 0,
   tuning: "standard",
+  theme: "auto",
 };
 
 function readJson(key: string): unknown {
@@ -484,6 +490,8 @@ export function loadSettings(): Settings {
   const goal = Number(v.weeklyGoal);
   const weeklyGoal = Number.isFinite(goal) && goal > 0 ? Math.min(600, Math.round(goal)) : 0;
   const tuning = typeof v.tuning === "string" && v.tuning !== "" ? v.tuning : "standard";
+  const theme: ThemeMode =
+    v.theme === "dark" || v.theme === "light" ? v.theme : "auto";
 
   return {
     strictSpelling: v.strictSpelling === true,
@@ -492,6 +500,7 @@ export function loadSettings(): Settings {
     solfegeStyle,
     weeklyGoal,
     tuning,
+    theme,
   };
 }
 
@@ -503,6 +512,7 @@ export function saveSettings(settings: Settings): void {
     solfegeStyle: settings.solfegeStyle,
     weeklyGoal: settings.weeklyGoal,
     tuning: settings.tuning,
+    theme: settings.theme,
   });
 }
 

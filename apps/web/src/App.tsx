@@ -13,6 +13,7 @@ import OfflineBanner from "./components/OfflineBanner";
 import Onboarding from "./components/Onboarding";
 import UpdateToast from "./components/UpdateToast";
 import { flashTarget, parseHash, type Tab } from "./lib/nav";
+import { useTheme } from "./hooks/useTheme";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "practice", label: "练习" },
@@ -74,6 +75,8 @@ export default function App() {
   // 落地页是「练习」：第一次打开就能看到今日三条，而不是先落在音阶游戏里
   const [tab, setTab] = useState<Tab>("practice");
   const [moreOpen, setMoreOpen] = useState(false);
+  // 主题（深 / 浅 / 跟随系统）落在 <html data-theme> 上
+  useTheme();
 
   // 「更多」是个浮层：Esc 关掉，打开时把焦点放进去
   useEffect(() => {

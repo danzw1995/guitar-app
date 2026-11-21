@@ -1341,7 +1341,7 @@ for (const selector of ["select", "input", "textarea"]) {
     "圈上的次数是小字带底色，放大那一小节是虚线框里拉满的谱",
     (px(hardCountDecl.get("font-size")) ?? 99) <= 7 &&
       String(hardCountDecl.get("paint-order") ?? "") === "stroke" &&
-      (hardCountDecl.get("stroke") ?? "") === "#0d1117" &&
+      (hardCountDecl.get("stroke") ?? "") === "var(--halo)" &&
       String(zoomBoxDecl.get("border") ?? "").includes("dashed") &&
       (px(zoomBoxDecl.get("border-radius")) ?? 0) >= 8 &&
       (zoomFluidDecl.get("width") ?? "") === "100%",
@@ -1414,6 +1414,20 @@ for (const selector of ["select", "input", "textarea"]) {
       String(moreHintDecl.get("color") ?? "") === "var(--muted)" &&
       (px(moreHintDecl.get("font-size")) ?? 99) <= 12,
     `item=${moreItemDecl.get("display") ?? "未设置"}/${moreItemDecl.get("flex-direction") ?? "未设置"} hint=${moreHintDecl.get("color") ?? "未设置"}/${moreHintDecl.get("font-size") ?? "未设置"}`,
+  );
+
+  // v0.136.0：浅色主题只换调色板，谱图反色，热力图空格子另有一个变量
+  const lightDecl = anyDecls('html[data-theme="light"]');
+  const lightTabDecl = anyDecls('html[data-theme="light"] .tab-score');
+  const heatDecl = anyDecls(".heat-cell");
+  expect(
+    "浅色主题有独立调色板，谱图反色，热力图空格子用 --heat-empty",
+    lightDecl.get("--bg") === "#f6f7f9" &&
+      lightDecl.get("--panel") === "#ffffff" &&
+      lightDecl.get("color-scheme") === "light" &&
+      String(lightTabDecl.get("filter") ?? "").includes("invert(1)") &&
+      heatDecl.get("background") === "var(--heat-empty)",
+    `bg=${lightDecl.get("--bg") ?? "未设置"} panel=${lightDecl.get("--panel") ?? "未设置"} scheme=${lightDecl.get("color-scheme") ?? "未设置"} filter=${lightTabDecl.get("filter") ?? "未设置"} heat=${heatDecl.get("background") ?? "未设置"}`,
   );
 }
 
