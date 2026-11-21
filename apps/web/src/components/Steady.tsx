@@ -166,7 +166,10 @@ export default function Steady() {
       setError("听得不太清：换个安静点的地方，或者把音量弹大一点再来一遍。");
       return;
     }
+    // 从存储里读，别用 state：这个回调的依赖里没有 runs，闭包里那份是挂载时的空数组
+    const previous = loadRuns().slice(-1)[0];
     setReport(next);
+    setDelta(previous ? previous.stdevMs - next.stdevMs : null);
     setRuns(
       recordRun({
         date: new Date().toISOString().slice(0, 10),
@@ -180,6 +183,8 @@ export default function Steady() {
     );
     setJustSaved(true);
   }, [bpm, cleanup]);
+
+  const [delta, setDelta] = useState<number | null>(null);
 
   const busy = phase === "starting" || phase === "listening";
   const best = bestRun(runs);
@@ -269,7 +274,15 @@ export default function Steady() {
             ))}
           </div>
           <p className="st-scale">每条是一拍：往左 = 抢在节拍器前面，往右 = 拖在后面。</p>
-          {report.stdevFirstHalfMs > 0 && report.stdevSecondHalfMs > 0 && (
+          {report.worstBar && report.barStdevsMs.length > 1 && (
+            <p className="st-bars-note">
+              最散的是第 {report.worstBar.bar} 小节（±{report.worstBar.stdevMs.toFixed(0)} 毫秒）
+              {report.stdevMs > 0 && report.worstBar.stdevMs > report.stdevMs * 1.6
+                ? "——重弹时先盯这一小节。"
+                : "。"}
+            </p>
+          )}
+                    {report.stdevFirstHalfMs > 0 && report.stdevSecondHalfMs > 0 && (
             <p className="st-halves">
               前半段 ±{report.stdevFirstHalfMs.toFixed(0)} 毫秒 · 后半段 ±
               {report.stdevSecondHalfMs.toFixed(0)} 毫秒
@@ -277,7 +290,16 @@ export default function Steady() {
             </p>
           )}
           <p className="st-suggestion">{report.suggestion}</p>
-          {justSaved && <p className="st-saved">这一遍已经记下了。</p>}
+          {delta !== null && (
+            <p className="st-delta">
+              {delta >= 1
+                ? `比上次稳了 ${delta.toFixed(0)} 毫秒`
+                : delta <= -1
+                  ? `比上次散了 ${Math.abs(delta).toFixed(0)} 毫秒`
+                  : "跟上次差不多稳"}
+            </p>
+          )}
+                    {justSaved && <p className="st-saved">这一遍已经记下了。</p>}
         </div>
       )}
 

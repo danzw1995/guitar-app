@@ -144,6 +144,10 @@ export interface TimingReport {
   stdevFirstHalfMs: number;
   /** 后半段的标准差 */
   stdevSecondHalfMs: number;
+  /** 每一小节的标准差，下标 0 是第 1 小节；跟不上拍的格子是 0 */
+  barStdevsMs: number[];
+  /** 最散的那一小节（不足两下的小节不参与） */
+  worstBar: { bar: number; stdevMs: number } | null;
   /** 一共跨了几拍 */
   spanBeats: number;
   /** 稳不稳（中位数、标准差、漂移都在容忍范围内） */
@@ -239,6 +243,23 @@ export function analyzeTiming(
   const stdevFirstHalfMs = halfStdev(offsets.slice(0, half));
   const stdevSecondHalfMs = halfStdev(offsets.slice(offsets.length - half));
 
+  // 逐小节看：整段稳、但「第 3 小节老是抢」这种情况得单独指出来
+  const byBar = new Map<number, number[]>();
+  for (const hit of hits) {
+    if (hit.beat <= skip) continue;
+    const list = byBar.get(hit.bar);
+    if (list) list.push(hit.offset);
+    else byBar.set(hit.bar, [hit.offset]);
+  }
+  const lastBar = byBar.size > 0 ? Math.max(...byBar.keys()) : 0;
+  const barStdevsMs = Array.from({ length: lastBar }, (_, index) => halfStdev(byBar.get(index + 1) ?? []));
+  let worstBar: { bar: number; stdevMs: number } | null = null;
+  for (const [bar, values] of byBar) {
+    if (values.length < 2) continue;
+    const spread = halfStdev(values);
+    if (!worstBar || spread > worstBar.stdevMs) worstBar = { bar, stdevMs: spread };
+  }
+
   const steady = Math.abs(medianOffsetMs) <= 8 && stdevMs <= 28 && Math.abs(driftMsPerBeat) <= 2.5;
 
   return {
@@ -253,6 +274,8 @@ export function analyzeTiming(
     driftMsPerBeat,
     stdevFirstHalfMs,
     stdevSecondHalfMs,
+    barStdevsMs,
+    worstBar,
     spanBeats: hits[hits.length - 1].beat - hits[0].beat + 1,
     steady,
     verdict: verdictOf({ medianOffsetMs, stdevMs, driftMsPerBeat, steady }),

@@ -1449,6 +1449,19 @@ for (const selector of ["select", "input", "textarea"]) {
   );
 }
 
+expect(
+  narrowDecls(".curve-svg .curve-best").get("fill") === "none" &&
+    Number.parseFloat(narrowDecls(".ear-trend .curve-svg.steady-svg").get("width")) >= 200 &&
+    narrowDecls(".steady-marks").get("font-size") === "11px",
+  "趋势线上的最稳那枚圈是空心、整张图放大到 220、图例是小字",
+);
+
+expect(
+  narrowDecls(".st-delta").get("color") === "var(--accent)" &&
+    narrowDecls(".st-bars-note").get("color") === "var(--muted)",
+  "「比上次稳了多少」用强调色，「最散的那一小节」用灰字",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

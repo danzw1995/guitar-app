@@ -3557,6 +3557,15 @@ test("弹给节拍器听：预备拍不进统计，离谱的一下丢掉，太�
   assert.ok(tiredReport!.stdevFirstHalfMs < 5, `前半 ${tiredReport!.stdevFirstHalfMs}`);
   assert.ok(tiredReport!.stdevSecondHalfMs > 20, `后半 ${tiredReport!.stdevSecondHalfMs}`);
 
+  // 逐小节：第 2 小节抢得厉害，整段看只是「有点抖」，逐小节能指出来
+  const perBar = [0, 2, -2, 1, 26, -24, 30, -28].map((offset, index) => interval * index + offset / 1000);
+  const perBarReport = analyzeTiming(perBar, bpm, { origin: 0, beatsPerBar: 4 });
+  assert.ok(perBarReport);
+  assert.equal(perBarReport!.barStdevsMs.length, 2, "4 拍 1 小节、8 下 → 2 小节");
+  assert.ok(perBarReport!.barStdevsMs[0] < 5, `第 1 小节 ${perBarReport!.barStdevsMs[0]}`);
+  assert.ok(perBarReport!.barStdevsMs[1] > 20, `第 2 小节 ${perBarReport!.barStdevsMs[1]}`);
+  assert.deepEqual(perBarReport!.worstBar && perBarReport!.worstBar.bar, 2, "最散的是第 2 小节");
+
   // 少于 4 下：不给结论
   assert.equal(analyzeTiming([0, interval], bpm), null);
   assert.equal(analyzeTiming(onsets, 0), null);

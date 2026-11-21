@@ -86,5 +86,10 @@ export function bestRun(runs: SteadyRun[] = loadRuns()): SteadyRun | null {
 
 /** 最近几次的标准差，旧 → 新；少于两个点画不出线 */
 export function steadyTrend(runs: SteadyRun[] = loadRuns(), count = 12): number[] {
-  return runs.slice(-Math.max(2, count)).map((item) => item.stdevMs);
+  return steadyWindow(runs, count).map((item) => item.stdevMs);
+}
+
+/** 画趋势用的那一段（旧 → 新），要单独标「最稳」「最快」时用它 */
+export function steadyWindow(runs: SteadyRun[] = loadRuns(), count = 12): SteadyRun[] {
+  return runs.slice(-Math.max(2, count));
 }

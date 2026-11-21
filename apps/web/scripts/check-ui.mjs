@@ -3691,12 +3691,15 @@ try {
       cards.some((item) => item.includes("3 遍")) ? "count" : "no-count",
       trend ? "trend" : "no-trend",
       String(svg?.getAttribute("aria-label") ?? "").includes("越低越稳") ? "aria" : "no-aria",
+      trend?.querySelectorAll(".curve-best").length === 1 ? "best" : "no-best",
+      trend?.querySelectorAll(".curve-fast").length === 1 ? "fast" : "no-fast",
+      String(trend?.querySelector(".steady-marks")?.textContent ?? "").includes("最稳") ? "legend" : "no-legend",
     ].join("|");
   })()`);
   const steadyStatsText = String(steadyStats).replace(/^"|"$/g, "");
   log(
-    steadyStatsText === "best|count|trend|aria",
-    "统计页：「稳不稳」列出最稳的一次、遍数，并画出标准差的趋势",
+    steadyStatsText === "best|count|trend|aria|best|fast|legend",
+    "统计页：「稳不稳」列出最稳的一次、遍数，趋势线上标出最稳和最快那两遍",
     steadyStatsText,
   );
   await js(`localStorage.removeItem("guitar.steady.v1")`);

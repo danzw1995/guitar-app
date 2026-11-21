@@ -27,7 +27,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
-import { bestRun, loadRuns, steadyTrend } from "../lib/steady";
+import { bestRun, loadRuns, steadyTrend, steadyWindow } from "../lib/steady";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -841,6 +841,14 @@ export default function Stats() {
   const steadyLast = steadyRuns[steadyRuns.length - 1] ?? null;
   const steadyPoints = steadyTrend(steadyRuns);
   const steadySpark = steadyPoints.length >= 2 ? sparklineOf(steadyPoints, 120, 30) : null;
+  const steadyWindowRuns = steadyWindow(steadyRuns);
+  // 趋势窗里最稳的一遍（标准差最小）和最快的一遍（BPM 最高）
+  const steadyBestIndex = steadyPoints.length
+    ? steadyPoints.reduce((best, value, index) => (value < steadyPoints[best] ? index : best), 0)
+    : -1;
+  const steadyFastIndex = steadyWindowRuns.length
+    ? steadyWindowRuns.reduce((fast, run, index) => (run.bpm > steadyWindowRuns[fast].bpm ? index : fast), 0)
+    : -1;
 
   const ear = loadEar();
   const earKinds = EAR_KINDS.map((kind) => {
@@ -2032,16 +2040,44 @@ export default function Stats() {
           {steadySpark && (
             <div className="ear-trend" data-steady-trend>
               <svg
-                className="curve-svg"
+                className="curve-svg steady-svg"
                 viewBox="0 0 120 30"
                 role="img"
-                aria-label={"最近 " + steadyPoints.length + " 遍的标准差：从 " + Math.round(steadyPoints[0]) + " 毫秒到 " + Math.round(steadyPoints[steadyPoints.length - 1]) + " 毫秒，越低越稳"}
+                aria-label={
+                  "最近 " + steadyPoints.length + " 遍的标准差：从 " + Math.round(steadyPoints[0]) + " 毫秒到 " + Math.round(steadyPoints[steadyPoints.length - 1]) + " 毫秒，越低越稳；" +
+                  "最稳的是第 " + (steadyBestIndex + 1) + " 遍（" + Math.round(steadyPoints[steadyBestIndex]) + " 毫秒），最快的一遍是 " + (steadyWindowRuns[steadyFastIndex]?.bpm ?? 0) + " BPM"
+                }
               >
                 <path d={steadySpark.d} />
                 <circle cx={steadySpark.dots[steadySpark.dots.length - 1].x} cy={steadySpark.dots[steadySpark.dots.length - 1].y} r={2} />
+                {steadyFastIndex >= 0 && (
+                  <rect
+                    className="curve-fast"
+                    x={steadySpark.dots[steadyFastIndex].x - 2}
+                    y={steadySpark.dots[steadyFastIndex].y - 2}
+                    width={4}
+                    height={4}
+                  >
+                    <title>最快的一遍：{steadyWindowRuns[steadyFastIndex]?.bpm ?? 0} BPM</title>
+                  </rect>
+                )}
+                {steadyBestIndex >= 0 && (
+                  <circle
+                    className="curve-best"
+                    cx={steadySpark.dots[steadyBestIndex].x}
+                    cy={steadySpark.dots[steadyBestIndex].y}
+                    r={2.8}
+                  >
+                    <title>最稳的一遍：{Math.round(steadyPoints[steadyBestIndex] ?? 0)} 毫秒</title>
+                  </circle>
+                )}
               </svg>
               <span className="muted">
                 最近 {steadyPoints.length} 遍：{Math.round(steadyPoints[0])} → {Math.round(steadyPoints[steadyPoints.length - 1])} 毫秒（越低越稳）
+                <span className="steady-marks">
+                  <i className="mark-best" aria-hidden="true" /> 最稳
+                  <i className="mark-fast" aria-hidden="true" /> 最快
+                </span>
               </span>
             </div>
           )}
