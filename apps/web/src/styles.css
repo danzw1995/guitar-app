@@ -752,6 +752,13 @@ button, select, input { font: inherit; color: inherit; }
 .curve-hard-hit {
   fill: transparent;
 }
+/* 上面 `.curve-svg circle` 的填充会盖过这两枚（特异性 0,1,1 比 0,1,0 高），显式抬一档 */
+.curve-svg circle.curve-hard {
+  fill: none;
+}
+.curve-svg circle.curve-hard-hit {
+  fill: transparent;
+}
 .curve-hard-mark:focus-visible {
   outline: none;
 }
