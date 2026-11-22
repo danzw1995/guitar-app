@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
-import { recordRun, loadRuns, bestRun, attachAudio, STEADY_EVENT, type SteadyRun } from "../lib/steady";
+import { recordRun, loadRuns, bestRun, attachAudio, downloadAudio, STEADY_EVENT, type SteadyRun } from "../lib/steady";
 import { loadRhythm, loadSettings, saveRhythm, saveSettings } from "../lib/storage";
 import { parseHash } from "../lib/nav";
+import BeatRuler from "./BeatRuler";
 
 type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
 
@@ -434,6 +435,8 @@ export default function Steady() {
       // 前后半段各自的偏早/偏晚（v0.148.0）：统计页分开画
       medianFirstHalfMs: next.medianFirstHalfMs,
       medianSecondHalfMs: next.medianSecondHalfMs,
+      // 逐拍落点（v0.150.0）：录音旁边那条参考线靠它画
+      offsets: next.offsets.map((offset) => Math.round(offset)),
     });
     setRuns(saved);
     // 录音是异步收尾的：先记下这一遍的 id，等 onstop 里把 data URL 挂上去（v0.149.0）
@@ -712,8 +715,22 @@ export default function Steady() {
                   aria-label="这一遍的录音"
                 />
               )}
+              {lastAudio && (
+                <button
+                  type="button"
+                  className="btn-quiet st-audio-export"
+                  onClick={() => {
+                    const run = runs[runs.length - 1];
+                    if (run) downloadAudio(run);
+                  }}
+                  title="把这一遍的录音存成音频文件"
+                >
+                  存成文件
+                </button>
+              )}
             </p>
           )}
+          {report.offsets.length > 0 && <BeatRuler offsets={report.offsets} className="st-audio-ruler" />}
           {report && same && (
             <p className="st-same">
               同速的上一遍 ±{same.stdevMs.toFixed(0)} 毫秒（{same.date.slice(5)} ·{" "}
@@ -736,6 +753,18 @@ export default function Steady() {
                   src={same.audio}
                   aria-label="同速那一遍的录音"
                 />
+              )}
+              {same.audio && (
+                <button
+                  type="button"
+                  className="btn-quiet st-audio-export"
+                  onClick={() =>
+                    downloadAudio({ date: same.date, bpm, stdevMs: same.stdevMs, audio: same.audio })
+                  }
+                  title="把同速那一遍的录音存成音频文件"
+                >
+                  存成文件
+                </button>
               )}
               <button
                 type="button"

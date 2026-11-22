@@ -27,7 +27,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
-import { bestRun, loadRuns, restoreRuns, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
+import { bestRun, downloadAudio, loadRuns, restoreRuns, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -47,6 +47,7 @@ import {
 import { degreeName } from "../lib/degrees";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
+import BeatRuler from "../components/BeatRuler";
 import UndoToast from "../components/UndoToast";
 
 /** 统计页：全部来自本机 localStorage，没有账号也没有上报。 */
@@ -1733,6 +1734,8 @@ export default function Stats() {
                       .find((point) => point.fromBar && point.toBar)
                   : undefined;
               const partialDelta = picked && partialBefore ? partialBefore.stdevMs - picked.stdevMs : 0;
+              // 这一遍的完整记录（v0.150.0）：要它的录音与逐拍落点来画参考线
+              const pickedRun = picked ? steadyRunOf(picked.date, picked.bpm) : undefined;
               return (
                 <li key={curve.key} className={picked ? "picked" : undefined}>
                   <span className="curve-name" title={fullName}>
@@ -1794,9 +1797,17 @@ export default function Stats() {
                   <span className="muted">
                     ±{first.stdevMs.toFixed(0)} → ±{last.stdevMs.toFixed(0)} 毫秒 ·{" "}
                     {curve.points.length} 遍{" "}
-                    <span className="steady-best-tag" title="标准差最小的那一遍">
+                    <button
+                      type="button"
+                      className="steady-best-tag"
+                      title="标准差最小的那一遍；点一下看它、听它"
+                      onClick={() => {
+                        setSteadyCurvePick({ id: curve.key, index: bestIndex });
+                        setSteadyPick(null);
+                      }}
+                    >
                       最稳 {bestPoint.date.slice(5)}
-                    </span>
+                    </button>
                     {curve.range === "" && curve.points.some((point) => point.fromBar && point.toBar) && (
                       <span
                         className="steady-range-tag"
@@ -1821,12 +1832,9 @@ export default function Stats() {
                                   : "差不多"
                             }`
                           : " · 这是第一次只弹这部分")}
-                      {(() => {
-                        const run = steadyRunOf(picked.date, picked.bpm);
-                        return run
-                          ? ` · ${run.bars} 小节 · 漂移 ${run.driftMsPerBeat >= 0 ? "+" : ""}${run.driftMsPerBeat.toFixed(1)} 毫秒/拍 · ${run.hits} 下`
-                          : "";
-                      })()}
+                      {pickedRun
+                        ? ` · ${pickedRun.bars} 小节 · 漂移 ${pickedRun.driftMsPerBeat >= 0 ? "+" : ""}${pickedRun.driftMsPerBeat.toFixed(1)} 毫秒/拍 · ${pickedRun.hits} 下`
+                        : ""}
                       <button
                         type="button"
                         className="btn-quiet steady-curve-go"
@@ -1838,15 +1846,37 @@ export default function Stats() {
                               picked.bpm,
                               picked.fromBar,
                               picked.toBar,
-                              picked.totalBars ??
-                                steadyRunOf(picked.date, picked.bpm)?.totalBars ??
-                                steadyRunOf(picked.date, picked.bpm)?.bars,
+                              picked.totalBars ?? pickedRun?.totalBars ?? pickedRun?.bars,
                             ),
                           )
                         }
                       >
                         按这个速度再弹一遍
                       </button>
+                      {/* 这一遍的录音（v0.150.0）：点「最稳」那枚标签过来，直接听最稳的那一遍 */}
+                      {pickedRun?.audio && (
+                        <>
+                          <audio
+                            className="st-audio-play steady-curve-audio"
+                            controls
+                            preload="metadata"
+                            src={pickedRun.audio}
+                            aria-label="这一遍的录音"
+                          />
+                          <button
+                            type="button"
+                            className="btn-quiet st-audio-export"
+                            onClick={() => downloadAudio(pickedRun)}
+                            title="把这一遍的录音存成音频文件"
+                          >
+                            存成文件
+                          </button>
+                        </>
+                      )}
+                      {/* 节拍参考线（v0.150.0）：竖线是节拍器该响的位置，圆点是这一遍的落点 */}
+                      {pickedRun?.offsets && pickedRun.offsets.length > 0 && (
+                        <BeatRuler offsets={pickedRun.offsets} className="steady-curve-ruler" />
+                      )}
                     </span>
                   )}
                 </li>

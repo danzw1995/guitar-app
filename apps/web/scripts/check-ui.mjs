@@ -4517,6 +4517,64 @@ try {
     return "restored";
   })()`);
 
+  // 16d51) v0.150.0：「最稳」那枚药丸点一下就听那一遍的录音，旁边还有节拍参考线
+  await js(`(() => {
+    sessionStorage.setItem("chk8.steady", localStorage.getItem("guitar.steady.v1") ?? "");
+    sessionStorage.setItem("chk8.rhythm", localStorage.getItem("guitar.rhythm.v1") ?? "");
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([
+      { id: "v150-a", date: "2026-11-16", bpm: 60, bars: 4, stdevMs: 9, meanAbsMs: 7, driftMsPerBeat: -0.2, hits: 16,
+        offsets: [-18, -12, -6, 2, 9, 15, 21, 8],
+        audio: "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=" },
+      { id: "v150-b", date: "2026-11-20", bpm: 64, bars: 4, stdevMs: 15, meanAbsMs: 12, driftMsPerBeat: 0.3, hits: 16, offsets: [4, 6, 8] },
+    ]));
+    localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      "p:s0-crawl": { bestBpm: 70, sessions: 2, minutes: 4, lastAt: "2026-11-21", steadyStdev: 9,
+        steadyHistory: [{ date: "2026-11-16", bpm: 60, stdevMs: 9, totalBars: 4 }, { date: "2026-11-20", bpm: 64, stdevMs: 15, totalBars: 4 }] },
+    }));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1200);
+  const bestTag = plain(js(`(() => {
+    const pill = document.querySelector("button.steady-best-tag");
+    if (!pill) return "missing";
+    pill.click();
+    return pill.textContent.trim();
+  })()`));
+  await sleep(400);
+  const bestDay = plain(js(`(() => {
+    const day = document.querySelector(".steady-curve-day");
+    const ruler = day?.querySelector(".beat-ruler");
+    return JSON.stringify({
+      text: (day?.textContent ?? "").replace(/\\s+/g, " ").trim().slice(0, 90),
+      dots: ruler?.querySelectorAll(".beat-ruler-dot").length ?? 0,
+      ticks: ruler?.querySelectorAll(".beat-ruler-tick").length ?? 0,
+      marks: [...(ruler?.querySelectorAll(".beat-ruler-dot") ?? [])].map((dot) => dot.getAttribute("class").replace("beat-ruler-dot ", "")),
+      audio: (day?.querySelector("audio")?.getAttribute("src") ?? "").slice(0, 22),
+      exportable: day?.querySelectorAll(".st-audio-export").length ?? 0,
+      hint: day?.querySelector(".beat-ruler-hint")?.textContent.trim() ?? "",
+    });
+  })()`));
+  log(
+    bestTag === "最稳 11-16" &&
+      bestDay.includes('"dots":8') &&
+      bestDay.includes('"ticks":8') &&
+      bestDay.includes('"audio":"data:audio/wav;base64') &&
+      bestDay.includes('"exportable":1') &&
+      bestDay.includes("early") &&
+      bestDay.includes("节拍器"),
+    "统计页：点「最稳」那枚药丸就能听那一遍的录音，录音旁边有节拍参考线",
+    `${bestTag} | ${bestDay}`,
+  );
+  await js(`(() => {
+    localStorage.setItem("guitar.steady.v1", sessionStorage.getItem("chk8.steady") ?? "");
+    localStorage.setItem("guitar.rhythm.v1", sessionStorage.getItem("chk8.rhythm") ?? "");
+    sessionStorage.removeItem("chk8.steady");
+    sessionStorage.removeItem("chk8.rhythm");
+    return "restored";
+  })()`);
+
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);
   await sleep(900);

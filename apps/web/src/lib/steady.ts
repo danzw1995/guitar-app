@@ -38,6 +38,8 @@ export interface SteadyRun {
    * 只有手动打开「录下这一遍」才有；一条几十 KB，所以只留最近几遍（见 AUDIO_RUNS）。
    */
   audio?: string;
+  /** 每拍偏了多少毫秒（v0.150.0，负=抢、正=拖）：录音旁边那条参考线靠它画 */
+  offsets?: number[];
 }
 
 /** 录音只留最近几遍：本地存储放不下更多（每遍约 30–80KB 的 base64） */
@@ -80,6 +82,14 @@ function parseRun(value: unknown): SteadyRun | null {
     typeof item.audio === "string" && item.audio.startsWith("data:audio/") && item.audio.length <= AUDIO_MAX_CHARS
       ? item.audio
       : undefined;
+  // 逐拍偏差（v0.150.0）：只用来画参考线，整数毫秒、最多 64 拍
+  const offsets = Array.isArray(item.offsets)
+    ? item.offsets
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value) && Math.abs(value) <= 500)
+        .map((value) => Math.round(value))
+        .slice(0, 64)
+    : [];
   return {
     id: item.id,
     date: item.date,
@@ -95,6 +105,7 @@ function parseRun(value: unknown): SteadyRun | null {
     ...(medianFirstHalfMs !== undefined ? { medianFirstHalfMs } : {}),
     ...(medianSecondHalfMs !== undefined ? { medianSecondHalfMs } : {}),
     ...(audio ? { audio } : {}),
+    ...(offsets.length ? { offsets } : {}),
   };
 }
 
@@ -169,4 +180,46 @@ export function restoreRuns(runs: SteadyRun[]): SteadyRun[] {
 
 export function seedSteady(bpm: number, bars: number, id?: string): void {
   window.dispatchEvent(new CustomEvent(STEADY_EVENT, { detail: { bpm, bars, id } }));
+}
+
+/** 录音的扩展名跟着 mime 走（v0.150.0）：Chrome 录 webm、Safari 录 mp4，别都写成 .webm */
+export function audioExtOf(mime: string): string {
+  if (mime.includes("webm")) return "webm";
+  if (mime.includes("mp4") || mime.includes("m4a")) return "m4a";
+  if (mime.includes("mpeg")) return "mp3";
+  if (mime.includes("ogg")) return "ogg";
+  return "wav";
+}
+
+/** 存录音只要这几样：面板上「同速那一遍」手里没有完整的 SteadyRun */
+export interface AudioSource {
+  audio?: string;
+  date: string;
+  bpm: number;
+  stdevMs: number;
+}
+
+/** 把这一遍的录音存成文件（v0.150.0）：data URL → Blob → 点一下临时链接 */
+export function downloadAudio(run: AudioSource): boolean {
+  if (!run.audio) return false;
+  const [head, body] = run.audio.split(",");
+  if (!head || !body) return false;
+  const mime = /data:([^;,]+)/.exec(head)?.[1] ?? "audio/webm";
+  try {
+    const binary = window.atob(body);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `稳不稳-${run.date}-${run.bpm}BPM-${Math.round(run.stdevMs)}ms.${audioExtOf(mime)}`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    // 给浏览器一点时间去拿这个 blob，再回收
+    window.setTimeout(() => URL.revokeObjectURL(url), 3000);
+    return true;
+  } catch {
+    return false;
+  }
 }

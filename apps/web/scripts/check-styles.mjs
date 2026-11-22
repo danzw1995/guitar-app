@@ -1559,6 +1559,19 @@ expect(
     (narrowDecls(".steady-halves-svg .steady-half-second").get("stroke") || "").includes("--accent"),
 );
 
+expect(
+  "「存成文件」够 40 高，节拍参考线按 220 宽画",
+  Number.parseFloat(narrowDecls(".st-audio-export").get("min-height")) >= 40 &&
+    Number.parseFloat(narrowDecls(".beat-ruler").get("width")) === 220,
+);
+
+expect(
+  "节拍参考线的点分三种颜色：在拍上绿、抢蓝、拖强调色",
+  narrowDecls(".beat-ruler-dot.on").get("fill") === "var(--green)" &&
+    narrowDecls(".beat-ruler-dot.early").get("fill") === "var(--blue)" &&
+    narrowDecls(".beat-ruler-dot.late").get("fill") === "var(--accent)",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

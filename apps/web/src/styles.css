@@ -824,6 +824,23 @@ button, select, input { font: inherit; color: inherit; }
   font-style: normal;
   white-space: nowrap;
 }
+/* 变成按钮之后（v0.150.0）：点一下就能看/听最稳的那一遍，别带浏览器的默认边框 */
+button.steady-best-tag {
+  border: 0;
+  font-family: inherit;
+  line-height: 1.5;
+  cursor: pointer;
+}
+button.steady-best-tag:hover {
+  text-decoration: underline dotted;
+}
+/* 点开那天之后，录音和参考线各占一整行（v0.150.0） */
+.steady-curve-audio {
+  margin-top: 4px;
+}
+.steady-curve-ruler {
+  margin-top: 6px;
+}
 /* 最稳的那一遍画成空心圈：`.curve-svg circle` 是 (0,1,1)，要 (0,2,1) 才盖得住 */
 .steady-curve-svg circle.steady-curve-best {
   fill: none;
@@ -3690,7 +3707,60 @@ button, select, input { font: inherit; color: inherit; }
   height: 40px;
 }
 
-.st-best {
+/* 「存成文件」和播放条并排（v0.150.0） */
+.st-audio-export {
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--accent);
+  font-size: 12px;
+}
+
+/* 节拍参考线（v0.150.0）：竖线是节拍器该响的位置，圆点是这一遍的落点 */
+.beat-ruler-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.beat-ruler-hint {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.beat-ruler {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  height: 30px;
+}
+
+.beat-ruler-zero {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.beat-ruler-tick {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.beat-ruler-dot.on {
+  fill: var(--green);
+}
+
+.beat-ruler-dot.early {
+  fill: var(--blue);
+}
+
+.beat-ruler-dot.late {
+  fill: var(--accent);
+}
+
+.st-audio-ruler {
+  flex: 1 1 100%;
+  margin-top: 2px;
+}.st-best {
   margin: 10px 0 0;
   color: var(--muted);
   font-size: 12px;
