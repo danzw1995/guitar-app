@@ -967,6 +967,38 @@ export default function Stats() {
   /** 那个点对应的那一遍（有就补上小节数、漂移、次数） */
   const steadyRunOf = (date: string, bpm: number) =>
     [...steadyRuns].reverse().find((run) => run.date === date && run.bpm === bpm);
+  // 前后半段各自偏多少（v0.149.0）：整段中位数会把「前抢后拖」抵消成 0，两条线分开画才看得出来
+  const steadyHalfRuns = steadyWinRuns.filter(
+    (run) => run.medianFirstHalfMs !== undefined && run.medianSecondHalfMs !== undefined,
+  );
+  const steadyHalves =
+    steadyHalfRuns.length >= 2
+      ? (() => {
+          const values = steadyHalfRuns.flatMap((run) => [
+            run.medianFirstHalfMs ?? 0,
+            run.medianSecondHalfMs ?? 0,
+          ]);
+          // 上下共用一把尺：0 在中间，往上 = 拖（正），往下 = 抢（负）
+          const span = Math.max(8, ...values.map((value) => Math.abs(value)));
+          const x = (index: number) => 4 + (index * 112) / Math.max(1, steadyHalfRuns.length - 1);
+          const y = (value: number) => 15 - (value / span) * 11;
+          const line = (pick: (run: (typeof steadyHalfRuns)[number]) => number) =>
+            steadyHalfRuns
+              .map(
+                (run, index) =>
+                  `${index === 0 ? "M" : "L"}${x(index).toFixed(1)} ${y(pick(run)).toFixed(1)}`,
+              )
+              .join(" ");
+          const last = steadyHalfRuns[steadyHalfRuns.length - 1];
+          return {
+            first: line((run) => run.medianFirstHalfMs ?? 0),
+            second: line((run) => run.medianSecondHalfMs ?? 0),
+            midY: y(0).toFixed(1),
+            lastFirst: Math.round(last.medianFirstHalfMs ?? 0),
+            lastSecond: Math.round(last.medianSecondHalfMs ?? 0),
+          };
+        })()
+      : null;
   /**
    * 「按这个速度再弹一遍」要带过去的参数（v0.148.0）：只弹过局部的，把绝对小节号一起带上，
    * 落地就是「共 4 小节 · 只弹 2 到 3」，而不是从第 1 小节开始的 2 小节。
@@ -2474,6 +2506,30 @@ export default function Stats() {
                   </button>
                 </>
               )}
+            </div>
+          )}
+          {steadyHalves && (
+            <div className="steady-halves" data-steady-halves="">
+              <svg
+                className="curve-svg steady-halves-svg"
+                viewBox="0 0 120 30"
+                role="img"
+                aria-label={
+                  "最近 " + steadyHalfRuns.length + " 遍的前后半段：最后一遍前半 " + steadyHalves.lastFirst +
+                  " 毫秒、后半 " + steadyHalves.lastSecond + " 毫秒（越往上越拖，越往下越抢）"
+                }
+              >
+                <line className="steady-halves-mid" x1={4} y1={Number(steadyHalves.midY)} x2={116} y2={Number(steadyHalves.midY)} />
+                <path className="steady-half-first" d={steadyHalves.first} />
+                <path className="steady-half-second" d={steadyHalves.second} />
+              </svg>
+              <span className="muted">
+                {steadyHalfRuns.length} 遍的前半 / 后半各自偏多少（越往上越拖）
+                <span className="steady-marks">
+                  <i className="mark-first" aria-hidden="true" /> 前半
+                  <i className="mark-second" aria-hidden="true" /> 后半
+                </span>
+              </span>
             </div>
           )}
           <p className="hint">

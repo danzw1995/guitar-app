@@ -30,7 +30,20 @@ export interface SteadyRun {
   hits: number;
   /** 整体偏早/偏晚的中位数（毫秒，负=抢、正=拖）（v0.147.0） */
   medianOffsetMs?: number;
+  /** 前半段 / 后半段各自的中位数（v0.148.0）：整段会互相抵消，分开看才知道是不是越弹越拖 */
+  medianFirstHalfMs?: number;
+  medianSecondHalfMs?: number;
+  /**
+   * 这一遍的录音（v0.149.0，data URL）。
+   * 只有手动打开「录下这一遍」才有；一条几十 KB，所以只留最近几遍（见 AUDIO_RUNS）。
+   */
+  audio?: string;
 }
+
+/** 录音只留最近几遍：本地存储放不下更多（每遍约 30–80KB 的 base64） */
+export const AUDIO_RUNS = 3;
+/** 单条录音的上限，超了就不存——宁可没有，也不要把存储写爆 */
+export const AUDIO_MAX_CHARS = 900_000;
 
 function parseRun(value: unknown): SteadyRun | null {
   if (!value || typeof value !== "object") return null;
@@ -55,6 +68,18 @@ function parseRun(value: unknown): SteadyRun | null {
   const medianRaw = Number(item.medianOffsetMs);
   const medianOffsetMs =
     Number.isFinite(medianRaw) && Math.abs(medianRaw) <= 200 ? Math.round(medianRaw * 10) / 10 : 0;
+  // 前后半段（v0.148.0）：老记录没有，缺了就当没有
+  const half = (value: unknown): number | undefined => {
+    const number = Number(value);
+    return Number.isFinite(number) && Math.abs(number) <= 200 ? Math.round(number * 10) / 10 : undefined;
+  };
+  const medianFirstHalfMs = half(item.medianFirstHalfMs);
+  const medianSecondHalfMs = half(item.medianSecondHalfMs);
+  // 录音（v0.149.0）：只认 data:audio/ 开头的短串，超大的一律不要
+  const audio =
+    typeof item.audio === "string" && item.audio.startsWith("data:audio/") && item.audio.length <= AUDIO_MAX_CHARS
+      ? item.audio
+      : undefined;
   return {
     id: item.id,
     date: item.date,
@@ -67,6 +92,9 @@ function parseRun(value: unknown): SteadyRun | null {
     driftMsPerBeat: Number.isFinite(driftMsPerBeat) ? Math.round(driftMsPerBeat * 10) / 10 : 0,
     hits: Number.isFinite(hits) && hits > 0 ? Math.round(hits) : 0,
     ...(medianOffsetMs ? { medianOffsetMs } : {}),
+    ...(medianFirstHalfMs !== undefined ? { medianFirstHalfMs } : {}),
+    ...(medianSecondHalfMs !== undefined ? { medianSecondHalfMs } : {}),
+    ...(audio ? { audio } : {}),
   };
 }
 
@@ -86,12 +114,22 @@ export function loadRuns(): SteadyRun[] {
 }
 
 function persist(runs: SteadyRun[]): void {
+  // 录音只留最近几遍（v0.149.0）：一条几十 KB，留多了会把 5MB 的本地存储写爆
+  const keep = new Set(runs.slice(-AUDIO_RUNS).map((run) => run.id));
+  const trimmed = runs.map((run) => (run.audio && !keep.has(run.id) ? { ...run, audio: undefined } : run));
   try {
-    if (runs.length === 0) window.localStorage.removeItem(STEADY_KEY);
-    else window.localStorage.setItem(STEADY_KEY, JSON.stringify(runs));
+    if (trimmed.length === 0) window.localStorage.removeItem(STEADY_KEY);
+    else window.localStorage.setItem(STEADY_KEY, JSON.stringify(trimmed));
   } catch {
     // 存不下就算了，别让一次练习因为配额报错整块崩掉
   }
+}
+
+/** 把录下来的那一段挂到某一遍上（v0.149.0）：MediaRecorder 收尾是异步的，记录先落、录音后补 */
+export function attachAudio(runId: string, audio: string): void {
+  if (!audio.startsWith("data:audio/") || audio.length > AUDIO_MAX_CHARS) return;
+  const runs = loadRuns().map((run) => (run.id === runId ? { ...run, audio } : run));
+  persist(runs);
 }
 
 export function recordRun(input: Omit<SteadyRun, "id">): SteadyRun[] {

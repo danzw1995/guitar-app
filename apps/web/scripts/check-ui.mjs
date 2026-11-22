@@ -4471,6 +4471,52 @@ try {
     return "restored";
   })()`);
 
+  // 16d50) v0.149.0：前后半段画到曲线上、下次进来还是上次那几小节、「录下这一遍」在
+  await js(`(() => {
+    sessionStorage.setItem("chk7.steady", localStorage.getItem("guitar.steady.v1") ?? "");
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([
+      { id: "half-a", date: "2026-11-19", bpm: 60, bars: 2, stdevMs: 30, meanAbsMs: 26, driftMsPerBeat: 0.1, hits: 8, medianOffsetMs: 0, medianFirstHalfMs: -40, medianSecondHalfMs: 30, totalBars: 4, fromBar: 2, toBar: 3 },
+      { id: "half-b", date: "2026-11-21", bpm: 60, bars: 2, stdevMs: 14, meanAbsMs: 11, driftMsPerBeat: 0.1, hits: 8, medianOffsetMs: 0, medianFirstHalfMs: -8, medianSecondHalfMs: 20, totalBars: 4, fromBar: 2, toBar: 3 },
+    ]));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1200);
+  const steadyHalves = plain(js(`(() => {
+    const box = document.querySelector("[data-steady-halves]");
+    return JSON.stringify({
+      paths: box ? box.querySelectorAll("path").length : 0,
+      aria: box?.querySelector("svg")?.getAttribute("aria-label") ?? "",
+      legend: (box?.querySelector(".steady-marks")?.textContent ?? "").replace(/\\s+/g, " ").trim(),
+    });
+  })()`));
+  await ab(["open", `${URL}/?r=${Date.now()}#practice/steady`]);
+  await sleep(1300);
+  const steadyDefaults = plain(js(`(() => {
+    const panel = document.querySelector("#steady");
+    return JSON.stringify({
+      bars: panel?.querySelector("select[aria-label='整段共几小节']")?.value ?? "",
+      range: [...(panel?.querySelectorAll(".st-range select") ?? [])].map((item) => item.value),
+      record: !!panel?.querySelector(".st-audio-toggle input[type=checkbox]"),
+    });
+  })()`));
+  log(
+    steadyHalves.includes('"paths":2') &&
+      /前半/.test(steadyHalves) &&
+      steadyHalves.includes("前半 后半") &&
+      steadyDefaults.includes('"bars":"4"') &&
+      steadyDefaults.includes('"range":["2","3"]') &&
+      steadyDefaults.includes('"record":true'),
+    "统计页：前后半段画成两条线；下次进「稳不稳」还是上次那几小节，录音开关也在",
+    `${steadyHalves} | ${steadyDefaults}`,
+  );
+  await js(`(() => {
+    localStorage.setItem("guitar.steady.v1", sessionStorage.getItem("chk7.steady") ?? "");
+    sessionStorage.removeItem("chk7.steady");
+    return "restored";
+  })()`);
+
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);
   await sleep(900);

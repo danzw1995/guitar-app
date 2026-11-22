@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
-import { recordRun, loadRuns, bestRun, STEADY_EVENT, type SteadyRun } from "../lib/steady";
+import { recordRun, loadRuns, bestRun, attachAudio, STEADY_EVENT, type SteadyRun } from "../lib/steady";
 import { loadRhythm, loadSettings, saveRhythm, saveSettings } from "../lib/storage";
 import { parseHash } from "../lib/nav";
 
@@ -73,11 +73,17 @@ export default function Steady() {
       auto: query.auto === "1" || query.auto === "true",
     };
   }, []);
+  // 上次弹的是哪几小节，下次进来还是那几小节（v0.149.0）：磨同一段时不用每次重选
+  const lastRun = useMemo(() => loadRuns().slice(-1)[0], []);
+  const lastBars =
+    lastRun?.totalBars && [2, 4, 6, 8].includes(lastRun.totalBars) ? lastRun.totalBars : null;
   const [bpm, setBpm] = useState(seeded.bpm ?? initial.steadyBpm);
-  const [bars, setBars] = useState(seeded.bars ?? initial.steadyBars);
+  const [bars, setBars] = useState(seeded.bars ?? lastBars ?? initial.steadyBars);
   // 只弹、只判其中几小节（v0.143.0）：默认整段
-  const [fromBar, setFromBar] = useState(seeded.fromBar ?? 1);
-  const [toBar, setToBar] = useState(seeded.toBar ?? seeded.bars ?? initial.steadyBars);
+  const [fromBar, setFromBar] = useState(seeded.fromBar ?? lastRun?.fromBar ?? 1);
+  const [toBar, setToBar] = useState(
+    seeded.toBar ?? lastRun?.toBar ?? seeded.bars ?? lastBars ?? initial.steadyBars,
+  );
   const [range, setRange] = useState<{ from: number; to: number } | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
@@ -85,6 +91,15 @@ export default function Steady() {
   const [error, setError] = useState("");
   const [runs, setRuns] = useState<SteadyRun[]>(() => loadRuns());
   const [justSaved, setJustSaved] = useState(false);
+
+  // 录下这一遍（v0.149.0）：默认不录（一条几十 KB，只留最近 3 遍），开了才向麦克风要录音
+  const [audioOn, setAudioOn] = useState(false);
+  const [audioNote, setAudioNote] = useState("");
+  const [lastAudio, setLastAudio] = useState("");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recorderChunks = useRef<Blob[]>([]);
+  const pendingAudio = useRef<string | null>(null);
+  const pendingRunId = useRef<string | null>(null);
 
   const linkedRef = useRef<string | null>(null);
   const [linkedNote, setLinkedNote] = useState("");
@@ -216,6 +231,10 @@ export default function Steady() {
     chunksRef.current = [];
     framesRef.current = 0;
     clickRef.current = [];
+    setAudioNote("");
+    setLastAudio("");
+    pendingAudio.current = null;
+    pendingRunId.current = null;
 
     const Ctor: typeof AudioContext | undefined =
       window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -233,6 +252,47 @@ export default function Steady() {
       await ctx.resume();
       streamRef.current = stream;
       ctxRef.current = ctx;
+
+      // 开了「录下这一遍」才录：MediaRecorder 不在就安静地退回不录
+      if (audioOn && typeof MediaRecorder !== "undefined") {
+        recorderChunks.current = [];
+        const options: MediaRecorderOptions = {};
+        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+          options.mimeType = "audio/webm;codecs=opus";
+        }
+        try {
+          const recorder = new MediaRecorder(stream, options);
+          recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) recorderChunks.current.push(event.data);
+          };
+          recorder.onstop = () => {
+            const blob = new Blob(recorderChunks.current, { type: recorder.mimeType || "audio/webm" });
+            recorderChunks.current = [];
+            if (blob.size === 0) return;
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const data = typeof reader.result === "string" ? reader.result : "";
+              if (!data) return;
+              const runId = pendingRunId.current;
+              pendingRunId.current = null;
+              if (!runId) {
+                // 记录还没落盘：先攥着，等 stop() 里拿到 id 再挂上去
+                pendingAudio.current = data;
+                return;
+              }
+              attachAudio(runId, data);
+              setLastAudio(data);
+              setAudioNote("这一遍录下来了");
+              setRuns(loadRuns());
+            };
+            reader.readAsDataURL(blob);
+          };
+          recorder.start();
+          recorderRef.current = recorder;
+        } catch {
+          recorderRef.current = null;
+        }
+      }
 
       const source = ctx.createMediaStreamSource(stream);
       const processor = ctx.createScriptProcessor(4096, 1, 1);
@@ -277,7 +337,7 @@ export default function Steady() {
       }
     }
     // stop 在下面定义，这里通过 ref 调用；写成函数提升会让依赖数组抖动
-  }, [bars, bpm, cleanup, fromBar, toBar]);
+  }, [audioOn, bars, bpm, cleanup, fromBar, toBar]);
 
   const stop = useCallback(() => {
     const ctx = ctxRef.current;
@@ -286,6 +346,17 @@ export default function Steady() {
     const clicks = clickRef.current;
     const sampleRate = ctx?.sampleRate ?? 48000;
     const now = ctx?.currentTime ?? 0;
+
+    // 先把录音收掉，再 cleanup（cleanup 会把音轨关掉，MediaRecorder 就没戏了）
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (recorder && recorder.state !== "inactive") {
+      try {
+        recorder.stop();
+      } catch {
+        // 已经停了就算了
+      }
+    }
 
     cleanup();
     setPhase("idle");
@@ -340,25 +411,44 @@ export default function Steady() {
             bars: sameRun.bars,
             sameRange: sameRange(sameRun),
             medianOffsetMs: sameRun.medianOffsetMs,
+            medianFirstHalfMs: sameRun.medianFirstHalfMs,
+            medianSecondHalfMs: sameRun.medianSecondHalfMs,
+            // 同速那一遍如果录过，直接放给人听（v0.149.0）
+            audio: sameRun.audio,
           }
         : null,
     );
-    setRuns(
-      recordRun({
-        date: new Date().toISOString().slice(0, 10),
-        bpm,
-        bars: spanBars,
-        fromBar: startBar,
-        toBar: endBar,
-        // 那一遍整段是几小节（v0.148.0）：只弹 2–3 时 bars 只有 2，重弹要还原面板档位
-        totalBars: bars,
-        stdevMs: next.stdevMs,
-        meanAbsMs: next.meanAbsMs,
-        driftMsPerBeat: next.driftMsPerBeat,
-        hits: next.hits.length,
-        medianOffsetMs: next.medianOffsetMs,
-      }),
-    );
+    const saved = recordRun({
+      date: new Date().toISOString().slice(0, 10),
+      bpm,
+      bars: spanBars,
+      fromBar: startBar,
+      toBar: endBar,
+      // 那一遍整段是几小节（v0.148.0）：只弹 2–3 时 bars 只有 2，重弹要还原面板档位
+      totalBars: bars,
+      stdevMs: next.stdevMs,
+      meanAbsMs: next.meanAbsMs,
+      driftMsPerBeat: next.driftMsPerBeat,
+      hits: next.hits.length,
+      medianOffsetMs: next.medianOffsetMs,
+      // 前后半段各自的偏早/偏晚（v0.148.0）：统计页分开画
+      medianFirstHalfMs: next.medianFirstHalfMs,
+      medianSecondHalfMs: next.medianSecondHalfMs,
+    });
+    setRuns(saved);
+    // 录音是异步收尾的：先记下这一遍的 id，等 onstop 里把 data URL 挂上去（v0.149.0）
+    const runId = saved[saved.length - 1]?.id ?? null;
+    if (runId) {
+      pendingRunId.current = runId;
+      if (pendingAudio.current) {
+        attachAudio(runId, pendingAudio.current);
+        setLastAudio(pendingAudio.current);
+        setAudioNote("这一遍录下来了");
+        pendingAudio.current = null;
+        pendingRunId.current = null;
+        setRuns(loadRuns());
+      }
+    }
     // 从练习页那条进来的，把这次的标准差写回那条练习（v0.142.0）
     const linkId = linkedRef.current;
     if (linkId) {
@@ -431,6 +521,10 @@ export default function Steady() {
     bars: number;
     sameRange: boolean;
     medianOffsetMs?: number;
+    medianFirstHalfMs?: number;
+    medianSecondHalfMs?: number;
+    /** 同速那一遍的录音（v0.149.0）：录过才有 */
+    audio?: string;
   } | null>(null);
 
   const busy = phase === "starting" || phase === "listening";
@@ -515,6 +609,19 @@ export default function Steady() {
         </button>
       </div>
 
+      {typeof MediaRecorder !== "undefined" && (
+        <label className="st-audio-toggle">
+          <input
+            type="checkbox"
+            checked={audioOn}
+            onChange={(event) => setAudioOn(event.target.checked)}
+            disabled={busy}
+          />
+          录下这一遍
+          <span className="st-audio-note">只留最近 3 遍，方便跟同速的上一遍对着听</span>
+        </label>
+      )}
+
       <p className="st-hint" role="status">
         {autoIn !== null
           ? `${autoIn} 秒后自动开始（从统计页双击过来的）；不想等就点「开始」。`
@@ -593,6 +700,20 @@ export default function Steady() {
           )}
                     {justSaved && <p className="st-saved">这一遍已经记下了。</p>}
                     {linkedNote && <p className="st-linked">{linkedNote}</p>}
+          {audioNote && (
+            <p className="st-audio">
+              {audioNote}
+              {lastAudio && (
+                <audio
+                  className="st-audio-play"
+                  controls
+                  preload="metadata"
+                  src={lastAudio}
+                  aria-label="这一遍的录音"
+                />
+              )}
+            </p>
+          )}
           {report && same && (
             <p className="st-same">
               同速的上一遍 ±{same.stdevMs.toFixed(0)} 毫秒（{same.date.slice(5)} ·{" "}
@@ -607,6 +728,15 @@ export default function Steady() {
               {" · 方向："}这次{sideText(report.medianOffsetMs)}（
               {halvesText(report.medianFirstHalfMs, report.medianSecondHalfMs)}），上次
               {sideText(same.medianOffsetMs)}
+              {same.audio && (
+                <audio
+                  className="st-audio-play"
+                  controls
+                  preload="metadata"
+                  src={same.audio}
+                  aria-label="同速那一遍的录音"
+                />
+              )}
               <button
                 type="button"
                 className="btn-quiet st-same-listen"

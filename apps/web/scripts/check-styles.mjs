@@ -1545,6 +1545,20 @@ expect(
     (narrowDecls(".steady-vs").get("flex") || "").startsWith("1 1 100%"),
 );
 
+expect(
+  "「录下这一遍」那一行够 40 高，录音条也不挤",
+  Number.parseFloat(narrowDecls(".st-audio-toggle").get("min-height")) >= 40 &&
+    Number.parseFloat(narrowDecls(".st-audio-play").get("min-height")) >= 40,
+);
+
+expect(
+  "前后半段的两条线：前半蓝、后半强调色，都没填充",
+  narrowDecls(".steady-halves-svg .steady-half-first").get("fill") === "none" &&
+    (narrowDecls(".steady-halves-svg .steady-half-first").get("stroke") || "").includes("--blue") &&
+    narrowDecls(".steady-halves-svg .steady-half-second").get("fill") === "none" &&
+    (narrowDecls(".steady-halves-svg .steady-half-second").get("stroke") || "").includes("--accent"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
