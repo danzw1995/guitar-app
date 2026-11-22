@@ -3781,6 +3781,44 @@ button.steady-best-tag:hover {
   fill: rgba(139, 148, 158, 0.35);
 }
 
+/* 叠在后面那条：只描边不填，错开一点就能看出哪遍更齐（v0.152.0） */
+.wave-ruler-ghost {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  opacity: 0.55;
+}
+
+/* 拖选出来的那一段（v0.152.0） */
+.wave-ruler-pick {
+  fill: rgba(232, 176, 75, 0.16);
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.wave-ruler-dragging {
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+/* 拖选之后那句「已经改成只弹第几小节」（v0.152.0） */
+.st-pick-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.st-pick-go {
+  min-height: 40px;
+  color: var(--accent);
+  font-size: 12px;
+}
+
 .wave-ruler-tick {
   stroke: var(--line-strong);
   stroke-width: 1;

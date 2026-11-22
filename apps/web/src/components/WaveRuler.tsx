@@ -1,13 +1,26 @@
 /**
- * 录音 + 节拍参考线（v0.151.0）：把波形画出来，再在波形上标出节拍器的位置和每一拍的落点。
+ * 录音 + 节拍参考线（v0.151.0；v0.152.0 加叠影与拖选）
  *
- * 解码一次就缓存下来（只留 110 列峰值，不留原始采样）；解不了的时候退回 BeatRuler 那条示意图，
- * 起码还能看出是抢还是拖。
+ * 波形画出来，节拍器的位置画竖线、每一拍的落点画圆点。
+ * - `ghost`：把另一遍（通常是「最稳的一遍」）的波形淡淡叠在后面，错开一点就能看出哪遍更齐
+ * - 拖动可以选一段：`onPick` 给回「第几拍到第几拍」，面板据此只弹那几小节
+ *
+ * 解码失败就退回 BeatRuler 那条示意图，起码还能看出是抢还是拖。
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  WAVE_AMP,
+  WAVE_CENTER,
+  WAVE_HEIGHT,
+  WAVE_WIDTH,
+  decodeWave,
+  waveCached,
+  waveShapePath,
+  type WavePeaks,
+} from "../lib/wave";
 import BeatRuler from "./BeatRuler";
 
-export interface WaveRulerProps {
+export interface WaveLayer {
   /** 那一遍的录音（data URL） */
   audio: string;
   /** 每拍偏差（毫秒，负=抢、正=拖） */
@@ -15,96 +28,63 @@ export interface WaveRulerProps {
   bpm: number;
   /** 录音里第一下点击声的位置（毫秒） */
   originMs?: number;
+}
+
+export interface WaveRulerProps extends WaveLayer {
+  /** 叠在后面那一条（同一条时间轴上错开一点，看得出齐不齐） */
+  ghost?: WaveLayer;
+  /** 拖选结束：第 from 拍到第 to 拍（0 起） */
+  onPick?: (fromBeat: number, toBeat: number) => void;
   className?: string;
 }
 
-interface DecodedWave {
-  peaks: number[];
-  seconds: number;
+interface Pick {
+  fromX: number;
+  toX: number;
 }
 
-const COLUMNS = 110;
-const WIDTH = 220;
-const HEIGHT = 34;
-const CENTER = 17;
-const AMP = 13;
-
-const cache = new Map<string, DecodedWave>();
-
-/** data URL 前缀都在 `data:audio/webm;base64,` 这一段上一样，得靠长度 + 尾巴区分 */
-function cacheKeyOf(audio: string): string {
-  return `${audio.length}:${audio.slice(-32)}`;
-}
-
-function bytesOf(dataUrl: string): ArrayBuffer | null {
-  const body = dataUrl.split(",")[1];
-  if (!body) return null;
-  try {
-    const binary = window.atob(body);
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-    return bytes.buffer;
-  } catch {
-    return null;
-  }
-}
-
-function peaksOf(samples: Float32Array): number[] {
-  const size = Math.max(1, Math.floor(samples.length / COLUMNS));
-  const peaks: number[] = [];
-  for (let column = 0; column < COLUMNS; column += 1) {
-    let peak = 0;
-    const from = column * size;
-    const to = Math.min(samples.length, from + size);
-    for (let index = from; index < to; index += 1) {
-      const value = Math.abs(samples[index]);
-      if (value > peak) peak = value;
-    }
-    peaks.push(peak);
-  }
-  const max = peaks.reduce((best, peak) => Math.max(best, peak), 0.0001);
-  return peaks.map((peak) => peak / max);
-}
-
-export default function WaveRuler({ audio, offsets, bpm, originMs = 0, className }: WaveRulerProps) {
-  const [wave, setWave] = useState<DecodedWave | null>(() => cache.get(cacheKeyOf(audio)) ?? null);
+export default function WaveRuler({
+  audio,
+  offsets,
+  bpm,
+  originMs = 0,
+  ghost,
+  onPick,
+  className,
+}: WaveRulerProps) {
+  const [wave, setWave] = useState<WavePeaks | null>(() => waveCached(audio));
+  const [ghostWave, setGhostWave] = useState<WavePeaks | null>(() =>
+    ghost ? waveCached(ghost.audio) : null,
+  );
   const [failed, setFailed] = useState(false);
+  const [pick, setPick] = useState<Pick | null>(null);
+  const dragRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const key = cacheKeyOf(audio);
-    const cached = cache.get(key);
-    if (cached) {
-      setWave(cached);
-      return;
-    }
     let alive = true;
-    const Ctor =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    const buffer = bytesOf(audio);
-    if (!Ctor || !buffer) {
-      setFailed(true);
-      return;
-    }
-    const context = new Ctor();
-    void context
-      .decodeAudioData(buffer)
-      .then((decoded) => {
-        const samples = decoded.getChannelData(0);
-        const next = { peaks: peaksOf(samples), seconds: decoded.duration };
-        cache.set(key, next);
-        if (alive) setWave(next);
-      })
-      .catch(() => {
-        if (alive) setFailed(true);
-      })
-      .finally(() => {
-        void context.close();
-      });
+    void decodeWave(audio).then((next) => {
+      if (!alive) return;
+      if (next) setWave(next);
+      else setFailed(true);
+    });
     return () => {
       alive = false;
     };
   }, [audio]);
+
+  useEffect(() => {
+    if (!ghost) {
+      setGhostWave(null);
+      return;
+    }
+    let alive = true;
+    void decodeWave(ghost.audio).then((next) => {
+      if (alive) setGhostWave(next);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [ghost]);
 
   if (failed) return <BeatRuler offsets={offsets} className={className} />;
   if (!wave) {
@@ -117,41 +97,76 @@ export default function WaveRuler({ audio, offsets, bpm, originMs = 0, className
 
   const seconds = Math.max(0.001, wave.seconds);
   const beatMs = 60000 / Math.max(1, bpm);
-  const xOf = (t: number) => Math.max(0, Math.min(WIDTH, (t / seconds) * WIDTH));
+  const xOf = (t: number) => Math.max(0, Math.min(WAVE_WIDTH, (t / seconds) * WAVE_WIDTH));
   const clockTimes = offsets.map((_, index) => (originMs + index * beatMs) / 1000);
   const hitTimes = offsets.map((offset, index) => clockTimes[index] + offset / 1000);
+  const beatCount = Math.max(1, offsets.length);
   const worst = offsets.reduce(
-    (pick, offset, index) => (Math.abs(offset) > Math.abs(offsets[pick]) ? index : pick),
+    (best, offset, index) => (Math.abs(offset) > Math.abs(offsets[best]) ? index : best),
     0,
   );
   const worstOffset = offsets[worst] ?? 0;
   const aria =
     `录音波形和每一拍的落点：${offsets.length} 拍，` +
-    `偏得最多的是第 ${worst + 1} 拍，${worstOffset < 0 ? "抢" : "拖"} ${Math.abs(Math.round(worstOffset))} 毫秒`;
+    `偏得最多的是第 ${worst + 1} 拍，${worstOffset < 0 ? "抢" : "拖"} ${Math.abs(Math.round(worstOffset))} 毫秒` +
+    (onPick ? "。横着拖动可以选中几拍。" : "");
 
-  // 波形轮廓：上沿一遍、再下沿倒着回来，围成一个可以填充的形状
-  const top = wave.peaks.map((peak, index) => {
-    const x = (index / (COLUMNS - 1)) * WIDTH;
-    const y = CENTER - Math.max(0.04, peak) * AMP;
-    return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
-  });
-  const bottom = [...wave.peaks].reverse().map((peak, index) => {
-    const column = COLUMNS - 1 - index;
-    const x = (column / (COLUMNS - 1)) * WIDTH;
-    const y = CENTER + Math.max(0.04, peak) * AMP;
-    return `L${x.toFixed(1)} ${y.toFixed(1)}`;
-  });
-  const shape = `${[...top, ...bottom].join(" ")} Z`;
+  const shape = waveShapePath(wave.peaks);
+  // 叠影：第二遍按它自己的节拍画，稍微压扁一点（上下各留 2px），两条才分得开
+  const ghostShape = ghost && ghostWave ? waveShapePath(ghostWave.peaks, WAVE_WIDTH, WAVE_CENTER, WAVE_AMP - 3) : "";
+
+  const xToPick = (clientX: number, rect: DOMRect): number => {
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
+    return ratio * WAVE_WIDTH;
+  };
+
+  const finishPick = (current: Pick) => {
+    const fromX = Math.min(current.fromX, current.toX);
+    const toX = Math.max(current.fromX, current.toX);
+    if (toX - fromX < 3) {
+      setPick(null);
+      return;
+    }
+    const fromBeat = Math.max(0, Math.min(beatCount - 1, Math.round((fromX / WAVE_WIDTH) * beatCount)));
+    const toBeat = Math.max(fromBeat, Math.min(beatCount - 1, Math.round((toX / WAVE_WIDTH) * beatCount)));
+    setPick({ fromX, toX });
+    onPick?.(fromBeat, toBeat);
+  };
 
   return (
     <div className={`wave-ruler-wrap${className ? ` ${className}` : ""}`}>
       <svg
-        className="wave-ruler"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        className={`wave-ruler${onPick ? " wave-ruler-dragging" : ""}`}
+        viewBox={`0 0 ${WAVE_WIDTH} ${WAVE_HEIGHT}`}
         role="img"
         aria-label={aria}
+        onPointerDown={(event) => {
+          if (!onPick) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          const x = xToPick(event.clientX, rect);
+          dragRef.current = x;
+          setPick({ fromX: x, toX: x });
+          event.currentTarget.setPointerCapture?.(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          if (!onPick || dragRef.current === null) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          setPick({ fromX: dragRef.current, toX: xToPick(event.clientX, rect) });
+        }}
+        onPointerUp={(event) => {
+          if (!onPick || dragRef.current === null) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          const current = { fromX: dragRef.current, toX: xToPick(event.clientX, rect) };
+          dragRef.current = null;
+          finishPick(current);
+        }}
+        onPointerCancel={() => {
+          dragRef.current = null;
+          setPick(null);
+        }}
       >
-        <line className="wave-ruler-mid" x1={0} y1={CENTER} x2={WIDTH} y2={CENTER} />
+        <line className="wave-ruler-mid" x1={0} y1={WAVE_CENTER} x2={WAVE_WIDTH} y2={WAVE_CENTER} />
+        {ghostShape && <path className="wave-ruler-ghost" d={ghostShape} />}
         <path className="wave-ruler-shape" d={shape} />
         {clockTimes.map((time, index) =>
           // 录音只录到这一段：超出录音长度的拍不画（不然会全挤在最右边）
@@ -162,7 +177,7 @@ export default function WaveRuler({ audio, offsets, bpm, originMs = 0, className
               x1={xOf(time)}
               y1={3}
               x2={xOf(time)}
-              y2={HEIGHT - 3}
+              y2={WAVE_HEIGHT - 3}
             />
           ) : null,
         )}
@@ -175,13 +190,25 @@ export default function WaveRuler({ audio, offsets, bpm, originMs = 0, className
               key={`hit-${index}-${Math.round(time * 1000)}`}
               className={`wave-ruler-dot ${mark}`}
               cx={xOf(time)}
-              cy={CENTER}
+              cy={WAVE_CENTER}
               r={2.4}
             />
           );
         })}
+        {pick && (
+          <rect
+            className="wave-ruler-pick"
+            x={Math.min(pick.fromX, pick.toX)}
+            y={1}
+            width={Math.abs(pick.toX - pick.fromX)}
+            height={WAVE_HEIGHT - 2}
+          />
+        )}
       </svg>
-      <span className="beat-ruler-hint">波形上是这一遍，竖线是节拍器</span>
+      <span className="beat-ruler-hint">
+        {ghost ? "淡的那条是最稳的一遍，深的是这一遍" : "波形上是这一遍，竖线是节拍器"}
+        {onPick ? "；横着拖能选几拍" : ""}
+      </span>
     </div>
   );
 }

@@ -92,6 +92,8 @@ export default function Steady() {
   const [report, setReport] = useState<TimingReport | null>(null);
   // 第一下点击声在录音里的位置（v0.151.0）：TimingReport 里没有这个，单独记一份给波形用
   const [originMs, setOriginMs] = useState<number | null>(null);
+  // 在波形上拖出来的那几拍（v0.152.0）——面板只认小节，所以换算出小节号再说明一句
+  const [pickNote, setPickNote] = useState("");
   const [error, setError] = useState("");
   const [runs, setRuns] = useState<SteadyRun[]>(() => loadRuns());
   const [justSaved, setJustSaved] = useState(false);
@@ -228,6 +230,7 @@ export default function Steady() {
     const spanBars = Math.max(1, Math.min(toBar, bars) - Math.max(1, fromBar) + 1);
     setReport(null);
     setOriginMs(null);
+    setPickNote("");
     setError("");
     setJustSaved(false);
     // 开跑就把这组设置记下来，下次进来还是这一组
@@ -539,6 +542,17 @@ export default function Steady() {
 
   const busy = phase === "starting" || phase === "listening";
   const best = bestRun(runs);
+  // 叠影（v0.152.0）：把最稳那一遍的波形淡淡叠在这一次后面，错开一点就看得出谁更齐
+  const latest = runs[runs.length - 1];
+  const ghostLayer =
+    lastAudio && best && latest && best.id !== latest.id && best.audio
+      ? {
+          audio: best.audio,
+          offsets: (best.offsets ?? []).map((offset) => Math.round(offset)),
+          bpm: best.bpm,
+          originMs: best.originMs,
+        }
+      : undefined;
   // 满格 = 偏差 60 毫秒；再大就顶到头，不至于因为某一下特别离谱把别的挤成一条线
   const SCALE_MS = 60;
 
@@ -738,9 +752,12 @@ export default function Steady() {
                   <button
                     type="button"
                     className="btn-quiet st-audio-export"
-                    onClick={() => {
+                    onClick={async () => {
                       const run = runs[runs.length - 1];
-                      if (run) downloadText(`稳不稳-${run.date}-${run.bpm}BPM.md`, runMetaMarkdown(run));
+                      if (run) {
+                        const markdown = await runMetaMarkdown(run);
+                        downloadText(`稳不稳-${run.date}-${run.bpm}BPM.md`, markdown);
+                      }
                     }}
                     title="存一份说明：速度、范围、标准差、每一拍偏多少"
                   >
@@ -757,11 +774,28 @@ export default function Steady() {
                 offsets={report.offsets.map((offset) => Math.round(offset))}
                 bpm={bpm}
                 originMs={originMs}
+                ghost={ghostLayer}
+                onPick={(fromBeat, toBeat) => {
+                  const start = Math.max(1, Math.min(bars, Math.floor(fromBeat / BAR_BEATS) + 1));
+                  const end = Math.max(start, Math.min(bars, Math.floor(toBeat / BAR_BEATS) + 1));
+                  setFromBar(start);
+                  setToBar(end);
+                  setPickNote(`你选的是第 ${fromBeat + 1}–${toBeat + 1} 拍，已经改成只弹第 ${start}–${end} 小节`);
+                }}
                 className="st-audio-ruler"
               />
             ) : (
               <BeatRuler offsets={report.offsets} className="st-audio-ruler" />
             ))}
+          {pickNote && (
+            <p className="st-pick-note">
+              {pickNote}
+              {" "}
+              <button type="button" className="btn-quiet st-pick-go" onClick={start} disabled={busy}>
+                就弹这几小节
+              </button>
+            </p>
+          )}
           {/* 这一次和最稳的一次并排（v0.151.0）：数字看不出差别时，耳朵能听出来 */}
           {(() => {
             const current = runs[runs.length - 1];

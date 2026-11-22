@@ -3,6 +3,7 @@
  *
  * 存的是**标准差**（越小越稳），不是 BPM——这项练的不是速度，是「每一拍都不抢不拖」。
  */
+import { wavePngDataUrl } from "./wave";
 
 export const STEADY_KEY = "guitar.steady.v1";
 /** 在页面内给「稳不稳」面板喂一组速度 / 小节数（v0.141.0） */
@@ -220,8 +221,9 @@ export interface AudioSource {
   offsets?: number[];
 }
 
-/** 一份说明文件（v0.151.0）：音频本身带不了元信息，就并排放一个 .md */
-export function runMetaMarkdown(run: AudioSource): string {
+/** 一份说明文件（v0.151.0）：音频本身带不了元信息，就并排放一个 .md
+ *  v0.152.0：有录音就把波形缩略图内嵌进去（canvas → PNG data URL），一个文件带图 */
+export async function runMetaMarkdown(run: AudioSource): Promise<string> {
   const range =
     run.fromBar && run.toBar ? `第 ${run.fromBar}–${run.toBar} 小节` : `整段 ${run.bars ?? 4} 小节`;
   const lines = [
@@ -230,6 +232,11 @@ export function runMetaMarkdown(run: AudioSource): string {
     `- 范围：${range}${run.totalBars ? `（整段共 ${run.totalBars} 小节）` : ""}`,
     `- 标准差：±${run.stdevMs.toFixed(1)} 毫秒（越小越稳）`,
   ];
+  // 缩略波形（v0.152.0）：解码不出来就只是少一张图，说明文字照旧
+  const thumb = run.audio ? await wavePngDataUrl(run.audio) : null;
+  if (thumb) {
+    lines.push("", `![这一遍的波形](${thumb})`);
+  }
   if (run.meanAbsMs !== undefined) lines.push(`- 平均绝对偏差：${run.meanAbsMs.toFixed(1)} 毫秒`);
   if (run.driftMsPerBeat !== undefined) {
     lines.push(`- 每拍漂移：${run.driftMsPerBeat >= 0 ? "+" : ""}${run.driftMsPerBeat.toFixed(1)} 毫秒/拍`);

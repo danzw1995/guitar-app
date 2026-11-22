@@ -1875,10 +1875,10 @@ export default function Stats() {
                           <button
                             type="button"
                             className="btn-quiet st-audio-export"
-                            onClick={() =>
+                            onClick={async () =>
                               downloadText(
                                 `稳不稳-${pickedRun.date}-${pickedRun.bpm}BPM.md`,
-                                runMetaMarkdown(pickedRun),
+                                await runMetaMarkdown(pickedRun),
                               )
                             }
                             title="存一份说明：速度、范围、标准差、每一拍偏多少"

@@ -1586,6 +1586,16 @@ expect(
     (narrowDecls(".st-compare").get("grid-template-columns") || "").includes("auto-fit"),
 );
 
+expect(
+  "叠在后面那条波形只描边，拖选出来的区间有底色 + 虚线框",
+  narrowDecls(".wave-ruler-ghost").get("fill") === "none" &&
+    (narrowDecls(".wave-ruler-ghost").get("stroke") || "").includes("--accent") &&
+    (narrowDecls(".wave-ruler-ghost").get("opacity") || "") !== "" &&
+    (narrowDecls(".wave-ruler-pick").get("fill") || "").includes("rgba") &&
+    (narrowDecls(".wave-ruler-pick").get("stroke-dasharray") || "") !== "" &&
+    Number.parseFloat(narrowDecls(".st-pick-go").get("min-height")) >= 40,
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
