@@ -766,6 +766,7 @@ button, select, input { font: inherit; color: inherit; }
 }
 .st-range {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 4px;
 }

@@ -34,6 +34,17 @@ function sideText(medianOffsetMs: number | undefined): string {
   return value < 0 ? `偏抢 ${Math.round(-value)} 毫秒` : `偏拖 ${Math.round(value)} 毫秒`;
 }
 
+/**
+ * 前半段 / 后半段各自偏哪边（v0.148.0）：整体中位数会把「前半抢、后半拖」抵成 0，
+ * 而「越弹越退」恰恰是要单独说出来的那种毛病。
+ */
+function halvesText(firstHalfMs: number, secondHalfMs: number): string {
+  const gap = secondHalfMs - firstHalfMs;
+  const drift = Math.abs(gap) > 10 && Math.abs(firstHalfMs) > 8 && Math.abs(secondHalfMs) > 8;
+  const tail = drift ? (gap > 0 ? "——越弹越拖" : "——越弹越抢") : "";
+  return `前半${sideText(firstHalfMs)}、后半${sideText(secondHalfMs)}${tail}`;
+}
+
 export default function Steady() {
   // 记住上次的速度与小节数：每次打开都要重填，练同一段时很烦
   const initial = loadSettings();
@@ -45,9 +56,19 @@ export default function Steady() {
     const query = parseHash(window.location.hash)?.query ?? {};
     const bpmValue = Number(query.sb);
     const barsValue = Number(query.sbar);
+    const bars = [2, 4, 6, 8].includes(barsValue) ? barsValue : null;
+    // 绝对小节号（v0.148.0）：双击「只弹 2–3 小节」那条线时带过来，落地就是 2 到 3 而不是 1 到 2
+    const fromValue = Number(query.sfrom);
+    const toValue = Number(query.sto);
+    const fromBar =
+      Number.isInteger(fromValue) && fromValue >= 1 && fromValue <= (bars ?? 8) ? fromValue : null;
+    const toBar =
+      Number.isInteger(toValue) && toValue >= (fromBar ?? 1) && toValue <= (bars ?? 8) ? toValue : null;
     return {
       bpm: Number.isFinite(bpmValue) && bpmValue >= 40 && bpmValue <= 200 ? Math.round(bpmValue) : null,
-      bars: [2, 4, 6, 8].includes(barsValue) ? barsValue : null,
+      bars,
+      fromBar,
+      toBar,
       // 从统计页双击过来的会带 auto=1：等三秒自动开弹（v0.147.0）
       auto: query.auto === "1" || query.auto === "true",
     };
@@ -55,8 +76,8 @@ export default function Steady() {
   const [bpm, setBpm] = useState(seeded.bpm ?? initial.steadyBpm);
   const [bars, setBars] = useState(seeded.bars ?? initial.steadyBars);
   // 只弹、只判其中几小节（v0.143.0）：默认整段
-  const [fromBar, setFromBar] = useState(1);
-  const [toBar, setToBar] = useState(seeded.bars ?? initial.steadyBars);
+  const [fromBar, setFromBar] = useState(seeded.fromBar ?? 1);
+  const [toBar, setToBar] = useState(seeded.toBar ?? seeded.bars ?? initial.steadyBars);
   const [range, setRange] = useState<{ from: number; to: number } | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
@@ -96,7 +117,7 @@ export default function Steady() {
 
   // 种子只用一次：留着 `?sb=&sbar=`，刷新会又把它盖回上次存的值
   useEffect(() => {
-    if (seeded.bpm === null && seeded.bars === null && !seeded.auto) return;
+    if (seeded.bpm === null && seeded.bars === null && !seeded.auto && seeded.fromBar === null) return;
     if (window.location.hash !== "#practice/steady") {
       window.history.replaceState(null, "", "#practice/steady");
     }
@@ -146,27 +167,42 @@ export default function Steady() {
     setPreviewing(false);
   }, []);
   useEffect(() => stopPreview, [stopPreview]);
+  /** 按给定速度排一串点击声（v0.148.0：倒计时那三秒也用它，落地就能对上速度） */
+  const previewBeats = useCallback(
+    async (beatCount: number, speed: number, mark?: boolean) => {
+      stopPreview();
+      const Ctor: typeof AudioContext | undefined =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return;
+      const ctx = new Ctor();
+      await ctx.resume();
+      previewRef.current = ctx;
+      const interval = 60 / speed;
+      const beats = Math.max(2, Math.round(beatCount)) + 1;
+      const startAt = ctx.currentTime + 0.15;
+      for (let index = 0; index < beats; index += 1) {
+        clickAt(ctx, startAt + interval * index, index % BAR_BEATS === 0);
+      }
+      if (mark) setPreviewing(true);
+      previewTimer.current = window.setTimeout(
+        () => {
+          if (mark) stopPreview();
+          else {
+            const current = previewRef.current;
+            previewRef.current = null;
+            if (current) void current.close().catch(() => {});
+          }
+        },
+        Math.ceil(((beats - 1) * interval + 0.35) * 1000),
+      );
+    },
+    [stopPreview],
+  );
   const previewSame = useCallback(async () => {
-    stopPreview();
-    const Ctor: typeof AudioContext | undefined =
-      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return;
-    const ctx = new Ctor();
-    await ctx.resume();
-    previewRef.current = ctx;
     const spanBars = Math.max(1, Math.min(toBar, bars) - Math.max(1, fromBar) + 1);
-    const interval = 60 / bpm;
-    const beats = spanBars * BAR_BEATS + 1;
-    const startAt = ctx.currentTime + 0.15;
-    for (let index = 0; index < beats; index += 1) {
-      clickAt(ctx, startAt + interval * index, index % BAR_BEATS === 0);
-    }
-    setPreviewing(true);
-    previewTimer.current = window.setTimeout(
-      stopPreview,
-      Math.ceil(((beats - 1) * interval + 0.35) * 1000),
-    );
-  }, [bars, bpm, fromBar, stopPreview, toBar]);
+    await previewBeats(spanBars * BAR_BEATS, bpm, true);
+  }, [bars, bpm, fromBar, previewBeats, toBar]);
 
   const start = useCallback(async () => {
     cleanup();
@@ -314,6 +350,8 @@ export default function Steady() {
         bars: spanBars,
         fromBar: startBar,
         toBar: endBar,
+        // 那一遍整段是几小节（v0.148.0）：只弹 2–3 时 bars 只有 2，重弹要还原面板档位
+        totalBars: bars,
         stdevMs: next.stdevMs,
         meanAbsMs: next.meanAbsMs,
         driftMsPerBeat: next.driftMsPerBeat,
@@ -335,6 +373,7 @@ export default function Steady() {
         bpm,
         stdevMs: Math.round(next.stdevMs * 10) / 10,
         ...(partial ? { fromBar: startBar, toBar: endBar } : {}),
+        totalBars: bars,
       };
       const steadyHistory = [
         ...(previous?.steadyHistory ?? []).filter((item) => item.date !== point.date),
@@ -361,9 +400,15 @@ export default function Steady() {
   // 只跑一次：`start` 的依赖一变它就会重建，靠 autoRanRef 挡住。
   const [autoIn, setAutoIn] = useState<number | null>(seeded.auto ? 3 : null);
   const autoRanRef = useRef(false);
+  const autoTempoRef = useRef(false);
   useEffect(() => {
     if (autoIn === null || autoRanRef.current) return;
     if (autoIn > 0) {
+      // 倒计时一开始先敲一小节同速的点击声：三秒够耳朵挂上这个速度（v0.148.0）
+      if (!autoTempoRef.current) {
+        autoTempoRef.current = true;
+        void previewBeats(BAR_BEATS, bpm);
+      }
       const timer = window.setTimeout(
         () => setAutoIn((value) => (value === null ? null : value - 1)),
         1000,
@@ -374,7 +419,7 @@ export default function Steady() {
     setAutoIn(null);
     void start();
     return undefined;
-  }, [autoIn, start]);
+  }, [autoIn, bpm, previewBeats, start]);
 
   const [delta, setDelta] = useState<number | null>(null);
   // 同速的上一遍（v0.144.0）：速度一样才好比，加速之后抖得多一点是正常的
@@ -559,7 +604,9 @@ export default function Steady() {
                 : same.stdevMs - report.stdevMs <= -1
                   ? `（散了 ${Math.abs(same.stdevMs - report.stdevMs).toFixed(0)} 毫秒）`
                   : "（差不多）"}
-              {" · 方向："}这次{sideText(report.medianOffsetMs)}，上次{sideText(same.medianOffsetMs)}
+              {" · 方向："}这次{sideText(report.medianOffsetMs)}（
+              {halvesText(report.medianFirstHalfMs, report.medianSecondHalfMs)}），上次
+              {sideText(same.medianOffsetMs)}
               <button
                 type="button"
                 className="btn-quiet st-same-listen"

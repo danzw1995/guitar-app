@@ -4192,8 +4192,8 @@ try {
   })()`);
   const carriedText = plain(carried);
   log(
-    /"bpm":"60"/.test(carriedText) && /"range":\["1","2"\]/.test(carriedText),
-    "统计页：稳度曲线上点开的那一遍，能「按这个速度再弹一遍」（60 BPM、2 小节）",
+    /"bpm":"60"/.test(carriedText) && /"range":\["2","3"\]/.test(carriedText),
+    "统计页：稳度曲线上点开的那一遍，能「按这个速度再弹一遍」（60 BPM、第 2 到第 3 小节）",
     carriedText,
   );
   // 收尾：回到干净的练习页，别把带过去的那档 BPM 留给后面那条面板断言
@@ -4340,8 +4340,8 @@ try {
       partialText.includes("稳了 11 毫秒") &&
       /"hash":"#practice\/steady"/.test(jumpedSteady) &&
       /"bpm":"60"/.test(jumpedSteady) &&
-      /"range":\["1","2"\]/.test(jumpedSteady),
-    "统计页：局部练习和上一次局部比；双击按最稳那一遍再弹",
+      /"range":\["2","3"\]/.test(jumpedSteady),
+    "统计页：局部练习和上一次局部比；双击按最稳那一遍再弹（第 2 到第 3 小节）",
     `${partialText} | ${jumpedSteady}`,
   );
   await js(`(() => {
@@ -4413,6 +4413,63 @@ try {
   })()`);
   await ab(["open", `${URL}/?r=${Date.now()}#practice`]);
   await sleep(900);
+
+  // 16d49) v0.148.0：双击「只弹 2–3 小节」那条线，落地就是第 2 到第 3 小节（共 4 小节）
+  await js(`(() => {
+    sessionStorage.setItem("chk6.guitar.rhythm.v1", localStorage.getItem("guitar.rhythm.v1") ?? "");
+    localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      "p:s0-crawl": {
+        bestBpm: 72, sessions: 4, minutes: 12, lastAt: "2026-11-21", steadyStdev: 9,
+        steadyHistory: [
+          { date: "2026-11-14", bpm: 60, stdevMs: 30, totalBars: 4 },
+          { date: "2026-11-16", bpm: 62, stdevMs: 22, fromBar: 2, toBar: 3, totalBars: 4 },
+          { date: "2026-11-18", bpm: 64, stdevMs: 26, totalBars: 4 },
+          { date: "2026-11-20", bpm: 60, stdevMs: 9, fromBar: 2, toBar: 3, totalBars: 4 },
+        ],
+      },
+    }));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1200);
+  await js(`(() => {
+    const row = [...document.querySelectorAll(".steady-curves li")].find((item) =>
+      (item.querySelector(".curve-name")?.textContent ?? "").includes("只弹 2"),
+    );
+    const svg = row?.querySelector(".steady-curve-svg");
+    if (!svg) return "no-svg";
+    const box = svg.getBoundingClientRect();
+    svg.dispatchEvent(new MouseEvent("dblclick", {
+      bubbles: true,
+      clientX: box.left + box.width * (117 / 120),
+      clientY: box.top + box.height / 2,
+    }));
+    return "dblclicked";
+  })()`);
+  await sleep(1400);
+  const steadyRange = plain(js(`(() => {
+    const panel = document.querySelector("#steady");
+    const selects = [...(panel?.querySelectorAll(".st-range select") ?? [])].map((item) => item.value);
+    return JSON.stringify({
+      query: location.hash.split("?")[1] ?? "",
+      bars: panel?.querySelector("select[aria-label='整段共几小节']")?.value ?? "",
+      range: selects,
+      hint: panel?.querySelector(".st-hint")?.textContent?.replace(/\\\\s+/g, " ").trim() ?? "",
+    });
+  })()`));
+  log(
+    /"bars":"4"/.test(steadyRange) &&
+      steadyRange.includes('"range":["2","3"]') &&
+      /自动开始/.test(steadyRange),
+    "统计页：双击「只弹 2–3 小节」那条线，落地就是第 2 到第 3 小节（共 4 小节）",
+    steadyRange,
+  );
+  await js(`(() => {
+    localStorage.setItem("guitar.rhythm.v1", sessionStorage.getItem("chk6.guitar.rhythm.v1") ?? "");
+    sessionStorage.removeItem("chk6.guitar.rhythm.v1");
+    return "restored";
+  })()`);
 
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);

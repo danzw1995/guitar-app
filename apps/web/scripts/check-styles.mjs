@@ -1532,6 +1532,19 @@ expect(
   Number.parseFloat(narrowDecls(".st-same-listen").get("min-height")) >= 40,
 );
 
+expect(
+  "「共几小节」和「只弹 2 到 3」并排但不挤：一行放不下会折，下拉够 40 高",
+  narrowDecls(".st-range").get("display") === "flex" &&
+    narrowDecls(".st-range").get("flex-wrap") === "wrap" &&
+    Number.parseFloat(narrowDecls(".st-range select").get("min-height")) >= 40,
+);
+
+expect(
+  "「这一遍比上一遍」那行是 12 号灰字，占满一整行不跟数字挤",
+  Number.parseFloat(narrowDecls(".steady-vs").get("font-size")) === 12 &&
+    (narrowDecls(".steady-vs").get("flex") || "").startsWith("1 1 100%"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

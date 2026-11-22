@@ -144,6 +144,10 @@ export interface TimingReport {
   stdevFirstHalfMs: number;
   /** 后半段的标准差 */
   stdevSecondHalfMs: number;
+  /** 前半段的偏差中位数（负=抢、正=拖）（v0.148.0） */
+  medianFirstHalfMs: number;
+  /** 后半段的偏差中位数（v0.148.0） */
+  medianSecondHalfMs: number;
   /** 每一小节的标准差，下标 0 是第 1 小节；跟不上拍的格子是 0 */
   barStdevsMs: number[];
   /** 最散的那一小节（不足两下的小节不参与） */
@@ -242,6 +246,9 @@ export function analyzeTiming(
   };
   const stdevFirstHalfMs = halfStdev(offsets.slice(0, half));
   const stdevSecondHalfMs = halfStdev(offsets.slice(offsets.length - half));
+  // 方向也分前后半段（v0.148.0）：前半抢、后半拖，就是「越弹越退」，光看整段中位数会抵成 0
+  const medianFirstHalfMs = median(offsets.slice(0, half));
+  const medianSecondHalfMs = median(offsets.slice(offsets.length - half));
 
   // 逐小节看：整段稳、但「第 3 小节老是抢」这种情况得单独指出来
   const byBar = new Map<number, number[]>();
@@ -274,6 +281,8 @@ export function analyzeTiming(
     driftMsPerBeat,
     stdevFirstHalfMs,
     stdevSecondHalfMs,
+    medianFirstHalfMs,
+    medianSecondHalfMs,
     barStdevsMs,
     worstBar,
     spanBeats: hits[hits.length - 1].beat - hits[0].beat + 1,

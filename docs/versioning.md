@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.147.0`，core `0.54.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.148.0`，core `0.55.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -168,6 +168,10 @@ v0.137.0 给 core 加了 `timing.ts`（`detectOnsets` / `analyzeTiming`）——
 v0.138.0 只动前端：「稳不稳」每弹完一遍记进 `guitar.steady.v1`（只留最近 24 遍），
 统计页多一块趋势；`TimingReport` 顺带多两个半段标准差（前后两半各自多散）。core 仍是 `0.54.0`，
 这把键也进了数据备份（第 20 把）。
+v0.148.0：①「按这个速度再弹一遍 / 双击最稳那遍」带绝对小节号（`sfrom` / `sto`）与「那一遍整段几小节」
+（`SteadyPoint.totalBars`、`SteadyRun.totalBars`，旧的记录没有也照样能读）；②倒计时那三秒先敲一小节同速的点击声；
+③`TimingReport` 多两个前后半段的中位数（`medianFirstHalfMs` / `medianSecondHalfMs`），面板据此补「越弹越拖 / 越弹越抢」。
+core 加字段算 MINOR → `0.55.0`；工具不动。
 v0.147.0 只动前端：稳度曲线按「整段 / 只弹某几小节」拆成两条线（各带最稳绿圈）、双击跳过去后自动数秒开弹、
 「同速的上一遍」补一句两遍各自偏早/偏晚的方向（`SteadyRun.medianOffsetMs`）。core 与工具都不动。
 v0.146.0 只动前端：稳度点开「只弹某几小节」那天时跟**上一次同样只弹这一小段**的比（整段的不掺进来）；

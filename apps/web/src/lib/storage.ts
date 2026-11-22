@@ -240,6 +240,8 @@ export interface SteadyPoint {
   /** 只弹了某几小节才有；没有就是整段弹的（v0.144.0） */
   fromBar?: number;
   toBar?: number;
+  /** 那一遍整段一共几小节（v0.148.0）：重弹时靠它还原面板上的「共几小节」档位 */
+  totalBars?: number;
 }
 
 /** 某一处（第 N 小节第 M 级）单独练过几次。 */
@@ -287,11 +289,15 @@ function parseSteadyHistory(value: unknown): SteadyPoint[] {
     const toRaw = Number(point.toBar);
     const fromBar = Number.isInteger(fromRaw) && fromRaw >= 1 && fromRaw <= 24 ? fromRaw : 0;
     const toBar = Number.isInteger(toRaw) && toRaw >= fromBar && toRaw <= 24 ? toRaw : 0;
+    const totalRaw = Number(point.totalBars);
+    const totalBars =
+      Number.isInteger(totalRaw) && totalRaw >= 1 && totalRaw <= 24 ? totalRaw : 0;
     points.push({
       date,
       bpm: Math.round(bpm),
       stdevMs: Math.round(stdevMs * 10) / 10,
       ...(fromBar && toBar ? { fromBar, toBar } : {}),
+      ...(totalBars ? { totalBars } : {}),
     });
   }
   points.sort((a, b) => a.date.localeCompare(b.date));

@@ -18,6 +18,8 @@ export interface SteadyRun {
   /** 这一遍只弹了第几小节到第几小节（v0.143.0）；整段弹的不写。 */
   fromBar?: number;
   toBar?: number;
+  /** 那一遍整段一共几小节（v0.148.0）：只弹局部时 bars 记的是段落长度，重弹要靠它还原面板上的档位 */
+  totalBars?: number;
   /** 每拍偏差的标准差（毫秒） */
   stdevMs: number;
   /** 平均绝对偏差（毫秒） */
@@ -47,6 +49,9 @@ function parseRun(value: unknown): SteadyRun | null {
   const toRaw = Number(item.toBar);
   const fromBar = Number.isInteger(fromRaw) && fromRaw >= 1 && fromRaw <= 24 ? fromRaw : 0;
   const toBar = Number.isInteger(toRaw) && toRaw >= fromBar && toRaw <= 24 ? toRaw : 0;
+  const totalRaw = Number(item.totalBars);
+  const totalBars =
+    Number.isInteger(totalRaw) && totalRaw >= 1 && totalRaw <= 24 ? totalRaw : undefined;
   const medianRaw = Number(item.medianOffsetMs);
   const medianOffsetMs =
     Number.isFinite(medianRaw) && Math.abs(medianRaw) <= 200 ? Math.round(medianRaw * 10) / 10 : 0;
@@ -56,6 +61,7 @@ function parseRun(value: unknown): SteadyRun | null {
     bpm,
     bars: Number.isFinite(bars) && bars > 0 ? Math.round(bars) : 4,
     ...(fromBar && toBar ? { fromBar, toBar } : {}),
+    ...(totalBars ? { totalBars } : {}),
     stdevMs: Math.round(stdevMs * 10) / 10,
     meanAbsMs: Number.isFinite(meanAbsMs) ? Math.round(meanAbsMs * 10) / 10 : 0,
     driftMsPerBeat: Number.isFinite(driftMsPerBeat) ? Math.round(driftMsPerBeat * 10) / 10 : 0,

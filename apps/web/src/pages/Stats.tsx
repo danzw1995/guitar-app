@@ -967,6 +967,30 @@ export default function Stats() {
   /** 那个点对应的那一遍（有就补上小节数、漂移、次数） */
   const steadyRunOf = (date: string, bpm: number) =>
     [...steadyRuns].reverse().find((run) => run.date === date && run.bpm === bpm);
+  /**
+   * 「按这个速度再弹一遍」要带过去的参数（v0.148.0）：只弹过局部的，把绝对小节号一起带上，
+   * 落地就是「共 4 小节 · 只弹 2 到 3」，而不是从第 1 小节开始的 2 小节。
+   * 面板的小节数是 2/4/6/8 档位，取不小于 toBar 的那一档。
+   */
+  const replayArgs = (
+    bpmValue: number,
+    fromBar?: number,
+    toBar?: number,
+    totalBars?: number,
+  ): Record<string, string> => {
+    const partial = !!fromBar && !!toBar;
+    const span = partial ? (toBar as number) - (fromBar as number) + 1 : (totalBars ?? 4);
+    const need = partial ? Math.max(toBar as number, span) : span;
+    const total = totalBars && totalBars >= need ? totalBars : need;
+    const barsParam = [2, 4, 6, 8].includes(total)
+      ? total
+      : ([2, 4, 6, 8].find((value) => value >= total) ?? 8);
+    return {
+      sb: String(bpmValue),
+      sbar: String(barsParam),
+      ...(partial ? { sfrom: String(fromBar), sto: String(toBar) } : {}),
+    };
+  };
 
   const ear = loadEar();
   const earKinds = EAR_KINDS.map((kind) => {
@@ -1690,17 +1714,16 @@ export default function Stats() {
                     aria-label={`${fullName} 的稳度：${first.date} ±${first.stdevMs.toFixed(0)} 毫秒，到 ${last.date} ±${last.stdevMs.toFixed(0)} 毫秒，共 ${curve.points.length} 遍；最稳的是 ${bestPoint.date} 的 ±${bestPoint.stdevMs.toFixed(0)} 毫秒。越低越稳，点一下看那一天。`}
                     onClick={(event) => pickSteadyCurve(curve.key, curve.points.length, event)}
                     onDoubleClick={() =>
-                      // 双击：按最稳那一遍的速度和长度直接过去弹（v0.146.0，和跟练曲线的双击对齐）；
-                      // auto=1 让面板停三秒就自己开弹（v0.147.0）
+                      // 双击：按最稳那一遍的速度和「哪几小节」直接过去弹（v0.146.0，和跟练曲线的双击对齐）；
+                      // auto=1 让面板数三秒就自己开弹（v0.147.0）
                       goTo("practice", "steady", {
-                        sb: String(bestPoint.bpm),
-                        sbar: String(
-                          Math.max(
-                            2,
-                            bestPoint.fromBar && bestPoint.toBar
-                              ? bestPoint.toBar - bestPoint.fromBar + 1
-                              : (steadyRunOf(bestPoint.date, bestPoint.bpm)?.bars ?? 4),
-                          ),
+                        ...replayArgs(
+                          bestPoint.bpm,
+                          bestPoint.fromBar,
+                          bestPoint.toBar,
+                          bestPoint.totalBars ??
+                            steadyRunOf(bestPoint.date, bestPoint.bpm)?.totalBars ??
+                            steadyRunOf(bestPoint.date, bestPoint.bpm)?.bars,
                         ),
                         auto: "1",
                       })
@@ -1776,18 +1799,18 @@ export default function Stats() {
                         type="button"
                         className="btn-quiet steady-curve-go"
                         onClick={() =>
-                          goTo("practice", "steady", {
-                            sb: String(picked.bpm),
-                            // 只弹过某几小节的，按同样多的小节数再来一遍（记的是这一段的长度）
-                            sbar: String(
-                              Math.max(
-                                2,
-                                picked.fromBar && picked.toBar
-                                  ? picked.toBar - picked.fromBar + 1
-                                  : (steadyRunOf(picked.date, picked.bpm)?.bars ?? 4),
-                              ),
+                          goTo(
+                            "practice",
+                            "steady",
+                            replayArgs(
+                              picked.bpm,
+                              picked.fromBar,
+                              picked.toBar,
+                              picked.totalBars ??
+                                steadyRunOf(picked.date, picked.bpm)?.totalBars ??
+                                steadyRunOf(picked.date, picked.bpm)?.bars,
                             ),
-                          })
+                          )
                         }
                       >
                         按这个速度再弹一遍
@@ -2434,10 +2457,17 @@ export default function Stats() {
                     type="button"
                     className="btn-quiet steady-again"
                     onClick={() =>
-                      goTo("practice", "steady", {
-                        sb: String(steadyPicked.bpm),
-                        sbar: String(steadyPicked.bars),
-                      })
+                      // 只弹过局部的，带着当时那几小节的绝对位置过去（v0.148.0）
+                      goTo(
+                        "practice",
+                        "steady",
+                        replayArgs(
+                          steadyPicked.bpm,
+                          steadyPicked.fromBar,
+                          steadyPicked.toBar,
+                          steadyPicked.totalBars ?? steadyPicked.bars,
+                        ),
+                      )
                     }
                   >
                     按这个速度再弹一遍

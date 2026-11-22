@@ -3557,6 +3557,16 @@ test("弹给节拍器听：预备拍不进统计，离谱的一下丢掉，太�
   assert.ok(tiredReport!.stdevFirstHalfMs < 5, `前半 ${tiredReport!.stdevFirstHalfMs}`);
   assert.ok(tiredReport!.stdevSecondHalfMs > 20, `后半 ${tiredReport!.stdevSecondHalfMs}`);
 
+  // 方向也分前后半段（v0.148.0）：前半抢 20、后半拖 22，整段中位数会被抵成 0
+  const drifting = [-20, -18, -22, -20, 22, 20, 24, 21].map(
+    (offset, index) => 1 + interval * index + offset / 1000,
+  );
+  const driftReport = analyzeTiming(drifting, bpm, { origin: 0 });
+  assert.ok(driftReport);
+  assert.ok(Math.abs(driftReport!.medianOffsetMs) < 3, `整段中位数 ${driftReport!.medianOffsetMs}`);
+  assert.ok(driftReport!.medianFirstHalfMs < -15, `前半 ${driftReport!.medianFirstHalfMs}`);
+  assert.ok(driftReport!.medianSecondHalfMs > 15, `后半 ${driftReport!.medianSecondHalfMs}`);
+
   // 逐小节：第 2 小节抢得厉害，整段看只是「有点抖」，逐小节能指出来
   const perBar = [0, 2, -2, 1, 26, -24, 30, -28].map((offset, index) => interval * index + offset / 1000);
   const perBarReport = analyzeTiming(perBar, bpm, { origin: 0, beatsPerBar: 4 });
