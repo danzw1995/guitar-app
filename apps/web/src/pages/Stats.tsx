@@ -1642,6 +1642,14 @@ export default function Stats() {
                 steadyCurvePick && steadyCurvePick.id === curve.id ? steadyCurvePick.index : null;
               const pickedIndex = pick !== null && curve.points[pick] ? pick : null;
               const picked = pickedIndex !== null ? curve.points[pickedIndex] : null;
+              // 上一次「只弹这一小段」（v0.146.0）：局部的进步要和局部比，别拿整段的当参照
+              const partialBefore =
+                picked && pickedIndex !== null
+                  ? [...curve.points.slice(0, pickedIndex)]
+                      .reverse()
+                      .find((point) => point.fromBar && point.toBar)
+                  : undefined;
+              const partialDelta = picked && partialBefore ? partialBefore.stdevMs - picked.stdevMs : 0;
               return (
                 <li key={curve.id} className={picked ? "picked" : undefined}>
                   <span className="curve-name" title={name}>
@@ -1654,6 +1662,20 @@ export default function Stats() {
                     tabIndex={0}
                     aria-label={`${name} 的稳度：${first.date} ±${first.stdevMs.toFixed(0)} 毫秒，到 ${last.date} ±${last.stdevMs.toFixed(0)} 毫秒，共 ${curve.points.length} 遍；最稳的是 ${bestPoint.date} 的 ±${bestPoint.stdevMs.toFixed(0)} 毫秒。越低越稳，点一下看那一天。`}
                     onClick={(event) => pickSteadyCurve(curve.id, curve.points.length, event)}
+                    onDoubleClick={() =>
+                      // 双击：按最稳那一遍的速度和长度直接过去弹（v0.146.0，和跟练曲线的双击对齐）
+                      goTo("practice", "steady", {
+                        sb: String(bestPoint.bpm),
+                        sbar: String(
+                          Math.max(
+                            2,
+                            bestPoint.fromBar && bestPoint.toBar
+                              ? bestPoint.toBar - bestPoint.fromBar + 1
+                              : (steadyRunOf(bestPoint.date, bestPoint.bpm)?.bars ?? 4),
+                          ),
+                        ),
+                      })
+                    }
                     onKeyDown={(event) => {
                       if (event.key !== "Enter" && event.key !== " ") return;
                       event.preventDefault();
@@ -1673,7 +1695,7 @@ export default function Stats() {
                         cy={bestDot.y}
                         r={2.8}
                       >
-                        <title>{`最稳：${bestPoint.date} ±${bestPoint.stdevMs.toFixed(0)} 毫秒`}</title>
+                        <title>{`最稳：${bestPoint.date} ±${bestPoint.stdevMs.toFixed(0)} 毫秒（双击按这一遍再弹）`}</title>
                       </circle>
                     )}
                     {pickedIndex !== null && spark.dots[pickedIndex] && (
@@ -1704,6 +1726,17 @@ export default function Stats() {
                     <span className="steady-curve-day" role="status">
                       {picked.date.slice(5)} · {picked.bpm} BPM · ±{picked.stdevMs.toFixed(0)} 毫秒
                       {picked.fromBar && picked.toBar ? ` · 只弹 ${picked.fromBar}–${picked.toBar} 小节` : ""}
+                      {picked.fromBar &&
+                        picked.toBar &&
+                        (partialBefore
+                          ? ` · 上一次只弹这部分 ±${partialBefore.stdevMs.toFixed(0)}（${partialBefore.date.slice(5)}），${
+                              partialDelta >= 1
+                                ? `稳了 ${partialDelta.toFixed(0)} 毫秒`
+                                : partialDelta <= -1
+                                  ? `散了 ${Math.abs(partialDelta).toFixed(0)} 毫秒`
+                                  : "差不多"
+                            }`
+                          : " · 这是第一次只弹这部分")}
                       {(() => {
                         const run = steadyRunOf(picked.date, picked.bpm);
                         return run

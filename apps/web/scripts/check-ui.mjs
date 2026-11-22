@@ -4279,6 +4279,79 @@ try {
     return "restored";
   })()`);
 
+  // 16d47) v0.146.0：局部练习和上一次局部比、双击按最稳那一遍再弹
+  await js(`(() => {
+    sessionStorage.setItem("chk4.guitar.rhythm.v1", localStorage.getItem("guitar.rhythm.v1") ?? "");
+    localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      "p:s0-crawl": {
+        bestBpm: 72, sessions: 3, minutes: 9, lastAt: "2026-11-21", steadyStdev: 9,
+        steadyHistory: [
+          { date: "2026-11-16", bpm: 58, stdevMs: 20, fromBar: 2, toBar: 3 },
+          { date: "2026-11-18", bpm: 62, stdevMs: 24 },
+          { date: "2026-11-20", bpm: 60, stdevMs: 9, fromBar: 2, toBar: 3 },
+        ],
+      },
+    }));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1200);
+  const partialDay = js(`(() => {
+    const svg = document.querySelector(".steady-curves li .steady-curve-svg");
+    const box = svg.getBoundingClientRect();
+    svg.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      clientX: box.left + box.width * (117 / 120),
+      clientY: box.top + box.height / 2,
+    }));
+    return "clicked";
+  })()`);
+  await sleep(400);
+  void partialDay;
+  const partialText = plain(
+    js(`(() => document.querySelector(".steady-curve-day")?.textContent?.replace(/\\s+/g, " ").trim() ?? "")()`),
+  );
+  // 双击：按最稳那一遍（60 BPM、只弹 2–3 小节 → 2 小节）跳过去
+  await js(`(() => {
+    const svg = document.querySelector(".steady-curves li .steady-curve-svg");
+    const box = svg.getBoundingClientRect();
+    svg.dispatchEvent(new MouseEvent("dblclick", {
+      bubbles: true,
+      clientX: box.left + box.width * (117 / 120),
+      clientY: box.top + box.height / 2,
+    }));
+    return "dblclicked";
+  })()`);
+  await sleep(1200);
+  const jumpedSteady = plain(
+    js(`(() => {
+      const panel = document.querySelector("#steady");
+      const selects = [...(panel?.querySelectorAll(".st-range select") ?? [])];
+      return JSON.stringify({
+        hash: location.hash,
+        bpm: panel?.querySelector("input[type=number]")?.value ?? "",
+        range: selects.map((node) => node.value),
+      });
+    })()`),
+  );
+  log(
+    partialText.includes("上一次只弹这部分 ±20（11-16）") &&
+      partialText.includes("稳了 11 毫秒") &&
+      /"hash":"#practice\/steady"/.test(jumpedSteady) &&
+      /"bpm":"60"/.test(jumpedSteady) &&
+      /"range":\["1","2"\]/.test(jumpedSteady),
+    "统计页：局部练习和上一次局部比；双击按最稳那一遍再弹",
+    `${partialText} | ${jumpedSteady}`,
+  );
+  await js(`(() => {
+    const stored = sessionStorage.getItem("chk4.guitar.rhythm.v1");
+    if (stored) localStorage.setItem("guitar.rhythm.v1", stored);
+    else localStorage.removeItem("guitar.rhythm.v1");
+    sessionStorage.removeItem("chk4.guitar.rhythm.v1");
+    return "restored";
+  })()`);
+
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);
   await sleep(900);

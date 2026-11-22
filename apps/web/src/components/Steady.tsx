@@ -273,10 +273,27 @@ export default function Steady() {
     // 从存储里读，别用 state：这个回调的依赖里没有 runs，闭包里那份是挂载时的空数组
     const history = loadRuns();
     const previous = history.slice(-1)[0];
-    const sameRun = [...history].reverse().find((item) => item.bpm === bpm);
+    // 同速的上一遍（v0.144.0）：先找「同样速度、同样只弹这一小段」的，那才是真能对照的
+    // （v0.146.0：把当时弹的是哪几小节也带出来，对照时说得清）
+    const sameRange = (item: SteadyRun): boolean =>
+      (item.fromBar ?? 1) === startBar && (item.toBar ?? item.bars) === endBar;
+    const sameRun =
+      [...history].reverse().find((item) => item.bpm === bpm && sameRange(item)) ??
+      [...history].reverse().find((item) => item.bpm === bpm);
     setReport(next);
     setDelta(previous ? previous.stdevMs - next.stdevMs : null);
-    setSame(sameRun ? { stdevMs: sameRun.stdevMs, date: sameRun.date } : null);
+    setSame(
+      sameRun
+        ? {
+            stdevMs: sameRun.stdevMs,
+            date: sameRun.date,
+            fromBar: sameRun.fromBar,
+            toBar: sameRun.toBar,
+            bars: sameRun.bars,
+            sameRange: sameRange(sameRun),
+          }
+        : null,
+    );
     setRuns(
       recordRun({
         date: new Date().toISOString().slice(0, 10),
@@ -328,7 +345,14 @@ export default function Steady() {
 
   const [delta, setDelta] = useState<number | null>(null);
   // 同速的上一遍（v0.144.0）：速度一样才好比，加速之后抖得多一点是正常的
-  const [same, setSame] = useState<{ stdevMs: number; date: string } | null>(null);
+  const [same, setSame] = useState<{
+    stdevMs: number;
+    date: string;
+    fromBar?: number;
+    toBar?: number;
+    bars: number;
+    sameRange: boolean;
+  } | null>(null);
 
   const busy = phase === "starting" || phase === "listening";
   const best = bestRun(runs);
@@ -490,7 +514,9 @@ export default function Steady() {
                     {linkedNote && <p className="st-linked">{linkedNote}</p>}
           {report && same && (
             <p className="st-same">
-              同速的上一遍 ±{same.stdevMs.toFixed(0)} 毫秒（{same.date.slice(5)}）· 这次 ±
+              同速的上一遍 ±{same.stdevMs.toFixed(0)} 毫秒（{same.date.slice(5)} ·{" "}
+              {same.fromBar && same.toBar ? `只弹 ${same.fromBar}–${same.toBar} 小节` : `整段 ${same.bars} 小节`}
+              {same.sameRange ? "" : "，不是这一段"}）· 这次 ±
               {report.stdevMs.toFixed(0)} 毫秒
               {same.stdevMs - report.stdevMs >= 1
                 ? `（稳了 ${(same.stdevMs - report.stdevMs).toFixed(0)} 毫秒）`
