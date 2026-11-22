@@ -261,6 +261,13 @@ export async function runMetaMarkdown(run: AudioSource): Promise<string> {
     );
   }
   if (run.offsets?.length) {
+    // 偏得最多的三拍（v0.154.0）：图上看得出，文字里也点一句
+    const worst = run.offsets
+      .map((offset, index) => ({ offset, index }))
+      .sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset))
+      .slice(0, 3)
+      .map((item) => `第 ${item.index + 1} 拍${item.offset < 0 ? "抢" : "拖"} ${Math.abs(item.offset)} 毫秒`);
+    lines.push(`- 偏得最多的三拍：${worst.join("、")}`);
     lines.push("", `## 每一拍（负=抢，正=拖，毫秒）`, "", run.offsets.join("、"));
   }
   lines.push("", "> 由 Guitar Lab「稳不稳」导出；录音是麦克风原声，只在本地。");

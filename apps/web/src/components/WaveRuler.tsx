@@ -117,6 +117,20 @@ export default function WaveRuler({
   const shape = waveShapePath(wave.peaks);
   // 叠影：第二遍按它自己的节拍画，稍微压扁一点（上下各留 2px），两条才分得开
   const ghostShape = ghost && ghostWave ? waveShapePath(ghostWave.peaks, WAVE_WIDTH, WAVE_CENTER, WAVE_AMP - 3) : "";
+  // 叠影的每拍落点（v0.154.0）：只描边，跟这一遍的实心点分开
+  const ghostDots =
+    ghost && ghostWave
+      ? ghost.offsets.map((offset, index) => {
+          const clock = ((ghost.originMs ?? 0) + index * (60000 / Math.max(1, ghost.bpm))) / 1000;
+          const hit = clock + offset / 1000;
+          if (clock > ghostWave.seconds + 0.02) return null;
+          return {
+            key: `ghost-dot-${index}`,
+            x: hit <= 0 ? 0 : hit >= ghostWave.seconds ? WAVE_WIDTH : (hit / ghostWave.seconds) * WAVE_WIDTH,
+            mark: Math.abs(offset) <= 8 ? "on" : offset < 0 ? "early" : "late",
+          };
+        })
+      : [];
 
   const xToPick = (clientX: number, rect: DOMRect): number => {
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
@@ -198,6 +212,17 @@ export default function WaveRuler({
             />
           );
         })}
+        {ghostDots.map((dot) =>
+          dot ? (
+            <circle
+              key={dot.key}
+              className={`wave-ruler-ghost-dot ${dot.mark}`}
+              cx={dot.x}
+              cy={WAVE_CENTER}
+              r={2.9}
+            />
+          ) : null,
+        )}
         {pick && (
           <rect
             className="wave-ruler-pick"

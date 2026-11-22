@@ -194,6 +194,32 @@ export default function Steady() {
     setPreviewing(false);
   }, []);
   useEffect(() => stopPreview, [stopPreview]);
+  /** 循环听的时候配一串点击声（v0.154.0）：录音在放，节拍器也得在，否则没有参照拍 */
+  const loopCtxRef = useRef<AudioContext | null>(null);
+  const stopLoopClicks = useCallback(() => {
+    const ctx = loopCtxRef.current;
+    loopCtxRef.current = null;
+    if (ctx) void ctx.close().catch(() => {});
+  }, []);
+  useEffect(() => stopLoopClicks, [stopLoopClicks]);
+  const scheduleLoopClicks = useCallback(
+    (range: { from: number; to: number }, speed: number, firstBeat: number) => {
+      stopLoopClicks();
+      const Ctor: typeof AudioContext | undefined =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return;
+      const ctx = new Ctor();
+      loopCtxRef.current = ctx;
+      const beatSeconds = 60 / Math.max(40, speed);
+      const count = Math.max(1, Math.round((range.to - range.from) / beatSeconds));
+      const startAt = ctx.currentTime + 0.05;
+      for (let index = 0; index < count; index += 1) {
+        clickAt(ctx, startAt + index * beatSeconds, (firstBeat + index) % BAR_BEATS === 0);
+      }
+    },
+    [stopLoopClicks],
+  );
   /** 按给定速度排一串点击声（v0.148.0：倒计时那三秒也用它，落地就能对上速度） */
   const previewBeats = useCallback(
     async (beatCount: number, speed: number, mark?: boolean) => {
@@ -591,22 +617,45 @@ export default function Steady() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !looping || !loopRange) return;
+    // 选的那几拍可能超出录音长度（录音只录到一半）：收进录音范围内，否则放到结尾就卡住不动了
+    const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : Number.POSITIVE_INFINITY;
+    const from = Math.max(0, Math.min(loopRange.from, duration - 0.05));
+    const to = Math.max(from + 0.2, Math.min(loopRange.to, duration));
+    const range = { from, to };
+    let lastTime = audio.currentTime;
+    const firstBeat = pickBeats?.from ?? 0;
+    scheduleLoopClicks(range, bpm, firstBeat);
     const onTime = () => {
-      if (audio.currentTime >= loopRange.to - 0.01) audio.currentTime = loopRange.from;
+      if (audio.currentTime >= range.to - 0.01 || (Number.isFinite(audio.duration) && audio.ended)) {
+        audio.currentTime = range.from;
+        // 跳回开头就把点击声重排一遍：每一轮都从同一拍起，不会越漂越远
+        scheduleLoopClicks(range, bpm, firstBeat);
+        lastTime = range.from;
+        return;
+      }
+      if (audio.currentTime < lastTime - 0.2) {
+        scheduleLoopClicks(range, bpm, firstBeat);
+      }
+      lastTime = audio.currentTime;
     };
     audio.addEventListener("timeupdate", onTime);
-    return () => audio.removeEventListener("timeupdate", onTime);
-  }, [looping, loopRange]);
+    return () => {
+      audio.removeEventListener("timeupdate", onTime);
+      stopLoopClicks();
+    };
+  }, [bpm, looping, loopRange, pickBeats, scheduleLoopClicks, stopLoopClicks]);
 
   const toggleLoop = () => {
     const audio = audioRef.current;
     if (!audio || !loopRange) return;
     if (looping) {
       audio.pause();
+      stopLoopClicks();
       setLooping(false);
       return;
     }
-    audio.currentTime = loopRange.from;
+    const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : loopRange.to;
+    audio.currentTime = Math.max(0, Math.min(loopRange.from, duration - 0.05));
     void audio.play().catch(() => setLooping(false));
     setLooping(true);
   };

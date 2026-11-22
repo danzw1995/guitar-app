@@ -3858,6 +3858,25 @@ button.steady-best-tag:hover {
   fill: var(--accent);
 }
 
+/* 叠在后面那一遍的落点（v0.154.0）：只描边，跟这一遍的实心点分开 */
+.wave-ruler-ghost-dot {
+  fill: none;
+  stroke-width: 1.2;
+  opacity: 0.9;
+}
+
+.wave-ruler-ghost-dot.on {
+  stroke: var(--green);
+}
+
+.wave-ruler-ghost-dot.early {
+  stroke: var(--blue);
+}
+
+.wave-ruler-ghost-dot.late {
+  stroke: var(--accent);
+}
+
 .wave-ruler-loading {
   color: var(--muted);
   font-size: 11px;

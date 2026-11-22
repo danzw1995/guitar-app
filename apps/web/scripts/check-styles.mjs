@@ -1603,6 +1603,15 @@ expect(
     Number.parseFloat(narrowDecls(".st-ghost-select").get("min-height")) >= 40,
 );
 
+expect(
+  "叠在后面那一遍的落点只描边，按偏早偏晚分色",
+  narrowDecls(".wave-ruler-ghost-dot").get("fill") === "none" &&
+    (narrowDecls(".wave-ruler-ghost-dot").get("stroke-width") || "") !== "" &&
+    (narrowDecls(".wave-ruler-ghost-dot.on").get("stroke") || "").includes("--green") &&
+    (narrowDecls(".wave-ruler-ghost-dot.early").get("stroke") || "").includes("--blue") &&
+    (narrowDecls(".wave-ruler-ghost-dot.late").get("stroke") || "").includes("--accent"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
