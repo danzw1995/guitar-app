@@ -33,6 +33,8 @@ export interface WaveLayer {
 export interface WaveRulerProps extends WaveLayer {
   /** 叠在后面那一条（同一条时间轴上错开一点，看得出齐不齐） */
   ghost?: WaveLayer;
+  /** 叠的是哪一遍（写进提示文字，v0.153.0 起可选「同速的上一遍」） */
+  ghostLabel?: string;
   /** 拖选结束：第 from 拍到第 to 拍（0 起） */
   onPick?: (fromBeat: number, toBeat: number) => void;
   className?: string;
@@ -49,6 +51,7 @@ export default function WaveRuler({
   bpm,
   originMs = 0,
   ghost,
+  ghostLabel = "最稳的一遍",
   onPick,
   className,
 }: WaveRulerProps) {
@@ -206,7 +209,7 @@ export default function WaveRuler({
         )}
       </svg>
       <span className="beat-ruler-hint">
-        {ghost ? "淡的那条是最稳的一遍，深的是这一遍" : "波形上是这一遍，竖线是节拍器"}
+        {ghost ? `淡的那条是${ghostLabel}，深的是这一遍` : "波形上是这一遍，竖线是节拍器"}
         {onPick ? "；横着拖能选几拍" : ""}
       </span>
     </div>

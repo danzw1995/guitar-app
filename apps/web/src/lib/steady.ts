@@ -219,6 +219,8 @@ export interface AudioSource {
   medianFirstHalfMs?: number;
   medianSecondHalfMs?: number;
   offsets?: number[];
+  /** 第一下点击声在录音里的位置（毫秒，v0.153.0）：缩略波形上标节拍线要对齐 */
+  originMs?: number;
 }
 
 /** 一份说明文件（v0.151.0）：音频本身带不了元信息，就并排放一个 .md
@@ -232,8 +234,14 @@ export async function runMetaMarkdown(run: AudioSource): Promise<string> {
     `- 范围：${range}${run.totalBars ? `（整段共 ${run.totalBars} 小节）` : ""}`,
     `- 标准差：±${run.stdevMs.toFixed(1)} 毫秒（越小越稳）`,
   ];
-  // 缩略波形（v0.152.0）：解码不出来就只是少一张图，说明文字照旧
-  const thumb = run.audio ? await wavePngDataUrl(run.audio) : null;
+  // 缩略波形（v0.152.0；v0.153.0 把节拍线和落点也标在图上）：解不出来就只是少一张图，说明文字照旧
+  const thumb = run.audio
+    ? await wavePngDataUrl(run.audio, {
+        offsets: run.offsets ?? [],
+        bpm: run.bpm,
+        originMs: run.originMs ?? 0,
+      })
+    : null;
   if (thumb) {
     lines.push("", `![这一遍的波形](${thumb})`);
   }

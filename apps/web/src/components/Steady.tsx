@@ -94,6 +94,12 @@ export default function Steady() {
   const [originMs, setOriginMs] = useState<number | null>(null);
   // 在波形上拖出来的那几拍（v0.152.0）——面板只认小节，所以换算出小节号再说明一句
   const [pickNote, setPickNote] = useState("");
+  /** 拖选出来的拍区间（v0.153.0）：循环听这一小段要用 */
+  const [pickBeats, setPickBeats] = useState<{ from: number; to: number } | null>(null);
+  const [looping, setLooping] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  /** 叠在波形后面的那条，选最稳的一遍还是同速的上一遍（v0.153.0） */
+  const [ghostMode, setGhostMode] = useState<"best" | "same" | "off">("best");
   const [error, setError] = useState("");
   const [runs, setRuns] = useState<SteadyRun[]>(() => loadRuns());
   const [justSaved, setJustSaved] = useState(false);
@@ -231,6 +237,9 @@ export default function Steady() {
     setReport(null);
     setOriginMs(null);
     setPickNote("");
+    setPickBeats(null);
+    setLooping(false);
+    audioRef.current?.pause();
     setError("");
     setJustSaved(false);
     // 开跑就把这组设置记下来，下次进来还是这一组
@@ -542,17 +551,66 @@ export default function Steady() {
 
   const busy = phase === "starting" || phase === "listening";
   const best = bestRun(runs);
-  // 叠影（v0.152.0）：把最稳那一遍的波形淡淡叠在这一次后面，错开一点就看得出谁更齐
+  // 叠影（v0.152.0）：把另一遍的波形淡淡叠在这一次后面；v0.153.0 起能选「最稳的一遍」还是「同速的上一遍」
   const latest = runs[runs.length - 1];
+  const sameSpeedRun =
+    latest && !busy
+      ? [...runs].reverse().find((run) => run.id !== latest.id && run.bpm === latest.bpm && run.audio)
+      : undefined;
+  const ghostSource =
+    ghostMode === "off"
+      ? undefined
+      : ghostMode === "same"
+        ? sameSpeedRun
+        : best && latest && best.id !== latest.id
+          ? best
+          : undefined;
   const ghostLayer =
-    lastAudio && best && latest && best.id !== latest.id && best.audio
+    lastAudio && ghostSource && ghostSource.audio
       ? {
-          audio: best.audio,
-          offsets: (best.offsets ?? []).map((offset) => Math.round(offset)),
-          bpm: best.bpm,
-          originMs: best.originMs,
+          audio: ghostSource.audio,
+          offsets: (ghostSource.offsets ?? []).map((offset) => Math.round(offset)),
+          bpm: ghostSource.bpm,
+          originMs: ghostSource.originMs,
         }
       : undefined;
+  const ghostChoices: { id: "best" | "same" | "off"; label: string; ready: boolean }[] = [
+    { id: "best", label: "最稳的一遍", ready: Boolean(best && latest && best.id !== latest.id && best.audio) },
+    { id: "same", label: "同速的上一遍", ready: Boolean(sameSpeedRun) },
+    { id: "off", label: "不叠", ready: true },
+  ];
+  // 循环听拖选的那一小段（v0.153.0）：录音里按时间轴回放，不走节拍器
+  const loopRange =
+    pickBeats && originMs !== null
+      ? {
+          from: (originMs + pickBeats.from * (60000 / Math.max(1, bpm))) / 1000,
+          to: (originMs + (pickBeats.to + 1) * (60000 / Math.max(1, bpm))) / 1000,
+        }
+      : null;
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !looping || !loopRange) return;
+    const onTime = () => {
+      if (audio.currentTime >= loopRange.to - 0.01) audio.currentTime = loopRange.from;
+    };
+    audio.addEventListener("timeupdate", onTime);
+    return () => audio.removeEventListener("timeupdate", onTime);
+  }, [looping, loopRange]);
+
+  const toggleLoop = () => {
+    const audio = audioRef.current;
+    if (!audio || !loopRange) return;
+    if (looping) {
+      audio.pause();
+      setLooping(false);
+      return;
+    }
+    audio.currentTime = loopRange.from;
+    void audio.play().catch(() => setLooping(false));
+    setLooping(true);
+  };
+
   // 满格 = 偏差 60 毫秒；再大就顶到头，不至于因为某一下特别离谱把别的挤成一条线
   const SCALE_MS = 60;
 
@@ -729,6 +787,7 @@ export default function Steady() {
               {audioNote}
               {lastAudio && (
                 <audio
+                  ref={audioRef}
                   className="st-audio-play"
                   controls
                   preload="metadata"
@@ -775,11 +834,14 @@ export default function Steady() {
                 bpm={bpm}
                 originMs={originMs}
                 ghost={ghostLayer}
+                ghostLabel={ghostMode === "same" ? "同速的上一遍" : "最稳的一遍"}
                 onPick={(fromBeat, toBeat) => {
                   const start = Math.max(1, Math.min(bars, Math.floor(fromBeat / BAR_BEATS) + 1));
                   const end = Math.max(start, Math.min(bars, Math.floor(toBeat / BAR_BEATS) + 1));
                   setFromBar(start);
                   setToBar(end);
+                  setPickBeats({ from: fromBeat, to: toBeat });
+                  setLooping(false);
                   setPickNote(`你选的是第 ${fromBeat + 1}–${toBeat + 1} 拍，已经改成只弹第 ${start}–${end} 小节`);
                 }}
                 className="st-audio-ruler"
@@ -787,10 +849,38 @@ export default function Steady() {
             ) : (
               <BeatRuler offsets={report.offsets} className="st-audio-ruler" />
             ))}
+          {lastAudio && (
+            <p className="st-ghost-pick">
+              <span>后面那条淡的叠的是</span>
+              <select
+                className="st-ghost-select"
+                aria-label="波形后面叠哪一遍的轮廓"
+                value={ghostMode}
+                onChange={(event) => setGhostMode(event.target.value as "best" | "same" | "off")}
+              >
+                {ghostChoices.map((choice) => (
+                  <option key={choice.id} value={choice.id} disabled={!choice.ready}>
+                    {choice.label}
+                    {choice.ready ? "" : "（还没有）"}
+                  </option>
+                ))}
+              </select>
+            </p>
+          )}
           {pickNote && (
             <p className="st-pick-note">
               {pickNote}
               {" "}
+              {loopRange && (
+                <button
+                  type="button"
+                  className="btn-quiet st-pick-go"
+                  onClick={toggleLoop}
+                  aria-pressed={looping}
+                >
+                  {looping ? "停，不循环了" : "循环听这一小段"}
+                </button>
+              )}
               <button type="button" className="btn-quiet st-pick-go" onClick={start} disabled={busy}>
                 就弹这几小节
               </button>

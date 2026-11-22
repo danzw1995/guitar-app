@@ -1596,6 +1596,13 @@ expect(
     Number.parseFloat(narrowDecls(".st-pick-go").get("min-height")) >= 40,
 );
 
+expect(
+  "「后面那条叠的是哪一遍」是一行能折行的说明 + 够高的下拉",
+  narrowDecls(".st-ghost-pick").get("display") === "flex" &&
+    (narrowDecls(".st-ghost-pick").get("flex-wrap") || "") === "wrap" &&
+    Number.parseFloat(narrowDecls(".st-ghost-select").get("min-height")) >= 40,
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

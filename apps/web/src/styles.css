@@ -3819,6 +3819,28 @@ button.steady-best-tag:hover {
   font-size: 12px;
 }
 
+/* 「后面那条淡的叠的是哪一遍」（v0.153.0） */
+.st-ghost-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.st-ghost-select {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
 .wave-ruler-tick {
   stroke: var(--line-strong);
   stroke-width: 1;

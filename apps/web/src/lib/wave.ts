@@ -109,8 +109,20 @@ export function waveShapePath(
 /**
  * 缩略波形图（PNG data URL）：给「存成说明」的 Markdown 用。
  * 不引第三方库，直接画到 canvas 上再 toDataURL——Markdown 里 `![](data:...)` 各家都能读。
+ * 给了 offsets / bpm / originMs 就把节拍线和每一拍的落点也标上去（v0.153.0），
+ * 不然一张只有波形的图看不出「稳不稳」。
  */
-export async function wavePngDataUrl(audio: string, width = 240, height = 48): Promise<string | null> {
+export async function wavePngDataUrl(
+  audio: string,
+  options: {
+    width?: number;
+    height?: number;
+    offsets?: number[];
+    bpm?: number;
+    originMs?: number;
+  } = {},
+): Promise<string | null> {
+  const { width = 240, height = 48, offsets = [], bpm = 0, originMs = 0 } = options;
   const wave = await decodeWave(audio);
   if (!wave || wave.peaks.length === 0) return null;
   const canvas = document.createElement("canvas");
@@ -133,5 +145,30 @@ export async function wavePngDataUrl(audio: string, width = 240, height = 48): P
   context.moveTo(0, center);
   context.lineTo(width, center);
   context.stroke();
+
+  // 节拍器位置 + 每一拍的落点（v0.153.0）
+  const seconds = Math.max(0.001, wave.seconds);
+  if (bpm > 0 && offsets.length > 0) {
+    const beatMs = 60000 / Math.max(1, bpm);
+    const xOf = (time: number) => Math.max(0, Math.min(width, (time / seconds) * width));
+    context.strokeStyle = "rgba(200,205,210,0.45)";
+    for (let index = 0; index < offsets.length; index += 1) {
+      const clock = (originMs + index * beatMs) / 1000;
+      if (clock > seconds + 0.02) continue;
+      context.beginPath();
+      context.moveTo(xOf(clock), 2);
+      context.lineTo(xOf(clock), height - 2);
+      context.stroke();
+    }
+    for (let index = 0; index < offsets.length; index += 1) {
+      const hit = (originMs + index * beatMs + offsets[index]) / 1000;
+      if (hit > seconds + 0.02) continue;
+      const offset = offsets[index];
+      context.fillStyle = Math.abs(offset) <= 8 ? "#3fb950" : offset < 0 ? "#58a6ff" : "#e8b04b";
+      context.beginPath();
+      context.arc(xOf(hit), center, 2, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
   return canvas.toDataURL("image/png");
 }
