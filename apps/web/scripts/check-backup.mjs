@@ -382,3 +382,44 @@ test("合并「稳不稳」的记录：按 id 去重，只留最近 24 遍", () 
   assert.equal(merged.filter((item) => item.id === "s-shared").length, 1, "同一条只留一份");
   assert.equal(merged[merged.length - 1].id, "s-theirs-19", "保留导入那份里最新的");
 });
+
+test("合并稳度曲线：同一天取更稳的那个，连它「只弹 2–3 小节」的区间一起带过来", () => {
+  const merged = mergeBackup(
+    {
+      ...empty(),
+      data: {
+        "guitar.rhythm.v1": {
+          "s0-crawl": {
+            bestBpm: 76,
+            sessions: 2,
+            minutes: 5,
+            lastAt: "2026-11-20",
+            steadyHistory: [
+              { date: "2026-11-20", bpm: 76, stdevMs: 18, fromBar: 1, toBar: 4 },
+              { date: "2026-11-18", bpm: 70, stdevMs: 24 },
+            ],
+          },
+        },
+      },
+    },
+    {
+      ...empty(),
+      data: {
+        "guitar.rhythm.v1": {
+          "s0-crawl": {
+            bestBpm: 80,
+            sessions: 3,
+            minutes: 9,
+            lastAt: "2026-11-21",
+            steadyHistory: [{ date: "2026-11-20", bpm: 60, stdevMs: 9, fromBar: 2, toBar: 3 }],
+          },
+        },
+      },
+    },
+  ).next.data["guitar.rhythm.v1"]["s0-crawl"].steadyHistory;
+  assert.equal(merged.length, 2, "同一天只留一个点");
+  const day = merged.find((item) => item.date === "2026-11-20");
+  assert.equal(day.stdevMs, 9, "取更稳的那个");
+  assert.equal(day.fromBar, 2, "区间跟着胜出的那个点走");
+  assert.equal(day.toBar, 3, "区间跟着胜出的那个点走");
+});

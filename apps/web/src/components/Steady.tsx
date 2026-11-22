@@ -233,9 +233,12 @@ export default function Steady() {
       return;
     }
     // 从存储里读，别用 state：这个回调的依赖里没有 runs，闭包里那份是挂载时的空数组
-    const previous = loadRuns().slice(-1)[0];
+    const history = loadRuns();
+    const previous = history.slice(-1)[0];
+    const sameRun = [...history].reverse().find((item) => item.bpm === bpm);
     setReport(next);
     setDelta(previous ? previous.stdevMs - next.stdevMs : null);
+    setSame(sameRun ? { stdevMs: sameRun.stdevMs, date: sameRun.date } : null);
     setRuns(
       recordRun({
         date: new Date().toISOString().slice(0, 10),
@@ -256,7 +259,14 @@ export default function Steady() {
       const previous = all[linkId];
       const today = new Date().toISOString().slice(0, 10);
       const bestStdev = Math.min(previous?.steadyStdev ?? Number.POSITIVE_INFINITY, next.stdevMs);
-      const point = { date: today, bpm, stdevMs: Math.round(next.stdevMs * 10) / 10 };
+      // 只弹某几小节时把区间一起记下（v0.144.0）：统计页要标出「这一遍是只弹 2–3」
+      const partial = startBar !== 1 || endBar !== bars;
+      const point = {
+        date: today,
+        bpm,
+        stdevMs: Math.round(next.stdevMs * 10) / 10,
+        ...(partial ? { fromBar: startBar, toBar: endBar } : {}),
+      };
       const steadyHistory = [
         ...(previous?.steadyHistory ?? []).filter((item) => item.date !== point.date),
         point,
@@ -279,6 +289,8 @@ export default function Steady() {
   }, [bpm, bars, cleanup, fromBar, toBar]);
 
   const [delta, setDelta] = useState<number | null>(null);
+  // 同速的上一遍（v0.144.0）：速度一样才好比，加速之后抖得多一点是正常的
+  const [same, setSame] = useState<{ stdevMs: number; date: string } | null>(null);
 
   const busy = phase === "starting" || phase === "listening";
   const best = bestRun(runs);
@@ -438,6 +450,20 @@ export default function Steady() {
           )}
                     {justSaved && <p className="st-saved">这一遍已经记下了。</p>}
                     {linkedNote && <p className="st-linked">{linkedNote}</p>}
+          {report && same && (
+            <p className="st-same">
+              同速的上一遍 ±{same.stdevMs.toFixed(0)} 毫秒（{same.date.slice(5)}）· 这次 ±
+              {report.stdevMs.toFixed(0)} 毫秒
+              {same.stdevMs - report.stdevMs >= 1
+                ? `（稳了 ${(same.stdevMs - report.stdevMs).toFixed(0)} 毫秒）`
+                : same.stdevMs - report.stdevMs <= -1
+                  ? `（散了 ${Math.abs(same.stdevMs - report.stdevMs).toFixed(0)} 毫秒）`
+                  : "（差不多）"}
+              <button type="button" className="btn-quiet st-same-go" onClick={start} disabled={busy}>
+                同速再来一遍
+              </button>
+            </p>
+          )}
         </div>
       )}
 

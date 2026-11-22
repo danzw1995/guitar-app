@@ -914,6 +914,33 @@ export default function Stats() {
     ? steadyWindowRuns.reduce((fast, run, index) => (run.bpm > steadyWindowRuns[fast].bpm ? index : fast), 0)
     : -1;
 
+  /** 点稳度曲线上的某一天（v0.144.0）：按横坐标取最近的那个点，再点一次收起来 */
+  const [steadyCurvePick, setSteadyCurvePick] = useState<{ id: string; index: number } | null>(null);
+  function pickSteadyCurve(
+    id: string,
+    count: number,
+    event: { currentTarget: SVGSVGElement; clientX: number },
+  ): void {
+    if (count <= 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const ratio = (event.clientX - rect.left) / rect.width;
+    const index = Math.max(0, Math.min(count - 1, Math.round(ratio * (count - 1))));
+    setSteadyCurvePick((current) =>
+      current && current.id === id && current.index === index ? null : { id, index },
+    );
+  }
+  /** 键盘：Enter / 空格往后翻一个点，翻到头收起来 */
+  function stepSteadyCurve(id: string, count: number): void {
+    setSteadyCurvePick((current) => {
+      if (!current || current.id !== id) return { id, index: 0 };
+      return current.index >= count - 1 ? null : { id, index: current.index + 1 };
+    });
+  }
+  /** 那个点对应的那一遍（有就补上小节数、漂移、次数） */
+  const steadyRunOf = (date: string, bpm: number) =>
+    [...steadyRuns].reverse().find((run) => run.date === date && run.bpm === bpm);
+
   const ear = loadEar();
   const earKinds = EAR_KINDS.map((kind) => {
     const item = ear.byKind[kind.id];
@@ -1572,25 +1599,87 @@ export default function Stats() {
                 : practice
                   ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
                   : nameOf(curve.id);
+              // 点过的那一天（v0.144.0）
+              const pick =
+                steadyCurvePick && steadyCurvePick.id === curve.id ? steadyCurvePick.index : null;
+              const pickedIndex = pick !== null && curve.points[pick] ? pick : null;
+              const picked = pickedIndex !== null ? curve.points[pickedIndex] : null;
               return (
-                <li key={curve.id}>
+                <li key={curve.id} className={picked ? "picked" : undefined}>
                   <span className="curve-name" title={name}>
                     {name}
                   </span>
                   <svg
                     className="curve-svg steady-curve-svg"
                     viewBox="0 0 120 30"
-                    role="img"
-                    aria-label={`${name} 的稳度：${first.date} ±${first.stdevMs.toFixed(0)} 毫秒，到 ${last.date} ±${last.stdevMs.toFixed(0)} 毫秒，共 ${curve.points.length} 遍，越低越稳。`}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${name} 的稳度：${first.date} ±${first.stdevMs.toFixed(0)} 毫秒，到 ${last.date} ±${last.stdevMs.toFixed(0)} 毫秒，共 ${curve.points.length} 遍，越低越稳。点一下看那一天。`}
+                    onClick={(event) => pickSteadyCurve(curve.id, curve.points.length, event)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      stepSteadyCurve(curve.id, curve.points.length);
+                    }}
                   >
                     <title>{name}</title>
+                    {/* 透明底：SVG 只对画到的线条响应点击，空白处点不到（v0.128.0 踩过） */}
+                    <rect x={0} y={0} width={120} height={30} fill="transparent" />
                     <path d={spark.d} />
                     <circle cx={head.x} cy={head.y} r={2} />
+                    {pickedIndex !== null && spark.dots[pickedIndex] && (
+                      <circle
+                        className="steady-curve-pick-dot"
+                        cx={spark.dots[pickedIndex].x}
+                        cy={spark.dots[pickedIndex].y}
+                        r={3}
+                      />
+                    )}
                   </svg>
                   <span className="muted">
                     ±{first.stdevMs.toFixed(0)} → ±{last.stdevMs.toFixed(0)} 毫秒 ·{" "}
-                    {curve.points.length} 遍
+                    {curve.points.length} 遍{" "}
+                    {curve.points.some((point) => point.fromBar && point.toBar) && (
+                      <span
+                        className="steady-range-tag"
+                        title="有一遍是只弹某几小节练的"
+                      >
+                        只弹过
+                      </span>
+                    )}
                   </span>
+                  {picked && (
+                    <span className="steady-curve-day" role="status">
+                      {picked.date.slice(5)} · {picked.bpm} BPM · ±{picked.stdevMs.toFixed(0)} 毫秒
+                      {picked.fromBar && picked.toBar ? ` · 只弹 ${picked.fromBar}–${picked.toBar} 小节` : ""}
+                      {(() => {
+                        const run = steadyRunOf(picked.date, picked.bpm);
+                        return run
+                          ? ` · ${run.bars} 小节 · 漂移 ${run.driftMsPerBeat >= 0 ? "+" : ""}${run.driftMsPerBeat.toFixed(1)} 毫秒/拍 · ${run.hits} 下`
+                          : "";
+                      })()}
+                      <button
+                        type="button"
+                        className="btn-quiet steady-curve-go"
+                        onClick={() =>
+                          goTo("practice", "steady", {
+                            sb: String(picked.bpm),
+                            // 只弹过某几小节的，按同样多的小节数再来一遍（记的是这一段的长度）
+                            sbar: String(
+                              Math.max(
+                                2,
+                                picked.fromBar && picked.toBar
+                                  ? picked.toBar - picked.fromBar + 1
+                                  : (steadyRunOf(picked.date, picked.bpm)?.bars ?? 4),
+                              ),
+                            ),
+                          })
+                        }
+                      >
+                        按这个速度再弹一遍
+                      </button>
+                    </span>
+                  )}
                 </li>
               );
             })}
@@ -2214,10 +2303,14 @@ export default function Stats() {
                 <>
                   <span className="steady-day" role="status">
                     {steadyPicked.date.slice(5).replace("-", "/")} · {steadyPicked.bpm} BPM ·{" "}
-                    {/* v0.143.0：只弹了几小节的，写清是哪一段，别让人以为是整段 */}
-                    {steadyPicked.fromBar && steadyPicked.toBar
-                      ? `第 ${steadyPicked.fromBar}–${steadyPicked.toBar} 小节`
-                      : `${steadyPicked.bars} 小节`}{" "}
+                    {/* v0.143.0：只弹了几小节的，写清是哪一段，别让人以为是整段；v0.144.0 起单独一枚小标签 */}
+                    {steadyPicked.fromBar && steadyPicked.toBar ? (
+                      <span className="steady-range-tag steady-day-range">
+                        只弹 {steadyPicked.fromBar}–{steadyPicked.toBar} 小节
+                      </span>
+                    ) : (
+                      `${steadyPicked.bars} 小节`
+                    )}{" "}
                     · ±
                     {Math.round(steadyPicked.stdevMs)} 毫秒 · 漂移 {steadyPicked.driftMsPerBeat > 0 ? "+" : ""}
                     {steadyPicked.driftMsPerBeat} 毫秒/拍 · {steadyPicked.hits} 下

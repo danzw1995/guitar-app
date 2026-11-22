@@ -772,6 +772,58 @@ button, select, input { font: inherit; color: inherit; }
 .st-range select {
   min-height: 40px;
 }
+/* v0.144.0：稳度曲线点一天、只弹某几小节的标签、同速再看一遍 */
+.steady-curve-svg {
+  cursor: pointer;
+}
+.steady-curve-svg:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.steady-curve-pick-dot {
+  fill: var(--accent);
+  stroke: var(--panel);
+  stroke-width: 1;
+}
+.steady-curves li.picked .curve-name {
+  color: var(--text);
+}
+.steady-curve-day {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.steady-curve-go {
+  margin-left: 8px;
+  min-height: 40px;
+  color: var(--accent);
+  font-size: 12px;
+}
+.steady-range-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(139, 148, 158, 0.16);
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+.st-same {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.st-same-go {
+  margin-left: 8px;
+  min-height: 40px;
+  color: var(--accent);
+  font-size: 12px;
+}
 .pb-due-link {
   padding: 0;
   border: 0;

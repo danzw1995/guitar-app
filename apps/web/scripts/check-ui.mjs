@@ -76,6 +76,11 @@ function ab(args) {
 
 const js = (code) => ab(["eval", code]);
 
+/** js() 有时把结果整串 JSON 编码（外带引号、内层引号带反斜杠），比字符串前先还原 */
+function plain(value) {
+  return String(value).replace(/^"|"$/g, "").replace(/\\"/g, '"');
+}
+
 let SESSION = "ui-check";
 const id = ab(["session", "id", "--scope", "worktree", "--prefix", "ui-check"]);
 if (typeof id === "string" && id) SESSION = id;
@@ -3969,18 +3974,19 @@ try {
     const now = new Date();
     const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
     localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      "p:s1-scale": { bestBpm: 0, sessions: 0, minutes: 0, lastAt: today, steadyStdev: 6.4 },
       "p:s1-cycle": {
         bestBpm: 76,
         sessions: 3,
         minutes: 12,
         lastAt: "2026-11-21",
+        steadyStdev: 6,
         history: [{ date: "2026-11-18", bpm: 66 }, { date: "2026-11-21", bpm: 76 }],
         steadyHistory: [
           { date: "2026-11-18", bpm: 60, stdevMs: 22 },
           { date: "2026-11-21", bpm: 66, stdevMs: 9 },
         ],
       },
-      "p:s1-scale": { bestBpm: 0, sessions: 0, minutes: 0, lastAt: today, steadyStdev: 6.4 },
     }));
     localStorage.setItem("guitar.steady.v1", JSON.stringify([
       run("s-1", "2026-11-19", 64, 4, 18),
@@ -4002,7 +4008,7 @@ try {
       aria: row?.querySelector(".steady-curve-svg")?.getAttribute("aria-label") ?? "",
     });
   })()`);
-  const steadyRowText = String(steadyRow).replace(/^"|"$/g, "");
+  const steadyRowText = plain(steadyRow);
   log(
     /"rows":1/.test(steadyRowText) &&
       steadyRowText.includes("±22 → ±9 毫秒 · 2 遍") &&
@@ -4019,16 +4025,33 @@ try {
     return "clicked";
   })()`);
   await sleep(400);
-  const rangeDay = js(`(() => document.querySelector(".steady-day")?.textContent?.replace(/\\s+/g, " ").trim() ?? "")`);
-  const rangeDayText = String(rangeDay).replace(/^"|"$/g, "");
+  const rangeDay = js(`(() => document.querySelector(".steady-day")?.textContent?.replace(/\\s+/g, " ").trim() ?? "")()`);
+  const rangeDayText = plain(rangeDay);
   log(
-    rangeDayText.includes("第 2–3 小节"),
-    "统计页：只弹了几小节的记录，明细写清是哪一段",
+    rangeDayText.includes("只弹 2–3 小节"),
+    "统计页：只弹了几小节的记录，明细标成「只弹 2–3 小节」",
     rangeDayText,
   );
 
   await ab(["open", `${URL}#practice`]);
-  await sleep(1000);
+  await sleep(1200);
+  // 计划里第一条是哪条练习要看日期，从谱图地址里读出来再种它的稳不稳成绩
+  const firstIdRaw = js(`(() => {
+    const img = document.querySelector(".practice-block img");
+    return img?.getAttribute("src")?.match(/\\/scores\\/([^.?]+)\\.png/)?.[1] ?? "";
+  })()`);
+  const firstDrillId = String(firstIdRaw).replace(/^"|"$/g, "");
+  if (firstDrillId) {
+    js(`(() => {
+      const all = JSON.parse(localStorage.getItem("guitar.rhythm.v1") ?? "{}");
+      const key = "p:${firstDrillId}";
+      all[key] = { ...(all[key] ?? { bestBpm: 0, sessions: 0, minutes: 0, lastAt: "" }), steadyStdev: 6.4 };
+      localStorage.setItem("guitar.rhythm.v1", JSON.stringify(all));
+      return "seeded";
+    })()`);
+    await ab(["reload"]);
+    await sleep(1100);
+  }
   const linkText = js(`(() => {
     const link = document.querySelector(".pb-due-link");
     link?.scrollIntoView({ block: "center" });
@@ -4047,9 +4070,13 @@ try {
       labels: selects.map((node) => node.getAttribute("aria-label")),
     });
   })()`);
-  const seededText = String(seeded).replace(/^"|"$/g, "");
+  const seededText = plain(seeded);
   log(
-    link.includes("稳不稳最稳 ±6 毫秒") && /"range":\["1","4"\]/.test(seededText) && /"options":4/.test(seededText),
+    // 带过去的速度是这一条练习的起始 BPM（随日期轮换，别写死），区间是整段 4 小节
+    link.includes("稳不稳最稳 ±6 毫秒") &&
+      /"range":\["1","4"\]/.test(seededText) &&
+      /"bpm":"([4-9]\d|1\d\d)"/.test(seededText) &&
+      /"options":4/.test(seededText),
     "练习页：点「稳不稳最稳 ±N 毫秒」直接去弹这一条（速度、区间都带过去了）",
     `${link} | ${seededText}`,
   );
@@ -4062,6 +4089,126 @@ try {
     put("guitar.rhythm.v1", sessionStorage.getItem("chk.rhythm2"));
     sessionStorage.removeItem("chk.steady2");
     sessionStorage.removeItem("chk.rhythm2");
+    return "restored";
+  })()`);
+
+  // 16d45) v0.144.0：稳度曲线点一天、只弹 2–3 小节在明细里标出来、同速的上一遍对照着弹
+  await js(`(() => {
+    const store = (key) => sessionStorage.setItem("chk2." + key, localStorage.getItem(key) ?? "");
+    store("guitar.steady.v1");
+    store("guitar.rhythm.v1");
+    localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      "p:s0-crawl": {
+        bestBpm: 72, sessions: 3, minutes: 9, lastAt: "2026-11-21", steadyStdev: 9,
+        steadyHistory: [
+          { date: "2026-11-17", bpm: 60, stdevMs: 26 },
+          { date: "2026-11-20", bpm: 60, stdevMs: 9, fromBar: 2, toBar: 3 },
+          { date: "2026-11-21", bpm: 64, stdevMs: 15 },
+        ],
+      },
+    }));
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([
+      { id: "steady-a", date: "2026-11-17", bpm: 60, bars: 4, stdevMs: 26, meanAbsMs: 21, driftMsPerBeat: 0.4, hits: 16 },
+      { id: "steady-b", date: "2026-11-20", bpm: 60, bars: 2, fromBar: 2, toBar: 3, stdevMs: 9, meanAbsMs: 7, driftMsPerBeat: -0.2, hits: 8 },
+      { id: "steady-c", date: "2026-11-21", bpm: 64, bars: 4, stdevMs: 15, meanAbsMs: 12, driftMsPerBeat: 0.1, hits: 16 },
+    ]));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1200);
+  const curveTag = js(`(() => {
+    const row = document.querySelector(".steady-curves li");
+    return JSON.stringify({
+      rows: document.querySelectorAll(".steady-curves li").length,
+      tag: row?.querySelector(".steady-range-tag")?.textContent?.trim() ?? "",
+      meta: row?.querySelector(".muted")?.textContent?.replace(/\\s+/g, " ").trim() ?? "",
+    });
+  })()`);
+  const curveTagText = String(curveTag).replace(/^"|"$/g, "");
+  // 点中间那个点：那天的记录是「只弹 2–3 小节」
+  await js(`(() => {
+    const svg = document.querySelector(".steady-curves li .steady-curve-svg");
+    const box = svg.getBoundingClientRect();
+    svg.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      clientX: box.left + box.width * 0.5,
+      clientY: box.top + box.height / 2,
+    }));
+    return "clicked";
+  })()`);
+  await sleep(400);
+  const curveDay = js(`(() => {
+    const row = document.querySelector(".steady-curves li");
+    return JSON.stringify({
+      day: row?.querySelector(".steady-curve-day")?.textContent?.replace(/\\s+/g, " ").trim() ?? "",
+      dot: row?.querySelectorAll(".steady-curve-pick-dot").length ?? 0,
+      picked: row?.classList.contains("picked") ?? false,
+    });
+  })()`);
+  const curveDayText = String(curveDay).replace(/^"|"$/g, "");
+  // 趋势线点中间那个点：明细里是「只弹 2–3 小节」的小标签
+  await js(`(() => {
+    const svg = document.querySelector(".steady-svg");
+    const box = svg.getBoundingClientRect();
+    svg.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      clientX: box.left + box.width * 0.5,
+      clientY: box.top + box.height / 2,
+    }));
+    return "clicked";
+  })()`);
+  await sleep(400);
+  const trendRange = js(`(() => {
+    return document.querySelector(".steady-day-range")?.textContent?.trim() ?? "";
+  })()`);
+  const curveTagPlain = plain(curveTag);
+  const curveDayPlain = plain(curveDay);
+  const trendRangePlain = plain(trendRange);
+  log(
+    /"rows":1/.test(curveTagPlain) &&
+      curveTagPlain.includes("只弹过") &&
+      /"dot":1/.test(curveDayPlain) &&
+      /"picked":true/.test(curveDayPlain) &&
+      curveDayPlain.includes("只弹 2–3 小节") &&
+      trendRangePlain.includes("只弹 2–3 小节"),
+    "统计页：点稳度曲线里的某一天，只弹 2–3 小节的那遍会标出来",
+    `${curveTagPlain} | ${curveDayPlain} | ${trendRangePlain}`,
+  );
+  // 「按这个速度再弹一遍」把速度与区间带过去（60 BPM、只到第 3 小节）
+  await js(`(() => {
+    document.querySelector(".steady-curve-go")?.click();
+    return "clicked";
+  })()`);
+  await sleep(900);
+  const carried = js(`(() => {
+    const panel = document.querySelector("#steady");
+    const selects = [...(panel?.querySelectorAll(".st-range select") ?? [])];
+    return JSON.stringify({
+      hash: location.hash,
+      bpm: panel?.querySelector("input[type=number]")?.value ?? "",
+      range: selects.map((node) => node.value),
+    });
+  })()`);
+  const carriedText = plain(carried);
+  log(
+    /"bpm":"60"/.test(carriedText) && /"range":\["1","2"\]/.test(carriedText),
+    "统计页：稳度曲线上点开的那一遍，能「按这个速度再弹一遍」（60 BPM、2 小节）",
+    carriedText,
+  );
+  // 收尾：回到干净的练习页，别把带过去的那档 BPM 留给后面那条面板断言
+  // （只改 hash 不会真刷新，加个查询串强制重开）
+  await ab(["open", `${URL}/?r=${Date.now()}#practice`]);
+  await sleep(1000);
+  await js(`(() => {
+    const put = (key, stored) => {
+      if (stored) localStorage.setItem(key, stored);
+      else localStorage.removeItem(key);
+    };
+    put("guitar.steady.v1", sessionStorage.getItem("chk2.guitar.steady.v1"));
+    put("guitar.rhythm.v1", sessionStorage.getItem("chk2.guitar.rhythm.v1"));
+    sessionStorage.removeItem("chk2.guitar.steady.v1");
+    sessionStorage.removeItem("chk2.guitar.rhythm.v1");
     return "restored";
   })()`);
 

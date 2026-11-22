@@ -177,12 +177,13 @@ function mergePoints(
     const value = num(raw[field], Number.NaN);
     if (!date || !Number.isFinite(value)) continue;
     const previous = map.get(date);
-    map.set(date, {
-      ...(previous ?? {}),
-      ...raw,
-      date,
-      [field]: Number.isFinite(value) && previous ? pick(num(previous[field]), value) : value,
-    });
+    if (!previous) {
+      map.set(date, { ...raw, date });
+      continue;
+    }
+    // 哪边极端就整条用哪边：只换数值会把胜出那一天的 fromBar / toBar 换成功另一边（v0.144.0）
+    const keepPrevious = num(previous[field], Number.NaN) === pick(num(previous[field]), value);
+    map.set(date, keepPrevious ? { ...previous, date } : { ...previous, ...raw, date });
   }
   return [...map.values()]
     .sort((a, b) => String(a.date).localeCompare(String(b.date)))

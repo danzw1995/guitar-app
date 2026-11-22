@@ -40,11 +40,17 @@ function parseRun(value: unknown): SteadyRun | null {
   const hits = Number(item.hits);
   if (!Number.isFinite(bpm) || bpm <= 0) return null;
   if (!Number.isFinite(stdevMs) || stdevMs < 0) return null;
+  // 只弹某几小节的才存区间（v0.144.0）：读的时候也要带上，否则刷新一下就丢了
+  const fromRaw = Number(item.fromBar);
+  const toRaw = Number(item.toBar);
+  const fromBar = Number.isInteger(fromRaw) && fromRaw >= 1 && fromRaw <= 24 ? fromRaw : 0;
+  const toBar = Number.isInteger(toRaw) && toRaw >= fromBar && toRaw <= 24 ? toRaw : 0;
   return {
     id: item.id,
     date: item.date,
     bpm,
     bars: Number.isFinite(bars) && bars > 0 ? Math.round(bars) : 4,
+    ...(fromBar && toBar ? { fromBar, toBar } : {}),
     stdevMs: Math.round(stdevMs * 10) / 10,
     meanAbsMs: Number.isFinite(meanAbsMs) ? Math.round(meanAbsMs * 10) / 10 : 0,
     driftMsPerBeat: Number.isFinite(driftMsPerBeat) ? Math.round(driftMsPerBeat * 10) / 10 : 0,

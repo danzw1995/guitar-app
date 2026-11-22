@@ -237,6 +237,9 @@ export interface SteadyPoint {
   date: string;
   bpm: number;
   stdevMs: number;
+  /** 只弹了某几小节才有；没有就是整段弹的（v0.144.0） */
+  fromBar?: number;
+  toBar?: number;
 }
 
 /** 某一处（第 N 小节第 M 级）单独练过几次。 */
@@ -279,10 +282,16 @@ function parseSteadyHistory(value: unknown): SteadyPoint[] {
     if (!isValidDateKey(date)) continue;
     if (!Number.isFinite(bpm) || bpm < 40 || bpm > 200) continue;
     if (!Number.isFinite(stdevMs) || stdevMs <= 0 || stdevMs >= 500) continue;
+    // 只弹某几小节的点也留着（v0.144.0）：统计页要标出「这一遍是只弹 2–3」
+    const fromRaw = Number(point.fromBar);
+    const toRaw = Number(point.toBar);
+    const fromBar = Number.isInteger(fromRaw) && fromRaw >= 1 && fromRaw <= 24 ? fromRaw : 0;
+    const toBar = Number.isInteger(toRaw) && toRaw >= fromBar && toRaw <= 24 ? toRaw : 0;
     points.push({
       date,
       bpm: Math.round(bpm),
       stdevMs: Math.round(stdevMs * 10) / 10,
+      ...(fromBar && toBar ? { fromBar, toBar } : {}),
     });
   }
   points.sort((a, b) => a.date.localeCompare(b.date));

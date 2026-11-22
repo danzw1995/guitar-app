@@ -1497,6 +1497,22 @@ expect(
     (narrowDecls(".steady-curves li").get("grid-template-columns") || "").includes("120px"),
 );
 
+expect(
+  "稳度曲线点得动（手型光标），点开那天是 12 号灰字，「只弹过」是小药丸",
+  narrowDecls(".steady-curve-svg").get("cursor") === "pointer" &&
+    Number.parseFloat(narrowDecls(".steady-curve-day").get("font-size")) === 12 &&
+    (narrowDecls(".steady-curve-day").get("grid-column") || "").includes("1 / -1") &&
+    Number.parseFloat(narrowDecls(".steady-range-tag").get("font-size")) <= 10 &&
+    Number.parseFloat(narrowDecls(".steady-range-tag").get("border-radius")) >= 99,
+);
+
+expect(
+  "「按这个速度再弹一遍」「同速再来一遍」都够 40 高，「同速的上一遍」那行是 12 号字",
+  Number.parseFloat(narrowDecls(".steady-curve-go").get("min-height")) >= 40 &&
+    Number.parseFloat(narrowDecls(".st-same-go").get("min-height")) >= 40 &&
+    Number.parseFloat(narrowDecls(".st-same").get("font-size")) === 12,
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
