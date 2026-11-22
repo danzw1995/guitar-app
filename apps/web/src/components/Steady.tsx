@@ -118,6 +118,44 @@ export default function Steady() {
 
   useEffect(() => cleanup, [cleanup]);
 
+  /**
+   * 先听一遍同速的节拍（v0.145.0）：没有录音可放，所以放的是那次的速度——
+   * 耳朵先对上「这个速度大概多快」，再听自己这次有没有跟上。
+   */
+  const [previewing, setPreviewing] = useState(false);
+  const previewRef = useRef<AudioContext | null>(null);
+  const previewTimer = useRef<number | null>(null);
+  const stopPreview = useCallback(() => {
+    if (previewTimer.current !== null) window.clearTimeout(previewTimer.current);
+    previewTimer.current = null;
+    const ctx = previewRef.current;
+    previewRef.current = null;
+    if (ctx) void ctx.close().catch(() => {});
+    setPreviewing(false);
+  }, []);
+  useEffect(() => stopPreview, [stopPreview]);
+  const previewSame = useCallback(async () => {
+    stopPreview();
+    const Ctor: typeof AudioContext | undefined =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return;
+    const ctx = new Ctor();
+    await ctx.resume();
+    previewRef.current = ctx;
+    const spanBars = Math.max(1, Math.min(toBar, bars) - Math.max(1, fromBar) + 1);
+    const interval = 60 / bpm;
+    const beats = spanBars * BAR_BEATS + 1;
+    const startAt = ctx.currentTime + 0.15;
+    for (let index = 0; index < beats; index += 1) {
+      clickAt(ctx, startAt + interval * index, index % BAR_BEATS === 0);
+    }
+    setPreviewing(true);
+    previewTimer.current = window.setTimeout(
+      stopPreview,
+      Math.ceil(((beats - 1) * interval + 0.35) * 1000),
+    );
+  }, [bars, bpm, fromBar, stopPreview, toBar]);
+
   const start = useCallback(async () => {
     cleanup();
     const spanBars = Math.max(1, Math.min(toBar, bars) - Math.max(1, fromBar) + 1);
@@ -459,6 +497,15 @@ export default function Steady() {
                 : same.stdevMs - report.stdevMs <= -1
                   ? `（散了 ${Math.abs(same.stdevMs - report.stdevMs).toFixed(0)} 毫秒）`
                   : "（差不多）"}
+              <button
+                type="button"
+                className="btn-quiet st-same-listen"
+                onClick={() => void (previewing ? stopPreview() : previewSame())}
+                disabled={busy}
+                title="只放节拍，不放录音；先听清那个速度再弹"
+              >
+                {previewing ? "停" : "先听同速的节拍"}
+              </button>
               <button type="button" className="btn-quiet st-same-go" onClick={start} disabled={busy}>
                 同速再来一遍
               </button>

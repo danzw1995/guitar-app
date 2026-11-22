@@ -4212,6 +4212,73 @@ try {
     return "restored";
   })()`);
 
+  // 16d46) v0.145.0：稳度只列「只弹过某几小节」的、最稳那点标出来
+  await js(`(() => {
+    const store = (key) => sessionStorage.setItem("chk3." + key, localStorage.getItem(key) ?? "");
+    store("guitar.rhythm.v1");
+    localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      "p:s0-crawl": {
+        bestBpm: 72, sessions: 3, minutes: 9, lastAt: "2026-11-21", steadyStdev: 9,
+        steadyHistory: [
+          { date: "2026-11-17", bpm: 60, stdevMs: 26 },
+          { date: "2026-11-20", bpm: 60, stdevMs: 9, fromBar: 2, toBar: 3 },
+        ],
+      },
+      "p:s0-scale": {
+        bestBpm: 80, sessions: 2, minutes: 6, lastAt: "2026-11-19",
+        steadyHistory: [
+          { date: "2026-11-18", bpm: 76, stdevMs: 22 },
+          { date: "2026-11-19", bpm: 80, stdevMs: 13 },
+        ],
+      },
+    }));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1200);
+  const steadyFilter = js(`(() => {
+    const chips = [...document.querySelectorAll(".steady-filter .chip")];
+    const rows = [...document.querySelectorAll(".steady-curves li")];
+    return JSON.stringify({
+      chips: chips.map((node) => node.textContent.replace(/\\s+/g, " ").trim()),
+      on: chips.filter((node) => node.classList.contains("on")).map((node) => node.textContent.trim().slice(0, 2)),
+      rows: rows.length,
+      best: rows.map((row) => row.querySelectorAll(".steady-curve-best").length),
+      title: rows[0]?.querySelector(".steady-curve-best title")?.textContent ?? "",
+      stroke: rows[0] ? getComputedStyle(rows[0].querySelector(".steady-curve-best")).stroke : "",
+    });
+  })()`);
+  const steadyFilterText = plain(steadyFilter);
+  await js(`(() => {
+    const chip = [...document.querySelectorAll(".steady-filter .chip")].find((node) => node.textContent.includes("只弹过"));
+    chip?.click();
+    return "clicked";
+  })()`);
+  await sleep(400);
+  const steadyOnlyRows = plain(js(`(() => document.querySelectorAll(".steady-curves li").length)()`));
+  log(
+    /"chips":\["全部 2","只弹过某几小节 1"\]/.test(steadyFilterText) &&
+      /"on":\["全部"\]/.test(steadyFilterText) &&
+      /"rows":2/.test(steadyFilterText) &&
+      /"best":\[1,1\]/.test(steadyFilterText) &&
+      steadyFilterText.includes("最稳：") &&
+      steadyFilterText.includes("rgb(63, 185, 80)") &&
+      steadyOnlyRows === "1",
+    "统计页：稳度只列「只弹过某几小节」的，最稳那一点画成绿圈",
+    `${steadyFilterText} | 筛过之后 ${steadyOnlyRows} 行`,
+  );
+  // 恢复，别把这两条曲线留给后面的断言
+  await js(`(() => {
+    const put = (key, stored) => {
+      if (stored) localStorage.setItem(key, stored);
+      else localStorage.removeItem(key);
+    };
+    put("guitar.rhythm.v1", sessionStorage.getItem("chk3.guitar.rhythm.v1"));
+    sessionStorage.removeItem("chk3.guitar.rhythm.v1");
+    return "restored";
+  })()`);
+
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);
   await sleep(900);

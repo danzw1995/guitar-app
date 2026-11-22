@@ -812,13 +812,41 @@ button, select, input { font: inherit; color: inherit; }
   font-style: normal;
   white-space: nowrap;
 }
+.steady-best-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(63, 185, 80, 0.14);
+  color: var(--green);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+/* 最稳的那一遍画成空心圈：`.curve-svg circle` 是 (0,1,1)，要 (0,2,1) 才盖得住 */
+.steady-curve-svg circle.steady-curve-best {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 1.6;
+}
+.steady-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.steady-filter .chip {
+  min-height: 40px;
+  font-size: 12px;
+}
 .st-same {
   margin: 2px 0 0;
   color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
-.st-same-go {
+.st-same-go,
+.st-same-listen {
   margin-left: 8px;
   min-height: 40px;
   color: var(--accent);

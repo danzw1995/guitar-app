@@ -497,6 +497,8 @@ export default function Stats() {
         (setFilter === null || item.setName === setFilter),
     )
     .slice(0, 4);
+  /** 只看「练过只弹某几小节」的那些（v0.145.0） */
+  const [steadyPartialOnly, setSteadyPartialOnly] = useState(false);
   // 只看某一套时，「跟练进步」也只留这一套的曲线（v0.128.0）：
   // 上面筛了、下面还列别人的曲线，等于两处说的不是一件事。
   // 按练习的「稳度」曲线（v0.143.0）：只有从练习页「顺手弹一遍」进去弹的才留点
@@ -517,6 +519,12 @@ export default function Stats() {
         return !!title && setNameByTitle.get(title) === setFilter;
       })
     : steadyCurves;
+  // 只看「练过只弹某几小节」的那些（v0.145.0）：局部练习的进和退，
+  // 混在整段里看不出来，想单独盯着就筛一下。
+  const steadyPartialCurves = visibleSteadyCurves.filter((curve) =>
+    curve.points.some((point) => point.fromBar && point.toBar),
+  );
+  const shownSteadyCurves = steadyPartialOnly ? steadyPartialCurves : visibleSteadyCurves;
   // 每套组合「整体卡在哪一级」（v0.119.0）：把这一套所有条目的「卡了几次」按级数加总，
   // 加总最多的那一级就是这套的短板。它是「这套要不要一起补」的线索，不是单条的结论。
   const setWeak = new Map<string, { degree: number; count: number }>();
@@ -1581,8 +1589,31 @@ export default function Stats() {
             这几条的稳度
             <span className="stat-sub-note">越低越稳</span>
           </h3>
+          {steadyPartialCurves.length > 0 && (
+            <div className="steady-filter" role="group" aria-label="按练习范围筛选稳度曲线">
+              <button
+                type="button"
+                className={`chip${steadyPartialOnly ? "" : " on"}`}
+                aria-pressed={!steadyPartialOnly}
+                onClick={() => setSteadyPartialOnly(false)}
+              >
+                全部 {visibleSteadyCurves.length}
+              </button>
+              <button
+                type="button"
+                className={`chip${steadyPartialOnly ? " on" : ""}`}
+                aria-pressed={steadyPartialOnly}
+                onClick={() => setSteadyPartialOnly(true)}
+              >
+                只弹过某几小节 {steadyPartialCurves.length}
+              </button>
+            </div>
+          )}
+          {shownSteadyCurves.length === 0 && (
+            <p className="hint">还没有哪条只弹某几小节练过两遍以上。</p>
+          )}
           <ul className="steady-curves">
-            {visibleSteadyCurves.map((curve) => {
+            {shownSteadyCurves.map((curve) => {
               // 标准差越小越稳，取负号让「稳」画在上面
               const spark = sparklineOf(
                 curve.points.map((point) => -point.stdevMs),
@@ -1592,6 +1623,13 @@ export default function Stats() {
               const first = curve.points[0];
               const last = curve.points[curve.points.length - 1];
               const head = spark.dots[spark.dots.length - 1];
+              // 最稳的那一遍（v0.145.0）：标准差最小，画成空心圈
+              const bestIndex = curve.points.reduce(
+                (best, point, index) => (point.stdevMs < curve.points[best].stdevMs ? index : best),
+                0,
+              );
+              const bestDot = spark.dots[bestIndex];
+              const bestPoint = curve.points[bestIndex];
               const practice = curve.id.startsWith("p:");
               const recordTitle = rhythm[curve.id]?.title;
               const name = recordTitle
@@ -1614,7 +1652,7 @@ export default function Stats() {
                     viewBox="0 0 120 30"
                     role="button"
                     tabIndex={0}
-                    aria-label={`${name} 的稳度：${first.date} ±${first.stdevMs.toFixed(0)} 毫秒，到 ${last.date} ±${last.stdevMs.toFixed(0)} 毫秒，共 ${curve.points.length} 遍，越低越稳。点一下看那一天。`}
+                    aria-label={`${name} 的稳度：${first.date} ±${first.stdevMs.toFixed(0)} 毫秒，到 ${last.date} ±${last.stdevMs.toFixed(0)} 毫秒，共 ${curve.points.length} 遍；最稳的是 ${bestPoint.date} 的 ±${bestPoint.stdevMs.toFixed(0)} 毫秒。越低越稳，点一下看那一天。`}
                     onClick={(event) => pickSteadyCurve(curve.id, curve.points.length, event)}
                     onKeyDown={(event) => {
                       if (event.key !== "Enter" && event.key !== " ") return;
@@ -1627,6 +1665,17 @@ export default function Stats() {
                     <rect x={0} y={0} width={120} height={30} fill="transparent" />
                     <path d={spark.d} />
                     <circle cx={head.x} cy={head.y} r={2} />
+                    {/* 最稳的那一遍：空心圈（v0.145.0），和跟练曲线上的记号是一个意思 */}
+                    {bestDot && (
+                      <circle
+                        className="steady-curve-best"
+                        cx={bestDot.x}
+                        cy={bestDot.y}
+                        r={2.8}
+                      >
+                        <title>{`最稳：${bestPoint.date} ±${bestPoint.stdevMs.toFixed(0)} 毫秒`}</title>
+                      </circle>
+                    )}
                     {pickedIndex !== null && spark.dots[pickedIndex] && (
                       <circle
                         className="steady-curve-pick-dot"
@@ -1639,6 +1688,9 @@ export default function Stats() {
                   <span className="muted">
                     ±{first.stdevMs.toFixed(0)} → ±{last.stdevMs.toFixed(0)} 毫秒 ·{" "}
                     {curve.points.length} 遍{" "}
+                    <span className="steady-best-tag" title="标准差最小的那一遍">
+                      最稳 {bestPoint.date.slice(5)}
+                    </span>
                     {curve.points.some((point) => point.fromBar && point.toBar) && (
                       <span
                         className="steady-range-tag"

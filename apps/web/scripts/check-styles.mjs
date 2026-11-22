@@ -1513,6 +1513,25 @@ expect(
     Number.parseFloat(narrowDecls(".st-same").get("font-size")) === 12,
 );
 
+expect(
+  "「只看只弹过某几小节」是一排能折行的 chip，每个够 40 高",
+  narrowDecls(".steady-filter").get("flex-wrap") === "wrap" &&
+    Number.parseFloat(narrowDecls(".steady-filter .chip").get("min-height")) >= 40,
+);
+
+expect(
+  "「最稳 MM-DD」是绿色小药丸，曲线上的最稳那点画成空心圈（绿描边、不填色）",
+  Number.parseFloat(narrowDecls(".steady-best-tag").get("font-size")) <= 10 &&
+    Number.parseFloat(narrowDecls(".steady-best-tag").get("border-radius")) >= 99 &&
+    narrowDecls(".steady-curve-svg circle.steady-curve-best").get("fill") === "none" &&
+    narrowDecls(".steady-curve-svg circle.steady-curve-best").get("stroke") === "var(--green)",
+);
+
+expect(
+  "「先听同速的节拍」和「同速再来一遍」一样够 40 高",
+  Number.parseFloat(narrowDecls(".st-same-listen").get("min-height")) >= 40,
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
