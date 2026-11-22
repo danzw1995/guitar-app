@@ -220,11 +220,23 @@ export interface RhythmRecord {
    */
   steadyStdev?: number;
   /**
+   * 这条练习逐遍的稳度（v0.143.0）：只有从练习页「顺手弹一遍」进来弹的才记，
+   * 一天一个点、最多 24 遍。统计页按练习画「稳度」曲线要用它。
+   */
+  steadyHistory?: SteadyPoint[];
+  /**
    * 上次圈住练的那一段（v0.132.0）：第几小节到第几小节。
    *
    * 一圈几小节就是那天的练法，下次打开跟练直接照着圈回去，不用再从头挑一遍。
    */
   seg?: { from: number; to: number };
+}
+
+/** 某一遍「稳不稳」：哪天、什么速度、标准差多少（毫秒）。 */
+export interface SteadyPoint {
+  date: string;
+  bpm: number;
+  stdevMs: number;
 }
 
 /** 某一处（第 N 小节第 M 级）单独练过几次。 */
@@ -252,6 +264,29 @@ function parseHistory(value: unknown): BpmPoint[] {
   }
   points.sort((a, b) => a.date.localeCompare(b.date));
   return points.slice(-60);
+}
+
+/** 逐遍的稳度只收站得住的数：合法日期、40–200 BPM、0–500 毫秒；按日期排好、最多 24 个。 */
+function parseSteadyHistory(value: unknown): SteadyPoint[] {
+  if (!Array.isArray(value)) return [];
+  const points: SteadyPoint[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const point = raw as Record<string, unknown>;
+    const date = typeof point.date === "string" ? point.date : "";
+    const bpm = Number(point.bpm);
+    const stdevMs = Number(point.stdevMs);
+    if (!isValidDateKey(date)) continue;
+    if (!Number.isFinite(bpm) || bpm < 40 || bpm > 200) continue;
+    if (!Number.isFinite(stdevMs) || stdevMs <= 0 || stdevMs >= 500) continue;
+    points.push({
+      date,
+      bpm: Math.round(bpm),
+      stdevMs: Math.round(stdevMs * 10) / 10,
+    });
+  }
+  points.sort((a, b) => a.date.localeCompare(b.date));
+  return points.slice(-24);
 }
 
 /** 一张「id → 成绩」的表：跟练与和弦转换共用同一套形状。 */
@@ -322,6 +357,7 @@ function parseRecords(raw: unknown): RhythmRecords {
     const bestBpm = Number(item.bestBpm);
     const spots = parseSpots(item.spots);
     const seg = parseSeg(item.seg);
+    const steadyHistory = parseSteadyHistory(item.steadyHistory);
     const steadyStdevRaw = Number(item.steadyStdev);
     const steadyStdev =
       Number.isFinite(steadyStdevRaw) && steadyStdevRaw > 0 && steadyStdevRaw < 500
@@ -329,7 +365,7 @@ function parseRecords(raw: unknown): RhythmRecords {
         : null;
     // 只单独练过某一处、还没整段练完时 bestBpm 会是 0——这种记录也得留住（v0.113.0）
     if (!Number.isFinite(bestBpm) || bestBpm < 0) continue;
-    if (bestBpm <= 0 && spots.length === 0 && steadyStdev === null) continue;
+    if (bestBpm <= 0 && spots.length === 0 && steadyStdev === null && steadyHistory.length === 0) continue;
     records[id] = {
       bestBpm: Math.round(bestBpm),
       sessions: Number.isFinite(Number(item.sessions)) ? Number(item.sessions) : 1,
@@ -340,6 +376,7 @@ function parseRecords(raw: unknown): RhythmRecords {
       ...(spots.length ? { spots } : {}),
       ...(seg ? { seg } : {}),
       ...(steadyStdev !== null ? { steadyStdev } : {}),
+      ...(steadyHistory.length ? { steadyHistory } : {}),
       ...(typeof item.title === "string" && item.title.trim()
         ? { title: item.title.trim() }
         : {}),

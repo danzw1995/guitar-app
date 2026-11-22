@@ -3961,6 +3961,110 @@ try {
     return "restored";
   })()`);
 
+  // 16d44) v0.143.0：按练习画「稳度」曲线、计划里点「最稳」直接去弹、只弹某几小节
+  await js(`(() => {
+    const run = (id, date, bpm, bars, stdev, extra) => ({ id, date, bpm, bars, stdevMs: stdev, meanAbsMs: stdev, driftMsPerBeat: 0.2, hits: bars * 4, ...extra });
+    sessionStorage.setItem("chk.steady2", localStorage.getItem("guitar.steady.v1") ?? "");
+    sessionStorage.setItem("chk.rhythm2", localStorage.getItem("guitar.rhythm.v1") ?? "");
+    const now = new Date();
+    const today = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+    localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      "p:s1-cycle": {
+        bestBpm: 76,
+        sessions: 3,
+        minutes: 12,
+        lastAt: "2026-11-21",
+        history: [{ date: "2026-11-18", bpm: 66 }, { date: "2026-11-21", bpm: 76 }],
+        steadyHistory: [
+          { date: "2026-11-18", bpm: 60, stdevMs: 22 },
+          { date: "2026-11-21", bpm: 66, stdevMs: 9 },
+        ],
+      },
+      "p:s1-scale": { bestBpm: 0, sessions: 0, minutes: 0, lastAt: today, steadyStdev: 6.4 },
+    }));
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([
+      run("s-1", "2026-11-19", 64, 4, 18),
+      run("s-2", "2026-11-21", 70, 4, 12),
+      run("s-3", "2026-11-21", 70, 2, 9, { fromBar: 2, toBar: 3 }),
+    ]));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1100);
+  const steadyRow = js(`(() => {
+    const rows = [...document.querySelectorAll(".steady-curves li")];
+    const row = rows.find((node) => node.querySelector(".curve-name")?.textContent.includes("s1-cycle")) ?? rows[0];
+    return JSON.stringify({
+      rows: rows.length,
+      meta: row?.querySelector(".muted")?.textContent?.replace(/\\s+/g, " ").trim() ?? "",
+      path: row?.querySelector(".steady-curve-svg path")?.getAttribute("d")?.slice(0, 1) ?? "",
+      aria: row?.querySelector(".steady-curve-svg")?.getAttribute("aria-label") ?? "",
+    });
+  })()`);
+  const steadyRowText = String(steadyRow).replace(/^"|"$/g, "");
+  log(
+    /"rows":1/.test(steadyRowText) &&
+      steadyRowText.includes("±22 → ±9 毫秒 · 2 遍") &&
+      /"path":"M"/.test(steadyRowText) &&
+      steadyRowText.includes("越低越稳"),
+    "统计页：按练习画「稳度」曲线，越低越稳",
+    steadyRowText,
+  );
+  await js(`(() => {
+    const svg = document.querySelector(".steady-svg");
+    const rect = svg?.getBoundingClientRect();
+    if (!rect) return "no-svg";
+    svg.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: rect.left + rect.width - 1, clientY: rect.top + rect.height / 2 }));
+    return "clicked";
+  })()`);
+  await sleep(400);
+  const rangeDay = js(`(() => document.querySelector(".steady-day")?.textContent?.replace(/\\s+/g, " ").trim() ?? "")`);
+  const rangeDayText = String(rangeDay).replace(/^"|"$/g, "");
+  log(
+    rangeDayText.includes("第 2–3 小节"),
+    "统计页：只弹了几小节的记录，明细写清是哪一段",
+    rangeDayText,
+  );
+
+  await ab(["open", `${URL}#practice`]);
+  await sleep(1000);
+  const linkText = js(`(() => {
+    const link = document.querySelector(".pb-due-link");
+    link?.scrollIntoView({ block: "center" });
+    return link ? link.textContent.replace(/\\s+/g, " ").trim() : "no-link";
+  })()`);
+  const link = String(linkText).replace(/^"|"$/g, "");
+  await js(`(() => { document.querySelector(".pb-due-link")?.click(); return "clicked"; })()`);
+  await sleep(500);
+  const seeded = js(`(() => {
+    const panel = document.querySelector("#steady");
+    const selects = [...(panel?.querySelectorAll(".st-range select") ?? [])];
+    return JSON.stringify({
+      bpm: panel?.querySelector("input[type=number]")?.value ?? "",
+      range: selects.map((node) => node.value),
+      options: selects[1]?.querySelectorAll("option").length ?? 0,
+      labels: selects.map((node) => node.getAttribute("aria-label")),
+    });
+  })()`);
+  const seededText = String(seeded).replace(/^"|"$/g, "");
+  log(
+    link.includes("稳不稳最稳 ±6 毫秒") && /"range":\["1","4"\]/.test(seededText) && /"options":4/.test(seededText),
+    "练习页：点「稳不稳最稳 ±N 毫秒」直接去弹这一条（速度、区间都带过去了）",
+    `${link} | ${seededText}`,
+  );
+  await js(`(() => {
+    const put = (key, stored) => {
+      if (stored) localStorage.setItem(key, stored);
+      else localStorage.removeItem(key);
+    };
+    put("guitar.steady.v1", sessionStorage.getItem("chk.steady2"));
+    put("guitar.rhythm.v1", sessionStorage.getItem("chk.rhythm2"));
+    sessionStorage.removeItem("chk.steady2");
+    sessionStorage.removeItem("chk.rhythm2");
+    return "restored";
+  })()`);
+
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);
   await sleep(900);
@@ -3972,7 +4076,7 @@ try {
     return [
       panel.querySelector(".panel-head h2")?.textContent.trim(),
       panel.querySelector("input[type=number]")?.value,
-      [...panel.querySelectorAll("select option")].map((o) => o.textContent.trim()).join("/"),
+      [...(panel.querySelector("select")?.querySelectorAll("option") ?? [])].map((o) => o.textContent.trim()).join("/"),
       start ? "has-start" : "no-start",
       panel.querySelector(".st-result") ? "has-result" : "no-result",
       panel.querySelector(".st-hint")?.textContent.includes("戴耳机") ? "tip" : "no-tip",

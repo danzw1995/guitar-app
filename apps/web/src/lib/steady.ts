@@ -15,6 +15,9 @@ export interface SteadyRun {
   date: string;
   bpm: number;
   bars: number;
+  /** 这一遍只弹了第几小节到第几小节（v0.143.0）；整段弹的不写。 */
+  fromBar?: number;
+  toBar?: number;
   /** 每拍偏差的标准差（毫秒） */
   stdevMs: number;
   /** 平均绝对偏差（毫秒） */

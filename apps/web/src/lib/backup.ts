@@ -158,6 +158,37 @@ function mergePracticeLog(current: unknown, incoming: unknown): Dict {
   return merged;
 }
 
+/** 按日期合并一条曲线：同一天用 pick 取更极端的那个值，按日期排好、只留 cap 个。 */
+function mergePoints(
+  current: unknown,
+  incoming: unknown,
+  field: string,
+  pick: (a: number, b: number) => number,
+  cap: number,
+): Dict[] {
+  const map = new Map<string, Dict>();
+  const list = [
+    ...(Array.isArray(current) ? current : []),
+    ...(Array.isArray(incoming) ? incoming : []),
+  ];
+  for (const raw of list) {
+    if (!isDict(raw)) continue;
+    const date = typeof raw.date === "string" ? raw.date : "";
+    const value = num(raw[field], Number.NaN);
+    if (!date || !Number.isFinite(value)) continue;
+    const previous = map.get(date);
+    map.set(date, {
+      ...(previous ?? {}),
+      ...raw,
+      date,
+      [field]: Number.isFinite(value) && previous ? pick(num(previous[field]), value) : value,
+    });
+  }
+  return [...map.values()]
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .slice(-cap);
+}
+
 function mergeRhythm(current: unknown, incoming: unknown): Dict {
   const merged: Dict = { ...(isDict(current) ? current : {}) };
   if (!isDict(incoming)) return merged;
@@ -172,11 +203,16 @@ function mergeRhythm(current: unknown, incoming: unknown): Dict {
       .filter((item): item is string => typeof item === "string")
       .sort()
       .pop();
+    const stdevs = [num(mine.steadyStdev), num(value.steadyStdev)].filter((item) => item > 0);
     merged[id] = {
+      ...mine,
       bestBpm: Math.max(num(mine.bestBpm), num(value.bestBpm)),
       sessions: Math.max(num(mine.sessions), num(value.sessions)),
       minutes: Math.max(num(mine.minutes), num(value.minutes)),
       lastAt: lastAt ?? "",
+      history: mergePoints(mine.history, value.history, "bpm", Math.max, 60),
+      steadyHistory: mergePoints(mine.steadyHistory, value.steadyHistory, "stdevMs", Math.min, 24),
+      ...(stdevs.length ? { steadyStdev: Math.min(...stdevs) } : {}),
     };
   }
   return merged;

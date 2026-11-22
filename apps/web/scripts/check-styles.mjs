@@ -1450,36 +1450,51 @@ for (const selector of ["select", "input", "textarea"]) {
 }
 
 expect(
+  "趋势线上的最稳那枚圈是空心、整张图放大到 220、图例是小字",
   narrowDecls(".curve-svg .curve-best").get("fill") === "none" &&
     Number.parseFloat(narrowDecls(".ear-trend .curve-svg.steady-svg").get("width")) >= 200 &&
     narrowDecls(".steady-marks").get("font-size") === "11px",
-  "趋势线上的最稳那枚圈是空心、整张图放大到 220、图例是小字",
 );
 
 expect(
+  "「比上次稳了多少」用强调色，「最散的那一小节」用灰字",
   narrowDecls(".st-delta").get("color") === "var(--accent)" &&
     narrowDecls(".st-bars-note").get("color") === "var(--muted)",
-  "「比上次稳了多少」用强调色，「最散的那一小节」用灰字",
 );
 
 expect(
+  "趋势线（点一下看那一遍）有手型光标，明细自占一行",
   narrowDecls(".steady-svg").get("cursor") === "pointer" &&
     narrowDecls(".steady-day").get("font-size") === "12px" &&
     narrowDecls(".steady-day").get("flex") === "1 1 100%",
-  "趋势线（点一下看那一遍）有手型光标，明细自占一行",
 );
 
 expect(
+  "「顺手弹一遍」「按这个速度再弹一遍」「清掉几遍」都够 40 高",
   Number.parseFloat(narrowDecls(".pb-steady").get("min-height")) >= 40 &&
     Number.parseFloat(narrowDecls(".steady-again").get("min-height")) >= 40 &&
     Number.parseFloat(narrowDecls(".steady-clear-pick").get("min-height")) >= 40,
-  "「顺手弹一遍」「按这个速度再弹一遍」「清掉几遍」都够 40 高",
 );
 
 expect(
+  "「比上一遍」那行是灰字，「已记到这条练习」是绿字",
   Number.parseFloat(narrowDecls(".steady-vs").get("font-size")) === 12 &&
     (narrowDecls(".st-linked").get("color") || "").includes("--green"),
-  "「比上一遍」那行是灰字，「已记到这条练习」是绿字",
+);
+
+expect(
+  "「只弹第几到第几小节」两个下拉够 40 高，计划里那句「稳不稳」是能点的虚线强调色",
+  narrowDecls(".st-range").get("display") === "flex" &&
+    Number.parseFloat(narrowDecls(".st-range select").get("min-height")) >= 40 &&
+    (narrowDecls(".pb-due-link").get("text-decoration") || "").includes("underline") &&
+    narrowDecls(".pb-due-link").get("color") === "var(--accent)",
+);
+
+expect(
+  "「这几条的稳度」是列表，折线那一列定宽 120",
+  narrowDecls(".steady-curves").get("display") === "grid" &&
+    Number.parseFloat(narrowDecls(".steady-curves").get("max-width")) >= 600 &&
+    (narrowDecls(".steady-curves li").get("grid-template-columns") || "").includes("120px"),
 );
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);

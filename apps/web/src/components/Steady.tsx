@@ -42,6 +42,10 @@ export default function Steady() {
   }, []);
   const [bpm, setBpm] = useState(seeded.bpm ?? initial.steadyBpm);
   const [bars, setBars] = useState(seeded.bars ?? initial.steadyBars);
+  // 只弹、只判其中几小节（v0.143.0）：默认整段
+  const [fromBar, setFromBar] = useState(1);
+  const [toBar, setToBar] = useState(seeded.bars ?? initial.steadyBars);
+  const [range, setRange] = useState<{ from: number; to: number } | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [report, setReport] = useState<TimingReport | null>(null);
@@ -61,12 +65,22 @@ export default function Steady() {
       if (Number.isFinite(detail.bpm) && detail.bpm! >= 40 && detail.bpm! <= 200) {
         setBpm(Math.round(detail.bpm!));
       }
-      if (detail.bars && [2, 4, 6, 8].includes(detail.bars)) setBars(detail.bars);
+      if (detail.bars && [2, 4, 6, 8].includes(detail.bars)) {
+        setBars(detail.bars);
+        setFromBar(1);
+        setToBar(detail.bars);
+      }
       document.getElementById("steady")?.scrollIntoView({ block: "start", behavior: "smooth" });
     }
     window.addEventListener(STEADY_EVENT, onSeed);
     return () => window.removeEventListener(STEADY_EVENT, onSeed);
   }, []);
+
+  // 小节数调小了，区间跟着收回来，别停在「第 7 小节」这种不存在的位置
+  useEffect(() => {
+    setFromBar((value) => Math.min(value, bars));
+    setToBar((value) => Math.min(value, bars));
+  }, [bars]);
 
   // 种子只用一次：留着 `?sb=&sbar=`，刷新会又把它盖回上次存的值
   useEffect(() => {
@@ -106,6 +120,7 @@ export default function Steady() {
 
   const start = useCallback(async () => {
     cleanup();
+    const spanBars = Math.max(1, Math.min(toBar, bars) - Math.max(1, fromBar) + 1);
     setReport(null);
     setError("");
     setJustSaved(false);
@@ -151,7 +166,7 @@ export default function Steady() {
       };
 
       const interval = 60 / bpm;
-      const beats = Math.max(BAR_BEATS, Math.round(bars) * BAR_BEATS) + 1;
+      const beats = spanBars * BAR_BEATS + 1;
       for (let index = 0; index < beats; index += 1) {
         const at = startRef.current + interval * index;
         clickRef.current.push(at);
@@ -176,7 +191,7 @@ export default function Steady() {
       }
     }
     // stop 在下面定义，这里通过 ref 调用；写成函数提升会让依赖数组抖动
-  }, [bars, bpm, cleanup]);
+  }, [bars, bpm, cleanup, fromBar, toBar]);
 
   const stop = useCallback(() => {
     const ctx = ctxRef.current;
@@ -206,6 +221,11 @@ export default function Steady() {
     const recordStart = now - frames / sampleRate;
     const origin = clicks.length > 0 ? clicks[0] - recordStart : 0;
 
+    const startBar = Math.max(1, Math.min(fromBar, bars));
+    const endBar = Math.max(startBar, Math.min(toBar, bars));
+    const spanBars = endBar - startBar + 1;
+    setRange({ from: startBar, to: endBar });
+
     const onsets = detectOnsets(all, sampleRate);
     const next = analyzeTiming(onsets, bpm, { beatsPerBar: BAR_BEATS, origin });
     if (!next) {
@@ -220,7 +240,9 @@ export default function Steady() {
       recordRun({
         date: new Date().toISOString().slice(0, 10),
         bpm,
-        bars,
+        bars: spanBars,
+        fromBar: startBar,
+        toBar: endBar,
         stdevMs: next.stdevMs,
         meanAbsMs: next.meanAbsMs,
         driftMsPerBeat: next.driftMsPerBeat,
@@ -234,6 +256,13 @@ export default function Steady() {
       const previous = all[linkId];
       const today = new Date().toISOString().slice(0, 10);
       const bestStdev = Math.min(previous?.steadyStdev ?? Number.POSITIVE_INFINITY, next.stdevMs);
+      const point = { date: today, bpm, stdevMs: Math.round(next.stdevMs * 10) / 10 };
+      const steadyHistory = [
+        ...(previous?.steadyHistory ?? []).filter((item) => item.date !== point.date),
+        point,
+      ]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(-24);
       all[linkId] = {
         ...previous,
         bestBpm: previous?.bestBpm ?? 0,
@@ -241,12 +270,13 @@ export default function Steady() {
         minutes: previous?.minutes ?? 0,
         lastAt: previous?.lastAt || today,
         steadyStdev: Math.round(bestStdev * 10) / 10,
+        steadyHistory,
       };
       saveRhythm(all);
       setLinkedNote(`已记到这条练习：最稳 ±${Math.round(bestStdev)} 毫秒`);
     }
     setJustSaved(true);
-  }, [bpm, cleanup]);
+  }, [bpm, bars, cleanup, fromBar, toBar]);
 
   const [delta, setDelta] = useState<number | null>(null);
 
@@ -259,7 +289,7 @@ export default function Steady() {
     <section className="panel steady" id="steady">
       <div className="panel-head">
         <h2>稳不稳</h2>
-        <p>开着节拍器弹四小节，麦克风听你每一下落在哪儿：是抢了、拖了，还是越弹越急。</p>
+        <p>开着节拍器弹几小节（默认四小节），麦克风听你每一下落在哪儿：是抢了、拖了，还是越弹越急。</p>
       </div>
 
       <div className="st-controls">
@@ -276,8 +306,13 @@ export default function Steady() {
           BPM
         </label>
         <label className="st-field">
-          小节数
-          <select value={bars} onChange={(event) => setBars(Number(event.target.value))} disabled={busy}>
+          共
+          <select
+            aria-label="整段共几小节"
+            value={bars}
+            onChange={(event) => setBars(Number(event.target.value))}
+            disabled={busy}
+          >
             {[2, 4, 6, 8].map((value) => (
               <option key={value} value={value}>
                 {value} 小节
@@ -285,6 +320,43 @@ export default function Steady() {
             ))}
           </select>
         </label>
+        <div className="st-field st-range">
+          <span>只弹</span>
+          <select
+            aria-label="从第几小节开始"
+            value={fromBar}
+            onChange={(event) => {
+              const next = Math.min(Number(event.target.value), bars);
+              setFromBar(next);
+              setToBar((value) => Math.max(value, next));
+            }}
+            disabled={busy}
+          >
+            {Array.from({ length: bars }, (_, index) => index + 1).map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+          <span>到</span>
+          <select
+            aria-label="到第几小节结束"
+            value={toBar}
+            onChange={(event) => {
+              const next = Math.min(Number(event.target.value), bars);
+              setToBar(next);
+              setFromBar((value) => Math.min(value, next));
+            }}
+            disabled={busy}
+          >
+            {Array.from({ length: bars }, (_, index) => index + 1).map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+          <span>小节</span>
+        </div>
         <button type="button" className={busy ? "btn" : "btn primary"} onClick={busy ? stop : start}>
           {phase === "starting" ? "开麦克风…" : phase === "listening" ? "停，看结果" : "开始"}
         </button>
@@ -292,7 +364,7 @@ export default function Steady() {
 
       <p className="st-hint" role="status">
         {phase === "listening"
-          ? `在听… ${elapsed.toFixed(1)} 秒（最多 ${MAX_SECONDS} 秒）。节拍器响了就跟上，弹完点「停」。`
+          ? `在听… ${elapsed.toFixed(1)} 秒（最多 ${MAX_SECONDS} 秒）· 第 ${fromBar}–${toBar} 小节。节拍器响了就跟上，弹完点「停」。`
           : phase === "denied"
             ? "麦克风被拒绝了：地址栏左边的图标里允许一下，再点「开始」。"
             : phase === "unsupported"
@@ -340,7 +412,8 @@ export default function Steady() {
           <p className="st-scale">每条是一拍：往左 = 抢在节拍器前面，往右 = 拖在后面。</p>
           {report.worstBar && report.barStdevsMs.length > 1 && (
             <p className="st-bars-note">
-              最散的是第 {report.worstBar.bar} 小节（±{report.worstBar.stdevMs.toFixed(0)} 毫秒）
+              最散的是第 {(range?.from ?? fromBar) + report.worstBar.bar - 1} 小节（±
+              {report.worstBar.stdevMs.toFixed(0)} 毫秒）
               {report.stdevMs > 0 && report.worstBar.stdevMs > report.stdevMs * 1.6
                 ? "——重弹时先盯这一小节。"
                 : "。"}

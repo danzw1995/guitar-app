@@ -748,12 +748,41 @@ button, select, input { font: inherit; color: inherit; }
   gap: 8px;
   max-width: 620px;
 }
-.curve-list li {
+.curve-list li,
+.steady-curves li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px auto;
   align-items: center;
   gap: 10px;
   font-size: 13px;
+}
+.steady-curves {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-width: 620px;
+}
+.st-range {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.st-range select {
+  min-height: 40px;
+}
+.pb-due-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+.pb-due-link:hover {
+  text-decoration: underline;
 }
 .curve-name {
   overflow: hidden;

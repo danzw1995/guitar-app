@@ -975,12 +975,25 @@ export default function Practice() {
                     {[
                       block.lastAt ? `上次练 ${block.days} 天前` : "还没练过，今天先见一面",
                       block.boost ? "跟练速度退步了，先补上" : "",
-                      records[followKey(drill.id)]?.steadyStdev
-                        ? `稳不稳最稳 ±${Math.round(records[followKey(drill.id)]!.steadyStdev!)} 毫秒`
-                        : "",
                     ]
                       .filter(Boolean)
                       .join(" · ")}
+                    {records[followKey(drill.id)]?.steadyStdev ? (
+                      <>
+                        {" · "}
+                        <button
+                          type="button"
+                          className="pb-due-link"
+                          onClick={() =>
+                            seedSteady(drill.bpm ? drill.bpm[0] : 70, 4, followKey(drill.id))
+                          }
+                          title="去弹一遍，看这一次稳不稳"
+                        >
+                          稳不稳最稳 ±
+                          {Math.round(records[followKey(drill.id)]!.steadyStdev!)} 毫秒
+                        </button>
+                      </>
+                    ) : null}
                   </p>
                 </div>
                 <span className="pb-timer" role="timer" aria-live="off">

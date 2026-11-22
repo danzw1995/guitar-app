@@ -499,12 +499,24 @@ export default function Stats() {
     .slice(0, 4);
   // 只看某一套时，「跟练进步」也只留这一套的曲线（v0.128.0）：
   // 上面筛了、下面还列别人的曲线，等于两处说的不是一件事。
+  // 按练习的「稳度」曲线（v0.143.0）：只有从练习页「顺手弹一遍」进去弹的才留点
+  const steadyCurves = Object.entries(rhythm)
+    .map(([id, item]) => ({ id, points: item.steadyHistory ?? [] }))
+    .filter((item) => item.points.length >= 2)
+    .sort((a, b) => b.points.length - a.points.length)
+    .slice(0, 6);
   const visibleCurves = setFilter
     ? curves.filter((curve) => {
         const title = rhythm[curve.id]?.title;
         return !!title && setNameByTitle.get(title) === setFilter;
       })
     : curves;
+  const visibleSteadyCurves = setFilter
+    ? steadyCurves.filter((curve) => {
+        const title = rhythm[curve.id]?.title;
+        return !!title && setNameByTitle.get(title) === setFilter;
+      })
+    : steadyCurves;
   // 每套组合「整体卡在哪一级」（v0.119.0）：把这一套所有条目的「卡了几次」按级数加总，
   // 加总最多的那一级就是这套的短板。它是「这套要不要一起补」的线索，不是单条的结论。
   const setWeak = new Map<string, { degree: number; count: number }>();
@@ -1536,6 +1548,56 @@ export default function Stats() {
         </p>
       )}
 
+      {visibleSteadyCurves.length > 0 && (
+        <>
+          <h3 className="stat-sub">
+            这几条的稳度
+            <span className="stat-sub-note">越低越稳</span>
+          </h3>
+          <ul className="steady-curves">
+            {visibleSteadyCurves.map((curve) => {
+              // 标准差越小越稳，取负号让「稳」画在上面
+              const spark = sparklineOf(
+                curve.points.map((point) => -point.stdevMs),
+                120,
+                30,
+              );
+              const first = curve.points[0];
+              const last = curve.points[curve.points.length - 1];
+              const head = spark.dots[spark.dots.length - 1];
+              const practice = curve.id.startsWith("p:");
+              const recordTitle = rhythm[curve.id]?.title;
+              const name = recordTitle
+                ? `${recordTitle} · 练习页`
+                : practice
+                  ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
+                  : nameOf(curve.id);
+              return (
+                <li key={curve.id}>
+                  <span className="curve-name" title={name}>
+                    {name}
+                  </span>
+                  <svg
+                    className="curve-svg steady-curve-svg"
+                    viewBox="0 0 120 30"
+                    role="img"
+                    aria-label={`${name} 的稳度：${first.date} ±${first.stdevMs.toFixed(0)} 毫秒，到 ${last.date} ±${last.stdevMs.toFixed(0)} 毫秒，共 ${curve.points.length} 遍，越低越稳。`}
+                  >
+                    <title>{name}</title>
+                    <path d={spark.d} />
+                    <circle cx={head.x} cy={head.y} r={2} />
+                  </svg>
+                  <span className="muted">
+                    ±{first.stdevMs.toFixed(0)} → ±{last.stdevMs.toFixed(0)} 毫秒 ·{" "}
+                    {curve.points.length} 遍
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+
       {/* 最卡的地方（v0.100.0）：跟练时点开单练最多的那一级，按级数归堆 */}
       {hardTally.length > 0 && (
         <>
@@ -2151,7 +2213,12 @@ export default function Stats() {
               {steadyPicked && (
                 <>
                   <span className="steady-day" role="status">
-                    {steadyPicked.date.slice(5).replace("-", "/")} · {steadyPicked.bpm} BPM · {steadyPicked.bars} 小节 · ±
+                    {steadyPicked.date.slice(5).replace("-", "/")} · {steadyPicked.bpm} BPM ·{" "}
+                    {/* v0.143.0：只弹了几小节的，写清是哪一段，别让人以为是整段 */}
+                    {steadyPicked.fromBar && steadyPicked.toBar
+                      ? `第 ${steadyPicked.fromBar}–${steadyPicked.toBar} 小节`
+                      : `${steadyPicked.bars} 小节`}{" "}
+                    · ±
                     {Math.round(steadyPicked.stdevMs)} 毫秒 · 漂移 {steadyPicked.driftMsPerBeat > 0 ? "+" : ""}
                     {steadyPicked.driftMsPerBeat} 毫秒/拍 · {steadyPicked.hits} 下
                   </span>
