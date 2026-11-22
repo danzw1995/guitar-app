@@ -24,6 +24,16 @@ function clickAt(ctx: AudioContext, at: number, accent: boolean): void {
   osc.stop(at + 0.08);
 }
 
+/**
+ * 「整体偏哪边」（v0.147.0）：偏差中位数在 ±8 毫秒以内算基本在拍上，
+ * 负数是抢在节拍器前面、正数是拖在后面——标准差说不清方向，这一句补上。
+ */
+function sideText(medianOffsetMs: number | undefined): string {
+  const value = medianOffsetMs ?? 0;
+  if (Math.abs(value) <= 8) return "基本在拍上";
+  return value < 0 ? `偏抢 ${Math.round(-value)} 毫秒` : `偏拖 ${Math.round(value)} 毫秒`;
+}
+
 export default function Steady() {
   // 记住上次的速度与小节数：每次打开都要重填，练同一段时很烦
   const initial = loadSettings();
@@ -38,6 +48,8 @@ export default function Steady() {
     return {
       bpm: Number.isFinite(bpmValue) && bpmValue >= 40 && bpmValue <= 200 ? Math.round(bpmValue) : null,
       bars: [2, 4, 6, 8].includes(barsValue) ? barsValue : null,
+      // 从统计页双击过来的会带 auto=1：等三秒自动开弹（v0.147.0）
+      auto: query.auto === "1" || query.auto === "true",
     };
   }, []);
   const [bpm, setBpm] = useState(seeded.bpm ?? initial.steadyBpm);
@@ -84,7 +96,7 @@ export default function Steady() {
 
   // 种子只用一次：留着 `?sb=&sbar=`，刷新会又把它盖回上次存的值
   useEffect(() => {
-    if (seeded.bpm === null && seeded.bars === null) return;
+    if (seeded.bpm === null && seeded.bars === null && !seeded.auto) return;
     if (window.location.hash !== "#practice/steady") {
       window.history.replaceState(null, "", "#practice/steady");
     }
@@ -291,6 +303,7 @@ export default function Steady() {
             toBar: sameRun.toBar,
             bars: sameRun.bars,
             sameRange: sameRange(sameRun),
+            medianOffsetMs: sameRun.medianOffsetMs,
           }
         : null,
     );
@@ -305,6 +318,7 @@ export default function Steady() {
         meanAbsMs: next.meanAbsMs,
         driftMsPerBeat: next.driftMsPerBeat,
         hits: next.hits.length,
+        medianOffsetMs: next.medianOffsetMs,
       }),
     );
     // 从练习页那条进来的，把这次的标准差写回那条练习（v0.142.0）
@@ -343,6 +357,25 @@ export default function Steady() {
     setJustSaved(true);
   }, [bpm, bars, cleanup, fromBar, toBar]);
 
+  // 从统计页双击过来：停三秒让人看清速度和「只弹哪几小节」，然后自己开弹（v0.147.0）。
+  // 只跑一次：`start` 的依赖一变它就会重建，靠 autoRanRef 挡住。
+  const [autoIn, setAutoIn] = useState<number | null>(seeded.auto ? 3 : null);
+  const autoRanRef = useRef(false);
+  useEffect(() => {
+    if (autoIn === null || autoRanRef.current) return;
+    if (autoIn > 0) {
+      const timer = window.setTimeout(
+        () => setAutoIn((value) => (value === null ? null : value - 1)),
+        1000,
+      );
+      return () => window.clearTimeout(timer);
+    }
+    autoRanRef.current = true;
+    setAutoIn(null);
+    void start();
+    return undefined;
+  }, [autoIn, start]);
+
   const [delta, setDelta] = useState<number | null>(null);
   // 同速的上一遍（v0.144.0）：速度一样才好比，加速之后抖得多一点是正常的
   const [same, setSame] = useState<{
@@ -352,6 +385,7 @@ export default function Steady() {
     toBar?: number;
     bars: number;
     sameRange: boolean;
+    medianOffsetMs?: number;
   } | null>(null);
 
   const busy = phase === "starting" || phase === "listening";
@@ -437,7 +471,9 @@ export default function Steady() {
       </div>
 
       <p className="st-hint" role="status">
-        {phase === "listening"
+        {autoIn !== null
+          ? `${autoIn} 秒后自动开始（从统计页双击过来的）；不想等就点「开始」。`
+          : phase === "listening"
           ? `在听… ${elapsed.toFixed(1)} 秒（最多 ${MAX_SECONDS} 秒）· 第 ${fromBar}–${toBar} 小节。节拍器响了就跟上，弹完点「停」。`
           : phase === "denied"
             ? "麦克风被拒绝了：地址栏左边的图标里允许一下，再点「开始」。"
@@ -523,6 +559,7 @@ export default function Steady() {
                 : same.stdevMs - report.stdevMs <= -1
                   ? `（散了 ${Math.abs(same.stdevMs - report.stdevMs).toFixed(0)} 毫秒）`
                   : "（差不多）"}
+              {" · 方向："}这次{sideText(report.medianOffsetMs)}，上次{sideText(same.medianOffsetMs)}
               <button
                 type="button"
                 className="btn-quiet st-same-listen"

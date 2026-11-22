@@ -501,9 +501,28 @@ export default function Stats() {
   const [steadyPartialOnly, setSteadyPartialOnly] = useState(false);
   // 只看某一套时，「跟练进步」也只留这一套的曲线（v0.128.0）：
   // 上面筛了、下面还列别人的曲线，等于两处说的不是一件事。
-  // 按练习的「稳度」曲线（v0.143.0）：只有从练习页「顺手弹一遍」进去弹的才留点
+  // 按练习的「稳度」曲线（v0.143.0）：只有从练习页「顺手弹一遍」进去弹的才留点；
+  // 同一条练习里「整段」和「只弹某几小节」分开画（v0.147.0）——两种练法不是一条线，
+  // 混着画会把局部的进步藏进整段的抖动里。两半都得有两个点才分，只有一个点的那半并回原线。
   const steadyCurves = Object.entries(rhythm)
-    .map(([id, item]) => ({ id, points: item.steadyHistory ?? [] }))
+    .flatMap(([id, item]) => {
+      const points = item.steadyHistory ?? [];
+      const groups = new Map<string, typeof points>();
+      for (const point of points) {
+        const key = point.fromBar && point.toBar ? `${point.fromBar}-${point.toBar}` : "full";
+        const bucket = groups.get(key);
+        if (bucket) bucket.push(point);
+        else groups.set(key, [point]);
+      }
+      const split = groups.size > 1 && [...groups.values()].every((group) => group.length >= 2);
+      if (!split) return [{ id, key: id, range: "", points }];
+      return [...groups.entries()].map(([range, group]) => ({
+        id,
+        key: `${id}|${range}`,
+        range,
+        points: group,
+      }));
+    })
     .filter((item) => item.points.length >= 2)
     .sort((a, b) => b.points.length - a.points.length)
     .slice(0, 6);
@@ -1637,9 +1656,17 @@ export default function Stats() {
                 : practice
                   ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
                   : nameOf(curve.id);
+              // 同一条练习分成「整段」与「只弹某几小节」两条线时，名字上写清是哪一种（v0.147.0）
+              const rangeName =
+                curve.range === ""
+                  ? ""
+                  : curve.range === "full"
+                    ? " · 整段"
+                    : ` · 只弹 ${curve.range.replace("-", "–")} 小节`;
+              const fullName = `${name}${rangeName}`;
               // 点过的那一天（v0.144.0）
               const pick =
-                steadyCurvePick && steadyCurvePick.id === curve.id ? steadyCurvePick.index : null;
+                steadyCurvePick && steadyCurvePick.id === curve.key ? steadyCurvePick.index : null;
               const pickedIndex = pick !== null && curve.points[pick] ? pick : null;
               const picked = pickedIndex !== null ? curve.points[pickedIndex] : null;
               // 上一次「只弹这一小段」（v0.146.0）：局部的进步要和局部比，别拿整段的当参照
@@ -1651,19 +1678,20 @@ export default function Stats() {
                   : undefined;
               const partialDelta = picked && partialBefore ? partialBefore.stdevMs - picked.stdevMs : 0;
               return (
-                <li key={curve.id} className={picked ? "picked" : undefined}>
-                  <span className="curve-name" title={name}>
-                    {name}
+                <li key={curve.key} className={picked ? "picked" : undefined}>
+                  <span className="curve-name" title={fullName}>
+                    {fullName}
                   </span>
                   <svg
                     className="curve-svg steady-curve-svg"
                     viewBox="0 0 120 30"
                     role="button"
                     tabIndex={0}
-                    aria-label={`${name} 的稳度：${first.date} ±${first.stdevMs.toFixed(0)} 毫秒，到 ${last.date} ±${last.stdevMs.toFixed(0)} 毫秒，共 ${curve.points.length} 遍；最稳的是 ${bestPoint.date} 的 ±${bestPoint.stdevMs.toFixed(0)} 毫秒。越低越稳，点一下看那一天。`}
-                    onClick={(event) => pickSteadyCurve(curve.id, curve.points.length, event)}
+                    aria-label={`${fullName} 的稳度：${first.date} ±${first.stdevMs.toFixed(0)} 毫秒，到 ${last.date} ±${last.stdevMs.toFixed(0)} 毫秒，共 ${curve.points.length} 遍；最稳的是 ${bestPoint.date} 的 ±${bestPoint.stdevMs.toFixed(0)} 毫秒。越低越稳，点一下看那一天。`}
+                    onClick={(event) => pickSteadyCurve(curve.key, curve.points.length, event)}
                     onDoubleClick={() =>
-                      // 双击：按最稳那一遍的速度和长度直接过去弹（v0.146.0，和跟练曲线的双击对齐）
+                      // 双击：按最稳那一遍的速度和长度直接过去弹（v0.146.0，和跟练曲线的双击对齐）；
+                      // auto=1 让面板停三秒就自己开弹（v0.147.0）
                       goTo("practice", "steady", {
                         sb: String(bestPoint.bpm),
                         sbar: String(
@@ -1674,15 +1702,16 @@ export default function Stats() {
                               : (steadyRunOf(bestPoint.date, bestPoint.bpm)?.bars ?? 4),
                           ),
                         ),
+                        auto: "1",
                       })
                     }
                     onKeyDown={(event) => {
                       if (event.key !== "Enter" && event.key !== " ") return;
                       event.preventDefault();
-                      stepSteadyCurve(curve.id, curve.points.length);
+                      stepSteadyCurve(curve.key, curve.points.length);
                     }}
                   >
-                    <title>{name}</title>
+                    <title>{fullName}</title>
                     {/* 透明底：SVG 只对画到的线条响应点击，空白处点不到（v0.128.0 踩过） */}
                     <rect x={0} y={0} width={120} height={30} fill="transparent" />
                     <path d={spark.d} />
@@ -1713,7 +1742,7 @@ export default function Stats() {
                     <span className="steady-best-tag" title="标准差最小的那一遍">
                       最稳 {bestPoint.date.slice(5)}
                     </span>
-                    {curve.points.some((point) => point.fromBar && point.toBar) && (
+                    {curve.range === "" && curve.points.some((point) => point.fromBar && point.toBar) && (
                       <span
                         className="steady-range-tag"
                         title="有一遍是只弹某几小节练的"

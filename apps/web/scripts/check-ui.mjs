@@ -4352,6 +4352,68 @@ try {
     return "restored";
   })()`);
 
+  // 16d48) v0.147.0：整段和「只弹某几小节」分成两条线；双击过去会自己开弹
+  await js(`(() => {
+    sessionStorage.setItem("chk5.guitar.rhythm.v1", localStorage.getItem("guitar.rhythm.v1") ?? "");
+    localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      "p:s0-crawl": {
+        bestBpm: 72, sessions: 4, minutes: 12, lastAt: "2026-11-21", steadyStdev: 9,
+        steadyHistory: [
+          { date: "2026-11-14", bpm: 60, stdevMs: 30 },
+          { date: "2026-11-16", bpm: 62, stdevMs: 22, fromBar: 2, toBar: 3 },
+          { date: "2026-11-18", bpm: 64, stdevMs: 26 },
+          { date: "2026-11-20", bpm: 60, stdevMs: 9, fromBar: 2, toBar: 3 },
+        ],
+      },
+    }));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1200);
+  const steadySplit = plain(js(`(() => {
+    const rows = [...document.querySelectorAll(".steady-curves li")];
+    return JSON.stringify({
+      rows: rows.length,
+      names: rows.map((row) => row.querySelector(".curve-name")?.textContent?.trim() ?? ""),
+      tags: rows.map((row) => row.querySelectorAll(".steady-range-tag").length),
+    });
+  })()`));
+  await js(`(() => {
+    const svg = document.querySelector(".steady-curves li .steady-curve-svg");
+    const box = svg.getBoundingClientRect();
+    svg.dispatchEvent(new MouseEvent("dblclick", {
+      bubbles: true,
+      clientX: box.left + box.width * (117 / 120),
+      clientY: box.top + box.height / 2,
+    }));
+    return "dblclicked";
+  })()`);
+  await sleep(1400);
+  const steadyAuto = plain(js(`(() => {
+    const panel = document.querySelector("#steady");
+    return JSON.stringify({
+      hash: location.hash,
+      hint: panel?.querySelector(".st-hint")?.textContent?.replace(/\\\\s+/g, " ").trim() ?? "",
+    });
+  })()`));
+  log(
+    /"rows":2/.test(steadySplit) &&
+      steadySplit.includes("· 整段") &&
+      steadySplit.includes("· 只弹 2–3 小节") &&
+      steadySplit.includes('"tags":[0,0]') &&
+      /\d 秒后自动开始/.test(steadyAuto),
+    "统计页：整段和「只弹 2–3 小节」分成两条线；双击过去会数秒自己开弹",
+    `${steadySplit} | ${steadyAuto}`,
+  );
+  await js(`(() => {
+    localStorage.setItem("guitar.rhythm.v1", sessionStorage.getItem("chk5.guitar.rhythm.v1") ?? "");
+    sessionStorage.removeItem("chk5.guitar.rhythm.v1");
+    return "restored";
+  })()`);
+  await ab(["open", `${URL}/?r=${Date.now()}#practice`]);
+  await sleep(900);
+
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);
   await sleep(900);

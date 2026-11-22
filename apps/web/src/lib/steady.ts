@@ -26,6 +26,8 @@ export interface SteadyRun {
   driftMsPerBeat: number;
   /** 打中的拍数 */
   hits: number;
+  /** 整体偏早/偏晚的中位数（毫秒，负=抢、正=拖）（v0.147.0） */
+  medianOffsetMs?: number;
 }
 
 function parseRun(value: unknown): SteadyRun | null {
@@ -45,6 +47,9 @@ function parseRun(value: unknown): SteadyRun | null {
   const toRaw = Number(item.toBar);
   const fromBar = Number.isInteger(fromRaw) && fromRaw >= 1 && fromRaw <= 24 ? fromRaw : 0;
   const toBar = Number.isInteger(toRaw) && toRaw >= fromBar && toRaw <= 24 ? toRaw : 0;
+  const medianRaw = Number(item.medianOffsetMs);
+  const medianOffsetMs =
+    Number.isFinite(medianRaw) && Math.abs(medianRaw) <= 200 ? Math.round(medianRaw * 10) / 10 : 0;
   return {
     id: item.id,
     date: item.date,
@@ -55,6 +60,7 @@ function parseRun(value: unknown): SteadyRun | null {
     meanAbsMs: Number.isFinite(meanAbsMs) ? Math.round(meanAbsMs * 10) / 10 : 0,
     driftMsPerBeat: Number.isFinite(driftMsPerBeat) ? Math.round(driftMsPerBeat * 10) / 10 : 0,
     hits: Number.isFinite(hits) && hits > 0 ? Math.round(hits) : 0,
+    ...(medianOffsetMs ? { medianOffsetMs } : {}),
   };
 }
 
