@@ -4561,7 +4561,7 @@ try {
       bestDay.includes('"dots":8') &&
       bestDay.includes('"ticks":8') &&
       bestDay.includes('"audio":"data:audio/wav;base64') &&
-      bestDay.includes('"exportable":1') &&
+      bestDay.includes('"exportable":2') &&
       bestDay.includes("early") &&
       bestDay.includes("节拍器"),
     "统计页：点「最稳」那枚药丸就能听那一遍的录音，录音旁边有节拍参考线",
@@ -4574,6 +4574,94 @@ try {
     sessionStorage.removeItem("chk8.rhythm");
     return "restored";
   })()`);
+
+  // 16d52) v0.151.0：有真录音时画的是波形（不是示意图），旁边能「存成说明」
+  await js(`(() => {
+    sessionStorage.setItem("chk9.steady", localStorage.getItem("guitar.steady.v1") ?? "");
+    sessionStorage.setItem("chk9.rhythm", localStorage.getItem("guitar.rhythm.v1") ?? "");
+    // 现场拼一段 2 秒的真 WAV：省得在脚本里塞几十 KB 的 base64
+    const buildWav = (seconds) => {
+      const rate = 8000;
+      const frames = Math.round(seconds * rate);
+      const buffer = new ArrayBuffer(44 + frames * 2);
+      const view = new DataView(buffer);
+      const ascii = (offset, text) => {
+        for (let index = 0; index < text.length; index += 1) view.setUint8(offset + index, text.charCodeAt(index));
+      };
+      ascii(0, "RIFF");
+      view.setUint32(4, 36 + frames * 2, true);
+      ascii(8, "WAVE");
+      ascii(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, rate, true);
+      view.setUint32(28, rate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      ascii(36, "data");
+      view.setUint32(40, frames * 2, true);
+      for (let index = 0; index < frames; index += 1) {
+        const time = index / rate;
+        const local = (time * 1000) % 1000;
+        const value = local < 90 ? Math.sin(2 * Math.PI * 300 * (local / 1000)) * (1 - local / 90) : 0;
+        view.setInt16(44 + index * 2, Math.round(value * 20000), true);
+      }
+      let binary = "";
+      const bytes = new Uint8Array(buffer);
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      return \`data:audio/wav;base64,\${btoa(binary)}\`;
+    };
+    localStorage.setItem("guitar.steady.v1", JSON.stringify([
+      { id: "v151-a", date: "2026-11-20", bpm: 60, bars: 2, stdevMs: 9, meanAbsMs: 7, driftMsPerBeat: -0.2, hits: 8,
+        medianFirstHalfMs: 3, medianSecondHalfMs: 2, offsets: [4, -6, 2, 11, -9, 3, 7, -2],
+        audio: buildWav(2), originMs: 0 },
+    ]));
+    localStorage.setItem("guitar.rhythm.v1", JSON.stringify({
+      "p:s0-crawl": { bestBpm: 60, sessions: 2, minutes: 4, lastAt: "2026-11-20", steadyStdev: 9,
+        steadyHistory: [{ date: "2026-11-16", bpm: 60, stdevMs: 24, totalBars: 2 }, { date: "2026-11-20", bpm: 60, stdevMs: 9, totalBars: 2 }] },
+    }));
+    location.hash = "#stats";
+    return "seeded";
+  })()`);
+  await ab(["reload"]);
+  await sleep(1300);
+  await js(`(() => {
+    const pill = document.querySelector("button.steady-best-tag");
+    pill?.click();
+    return "clicked";
+  })()`);
+  await sleep(1200);
+  const waveDay = plain(js(`(() => {
+    const day = document.querySelector(".steady-curve-day");
+    const wrap = day?.querySelector(".wave-ruler-wrap");
+    return JSON.stringify({
+      shape: wrap?.querySelectorAll("path.wave-ruler-shape").length ?? 0,
+      ticks: wrap?.querySelectorAll(".wave-ruler-tick").length ?? 0,
+      dots: wrap?.querySelectorAll(".wave-ruler-dot").length ?? 0,
+      hint: wrap?.querySelector(".beat-ruler-hint")?.textContent.trim() ?? "",
+      exportable: [...(day?.querySelectorAll(".st-audio-export") ?? [])].map((node) => node.textContent.trim()),
+      fallingBack: day?.querySelectorAll(".beat-ruler").length ?? 0,
+    });
+  })()`));
+  log(
+    waveDay.includes('"shape":1') &&
+      /"ticks":[1-9]/.test(waveDay) &&
+      /"dots":[1-9]/.test(waveDay) &&
+      waveDay.includes("波形上是这一遍") &&
+      waveDay.includes("存成说明") &&
+      waveDay.includes('"fallingBack":0'),
+    "统计页：有录音时画的是波形（竖向节拍线 + 落点），旁边有「存成说明」",
+    waveDay,
+  );
+  await js(`(() => {
+    localStorage.setItem("guitar.steady.v1", sessionStorage.getItem("chk9.steady") ?? "");
+    localStorage.setItem("guitar.rhythm.v1", sessionStorage.getItem("chk9.rhythm") ?? "");
+    sessionStorage.removeItem("chk9.steady");
+    sessionStorage.removeItem("chk9.rhythm");
+    return "restored";
+  })()`);
+
 
   // 12ad) v0.137.0：练习页底部「稳不稳」面板——麦克风、速度、小节数都在，没开始时不硬给结论
   await ab(["open", `${URL}#practice`]);

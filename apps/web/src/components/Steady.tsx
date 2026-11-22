@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
-import { recordRun, loadRuns, bestRun, attachAudio, downloadAudio, STEADY_EVENT, type SteadyRun } from "../lib/steady";
+import { recordRun, loadRuns, bestRun, attachAudio, downloadAudio, downloadText, runMetaMarkdown, STEADY_EVENT, type SteadyRun } from "../lib/steady";
 import { loadRhythm, loadSettings, saveRhythm, saveSettings } from "../lib/storage";
 import { parseHash } from "../lib/nav";
 import BeatRuler from "./BeatRuler";
+import WaveRuler from "./WaveRuler";
 
 type Phase = "idle" | "starting" | "listening" | "denied" | "unsupported" | "error";
 
@@ -89,6 +90,8 @@ export default function Steady() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [report, setReport] = useState<TimingReport | null>(null);
+  // 第一下点击声在录音里的位置（v0.151.0）：TimingReport 里没有这个，单独记一份给波形用
+  const [originMs, setOriginMs] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [runs, setRuns] = useState<SteadyRun[]>(() => loadRuns());
   const [justSaved, setJustSaved] = useState(false);
@@ -224,6 +227,7 @@ export default function Steady() {
     cleanup();
     const spanBars = Math.max(1, Math.min(toBar, bars) - Math.max(1, fromBar) + 1);
     setReport(null);
+    setOriginMs(null);
     setError("");
     setJustSaved(false);
     // 开跑就把这组设置记下来，下次进来还是这一组
@@ -401,6 +405,7 @@ export default function Steady() {
       [...history].reverse().find((item) => item.bpm === bpm && sameRange(item)) ??
       [...history].reverse().find((item) => item.bpm === bpm);
     setReport(next);
+    setOriginMs(Math.round(origin * 1000));
     setDelta(previous ? previous.stdevMs - next.stdevMs : null);
     setSame(
       sameRun
@@ -437,6 +442,8 @@ export default function Steady() {
       medianSecondHalfMs: next.medianSecondHalfMs,
       // 逐拍落点（v0.150.0）：录音旁边那条参考线靠它画
       offsets: next.offsets.map((offset) => Math.round(offset)),
+      // 第一下点击声在录音里的位置（v0.151.0）：波形上要按真实时间标节拍器
+      originMs: Math.round(origin * 1000),
     });
     setRuns(saved);
     // 录音是异步收尾的：先记下这一遍的 id，等 onstop 里把 data URL 挂上去（v0.149.0）
@@ -716,21 +723,84 @@ export default function Steady() {
                 />
               )}
               {lastAudio && (
-                <button
-                  type="button"
-                  className="btn-quiet st-audio-export"
-                  onClick={() => {
-                    const run = runs[runs.length - 1];
-                    if (run) downloadAudio(run);
-                  }}
-                  title="把这一遍的录音存成音频文件"
-                >
-                  存成文件
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="btn-quiet st-audio-export"
+                    onClick={() => {
+                      const run = runs[runs.length - 1];
+                      if (run) downloadAudio(run);
+                    }}
+                    title="把这一遍的录音存成音频文件"
+                  >
+                    存成文件
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-quiet st-audio-export"
+                    onClick={() => {
+                      const run = runs[runs.length - 1];
+                      if (run) downloadText(`稳不稳-${run.date}-${run.bpm}BPM.md`, runMetaMarkdown(run));
+                    }}
+                    title="存一份说明：速度、范围、标准差、每一拍偏多少"
+                  >
+                    存成说明
+                  </button>
+                </>
               )}
             </p>
           )}
-          {report.offsets.length > 0 && <BeatRuler offsets={report.offsets} className="st-audio-ruler" />}
+          {report.offsets.length > 0 &&
+            (lastAudio && originMs !== null ? (
+              <WaveRuler
+                audio={lastAudio}
+                offsets={report.offsets.map((offset) => Math.round(offset))}
+                bpm={bpm}
+                originMs={originMs}
+                className="st-audio-ruler"
+              />
+            ) : (
+              <BeatRuler offsets={report.offsets} className="st-audio-ruler" />
+            ))}
+          {/* 这一次和最稳的一次并排（v0.151.0）：数字看不出差别时，耳朵能听出来 */}
+          {(() => {
+            const current = runs[runs.length - 1];
+            const goal = bestRun(runs);
+            if (!current || !goal || !goal.audio || goal.id === current.id) return null;
+            if (!lastAudio && !goal.audio) return null;
+            return (
+              <div className="st-compare" data-st-compare>
+                <div className="st-compare-item">
+                  <span className="st-compare-head">
+                    这一遍 · ±{report.stdevMs.toFixed(0)} 毫秒
+                  </span>
+                  {lastAudio ? (
+                    <audio
+                      className="st-audio-play"
+                      controls
+                      preload="metadata"
+                      src={lastAudio}
+                      aria-label="这一遍的录音（对比）"
+                    />
+                  ) : (
+                    <span className="st-compare-none">这一遍没录</span>
+                  )}
+                </div>
+                <div className="st-compare-item">
+                  <span className="st-compare-head">
+                    最稳的一遍 · {goal.date.slice(5)} · ±{goal.stdevMs.toFixed(0)} 毫秒
+                  </span>
+                  <audio
+                    className="st-audio-play"
+                    controls
+                    preload="metadata"
+                    src={goal.audio}
+                    aria-label="最稳那一遍的录音"
+                  />
+                </div>
+              </div>
+            );
+          })()}
           {report && same && (
             <p className="st-same">
               同速的上一遍 ±{same.stdevMs.toFixed(0)} 毫秒（{same.date.slice(5)} ·{" "}

@@ -40,6 +40,11 @@ export interface SteadyRun {
   audio?: string;
   /** 每拍偏了多少毫秒（v0.150.0，负=抢、正=拖）：录音旁边那条参考线靠它画 */
   offsets?: number[];
+  /**
+   * 录音里第一下点击声的位置（毫秒，v0.151.0）。
+   * 波形上要把节拍器画在真实位置上，光有 bpm 不够——录音从按下开始那一刻就在走了。
+   */
+  originMs?: number;
 }
 
 /** 录音只留最近几遍：本地存储放不下更多（每遍约 30–80KB 的 base64） */
@@ -90,6 +95,10 @@ function parseRun(value: unknown): SteadyRun | null {
         .map((value) => Math.round(value))
         .slice(0, 64)
     : [];
+  // 第一下点击声的位置（v0.151.0）：波形上要靠它把节拍器画在真实的位置
+  const originRaw = Number(item.originMs);
+  const originMs =
+    Number.isFinite(originRaw) && originRaw >= 0 && originRaw <= 10_000 ? Math.round(originRaw) : undefined;
   return {
     id: item.id,
     date: item.date,
@@ -106,6 +115,7 @@ function parseRun(value: unknown): SteadyRun | null {
     ...(medianSecondHalfMs !== undefined ? { medianSecondHalfMs } : {}),
     ...(audio ? { audio } : {}),
     ...(offsets.length ? { offsets } : {}),
+    ...(originMs !== undefined ? { originMs } : {}),
   };
 }
 
@@ -191,12 +201,67 @@ export function audioExtOf(mime: string): string {
   return "wav";
 }
 
-/** 存录音只要这几样：面板上「同速那一遍」手里没有完整的 SteadyRun */
+/** 存录音 / 存说明只要这几样：面板上「同速那一遍」手里没有完整的 SteadyRun */
 export interface AudioSource {
   audio?: string;
   date: string;
   bpm: number;
   stdevMs: number;
+  bars?: number;
+  fromBar?: number;
+  toBar?: number;
+  totalBars?: number;
+  meanAbsMs?: number;
+  driftMsPerBeat?: number;
+  hits?: number;
+  medianOffsetMs?: number;
+  medianFirstHalfMs?: number;
+  medianSecondHalfMs?: number;
+  offsets?: number[];
+}
+
+/** 一份说明文件（v0.151.0）：音频本身带不了元信息，就并排放一个 .md */
+export function runMetaMarkdown(run: AudioSource): string {
+  const range =
+    run.fromBar && run.toBar ? `第 ${run.fromBar}–${run.toBar} 小节` : `整段 ${run.bars ?? 4} 小节`;
+  const lines = [
+    `# 稳不稳 · ${run.date} · ${run.bpm} BPM`,
+    "",
+    `- 范围：${range}${run.totalBars ? `（整段共 ${run.totalBars} 小节）` : ""}`,
+    `- 标准差：±${run.stdevMs.toFixed(1)} 毫秒（越小越稳）`,
+  ];
+  if (run.meanAbsMs !== undefined) lines.push(`- 平均绝对偏差：${run.meanAbsMs.toFixed(1)} 毫秒`);
+  if (run.driftMsPerBeat !== undefined) {
+    lines.push(`- 每拍漂移：${run.driftMsPerBeat >= 0 ? "+" : ""}${run.driftMsPerBeat.toFixed(1)} 毫秒/拍`);
+  }
+  if (run.hits !== undefined) lines.push(`- 踩到的拍：${run.hits} 下`);
+  if (run.medianOffsetMs !== undefined) {
+    lines.push(
+      `- 整体方向：${run.medianOffsetMs <= -8 ? `抢 ${Math.abs(run.medianOffsetMs).toFixed(0)} 毫秒` : run.medianOffsetMs >= 8 ? `拖 ${run.medianOffsetMs.toFixed(0)} 毫秒` : "基本在拍上"}`,
+    );
+  }
+  if (run.medianFirstHalfMs !== undefined && run.medianSecondHalfMs !== undefined) {
+    lines.push(
+      `- 前半段 / 后半段：${run.medianFirstHalfMs.toFixed(0)} / ${run.medianSecondHalfMs.toFixed(0)} 毫秒`,
+    );
+  }
+  if (run.offsets?.length) {
+    lines.push("", `## 每一拍（负=抢，正=拖，毫秒）`, "", run.offsets.join("、"));
+  }
+  lines.push("", "> 由 Guitar Lab「稳不稳」导出；录音是麦克风原声，只在本地。");
+  return `${lines.join("\n")}\n`;
+}
+
+/** 下载一段文本（v0.151.0）：说明文件靠它 */
+export function downloadText(name: string, text: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
 /** 把这一遍的录音存成文件（v0.150.0）：data URL → Blob → 点一下临时链接 */

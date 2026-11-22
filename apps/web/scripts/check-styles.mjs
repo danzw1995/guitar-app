@@ -1572,6 +1572,20 @@ expect(
     narrowDecls(".beat-ruler-dot.late").get("fill") === "var(--accent)",
 );
 
+expect(
+  "波形按 220×34 画，轮廓是填充的（不是一条线）",
+  Number.parseFloat(narrowDecls(".wave-ruler").get("width")) === 220 &&
+    Number.parseFloat(narrowDecls(".wave-ruler").get("height")) === 34 &&
+    (narrowDecls(".wave-ruler-shape").get("fill") || "") !== "none" &&
+    (narrowDecls(".wave-ruler-shape").get("fill") || "").includes("rgba"),
+);
+
+expect(
+  "「这一遍 / 最稳的一遍」并排两栏，窄屏自动堆成一栏",
+  (narrowDecls(".st-compare").get("display") || "") === "grid" &&
+    (narrowDecls(".st-compare").get("grid-template-columns") || "").includes("auto-fit"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

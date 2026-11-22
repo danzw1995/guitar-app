@@ -27,7 +27,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
-import { bestRun, downloadAudio, loadRuns, restoreRuns, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
+import { bestRun, downloadAudio, downloadText, loadRuns, restoreRuns, runMetaMarkdown, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -48,6 +48,7 @@ import { degreeName } from "../lib/degrees";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import Stars from "../components/Stars";
 import BeatRuler from "../components/BeatRuler";
+import WaveRuler from "../components/WaveRuler";
 import UndoToast from "../components/UndoToast";
 
 /** 统计页：全部来自本机 localStorage，没有账号也没有上报。 */
@@ -1871,11 +1872,35 @@ export default function Stats() {
                           >
                             存成文件
                           </button>
+                          <button
+                            type="button"
+                            className="btn-quiet st-audio-export"
+                            onClick={() =>
+                              downloadText(
+                                `稳不稳-${pickedRun.date}-${pickedRun.bpm}BPM.md`,
+                                runMetaMarkdown(pickedRun),
+                              )
+                            }
+                            title="存一份说明：速度、范围、标准差、每一拍偏多少"
+                          >
+                            存成说明
+                          </button>
                         </>
                       )}
-                      {/* 节拍参考线（v0.150.0）：竖线是节拍器该响的位置，圆点是这一遍的落点 */}
-                      {pickedRun?.offsets && pickedRun.offsets.length > 0 && (
-                        <BeatRuler offsets={pickedRun.offsets} className="steady-curve-ruler" />
+                      {/* 录音 + 节拍参考线（v0.150.0 / v0.151.0）：有录音就画波形，没有就退回示意图 */}
+                      {pickedRun?.audio ? (
+                        <WaveRuler
+                          audio={pickedRun.audio}
+                          offsets={pickedRun.offsets ?? []}
+                          bpm={pickedRun.bpm}
+                          originMs={pickedRun.originMs}
+                          className="steady-curve-ruler"
+                        />
+                      ) : (
+                        pickedRun?.offsets &&
+                        pickedRun.offsets.length > 0 && (
+                          <BeatRuler offsets={pickedRun.offsets} className="steady-curve-ruler" />
+                        )
                       )}
                     </span>
                   )}

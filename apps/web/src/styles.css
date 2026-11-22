@@ -3757,6 +3757,77 @@ button.steady-best-tag:hover {
   fill: var(--accent);
 }
 
+/* 波形 + 参考线（v0.151.0）：解得出录音就画波形，解不出来退回上面那条示意图 */
+.wave-ruler-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.wave-ruler {
+  display: block;
+  width: 220px;
+  max-width: 100%;
+  height: 34px;
+}
+
+.wave-ruler-mid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.wave-ruler-shape {
+  fill: rgba(139, 148, 158, 0.35);
+}
+
+.wave-ruler-tick {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+
+.wave-ruler-dot.on {
+  fill: var(--green);
+}
+
+.wave-ruler-dot.early {
+  fill: var(--blue);
+}
+
+.wave-ruler-dot.late {
+  fill: var(--accent);
+}
+
+.wave-ruler-loading {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* 这一次和最稳的一次并排着听（v0.151.0） */
+.st-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 8px 14px;
+  margin: 8px 0 0;
+}
+
+.st-compare-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.st-compare-head {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.st-compare-none {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .st-audio-ruler {
   flex: 1 1 100%;
   margin-top: 2px;

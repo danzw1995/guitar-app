@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.150.0`，core `0.55.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.151.0`，core `0.55.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -168,6 +168,10 @@ v0.137.0 给 core 加了 `timing.ts`（`detectOnsets` / `analyzeTiming`）——
 v0.138.0 只动前端：「稳不稳」每弹完一遍记进 `guitar.steady.v1`（只留最近 24 遍），
 统计页多一块趋势；`TimingReport` 顺带多两个半段标准差（前后两半各自多散）。core 仍是 `0.54.0`，
 这把键也进了数据备份（第 20 把）。
+v0.151.0 只动前端：①有录音时把录音解码成波形（`WaveRuler`，AudioContext + `decodeAudioData`），节拍竖线与
+落点圆点直接画在波形上；②结果面板「这一遍 / 最稳的一遍」并排两个播放器；③「存成说明」导出一份 Markdown
+（`runMetaMarkdown`），逐拍数值与前后半段都在里面。`guitar.steady.v1` 只多一个可选字段 `originMs`
+（第一下点击声在录音里的位置，画波形要对齐），core 与工具都不动。
 v0.150.0 只动前端：①「最稳 MM-DD」变成按钮，点开就是那一遍的明细（能听录音、看参考线、再弹一遍）；
 ②「稳不稳」记录多存 `offsets`（每拍偏多少毫秒，最多 64 拍），面板与统计页据此画节拍参考线；
 ③录音能「存成文件」（data URL 转 Blob 再下载，文件名带日期/速度/标准差）。`guitar.steady.v1` 里只多一个可选字段，
