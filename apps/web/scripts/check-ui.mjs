@@ -4867,6 +4867,45 @@ try {
     `前 ${beforeToast} / ${toastText} / 后 ${afterToast}`,
   );
 
+  // 16d54) v0.157.0：统计页把「循环流水」按哪几小节归堆，最近几次的轮数画成折线
+  js(
+    `(() => {
+      const loops = [
+        { id: 'l1', date: '2026-11-18', at: '20:12', bpm: 80, fromBar: 2, toBar: 3, rounds: 2 },
+        { id: 'l2', date: '2026-11-20', at: '21:02', bpm: 80, fromBar: 2, toBar: 3, rounds: 3 },
+        { id: 'l3', date: '2026-11-22', at: '19:45', bpm: 72, fromBar: 2, toBar: 3, rounds: 5 },
+      ];
+      localStorage.setItem('guitar.steady.loops.v1', JSON.stringify(loops));
+      return 'ok';
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(900);
+  const loopInfo = JSON.parse(
+    plain(
+      js(
+        `(() => {
+          const list = document.querySelector('.loop-list');
+          if (!list) return JSON.stringify({ rows: 0 });
+          const items = [...list.querySelectorAll('li')].map((li) => ({
+            text: li.textContent.replace(/\\s+/g, ' ').trim(),
+            path: li.querySelector('path')?.getAttribute('d') ?? '',
+          }));
+          return JSON.stringify({ rows: items.length, items });
+        })()`,
+      ),
+    ),
+  );
+  log(
+    loopInfo.rows === 1 &&
+      (loopInfo.items[0]?.text ?? "").includes("第 2–3 小节") &&
+      (loopInfo.items[0]?.text ?? "").includes("3 次") &&
+      (loopInfo.items[0]?.text ?? "").includes("共 10 轮") &&
+      (loopInfo.items[0]?.path ?? "").startsWith("M"),
+    "统计页：循环流水按哪几小节归堆，最近几次的轮数画成折线",
+    `rows ${loopInfo.rows} · ${loopInfo.items[0]?.text ?? ""} · ${(loopInfo.items[0]?.path ?? "").slice(0, 16)}`,
+  );
+
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
   failed += 1;

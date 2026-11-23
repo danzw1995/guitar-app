@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.156.0`，core `0.55.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.157.0`，core `0.55.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -168,6 +168,10 @@ v0.137.0 给 core 加了 `timing.ts`（`detectOnsets` / `analyzeTiming`）——
 v0.138.0 只动前端：「稳不稳」每弹完一遍记进 `guitar.steady.v1`（只留最近 24 遍），
 统计页多一块趋势；`TimingReport` 顺带多两个半段标准差（前后两半各自多散）。core 仍是 `0.54.0`，
 这把键也进了数据备份（第 20 把）。
+v0.157.0 只动前端：①统计页按「哪几小节」归堆展示 `guitar.steady.loops.v1`（练过几次 / 共几轮 / 最近日期，
+最近几次的轮数画成折线）；②`runMetaMarkdown` 写出两遍各自的音频文件名（新增导出 `audioFileName()`，
+`downloadAudio()` 也改用它，两边名字保证一致）；③`WaveRuler` 加可选 `onSeek`，落点差的小字变成按钮，
+点一下从那一拍往前 0.4 秒放两秒（面板里正在循环时先停循环）。存储结构没变，core 与工具都不动。
 v0.156.0 只动前端：①循环听完记一条流水进 `guitar.steady.loops.v1`（`LoopEntry`：日期 / 时刻 / BPM / 起止小节 /
 轮数，留最近 40 条），和 `guitar.steady.v1` 分开存——那边是「每一步多稳 + 录音」，这边只记「这一段练了几轮」；
 ②`runMetaMarkdown` 多一个可选 `compare` 参数（`compareRunOf()` 按「同 BPM、不晚于这一遍」找上一遍），

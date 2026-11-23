@@ -3945,6 +3945,48 @@ button.steady-best-tag:hover {
   font-variant-numeric: tabular-nums;
 }
 
+/* 统计页的循环流水（v0.157.0）：名字 / 轮数折线 / 次数与最近日期 */
+.loop-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-width: 620px;
+}
+
+.loop-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.loop-svg {
+  width: 80px;
+  height: 24px;
+  overflow: visible;
+}
+
+.loop-svg path {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 点落点差的小字听那一拍（v0.157.0） */
+.wave-ruler-diff-hit {
+  cursor: pointer;
+}
+
+.wave-ruler-diff-hit:focus-visible {
+  outline: 1px solid var(--text);
+  outline-offset: 1px;
+}
+
 .wave-ruler-loading {
   color: var(--muted);
   font-size: 11px;

@@ -98,6 +98,8 @@ export default function Steady() {
   const [pickBeats, setPickBeats] = useState<{ from: number; to: number } | null>(null);
   const [looping, setLooping] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // 点落点差听那一拍附近：放两秒就停，别跟循环/录音抢（v0.157.0）
+  const seekTimer = useRef<number | null>(null);
   /** 叠在波形后面的那条，选最稳的一遍还是同速的上一遍（v0.153.0） */
   const [ghostMode, setGhostMode] = useState<"best" | "same" | "off">("best");
   const [error, setError] = useState("");
@@ -681,6 +683,33 @@ export default function Steady() {
     };
   }, [bpm, loopFirstBeat, loopFromSec, loopToSec, looping, scheduleLoopClicks, stopLoopClicks]);
 
+  // 点落点差的小字：从那一拍往前 0.4 秒开始放两秒，能直接对着听「差 38 毫秒」是什么感觉
+  const playAround = (seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (looping) {
+      audio.pause();
+      stopLoopClicks();
+      setLooping(false);
+      passRef.current = 0;
+      setLoopPass(0);
+    }
+    audio.currentTime = Math.max(0, seconds - 0.4);
+    void audio.play().catch(() => {});
+    if (seekTimer.current !== null) window.clearTimeout(seekTimer.current);
+    seekTimer.current = window.setTimeout(() => {
+      audio.pause();
+      seekTimer.current = null;
+    }, 2000);
+  };
+
+  useEffect(
+    () => () => {
+      if (seekTimer.current !== null) window.clearTimeout(seekTimer.current);
+    },
+    [],
+  );
+
   const toggleLoop = () => {
     const audio = audioRef.current;
     if (!audio || !loopRange) return;
@@ -925,6 +954,7 @@ export default function Steady() {
                 originMs={originMs}
                 ghost={ghostLayer}
                 ghostLabel={ghostMode === "same" ? "同速的上一遍" : "最稳的一遍"}
+                onSeek={playAround}
                 onPick={(fromBeat, toBeat) => {
                   const start = Math.max(1, Math.min(bars, Math.floor(fromBeat / BAR_BEATS) + 1));
                   const end = Math.max(start, Math.min(bars, Math.floor(toBeat / BAR_BEATS) + 1));

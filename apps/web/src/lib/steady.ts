@@ -317,9 +317,16 @@ export interface AudioSource {
   originMs?: number;
 }
 
+/** 录音文件叫什么（v0.157.0）：说明文件里要写清「哪一遍存成了哪个文件」，跟下载时保持一致 */
+export function audioFileName(run: { date: string; bpm: number; stdevMs: number; audio?: string }): string {
+  const mime = run.audio ? (/data:([^;,]+)/.exec(run.audio)?.[1] ?? "audio/webm") : "audio/webm";
+  return `稳不稳-${run.date}-${run.bpm}BPM-${Math.round(run.stdevMs)}ms.${audioExtOf(mime)}`;
+}
+
 /** 一份说明文件（v0.151.0）：音频本身带不了元信息，就并排放一个 .md
  *  v0.152.0：有录音就把波形缩略图内嵌进去（canvas → PNG data URL），一个文件带图
- *  v0.156.0：带上「同速的上一遍」时，多一节对照数字 */
+ *  v0.156.0：带上「同速的上一遍」时，多一节对照数字
+ *  v0.157.0：两遍各自存成的音频文件名也写进去（对着文件夹找） */
 export async function runMetaMarkdown(run: AudioSource, compare?: AudioSource): Promise<string> {
   const rangeOf = (item: AudioSource) =>
     item.fromBar && item.toBar ? `第 ${item.fromBar}–${item.toBar} 小节` : `整段 ${item.bars ?? 4} 小节`;
@@ -330,6 +337,7 @@ export async function runMetaMarkdown(run: AudioSource, compare?: AudioSource): 
     `- 范围：${range}${run.totalBars ? `（整段共 ${run.totalBars} 小节）` : ""}`,
     `- 标准差：±${run.stdevMs.toFixed(1)} 毫秒（越小越稳）`,
   ];
+  if (run.audio) lines.push(`- 录音文件：${audioFileName(run)}`);
   // 缩略波形（v0.152.0；v0.153.0 把节拍线和落点也标在图上）：解不出来就只是少一张图，说明文字照旧
   const thumb = run.audio
     ? await wavePngDataUrl(run.audio, {
@@ -368,6 +376,7 @@ export async function runMetaMarkdown(run: AudioSource, compare?: AudioSource): 
       `- 上一遍：${compare.date} · ${compare.bpm} BPM · ${rangeOf(compare)} · ±${compare.stdevMs.toFixed(1)} 毫秒`,
     );
     compareLines.push(`- 这一遍：${run.date} · ±${run.stdevMs.toFixed(1)} 毫秒 → ${verdict}`);
+    if (compare.audio) compareLines.push(`- 上一遍的录音：${audioFileName(compare)}`);
     if (run.meanAbsMs !== undefined && compare.meanAbsMs !== undefined) {
       compareLines.push(
         `- 平均绝对偏差：这次 ${run.meanAbsMs.toFixed(1)} / 上次 ${compare.meanAbsMs.toFixed(1)} 毫秒`,
@@ -443,7 +452,7 @@ export function downloadAudio(run: AudioSource): boolean {
     const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `稳不稳-${run.date}-${run.bpm}BPM-${Math.round(run.stdevMs)}ms.${audioExtOf(mime)}`;
+    link.download = audioFileName(run);
     document.body.append(link);
     link.click();
     link.remove();

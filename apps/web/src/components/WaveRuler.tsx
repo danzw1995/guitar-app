@@ -37,6 +37,8 @@ export interface WaveRulerProps extends WaveLayer {
   ghostLabel?: string;
   /** 拖选结束：第 from 拍到第 to 拍（0 起） */
   onPick?: (fromBeat: number, toBeat: number) => void;
+  /** 点落点差那个小字：听那一拍附近（v0.157.0）。给的是这一遍那一拍的时刻（秒） */
+  onSeek?: (seconds: number) => void;
   className?: string;
 }
 
@@ -53,6 +55,7 @@ export default function WaveRuler({
   ghost,
   ghostLabel = "最稳的一遍",
   onPick,
+  onSeek,
   className,
 }: WaveRulerProps) {
   const [wave, setWave] = useState<WavePeaks | null>(() => waveCached(audio));
@@ -161,6 +164,8 @@ export default function WaveRuler({
           delta: offset - other,
           from: xOf(otherTime),
           to: xOf(hitTimes[index]),
+          // 这一遍那一拍落在录音的哪一秒（点小字时从这里往前放两秒）
+          at: clockTimes[index],
         };
       })
       .filter((item): item is NonNullable<typeof item> => item !== null);
@@ -255,27 +260,51 @@ export default function WaveRuler({
             r={2.9}
           />
         ))}
-        {diffs.map((diff, order) => (
-          <g key={diff.key}>
-            <line
-              className="wave-ruler-diff"
-              x1={diff.from}
-              y1={WAVE_CENTER}
-              x2={diff.to}
-              y2={WAVE_CENTER}
-            />
-            <text
-              className="wave-ruler-diff-label"
-              // 靠边时别让数字被切掉
-              x={Math.max(10, Math.min(WAVE_WIDTH - 10, (diff.from + diff.to) / 2))}
-              // 三个数分开摆：前两个在上方两行，第三个挪到下面，免得叠在一起
-              y={order === 2 ? WAVE_CENTER + 10 : 6 + order * 6}
-              textAnchor="middle"
+        {diffs.map((diff, order) => {
+          const label = diff.delta > 0 ? `+${Math.round(diff.delta)}` : `${Math.round(diff.delta)}`;
+          const body = (
+            <>
+              <line
+                className="wave-ruler-diff"
+                x1={diff.from}
+                y1={WAVE_CENTER}
+                x2={diff.to}
+                y2={WAVE_CENTER}
+              />
+              <text
+                className="wave-ruler-diff-label"
+                // 靠边时别让数字被切掉
+                x={Math.max(10, Math.min(WAVE_WIDTH - 10, (diff.from + diff.to) / 2))}
+                // 三个数分开摆：前两个在上方两行，第三个挪到下面，免得叠在一起
+                y={order === 2 ? WAVE_CENTER + 10 : 6 + order * 6}
+                textAnchor="middle"
+              >
+                {label}
+              </text>
+            </>
+          );
+          // 点小字就听那一拍附近（v0.157.0）：不接 onSeek 时还是纯标注
+          if (!onSeek) return <g key={diff.key}>{body}</g>;
+          return (
+            <g
+              key={diff.key}
+              className="wave-ruler-diff-hit"
+              role="button"
+              tabIndex={0}
+              aria-label={`第 ${diff.index + 1} 拍的落点差 ${label} 毫秒，点一下听这一拍附近`}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => onSeek(diff.at)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onSeek(diff.at);
+                }
+              }}
             >
-              {diff.delta > 0 ? `+${Math.round(diff.delta)}` : `${Math.round(diff.delta)}`}
-            </text>
-          </g>
-        ))}
+              {body}
+            </g>
+          );
+        })}
         {pick && (
           <rect
             className="wave-ruler-pick"
@@ -290,6 +319,7 @@ export default function WaveRuler({
         {ghost ? `淡的那条是${ghostLabel}，深的是这一遍` : "波形上是这一遍，竖线是节拍器"}
         {onPick ? "；横着拖能选几拍" : ""}
         {ghost && diffs.length > 0 ? "；小字是这一遍比它晚（+）或早（−）多少毫秒" : ""}
+        {onSeek && diffs.length > 0 ? "，小字点一下能听那一拍附近" : ""}
       </span>
     </div>
   );

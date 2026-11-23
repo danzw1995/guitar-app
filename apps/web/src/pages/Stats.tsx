@@ -27,7 +27,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
-import { bestRun, compareRunOf, downloadAudio, downloadText, loadRuns, restoreRuns, runMetaMarkdown, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
+import { bestRun, compareRunOf, downloadAudio, downloadText, loadLoops, loadRuns, restoreRuns, runMetaMarkdown, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -153,6 +153,21 @@ const EAR_KINDS: { id: EarKind; label: string }[] = [
 ];
 /** 一轮听辨有几题（和扒谱页的 `ROUND` 保持一致）。 */
 const EAR_ROUND = 8;
+
+/** 循环轮数的折线（v0.157.0）：横轴是最近几次、越高说明那次转的轮数越多 */
+function loopSparkPath(rounds: number[]): string {
+  const values = rounds.slice(-6);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  return values
+    .map((value, index) => {
+      const x = 4 + (index * 72) / Math.max(1, values.length - 1);
+      const y = 20 - ((value - min) / span) * 14;
+      return `${index === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
 
 export default function Stats() {
   const progress = loadProgress();
@@ -546,6 +561,32 @@ export default function Stats() {
     curve.points.some((point) => point.fromBar && point.toBar),
   );
   const shownSteadyCurves = steadyPartialOnly ? steadyPartialCurves : visibleSteadyCurves;
+
+  // 循环流水（v0.157.0）：按「哪几小节」归堆——这一段练过几次、一共转了多少轮、最近几次的轮数
+  const loopGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      { key: string; fromBar: number; toBar: number; count: number; rounds: number; last: string; recent: number[] }
+    >();
+    for (const entry of loadLoops()) {
+      const key = `${entry.fromBar}-${entry.toBar}`;
+      const next = groups.get(key) ?? {
+        key,
+        fromBar: entry.fromBar,
+        toBar: entry.toBar,
+        count: 0,
+        rounds: 0,
+        last: "",
+        recent: [] as number[],
+      };
+      next.count += 1;
+      next.rounds += entry.rounds;
+      next.recent.push(entry.rounds);
+      if (entry.date > next.last) next.last = entry.date;
+      groups.set(key, next);
+    }
+    return [...groups.values()].sort((a, b) => b.last.localeCompare(a.last)).slice(0, 4);
+  }, []);
   // 每套组合「整体卡在哪一级」（v0.119.0）：把这一套所有条目的「卡了几次」按级数加总，
   // 加总最多的那一级就是这套的短板。它是「这套要不要一起补」的线索，不是单条的结论。
   const setWeak = new Map<string, { degree: number; count: number }>();
@@ -2625,6 +2666,44 @@ export default function Stats() {
               </button>
             </span>
           </p>
+        </>
+      )}
+
+      {loopGroups.length > 0 && (
+        <>
+          <h3 className="stat-sub">
+            循环流水
+            <span className="stat-sub-note">最近练的几段</span>
+          </h3>
+          <ul className="loop-list" data-loop-list="">
+            {loopGroups.map((group) => {
+              const name =
+                group.fromBar === group.toBar
+                  ? `第 ${group.fromBar} 小节`
+                  : `第 ${group.fromBar}–${group.toBar} 小节`;
+              const recent = group.recent.slice(-6);
+              return (
+                <li key={group.key}>
+                  <span className="curve-name">{name}</span>
+                  {recent.length >= 2 ? (
+                    <svg
+                      className="curve-svg loop-svg"
+                      viewBox="0 0 80 24"
+                      role="img"
+                      aria-label={`${name} 练过 ${group.count} 次、共 ${group.rounds} 轮；最近几次的轮数：${recent.join("、")}`}
+                    >
+                      <path d={loopSparkPath(group.recent)} />
+                    </svg>
+                  ) : (
+                    <span />
+                  )}
+                  <span className="muted">
+                    {group.count} 次 · 共 {group.rounds} 轮 · 最近 {group.last.slice(5)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
 

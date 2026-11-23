@@ -1631,6 +1631,14 @@ expect(
     narrowDecls(".st-loop-item").get("border-radius") === "999px",
 );
 
+expect(
+  "循环流水是三列（名字 / 折线 / 次数），点落点差有手型",
+  narrowDecls(".loop-list").get("display") === "grid" &&
+    (narrowDecls(".loop-list li").get("grid-template-columns") || "").includes("1fr") &&
+    (narrowDecls(".loop-svg path").get("stroke") || "").includes("--green") &&
+    narrowDecls(".wave-ruler-diff-hit").get("cursor") === "pointer",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
