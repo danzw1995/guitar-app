@@ -65,6 +65,24 @@ export default function WaveRuler({
   const [failed, setFailed] = useState(false);
   const [pick, setPick] = useState<Pick | null>(null);
   const dragRef = useRef<number | null>(null);
+  // 长按落点差：按住不放就一拍一拍往下听（v0.158.0）
+  const holdRef = useRef<{ delay: number | null; timer: number | null; index: number; stepped: boolean }>({
+    delay: null,
+    timer: null,
+    index: 0,
+    stepped: false,
+  });
+
+  // 卸载时把长按的定时器收掉。**必须放在任何 early return 之前**：
+  // 放下面的 `if (!wave) return …` 之后，等波形解码完 hook 数就变了（Rendered more hooks than during the previous render）。
+  useEffect(
+    () => () => {
+      const hold = holdRef.current;
+      if (hold.delay !== null) window.clearTimeout(hold.delay);
+      if (hold.timer !== null) window.clearInterval(hold.timer);
+    },
+    [],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -174,6 +192,39 @@ export default function WaveRuler({
 
   const xToPick = (clientX: number, rect: DOMRect): number => {    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
     return ratio * WAVE_WIDTH;
+  };
+
+  // 长按：先等 420 毫秒，然后每隔 850 毫秒往下走一拍，松手就停
+  const clearHold = () => {
+    const hold = holdRef.current;
+    if (hold.delay !== null) {
+      window.clearTimeout(hold.delay);
+      hold.delay = null;
+    }
+    if (hold.timer !== null) {
+      window.clearInterval(hold.timer);
+      hold.timer = null;
+    }
+  };
+
+  const startHold = (index: number) => {
+    if (!onSeek) return;
+    clearHold();
+    const hold = holdRef.current;
+    hold.index = index;
+    hold.stepped = false;
+    hold.delay = window.setTimeout(() => {
+      hold.stepped = true;
+      hold.timer = window.setInterval(() => {
+        const next = Math.min(beatCount - 1, hold.index + 1);
+        if (next === hold.index) {
+          clearHold();
+          return;
+        }
+        hold.index = next;
+        onSeek(clockTimes[next]);
+      }, 850);
+    }, 420);
   };
 
   const finishPick = (current: Pick) => {
@@ -291,9 +342,22 @@ export default function WaveRuler({
               className="wave-ruler-diff-hit"
               role="button"
               tabIndex={0}
-              aria-label={`第 ${diff.index + 1} 拍的落点差 ${label} 毫秒，点一下听这一拍附近`}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={() => onSeek(diff.at)}
+              aria-label={`第 ${diff.index + 1} 拍的落点差 ${label} 毫秒，点一下听这一拍附近，长按一拍一拍往下听`}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                startHold(diff.index);
+              }}
+              onPointerUp={clearHold}
+              onPointerLeave={clearHold}
+              onPointerCancel={clearHold}
+              onClick={() => {
+                // 长按已经走过了，松手那一下不再从头放
+                if (holdRef.current.stepped) {
+                  holdRef.current.stepped = false;
+                  return;
+                }
+                onSeek(diff.at);
+              }}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
@@ -319,7 +383,7 @@ export default function WaveRuler({
         {ghost ? `淡的那条是${ghostLabel}，深的是这一遍` : "波形上是这一遍，竖线是节拍器"}
         {onPick ? "；横着拖能选几拍" : ""}
         {ghost && diffs.length > 0 ? "；小字是这一遍比它晚（+）或早（−）多少毫秒" : ""}
-        {onSeek && diffs.length > 0 ? "，小字点一下能听那一拍附近" : ""}
+        {onSeek && diffs.length > 0 ? "，小字点一下能听那一拍附近，长按顺着往下听" : ""}
       </span>
     </div>
   );

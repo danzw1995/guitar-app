@@ -3956,11 +3956,34 @@ button.steady-best-tag:hover {
 }
 
 .loop-list li {
+  font-size: 13px;
+}
+
+/* 每一行就是一枚按钮：点一下带着「只弹这几小节」进面板（v0.158.0） */
+.loop-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 80px auto;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.loop-row:hover .curve-name {
+  color: var(--accent);
+}
+
+.loop-row:focus-visible {
+  outline: 1px solid var(--text);
+  outline-offset: 2px;
 }
 
 .loop-svg {
@@ -3980,6 +4003,7 @@ button.steady-best-tag:hover {
 /* 点落点差的小字听那一拍（v0.157.0） */
 .wave-ruler-diff-hit {
   cursor: pointer;
+  touch-action: none;
 }
 
 .wave-ruler-diff-hit:focus-visible {

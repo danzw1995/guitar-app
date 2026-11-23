@@ -120,9 +120,11 @@ export async function wavePngDataUrl(
     offsets?: number[];
     bpm?: number;
     originMs?: number;
+    /** 只画这一段（秒，v0.158.0）：说明文件里给「最偏的三拍」单独裁一小条 */
+    trim?: { from: number; to: number };
   } = {},
 ): Promise<string | null> {
-  const { width = 240, height = 48, offsets = [], bpm = 0, originMs = 0 } = options;
+  const { width = 240, height = 48, offsets = [], bpm = 0, originMs = 0, trim } = options;
   const wave = await decodeWave(audio);
   if (!wave || wave.peaks.length === 0) return null;
   const canvas = document.createElement("canvas");
@@ -133,10 +135,17 @@ export async function wavePngDataUrl(
   const center = height / 2;
   const amp = height / 2 - 2;
   const columns = wave.peaks.length;
-  const step = width / columns;
+  const total = Math.max(0.001, wave.seconds);
+  // 裁一段时：只取那一段对应的列，横轴换成「这一段里的相对位置」
+  const fromSec = trim ? Math.max(0, Math.min(trim.from, total - 0.05)) : 0;
+  const toSec = trim ? Math.max(fromSec + 0.05, Math.min(trim.to, total)) : total;
+  const startCol = trim ? Math.floor((fromSec / total) * columns) : 0;
+  const endCol = trim ? Math.max(startCol + 1, Math.ceil((toSec / total) * columns)) : columns;
+  const visible = wave.peaks.slice(startCol, endCol);
+  const step = width / Math.max(1, visible.length);
   context.fillStyle = "rgba(139,148,158,0.35)";
-  for (let column = 0; column < columns; column += 1) {
-    const half = Math.max(0.5, wave.peaks[column] * amp);
+  for (let column = 0; column < visible.length; column += 1) {
+    const half = Math.max(0.5, visible[column] * amp);
     context.fillRect(column * step, center - half, Math.max(1, step * 0.8), half * 2);
   }
   context.strokeStyle = "rgba(139,148,158,0.55)";
@@ -147,14 +156,15 @@ export async function wavePngDataUrl(
   context.stroke();
 
   // 节拍器位置 + 每一拍的落点（v0.153.0）
-  const seconds = Math.max(0.001, wave.seconds);
   if (bpm > 0 && offsets.length > 0) {
     const beatMs = 60000 / Math.max(1, bpm);
-    const xOf = (time: number) => Math.max(0, Math.min(width, (time / seconds) * width));
+    const xOf = (time: number) =>
+      Math.max(0, Math.min(width, ((time - fromSec) / Math.max(0.05, toSec - fromSec)) * width));
+    const inRange = (time: number) => time >= fromSec - 0.02 && time <= toSec + 0.02;
     context.strokeStyle = "rgba(200,205,210,0.45)";
     for (let index = 0; index < offsets.length; index += 1) {
       const clock = (originMs + index * beatMs) / 1000;
-      if (clock > seconds + 0.02) continue;
+      if (!inRange(clock)) continue;
       context.beginPath();
       context.moveTo(xOf(clock), 2);
       context.lineTo(xOf(clock), height - 2);
@@ -162,7 +172,7 @@ export async function wavePngDataUrl(
     }
     for (let index = 0; index < offsets.length; index += 1) {
       const hit = (originMs + index * beatMs + offsets[index]) / 1000;
-      if (hit > seconds + 0.02) continue;
+      if (!inRange(hit)) continue;
       const offset = offsets[index];
       context.fillStyle = Math.abs(offset) <= 8 ? "#3fb950" : offset < 0 ? "#58a6ff" : "#e8b04b";
       context.beginPath();

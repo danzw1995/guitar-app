@@ -338,6 +338,11 @@ export async function runMetaMarkdown(run: AudioSource, compare?: AudioSource): 
     `- 标准差：±${run.stdevMs.toFixed(1)} 毫秒（越小越稳）`,
   ];
   if (run.audio) lines.push(`- 录音文件：${audioFileName(run)}`);
+  // 偏得最多的三拍（v0.154.0）：文字里点一句；v0.158.0 还给这三拍单独裁一条波形
+  const top = (run.offsets ?? [])
+    .map((offset, index) => ({ offset, index }))
+    .sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset))
+    .slice(0, 3);
   // 缩略波形（v0.152.0；v0.153.0 把节拍线和落点也标在图上）：解不出来就只是少一张图，说明文字照旧
   const thumb = run.audio
     ? await wavePngDataUrl(run.audio, {
@@ -395,15 +400,28 @@ export async function runMetaMarkdown(run: AudioSource, compare?: AudioSource): 
     }
   }
   if (run.offsets?.length) {
-    // 偏得最多的三拍（v0.154.0）：图上看得出，文字里也点一句
-    const top = run.offsets
-      .map((offset, index) => ({ offset, index }))
-      .sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset))
-      .slice(0, 3);
     const worst = top.map(
       (item) => `第 ${item.index + 1} 拍${item.offset < 0 ? "抢" : "拖"} ${Math.abs(item.offset)} 毫秒`,
     );
     lines.push(`- 偏得最多的三拍：${worst.join("、")}`);
+    // 这三拍单独裁一条波形（v0.158.0）：整段缩略图里它们可能挤在几像素里，放大才看得出
+    if (run.audio && top.length > 0) {
+      const beatSeconds = 60 / Math.max(1, run.bpm);
+      const times = top.map(
+        (item) => (run.originMs ?? 0) / 1000 + item.index * beatSeconds + item.offset / 1000,
+      );
+      const from = Math.max(0, Math.min(...times) - 0.3);
+      const to = Math.max(...times) + 0.3;
+      const worstThumb = await wavePngDataUrl(run.audio, {
+        width: 240,
+        height: 40,
+        trim: { from, to },
+        offsets: run.offsets,
+        bpm: run.bpm,
+        originMs: run.originMs ?? 0,
+      });
+      if (worstThumb) lines.push("", `![偏得最多的三拍（放大）](${worstThumb})`);
+    }
     // 下次练什么（v0.155.0）：把上面这几拍翻成一句能照着做的话
     const late = top.filter((item) => item.offset > 8).length;
     const early = top.filter((item) => item.offset < -8).length;

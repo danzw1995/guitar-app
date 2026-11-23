@@ -566,7 +566,16 @@ export default function Stats() {
   const loopGroups = useMemo(() => {
     const groups = new Map<
       string,
-      { key: string; fromBar: number; toBar: number; count: number; rounds: number; last: string; recent: number[] }
+      {
+        key: string;
+        fromBar: number;
+        toBar: number;
+        count: number;
+        rounds: number;
+        last: string;
+        recent: number[];
+        bpm: number;
+      }
     >();
     for (const entry of loadLoops()) {
       const key = `${entry.fromBar}-${entry.toBar}`;
@@ -578,11 +587,15 @@ export default function Stats() {
         rounds: 0,
         last: "",
         recent: [] as number[],
+        bpm: entry.bpm,
       };
       next.count += 1;
       next.rounds += entry.rounds;
       next.recent.push(entry.rounds);
-      if (entry.date > next.last) next.last = entry.date;
+      if (entry.date >= next.last) {
+        next.last = entry.date;
+        next.bpm = entry.bpm;
+      }
       groups.set(key, next);
     }
     return [...groups.values()].sort((a, b) => b.last.localeCompare(a.last)).slice(0, 4);
@@ -2684,22 +2697,31 @@ export default function Stats() {
               const recent = group.recent.slice(-6);
               return (
                 <li key={group.key}>
-                  <span className="curve-name">{name}</span>
-                  {recent.length >= 2 ? (
-                    <svg
-                      className="curve-svg loop-svg"
-                      viewBox="0 0 80 24"
-                      role="img"
-                      aria-label={`${name} 练过 ${group.count} 次、共 ${group.rounds} 轮；最近几次的轮数：${recent.join("、")}`}
-                    >
-                      <path d={loopSparkPath(group.recent)} />
-                    </svg>
-                  ) : (
-                    <span />
-                  )}
-                  <span className="muted">
-                    {group.count} 次 · 共 {group.rounds} 轮 · 最近 {group.last.slice(5)}
-                  </span>
+                  <button
+                    type="button"
+                    className="loop-row"
+                    title="只弹这几小节，去弹一遍"
+                    onClick={() =>
+                      goTo("practice", "steady", replayArgs(group.bpm, group.fromBar, group.toBar))
+                    }
+                  >
+                    <span className="curve-name">{name}</span>
+                    {recent.length >= 2 ? (
+                      <svg
+                        className="curve-svg loop-svg"
+                        viewBox="0 0 80 24"
+                        role="img"
+                        aria-label={`${name} 练过 ${group.count} 次、共 ${group.rounds} 轮；最近几次的轮数：${recent.join("、")}`}
+                      >
+                        <path d={loopSparkPath(group.recent)} />
+                      </svg>
+                    ) : (
+                      <span />
+                    )}
+                    <span className="muted">
+                      {group.count} 次 · 共 {group.rounds} 轮 · 最近 {group.last.slice(5)}
+                    </span>
+                  </button>
                 </li>
               );
             })}

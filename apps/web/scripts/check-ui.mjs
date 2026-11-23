@@ -4906,6 +4906,27 @@ try {
     `rows ${loopInfo.rows} · ${loopInfo.items[0]?.text ?? ""} · ${(loopInfo.items[0]?.path ?? "").slice(0, 16)}`,
   );
 
+  // 16d55) v0.158.0：点循环流水那一行，带着「只弹这几小节」直接进面板
+  const loopJump = JSON.parse(
+    plain(
+      js(
+        `(() => {
+          const row = document.querySelector('.loop-row');
+          if (!row) return JSON.stringify({ found: false });
+          row.click();
+          return JSON.stringify({ found: true, hash: location.hash, title: row.getAttribute('title') ?? '' });
+        })()`,
+      ),
+    ),
+  );
+  log(
+    loopJump.found === true && loopJump.hash.startsWith("#practice/steady"),
+    "统计页：点循环流水那一行直接以「只弹这几小节」进面板",
+    `found ${loopJump.found} · ${loopJump.hash} · ${loopJump.title}`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(300);
+
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
   failed += 1;

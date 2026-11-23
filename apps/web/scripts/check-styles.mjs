@@ -1634,7 +1634,9 @@ expect(
 expect(
   "循环流水是三列（名字 / 折线 / 次数），点落点差有手型",
   narrowDecls(".loop-list").get("display") === "grid" &&
-    (narrowDecls(".loop-list li").get("grid-template-columns") || "").includes("1fr") &&
+    (narrowDecls(".loop-row").get("grid-template-columns") || "").includes("1fr") &&
+    Number.parseFloat(narrowDecls(".loop-row").get("min-height")) >= 40 &&
+    narrowDecls(".loop-row").get("cursor") === "pointer" &&
     (narrowDecls(".loop-svg path").get("stroke") || "").includes("--green") &&
     narrowDecls(".wave-ruler-diff-hit").get("cursor") === "pointer",
 );
