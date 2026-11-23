@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
-import { recordRun, loadRuns, bestRun, attachAudio, downloadAudio, downloadText, runMetaMarkdown, STEADY_EVENT, type SteadyRun } from "../lib/steady";
+import { recordRun, loadRuns, bestRun, attachAudio, downloadAudio, downloadText, runMetaMarkdown, compareRunOf, loadLoops, pushLoop, STEADY_EVENT, type SteadyRun, type LoopEntry } from "../lib/steady";
 import { loadRhythm, loadSettings, saveRhythm, saveSettings } from "../lib/storage";
 import { parseHash } from "../lib/nav";
 import BeatRuler from "./BeatRuler";
@@ -455,6 +455,7 @@ export default function Steady() {
             bars: sameRun.bars,
             sameRange: sameRange(sameRun),
             medianOffsetMs: sameRun.medianOffsetMs,
+            meanAbsMs: sameRun.meanAbsMs,
             medianFirstHalfMs: sameRun.medianFirstHalfMs,
             medianSecondHalfMs: sameRun.medianSecondHalfMs,
             // 同速那一遍如果录过，直接放给人听（v0.149.0）
@@ -569,6 +570,7 @@ export default function Steady() {
     bars: number;
     sameRange: boolean;
     medianOffsetMs?: number;
+    meanAbsMs?: number;
     medianFirstHalfMs?: number;
     medianSecondHalfMs?: number;
     /** 同速那一遍的录音（v0.149.0）：录过才有 */
@@ -611,6 +613,20 @@ export default function Steady() {
   const passRef = useRef(0);
   const roundsRef = useRef(loopRounds);
   roundsRef.current = loopRounds;
+  // 循环听完记一条（v0.156.0）：这一段转了几轮、什么速度——「今天练了几段」看得出量
+  const [loops, setLoops] = useState<LoopEntry[]>(() => loadLoops());
+  const logLoopRef = useRef<(rounds: number) => void>(() => {});
+  logLoopRef.current = (rounds: number) => {
+    if (!pickBeats || rounds < 1) return;
+    setLoops(
+      pushLoop({
+        bpm,
+        fromBar: Math.floor(pickBeats.from / BAR_BEATS) + 1,
+        toBar: Math.floor(pickBeats.to / BAR_BEATS) + 1,
+        rounds,
+      }),
+    );
+  };
   // 用秒数（而不是每次渲染新建的对象）当依赖，否则每转一轮 effect 就重来、轮次永远数不到
   const loopBeatMs = 60000 / Math.max(1, bpm);
   const loopFromSec = pickBeats && originMs !== null ? (originMs + pickBeats.from * loopBeatMs) / 1000 : null;
@@ -640,6 +656,9 @@ export default function Steady() {
           stopLoopClicks();
           setLooping(false);
           setLoopPass(0);
+          // 转满了几轮就记一条（v0.156.0）：这一段算练过了
+          logLoopRef.current(passRef.current);
+          passRef.current = 0;
           return;
         }
         audio.currentTime = range.from;
@@ -669,6 +688,10 @@ export default function Steady() {
       audio.pause();
       stopLoopClicks();
       setLooping(false);
+      // 手动停：只记已经转完的那几轮（正在转的这一轮不算）
+      const done = Math.max(0, passRef.current - 1);
+      if (done >= 1) logLoopRef.current(done);
+      passRef.current = 0;
       setLoopPass(0);
       return;
     }
@@ -881,7 +904,7 @@ export default function Steady() {
                     onClick={async () => {
                       const run = runs[runs.length - 1];
                       if (run) {
-                        const markdown = await runMetaMarkdown(run);
+                        const markdown = await runMetaMarkdown(run, compareRunOf(run));
                         downloadText(`稳不稳-${run.date}-${run.bpm}BPM.md`, markdown);
                       }
                     }}
@@ -973,6 +996,22 @@ export default function Steady() {
               <button type="button" className="btn-quiet st-pick-go" onClick={start} disabled={busy}>
                 就弹这几小节
               </button>
+            </p>
+          )}
+          {loops.length > 0 && (
+            <p className="st-loops" aria-label="最近循环听过的几段">
+              <span>最近循环：</span>
+              {[...loops]
+                .slice(-3)
+                .reverse()
+                .map((entry) => (
+                  <span key={entry.id} className="st-loop-item">
+                    {entry.fromBar === entry.toBar
+                      ? `第 ${entry.fromBar} 小节`
+                      : `第 ${entry.fromBar}–${entry.toBar} 小节`}{" "}
+                    · {entry.rounds} 轮 · {entry.bpm} BPM · {entry.date.slice(5)} {entry.at}
+                  </span>
+                ))}
             </p>
           )}
           {/* 这一次和最稳的一次并排（v0.151.0）：数字看不出差别时，耳朵能听出来 */}

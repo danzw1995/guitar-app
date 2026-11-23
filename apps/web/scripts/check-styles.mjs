@@ -1619,6 +1619,18 @@ expect(
     narrowDecls(".st-loop-rounds").get("display") === "inline-flex",
 );
 
+expect(
+  "落点差是细虚线 + 带描边的小字，「最近循环」是一行能折行的药丸",
+  (narrowDecls(".wave-ruler-diff").get("stroke-dasharray") || "") !== "none" &&
+    narrowDecls(".wave-ruler-diff").get("stroke") !== "none" &&
+    Number.parseFloat(narrowDecls(".wave-ruler-diff-label").get("font-size")) <= 7 &&
+    (narrowDecls(".wave-ruler-diff-label").get("paint-order") || "").includes("stroke") &&
+    narrowDecls(".st-loops").get("display") === "flex" &&
+    narrowDecls(".st-loops").get("flex-wrap") === "wrap" &&
+    narrowDecls(".st-loop-item").get("white-space") === "nowrap" &&
+    narrowDecls(".st-loop-item").get("border-radius") === "999px",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

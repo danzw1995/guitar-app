@@ -27,7 +27,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
-import { bestRun, downloadAudio, downloadText, loadRuns, restoreRuns, runMetaMarkdown, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
+import { bestRun, compareRunOf, downloadAudio, downloadText, loadRuns, restoreRuns, runMetaMarkdown, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -1878,7 +1878,7 @@ export default function Stats() {
                             onClick={async () =>
                               downloadText(
                                 `稳不稳-${pickedRun.date}-${pickedRun.bpm}BPM.md`,
-                                await runMetaMarkdown(pickedRun),
+                                await runMetaMarkdown(pickedRun, compareRunOf(pickedRun)),
                               )
                             }
                             title="存一份说明：速度、范围、标准差、每一拍偏多少"

@@ -423,3 +423,18 @@ test("合并稳度曲线：同一天取更稳的那个，连它「只弹 2–3 �
   assert.equal(day.fromBar, 2, "区间跟着胜出的那个点走");
   assert.equal(day.toBar, 3, "区间跟着胜出的那个点走");
 });
+
+test("合并循环流水：按 id 去重，按时间排好，只留最近 40 条", () => {
+  const entry = (id, rounds) => ({ id, date: "2026-11-23", at: "21:03", bpm: 60, fromBar: 2, toBar: 3, rounds });
+  const mine = Array.from({ length: 30 }, (_, index) => entry(`loop-m${index}`, 3));
+  const theirs = Array.from({ length: 30 }, (_, index) => entry(`loop-t${index}`, 2));
+  const shared = entry("loop-shared", 5);
+  const merged = mergeBackup(
+    { ...empty(), data: { "guitar.steady.loops.v1": [...mine, shared] } },
+    { ...empty(), data: { "guitar.steady.loops.v1": [shared, ...theirs] } },
+  ).next.data["guitar.steady.loops.v1"];
+  assert.ok(Array.isArray(merged));
+  assert.equal(merged.length, 40, "上限 40 条");
+  assert.equal(merged.filter((item) => item.id === "loop-shared").length, 1, "同一条只留一份");
+  assert.equal(merged[merged.length - 1].id, "loop-t29", "按 id 排，最新的在最后");
+});

@@ -144,8 +144,30 @@ export default function WaveRuler({
     return dots.map((dot) => ({ ...dot, dim: dots.length > 3 && !keep.has(dot.index) }));
   })();
 
-  const xToPick = (clientX: number, rect: DOMRect): number => {
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
+  // 跟叠影那一遍的差距（v0.156.0）：同一拍落点差多少毫秒——挑最偏的三拍连一条线、标个数，
+  // 光看两个圈谁左谁右看不出「差 38 毫秒」这种量
+  const diffs = (() => {
+    if (!ghost) return [];
+    const items = offsets
+      .map((offset, index) => {
+        const other = ghost.offsets[index];
+        if (other === undefined) return null;
+        if (hitTimes[index] > seconds + 0.02) return null;
+        const clock = ((ghost.originMs ?? 0) + index * (60000 / Math.max(1, ghost.bpm))) / 1000;
+        const otherTime = clock + other / 1000;
+        return {
+          key: `diff-${index}`,
+          index,
+          delta: offset - other,
+          from: xOf(otherTime),
+          to: xOf(hitTimes[index]),
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+    return [...items].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 3);
+  })();
+
+  const xToPick = (clientX: number, rect: DOMRect): number => {    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width)));
     return ratio * WAVE_WIDTH;
   };
 
@@ -233,6 +255,27 @@ export default function WaveRuler({
             r={2.9}
           />
         ))}
+        {diffs.map((diff, order) => (
+          <g key={diff.key}>
+            <line
+              className="wave-ruler-diff"
+              x1={diff.from}
+              y1={WAVE_CENTER}
+              x2={diff.to}
+              y2={WAVE_CENTER}
+            />
+            <text
+              className="wave-ruler-diff-label"
+              // 靠边时别让数字被切掉
+              x={Math.max(10, Math.min(WAVE_WIDTH - 10, (diff.from + diff.to) / 2))}
+              // 三个数分开摆：前两个在上方两行，第三个挪到下面，免得叠在一起
+              y={order === 2 ? WAVE_CENTER + 10 : 6 + order * 6}
+              textAnchor="middle"
+            >
+              {diff.delta > 0 ? `+${Math.round(diff.delta)}` : `${Math.round(diff.delta)}`}
+            </text>
+          </g>
+        ))}
         {pick && (
           <rect
             className="wave-ruler-pick"
@@ -246,6 +289,7 @@ export default function WaveRuler({
       <span className="beat-ruler-hint">
         {ghost ? `淡的那条是${ghostLabel}，深的是这一遍` : "波形上是这一遍，竖线是节拍器"}
         {onPick ? "；横着拖能选几拍" : ""}
+        {ghost && diffs.length > 0 ? "；小字是这一遍比它晚（+）或早（−）多少毫秒" : ""}
       </span>
     </div>
   );

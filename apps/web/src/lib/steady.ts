@@ -193,6 +193,100 @@ export function seedSteady(bpm: number, bars: number, id?: string): void {
   window.dispatchEvent(new CustomEvent(STEADY_EVENT, { detail: { bpm, bars, id } }));
 }
 
+/**
+ * 「循环听」的流水（v0.156.0）：转了几轮自动停，就记一条。
+ *
+ * 跟 SteadyRun 分开存：那一条记的是「这一遍弹得稳不稳」，这里记的是「这一段我循环了多久」，
+ * 没有录音、没有标准差，只有范围、速度、轮数——几十字节一条，可以多留一些。
+ */
+export const LOOPS_KEY = "guitar.steady.loops.v1";
+export const MAX_LOOPS = 40;
+
+export interface LoopEntry {
+  id: string;
+  /** 哪天（YYYY-MM-DD） */
+  date: string;
+  /** 几点（HH:mm） */
+  at: string;
+  bpm: number;
+  fromBar: number;
+  toBar: number;
+  rounds: number;
+}
+
+function dateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function parseLoop(value: unknown): LoopEntry | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  if (typeof item.id !== "string") return null;
+  const bpm = Number(item.bpm);
+  const fromBar = Number(item.fromBar);
+  const toBar = Number(item.toBar);
+  const rounds = Number(item.rounds);
+  if (!Number.isFinite(bpm) || bpm < 40 || bpm > 200) return null;
+  if (!Number.isInteger(fromBar) || fromBar < 1 || fromBar > 24) return null;
+  if (!Number.isInteger(toBar) || toBar < fromBar || toBar > 24) return null;
+  if (!Number.isFinite(rounds) || rounds < 1 || rounds > 99) return null;
+  const date = typeof item.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : "";
+  if (!date) return null;
+  const at = typeof item.at === "string" && /^\d{2}:\d{2}$/.test(item.at) ? item.at : "00:00";
+  return { id: item.id, date, at, bpm: Math.round(bpm), fromBar, toBar, rounds: Math.round(rounds) };
+}
+
+export function loadLoops(): LoopEntry[] {
+  try {
+    const raw = window.localStorage.getItem(LOOPS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map(parseLoop)
+      .filter((item): item is LoopEntry => item !== null)
+      .slice(-MAX_LOOPS);
+  } catch {
+    return [];
+  }
+}
+
+function persistLoops(loops: LoopEntry[]): void {
+  try {
+    if (loops.length === 0) window.localStorage.removeItem(LOOPS_KEY);
+    else window.localStorage.setItem(LOOPS_KEY, JSON.stringify(loops));
+  } catch {
+    // 存不下就算了
+  }
+}
+
+/** 记一条「这一段循环了几轮」；返回记完之后的全部（面板直接拿来渲染） */
+export function pushLoop(input: { bpm: number; fromBar: number; toBar: number; rounds: number }): LoopEntry[] {
+  const now = new Date();
+  const entry: LoopEntry = {
+    id: `loop-${now.getTime().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    date: dateKey(now),
+    at: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`,
+    bpm: Math.round(input.bpm),
+    fromBar: Math.round(input.fromBar),
+    toBar: Math.round(input.toBar),
+    rounds: Math.round(input.rounds),
+  };
+  const next = [...loadLoops(), entry].slice(-MAX_LOOPS);
+  persistLoops(next);
+  return next;
+}
+
+/** 同速、在这之前最近的一遍（v0.156.0）：说明文件里拿它当对照 */
+export function compareRunOf(
+  run: { id: string; bpm: number; date: string },
+  runs: SteadyRun[] = loadRuns(),
+): SteadyRun | undefined {
+  return [...runs].reverse().find((item) => item.id !== run.id && item.bpm === run.bpm && item.date <= run.date);
+}
+
 /** 录音的扩展名跟着 mime 走（v0.150.0）：Chrome 录 webm、Safari 录 mp4，别都写成 .webm */
 export function audioExtOf(mime: string): string {
   if (mime.includes("webm")) return "webm";
@@ -224,10 +318,12 @@ export interface AudioSource {
 }
 
 /** 一份说明文件（v0.151.0）：音频本身带不了元信息，就并排放一个 .md
- *  v0.152.0：有录音就把波形缩略图内嵌进去（canvas → PNG data URL），一个文件带图 */
-export async function runMetaMarkdown(run: AudioSource): Promise<string> {
-  const range =
-    run.fromBar && run.toBar ? `第 ${run.fromBar}–${run.toBar} 小节` : `整段 ${run.bars ?? 4} 小节`;
+ *  v0.152.0：有录音就把波形缩略图内嵌进去（canvas → PNG data URL），一个文件带图
+ *  v0.156.0：带上「同速的上一遍」时，多一节对照数字 */
+export async function runMetaMarkdown(run: AudioSource, compare?: AudioSource): Promise<string> {
+  const rangeOf = (item: AudioSource) =>
+    item.fromBar && item.toBar ? `第 ${item.fromBar}–${item.toBar} 小节` : `整段 ${item.bars ?? 4} 小节`;
+  const range = rangeOf(run);
   const lines = [
     `# 稳不稳 · ${run.date} · ${run.bpm} BPM`,
     "",
@@ -260,6 +356,35 @@ export async function runMetaMarkdown(run: AudioSource): Promise<string> {
       `- 前半段 / 后半段：${run.medianFirstHalfMs.toFixed(0)} / ${run.medianSecondHalfMs.toFixed(0)} 毫秒`,
     );
   }
+  // 和同速的上一遍对照（v0.156.0）：光说「这次 ±9」不知道是好是坏，摆在一起才有意义。
+  // 放到最后单独一节，免得把上面那串「这一遍」的要点打断
+  const compareLines: string[] = [];
+  if (compare) {
+    const diff = compare.stdevMs - run.stdevMs;
+    const verdict =
+      diff >= 1 ? `稳了 ${diff.toFixed(1)} 毫秒` : diff <= -1 ? `散了 ${Math.abs(diff).toFixed(1)} 毫秒` : "差不多稳";
+    compareLines.push("", "## 和同速的上一遍比（v0.156.0）", "");
+    compareLines.push(
+      `- 上一遍：${compare.date} · ${compare.bpm} BPM · ${rangeOf(compare)} · ±${compare.stdevMs.toFixed(1)} 毫秒`,
+    );
+    compareLines.push(`- 这一遍：${run.date} · ±${run.stdevMs.toFixed(1)} 毫秒 → ${verdict}`);
+    if (run.meanAbsMs !== undefined && compare.meanAbsMs !== undefined) {
+      compareLines.push(
+        `- 平均绝对偏差：这次 ${run.meanAbsMs.toFixed(1)} / 上次 ${compare.meanAbsMs.toFixed(1)} 毫秒`,
+      );
+    }
+    if (
+      run.medianFirstHalfMs !== undefined &&
+      run.medianSecondHalfMs !== undefined &&
+      compare.medianFirstHalfMs !== undefined &&
+      compare.medianSecondHalfMs !== undefined
+    ) {
+      compareLines.push(
+        `- 前半段 / 后半段：这次 ${run.medianFirstHalfMs.toFixed(0)} / ${run.medianSecondHalfMs.toFixed(0)} 毫秒，` +
+          `上次 ${compare.medianFirstHalfMs.toFixed(0)} / ${compare.medianSecondHalfMs.toFixed(0)} 毫秒`,
+      );
+    }
+  }
   if (run.offsets?.length) {
     // 偏得最多的三拍（v0.154.0）：图上看得出，文字里也点一句
     const top = run.offsets
@@ -288,6 +413,7 @@ export async function runMetaMarkdown(run: AudioSource): Promise<string> {
     }
     lines.push("", `## 每一拍（负=抢，正=拖，毫秒）`, "", run.offsets.join("、"));
   }
+  lines.push(...compareLines);
   lines.push("", "> 由 Guitar Lab「稳不稳」导出；录音是麦克风原声，只在本地。");
   return `${lines.join("\n")}\n`;
 }
