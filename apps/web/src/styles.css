@@ -3877,6 +3877,37 @@ button.steady-best-tag:hover {
   stroke: var(--accent);
 }
 
+/* 只留偏得最多的三拍亮着（v0.155.0） */
+.wave-ruler-ghost-dot.dim {
+  opacity: 0.28;
+}
+
+/* 「循环几轮听」那一截（v0.155.0） */
+.st-loop-rounds {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.st-loop-rounds select {
+  min-height: 40px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.st-loop-count {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .wave-ruler-loading {
   color: var(--muted);
   font-size: 11px;

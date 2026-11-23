@@ -605,29 +605,46 @@ export default function Steady() {
     { id: "same", label: "同速的上一遍", ready: Boolean(sameSpeedRun) },
     { id: "off", label: "不叠", ready: true },
   ];
-  // 循环听拖选的那一小段（v0.153.0）：录音里按时间轴回放，不走节拍器
-  const loopRange =
-    pickBeats && originMs !== null
-      ? {
-          from: (originMs + pickBeats.from * (60000 / Math.max(1, bpm))) / 1000,
-          to: (originMs + (pickBeats.to + 1) * (60000 / Math.max(1, bpm))) / 1000,
-        }
-      : null;
+  // 循环听拖选的那一小段（v0.153.0）：录音里按时间轴回放；v0.155.0 起可以定几轮，转完自己停
+  const [loopRounds, setLoopRounds] = useState(3);
+  const [loopPass, setLoopPass] = useState(0);
+  const passRef = useRef(0);
+  const roundsRef = useRef(loopRounds);
+  roundsRef.current = loopRounds;
+  // 用秒数（而不是每次渲染新建的对象）当依赖，否则每转一轮 effect 就重来、轮次永远数不到
+  const loopBeatMs = 60000 / Math.max(1, bpm);
+  const loopFromSec = pickBeats && originMs !== null ? (originMs + pickBeats.from * loopBeatMs) / 1000 : null;
+  const loopToSec = pickBeats && originMs !== null ? (originMs + (pickBeats.to + 1) * loopBeatMs) / 1000 : null;
+  const loopFirstBeat = pickBeats?.from ?? 0;
+  const loopRange = loopFromSec !== null && loopToSec !== null ? { from: loopFromSec, to: loopToSec } : null;
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !looping || !loopRange) return;
+    if (!audio || !looping || loopFromSec === null || loopToSec === null) return;
     // 选的那几拍可能超出录音长度（录音只录到一半）：收进录音范围内，否则放到结尾就卡住不动了
     const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : Number.POSITIVE_INFINITY;
-    const from = Math.max(0, Math.min(loopRange.from, duration - 0.05));
-    const to = Math.max(from + 0.2, Math.min(loopRange.to, duration));
+    const from = Math.max(0, Math.min(loopFromSec, duration - 0.05));
+    const to = Math.max(from + 0.2, Math.min(loopToSec, duration));
     const range = { from, to };
     let lastTime = audio.currentTime;
-    const firstBeat = pickBeats?.from ?? 0;
+    const firstBeat = loopFirstBeat;
+    passRef.current = 1;
+    setLoopPass(1);
     scheduleLoopClicks(range, bpm, firstBeat);
     const onTime = () => {
       if (audio.currentTime >= range.to - 0.01 || (Number.isFinite(audio.duration) && audio.ended)) {
+        const rounds = roundsRef.current;
+        if (rounds > 0 && passRef.current >= rounds) {
+          // 转够了：停下来，免得一直响着还得手动按停
+          audio.pause();
+          stopLoopClicks();
+          setLooping(false);
+          setLoopPass(0);
+          return;
+        }
         audio.currentTime = range.from;
+        passRef.current += 1;
+        setLoopPass(passRef.current);
         // 跳回开头就把点击声重排一遍：每一轮都从同一拍起，不会越漂越远
         scheduleLoopClicks(range, bpm, firstBeat);
         lastTime = range.from;
@@ -643,7 +660,7 @@ export default function Steady() {
       audio.removeEventListener("timeupdate", onTime);
       stopLoopClicks();
     };
-  }, [bpm, looping, loopRange, pickBeats, scheduleLoopClicks, stopLoopClicks]);
+  }, [bpm, loopFirstBeat, loopFromSec, loopToSec, looping, scheduleLoopClicks, stopLoopClicks]);
 
   const toggleLoop = () => {
     const audio = audioRef.current;
@@ -652,6 +669,7 @@ export default function Steady() {
       audio.pause();
       stopLoopClicks();
       setLooping(false);
+      setLoopPass(0);
       return;
     }
     const duration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : loopRange.to;
@@ -921,14 +939,36 @@ export default function Steady() {
               {pickNote}
               {" "}
               {loopRange && (
-                <button
-                  type="button"
-                  className="btn-quiet st-pick-go"
-                  onClick={toggleLoop}
-                  aria-pressed={looping}
-                >
-                  {looping ? "停，不循环了" : "循环听这一小段"}
-                </button>
+                <>
+                  <label className="st-loop-rounds">
+                    循环
+                    <select
+                      aria-label="循环听几轮"
+                      value={loopRounds}
+                      onChange={(event) => setLoopRounds(Number(event.target.value))}
+                    >
+                      {[2, 3, 5, 0].map((rounds) => (
+                        <option key={rounds} value={rounds}>
+                          {rounds === 0 ? "一直" : `${rounds} 轮`}
+                        </option>
+                      ))}
+                    </select>
+                    听
+                  </label>
+                  <button
+                    type="button"
+                    className="btn-quiet st-pick-go"
+                    onClick={toggleLoop}
+                    aria-pressed={looping}
+                  >
+                    {looping ? "停，不循环了" : "循环听这一小段"}
+                  </button>
+                  {looping && loopRounds > 0 && (
+                    <span className="st-loop-count">
+                      第 {loopPass}/{loopRounds} 轮
+                    </span>
+                  )}
+                </>
               )}
               <button type="button" className="btn-quiet st-pick-go" onClick={start} disabled={busy}>
                 就弹这几小节

@@ -1612,6 +1612,13 @@ expect(
     (narrowDecls(".wave-ruler-ghost-dot.late").get("stroke") || "").includes("--accent"),
 );
 
+expect(
+  "只留最偏的三拍亮着，循环轮数是够高的下拉",
+  Number.parseFloat(narrowDecls(".wave-ruler-ghost-dot.dim").get("opacity")) < 0.4 &&
+    Number.parseFloat(narrowDecls(".st-loop-rounds select").get("min-height")) >= 40 &&
+    narrowDecls(".st-loop-rounds").get("display") === "inline-flex",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

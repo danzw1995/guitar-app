@@ -262,12 +262,30 @@ export async function runMetaMarkdown(run: AudioSource): Promise<string> {
   }
   if (run.offsets?.length) {
     // 偏得最多的三拍（v0.154.0）：图上看得出，文字里也点一句
-    const worst = run.offsets
+    const top = run.offsets
       .map((offset, index) => ({ offset, index }))
       .sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset))
-      .slice(0, 3)
-      .map((item) => `第 ${item.index + 1} 拍${item.offset < 0 ? "抢" : "拖"} ${Math.abs(item.offset)} 毫秒`);
+      .slice(0, 3);
+    const worst = top.map(
+      (item) => `第 ${item.index + 1} 拍${item.offset < 0 ? "抢" : "拖"} ${Math.abs(item.offset)} 毫秒`,
+    );
     lines.push(`- 偏得最多的三拍：${worst.join("、")}`);
+    // 下次练什么（v0.155.0）：把上面这几拍翻成一句能照着做的话
+    const late = top.filter((item) => item.offset > 8).length;
+    const early = top.filter((item) => item.offset < -8).length;
+    const bars = top.map((item) => `第 ${item.index + 1} 拍`).join("、");
+    const values = top.map((item) => Math.abs(item.offset)).join(" / ");
+    if (late >= 2) {
+      lines.push(
+        `- 下次练：${bars}偏拖（${values} 毫秒）——数到这几拍时手早点动、往前顶一点，别等拍子落下来再动。`,
+      );
+    } else if (early >= 2) {
+      lines.push(
+        `- 下次练：${bars}偏抢（${values} 毫秒）——按住一点，让音落在拍子后面一点点，不用赶在拍子前面。`,
+      );
+    } else {
+      lines.push(`- 下次练：这几拍基本在拍上，保持这个感觉，可以试着再快 5 BPM 看看还稳不稳。`);
+    }
     lines.push("", `## 每一拍（负=抢，正=拖，毫秒）`, "", run.offsets.join("、"));
   }
   lines.push("", "> 由 Guitar Lab「稳不稳」导出；录音是麦克风原声，只在本地。");

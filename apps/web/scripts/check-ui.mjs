@@ -2050,8 +2050,10 @@ try {
   log(goalOff === "nobar|还没设", "统计页：点「不设」把进度条收回去", goalOff);
 
   // 13b4) 统计页：连着两周都练够，头上挂一个「连续 2 周达成」
+  // 日期按今天算（写死的话过一周就数不出来：weekStreak 从本周往回数，
+  // 本周没记目标就跳过、上一周也没记就停）
   js(
-    "(() => { localStorage.setItem('guitar.goals.v1', JSON.stringify({ '2026-11-02': 30, '2026-11-09': 30 })); localStorage.setItem('guitar.practice.v1', JSON.stringify({ '2026-11-05': { minutes: 40, stage: 0, done: ['s0-crawl'] }, '2026-11-13': { minutes: 40, stage: 0, done: ['s0-scale'] } })); localStorage.setItem('guitar.settings.v1', JSON.stringify({ weeklyGoal: 30 })); return 'ok'; })()",
+    "(() => { const day = 86400000; const key = (d) => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; }; const now = new Date(); now.setHours(12, 0, 0, 0); const monday = now.getTime() - ((now.getDay() + 6) % 7) * day; const goals = {}; const practice = {}; [1, 2].forEach((back, index) => { const start = monday - back * 7 * day; goals[key(start)] = 30; practice[key(start + 2 * day)] = { minutes: 40, stage: 0, done: [index === 0 ? 's0-crawl' : 's0-scale'] }; }); localStorage.setItem('guitar.goals.v1', JSON.stringify(goals)); localStorage.setItem('guitar.practice.v1', JSON.stringify(practice)); localStorage.setItem('guitar.settings.v1', JSON.stringify({ weeklyGoal: 30 })); return 'ok'; })()",
   );
   ab(["reload"]);
   await sleep(900);
