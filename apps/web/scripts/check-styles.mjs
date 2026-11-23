@@ -1641,6 +1641,12 @@ expect(
     narrowDecls(".wave-ruler-diff-hit").get("cursor") === "pointer",
 );
 
+expect(
+  "跟着走的那根竖线是强调色、比波形线粗一点（长按往下听时看得到）",
+  (narrowDecls(".wave-ruler-playhead").get("stroke") || "").includes("--accent") &&
+    Number.parseFloat(narrowDecls(".wave-ruler-playhead").get("stroke-width")) >= 1.4,
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

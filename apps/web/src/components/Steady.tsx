@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { analyzeTiming, detectOnsets, type TimingReport } from "@guitar/core";
-import { recordRun, loadRuns, bestRun, attachAudio, downloadAudio, downloadText, runMetaMarkdown, compareRunOf, loadLoops, pushLoop, STEADY_EVENT, type SteadyRun, type LoopEntry } from "../lib/steady";
+import { recordRun, loadRuns, bestRun, attachAudio, downloadAudio, downloadDataUrl, downloadText, runMetaMarkdown, worstClipOf, compareRunOf, loadLoops, pushLoop, STEADY_EVENT, type SteadyRun, type LoopEntry } from "../lib/steady";
 import { loadRhythm, loadSettings, saveRhythm, saveSettings } from "../lib/storage";
 import { parseHash } from "../lib/nav";
 import BeatRuler from "./BeatRuler";
@@ -66,11 +66,15 @@ export default function Steady() {
       Number.isInteger(fromValue) && fromValue >= 1 && fromValue <= (bars ?? 8) ? fromValue : null;
     const toBar =
       Number.isInteger(toValue) && toValue >= (fromBar ?? 1) && toValue <= (bars ?? 8) ? toValue : null;
+    // 从统计页「长按循环流水那一行」过来会带 srounds=N：循环轮数直接用那组上次的轮数（v0.159.0）
+    const roundsValue = Number(query.srounds);
     return {
       bpm: Number.isFinite(bpmValue) && bpmValue >= 40 && bpmValue <= 200 ? Math.round(bpmValue) : null,
       bars,
       fromBar,
       toBar,
+      rounds:
+        Number.isInteger(roundsValue) && roundsValue >= 1 && roundsValue <= 99 ? roundsValue : null,
       // 从统计页双击过来的会带 auto=1：等三秒自动开弹（v0.147.0）
       auto: query.auto === "1" || query.auto === "true",
     };
@@ -610,7 +614,10 @@ export default function Steady() {
     { id: "off", label: "不叠", ready: true },
   ];
   // 循环听拖选的那一小段（v0.153.0）：录音里按时间轴回放；v0.155.0 起可以定几轮，转完自己停
-  const [loopRounds, setLoopRounds] = useState(3);
+  const [loopRounds, setLoopRounds] = useState(
+    // 只认下拉里有的档位，别把 4 这种值塞进 <select>
+    seeded.rounds !== null && [0, 2, 3, 5].includes(seeded.rounds) ? seeded.rounds : 3,
+  );
   const [loopPass, setLoopPass] = useState(0);
   const passRef = useRef(0);
   const roundsRef = useRef(loopRounds);
@@ -933,8 +940,11 @@ export default function Steady() {
                     onClick={async () => {
                       const run = runs[runs.length - 1];
                       if (run) {
-                        const markdown = await runMetaMarkdown(run, compareRunOf(run));
+                        // 最偏的三拍顺手裁成一小段（v0.159.0）：和说明放一个文件夹里点开就听
+                        const clip = await worstClipOf(run);
+                        const markdown = await runMetaMarkdown(run, compareRunOf(run), clip?.name);
                         downloadText(`稳不稳-${run.date}-${run.bpm}BPM.md`, markdown);
+                        if (clip) downloadDataUrl(clip.name, clip.dataUrl);
                       }
                     }}
                     title="存一份说明：速度、范围、标准差、每一拍偏多少"
@@ -962,7 +972,11 @@ export default function Steady() {
                   setToBar(end);
                   setPickBeats({ from: fromBeat, to: toBeat });
                   setLooping(false);
-                  setPickNote(`你选的是第 ${fromBeat + 1}–${toBeat + 1} 拍，已经改成只弹第 ${start}–${end} 小节`);
+                  setPickNote(
+                    `你选的是第 ${fromBeat + 1}–${toBeat + 1} 拍，已经改成只弹${
+                      start === end ? `第 ${start} 小节` : `第 ${start}–${end} 小节`
+                    }`,
+                  );
                 }}
                 className="st-audio-ruler"
               />

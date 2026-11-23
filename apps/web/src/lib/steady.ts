@@ -3,7 +3,7 @@
  *
  * 存的是**标准差**（越小越稳），不是 BPM——这项练的不是速度，是「每一拍都不抢不拖」。
  */
-import { wavePngDataUrl } from "./wave";
+import { waveClipWavDataUrl, wavePngDataUrl } from "./wave";
 
 export const STEADY_KEY = "guitar.steady.v1";
 /** 在页面内给「稳不稳」面板喂一组速度 / 小节数（v0.141.0） */
@@ -323,11 +323,50 @@ export function audioFileName(run: { date: string; bpm: number; stdevMs: number;
   return `稳不稳-${run.date}-${run.bpm}BPM-${Math.round(run.stdevMs)}ms.${audioExtOf(mime)}`;
 }
 
+/**
+ * 偏得最多的三拍落在录音的哪一段（秒，v0.159.0）：
+ * 说明文件里的放大图、裁出来的小音频都用它，免得两处算得不一样。
+ */
+export function worstWindowOf(run: {
+  offsets?: number[];
+  bpm: number;
+  originMs?: number;
+}): { from: number; to: number } | null {
+  if (!run.offsets?.length) return null;
+  const top = run.offsets
+    .map((offset, index) => ({ offset, index }))
+    .sort((a, b) => Math.abs(b.offset) - Math.abs(a.offset))
+    .slice(0, 3);
+  if (top.length === 0) return null;
+  const beatSeconds = 60 / Math.max(1, run.bpm);
+  const times = top.map(
+    (item) => (run.originMs ?? 0) / 1000 + item.index * beatSeconds + item.offset / 1000,
+  );
+  return { from: Math.max(0, Math.min(...times) - 0.3), to: Math.max(...times) + 0.3 };
+}
+
+/** 这三拍单独裁成一小段 WAV（v0.159.0）：和 Markdown 一起下载，点开就听 */
+export async function worstClipOf(
+  run: AudioSource,
+): Promise<{ name: string; dataUrl: string } | null> {
+  if (!run.audio) return null;
+  const window = worstWindowOf(run);
+  if (!window) return null;
+  const dataUrl = await waveClipWavDataUrl(run.audio, window);
+  if (!dataUrl) return null;
+  return { name: `稳不稳-${run.date}-${run.bpm}BPM-worst.wav`, dataUrl };
+}
+
 /** 一份说明文件（v0.151.0）：音频本身带不了元信息，就并排放一个 .md
  *  v0.152.0：有录音就把波形缩略图内嵌进去（canvas → PNG data URL），一个文件带图
  *  v0.156.0：带上「同速的上一遍」时，多一节对照数字
- *  v0.157.0：两遍各自存成的音频文件名也写进去（对着文件夹找） */
-export async function runMetaMarkdown(run: AudioSource, compare?: AudioSource): Promise<string> {
+ *  v0.157.0：两遍各自存成的音频文件名也写进去（对着文件夹找）
+ *  v0.159.0：`clipName` 给了就写一句「三拍的片段存成了哪个文件」 */
+export async function runMetaMarkdown(
+  run: AudioSource,
+  compare?: AudioSource,
+  clipName?: string,
+): Promise<string> {
   const rangeOf = (item: AudioSource) =>
     item.fromBar && item.toBar ? `第 ${item.fromBar}–${item.toBar} 小节` : `整段 ${item.bars ?? 4} 小节`;
   const range = rangeOf(run);
@@ -405,23 +444,20 @@ export async function runMetaMarkdown(run: AudioSource, compare?: AudioSource): 
     );
     lines.push(`- 偏得最多的三拍：${worst.join("、")}`);
     // 这三拍单独裁一条波形（v0.158.0）：整段缩略图里它们可能挤在几像素里，放大才看得出
-    if (run.audio && top.length > 0) {
-      const beatSeconds = 60 / Math.max(1, run.bpm);
-      const times = top.map(
-        (item) => (run.originMs ?? 0) / 1000 + item.index * beatSeconds + item.offset / 1000,
-      );
-      const from = Math.max(0, Math.min(...times) - 0.3);
-      const to = Math.max(...times) + 0.3;
+    const window = worstWindowOf(run);
+    if (run.audio && window) {
       const worstThumb = await wavePngDataUrl(run.audio, {
         width: 240,
         height: 40,
-        trim: { from, to },
+        trim: window,
         offsets: run.offsets,
         bpm: run.bpm,
         originMs: run.originMs ?? 0,
       });
       if (worstThumb) lines.push("", `![偏得最多的三拍（放大）](${worstThumb})`);
     }
+    // 这三拍还能单独存成一小段音频（v0.159.0）：说明文件里先写清名字
+    if (clipName) lines.push(`- 偏得最多的三拍录音：${clipName}`);
     // 下次练什么（v0.155.0）：把上面这几拍翻成一句能照着做的话
     const late = top.filter((item) => item.offset > 8).length;
     const early = top.filter((item) => item.offset < -8).length;
@@ -457,12 +493,11 @@ export function downloadText(name: string, text: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 3000);
 }
 
-/** 把这一遍的录音存成文件（v0.150.0）：data URL → Blob → 点一下临时链接 */
-export function downloadAudio(run: AudioSource): boolean {
-  if (!run.audio) return false;
-  const [head, body] = run.audio.split(",");
+/** 把一段 data URL 存成文件（v0.159.0）：整段录音、裁出来的三拍片段都走这里 */
+export function downloadDataUrl(name: string, dataUrl: string): boolean {
+  const [head, body] = dataUrl.split(",");
   if (!head || !body) return false;
-  const mime = /data:([^;,]+)/.exec(head)?.[1] ?? "audio/webm";
+  const mime = /data:([^;,]+)/.exec(head)?.[1] ?? "application/octet-stream";
   try {
     const binary = window.atob(body);
     const bytes = new Uint8Array(binary.length);
@@ -470,7 +505,7 @@ export function downloadAudio(run: AudioSource): boolean {
     const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = audioFileName(run);
+    link.download = name;
     document.body.append(link);
     link.click();
     link.remove();
@@ -480,4 +515,10 @@ export function downloadAudio(run: AudioSource): boolean {
   } catch {
     return false;
   }
+}
+
+/** 把这一遍的录音存成文件（v0.150.0）：data URL → Blob → 点一下临时链接 */
+export function downloadAudio(run: AudioSource): boolean {
+  if (!run.audio) return false;
+  return downloadDataUrl(audioFileName(run), run.audio);
 }

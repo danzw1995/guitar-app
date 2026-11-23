@@ -107,6 +107,75 @@ export function waveShapePath(
 }
 
 /**
+ * 从录音里裁一小段，转成 16 位单声道 WAV（v0.159.0）。
+ * 「存成说明」时把偏得最多的那三拍裁出来，和 Markdown 放一个文件夹里对着听——
+ * 整段录音可能有十几秒，光听整段不容易一次听出那三拍。
+ */
+export async function waveClipWavDataUrl(
+  audio: string,
+  options: { from: number; to: number },
+): Promise<string | null> {
+  const Ctor =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  const buffer = bytesOfDataUrl(audio);
+  if (!Ctor || !buffer) return null;
+  const context = new Ctor();
+  try {
+    const decoded = await context.decodeAudioData(buffer);
+    const rate = decoded.sampleRate;
+    const total = decoded.duration;
+    const from = Math.max(0, Math.min(options.from, total - 0.05));
+    const to = Math.max(from + 0.05, Math.min(options.to, total));
+    const start = Math.max(0, Math.floor(from * rate));
+    const end = Math.min(decoded.length, Math.ceil(to * rate));
+    if (end <= start) return null;
+    return wavDataUrl(decoded.getChannelData(0).subarray(start, end), rate);
+  } catch {
+    return null;
+  } finally {
+    void context.close();
+  }
+}
+
+/** 16 位单声道 WAV 的 data URL：浏览器里想给一段采样一个「能下载的文件」就这么办 */
+function wavDataUrl(samples: Float32Array, sampleRate: number): string {
+  const frames = samples.length;
+  const buffer = new ArrayBuffer(44 + frames * 2);
+  const view = new DataView(buffer);
+  const ascii = (offset: number, text: string) => {
+    for (let index = 0; index < text.length; index += 1) {
+      view.setUint8(offset + index, text.charCodeAt(index));
+    }
+  };
+  ascii(0, "RIFF");
+  view.setUint32(4, 36 + frames * 2, true);
+  ascii(8, "WAVE");
+  ascii(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, "data");
+  view.setUint32(40, frames * 2, true);
+  for (let index = 0; index < frames; index += 1) {
+    const value = Math.max(-1, Math.min(1, samples[index]));
+    view.setInt16(44 + index * 2, Math.round(value * 32767), true);
+  }
+  // btoa 一次吞几 MB 会爆栈，分块拼
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
+  }
+  return `data:audio/wav;base64,${window.btoa(binary)}`;
+}
+
+/**
  * 缩略波形图（PNG data URL）：给「存成说明」的 Markdown 用。
  * 不引第三方库，直接画到 canvas 上再 toDataURL——Markdown 里 `![](data:...)` 各家都能读。
  * 给了 offsets / bpm / originMs 就把节拍线和每一拍的落点也标上去（v0.153.0），

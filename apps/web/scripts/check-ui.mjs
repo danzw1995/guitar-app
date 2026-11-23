@@ -4927,6 +4927,36 @@ try {
   await ab(["open", `${URL}?r=${Date.now()}#stats`]);
   await sleep(300);
 
+  // 16d56) v0.159.0：长按循环流水那一行，带着这一组上次的轮数直接开循环
+  const loopHoldTitle = plain(
+    js(`(() => document.querySelector('.loop-row')?.getAttribute('title') ?? '')()`),
+  );
+  js(
+    `(() => {
+      const row = document.querySelector('.loop-row');
+      if (row) row.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7 }));
+    })()`,
+  );
+  await sleep(520);
+  const loopHold = JSON.parse(
+    plain(
+      js(
+        `(() => {
+          const hint = document.querySelector('.st-hint')?.textContent ?? '';
+          return JSON.stringify({ hash: location.hash, hint: hint.slice(0, 60) });
+        })()`,
+      ),
+    ),
+  );
+  log(
+    loopHoldTitle.includes("长按") &&
+      (loopHold.hash.startsWith("#practice/steady") || loopHold.hint.includes("自动开始")),
+    "统计页：长按循环流水那一行，带着这一轮数直接开循环",
+    `${loopHoldTitle} · ${loopHold.hash} · ${loopHold.hint}`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(200);
+
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
   failed += 1;

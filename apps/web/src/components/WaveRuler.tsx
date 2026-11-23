@@ -64,6 +64,8 @@ export default function WaveRuler({
   );
   const [failed, setFailed] = useState(false);
   const [pick, setPick] = useState<Pick | null>(null);
+  // 长按往下听时跟着走的竖线（v0.159.0）：只有声音在动，看不见就更不知道听到第几拍了
+  const [marker, setMarker] = useState<number | null>(null);
   const dragRef = useRef<number | null>(null);
   // 长按落点差：按住不放就一拍一拍往下听（v0.158.0）
   const holdRef = useRef<{ delay: number | null; timer: number | null; index: number; stepped: boolean }>({
@@ -222,6 +224,7 @@ export default function WaveRuler({
           return;
         }
         hold.index = next;
+        setMarker(clockTimes[next]);
         onSeek(clockTimes[next]);
       }, 850);
     }, 420);
@@ -356,6 +359,7 @@ export default function WaveRuler({
                   holdRef.current.stepped = false;
                   return;
                 }
+                setMarker(diff.at);
                 onSeek(diff.at);
               }}
               onKeyDown={(event) => {
@@ -376,6 +380,15 @@ export default function WaveRuler({
             y={1}
             width={Math.abs(pick.toX - pick.fromX)}
             height={WAVE_HEIGHT - 2}
+          />
+        )}
+        {marker !== null && marker >= 0 && marker <= seconds + 0.02 && (
+          <line
+            className="wave-ruler-playhead"
+            x1={xOf(marker)}
+            x2={xOf(marker)}
+            y1={2}
+            y2={WAVE_HEIGHT - 2}
           />
         )}
       </svg>

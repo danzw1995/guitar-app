@@ -4006,6 +4006,13 @@ button.steady-best-tag:hover {
   touch-action: none;
 }
 
+/* 长按往下听时，这一根跟着走（v0.159.0） */
+.wave-ruler-playhead {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  opacity: 0.9;
+}
+
 .wave-ruler-diff-hit:focus-visible {
   outline: 1px solid var(--text);
   outline-offset: 1px;

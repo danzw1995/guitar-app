@@ -27,7 +27,7 @@ import {
 } from "@guitar/core";
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
-import { bestRun, compareRunOf, downloadAudio, downloadText, loadLoops, loadRuns, restoreRuns, runMetaMarkdown, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
+import { bestRun, compareRunOf, downloadAudio, downloadDataUrl, downloadText, loadLoops, loadRuns, restoreRuns, runMetaMarkdown, worstClipOf, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -563,6 +563,33 @@ export default function Stats() {
   const shownSteadyCurves = steadyPartialOnly ? steadyPartialCurves : visibleSteadyCurves;
 
   // 循环流水（v0.157.0）：按「哪几小节」归堆——这一段练过几次、一共转了多少轮、最近几次的轮数
+  // 长按循环流水那一行（v0.159.0）：带着这一组上次的轮数 + 三秒后自动开弹，直接进面板
+  const loopHoldRef = useRef<{ timer: number | null; fired: boolean }>({ timer: null, fired: false });
+  const clearLoopHold = () => {
+    if (loopHoldRef.current.timer !== null) {
+      window.clearTimeout(loopHoldRef.current.timer);
+      loopHoldRef.current.timer = null;
+    }
+  };
+  const startLoopHold = (group: {
+    bpm: number;
+    fromBar: number;
+    toBar: number;
+    lastRounds: number;
+  }) => {
+    clearLoopHold();
+    loopHoldRef.current.fired = false;
+    loopHoldRef.current.timer = window.setTimeout(() => {
+      loopHoldRef.current.timer = null;
+      loopHoldRef.current.fired = true;
+      goTo("practice", "steady", {
+        ...replayArgs(group.bpm, group.fromBar, group.toBar),
+        auto: "1",
+        srounds: String(group.lastRounds),
+      });
+    }, 420);
+  };
+
   const loopGroups = useMemo(() => {
     const groups = new Map<
       string,
@@ -575,6 +602,8 @@ export default function Stats() {
         last: string;
         recent: number[];
         bpm: number;
+        /** 最近那一次转了几轮（长按带过去当循环轮数，v0.159.0） */
+        lastRounds: number;
       }
     >();
     for (const entry of loadLoops()) {
@@ -588,6 +617,7 @@ export default function Stats() {
         last: "",
         recent: [] as number[],
         bpm: entry.bpm,
+        lastRounds: entry.rounds,
       };
       next.count += 1;
       next.rounds += entry.rounds;
@@ -595,6 +625,7 @@ export default function Stats() {
       if (entry.date >= next.last) {
         next.last = entry.date;
         next.bpm = entry.bpm;
+        next.lastRounds = entry.rounds;
       }
       groups.set(key, next);
     }
@@ -1929,12 +1960,19 @@ export default function Stats() {
                           <button
                             type="button"
                             className="btn-quiet st-audio-export"
-                            onClick={async () =>
+                            onClick={async () => {
+                              const clip = await worstClipOf(pickedRun);
+                              const markdown = await runMetaMarkdown(
+                                pickedRun,
+                                compareRunOf(pickedRun),
+                                clip?.name,
+                              );
                               downloadText(
                                 `稳不稳-${pickedRun.date}-${pickedRun.bpm}BPM.md`,
-                                await runMetaMarkdown(pickedRun, compareRunOf(pickedRun)),
-                              )
-                            }
+                                markdown,
+                              );
+                              if (clip) downloadDataUrl(clip.name, clip.dataUrl);
+                            }}
                             title="存一份说明：速度、范围、标准差、每一拍偏多少"
                           >
                             存成说明
@@ -2700,10 +2738,18 @@ export default function Stats() {
                   <button
                     type="button"
                     className="loop-row"
-                    title="只弹这几小节，去弹一遍"
-                    onClick={() =>
-                      goTo("practice", "steady", replayArgs(group.bpm, group.fromBar, group.toBar))
-                    }
+                    title="点一下只弹这几小节；长按带着这次的轮数直接开弹"
+                    onPointerDown={() => startLoopHold(group)}
+                    onPointerUp={clearLoopHold}
+                    onPointerLeave={clearLoopHold}
+                    onPointerCancel={clearLoopHold}
+                    onClick={() => {
+                      if (loopHoldRef.current.fired) {
+                        loopHoldRef.current.fired = false;
+                        return;
+                      }
+                      goTo("practice", "steady", replayArgs(group.bpm, group.fromBar, group.toBar));
+                    }}
                   >
                     <span className="curve-name">{name}</span>
                     {recent.length >= 2 ? (
