@@ -3,7 +3,7 @@
  *
  * 存的是**标准差**（越小越稳），不是 BPM——这项练的不是速度，是「每一拍都不抢不拖」。
  */
-import { waveClipWavDataUrl, wavePngDataUrl } from "./wave";
+import { waveClipWavDataUrl, waveComparePngDataUrl, wavePngDataUrl } from "./wave";
 
 export const STEADY_KEY = "guitar.steady.v1";
 /** 在页面内给「稳不稳」面板喂一组速度 / 小节数（v0.141.0） */
@@ -212,6 +212,10 @@ export interface LoopEntry {
   fromBar: number;
   toBar: number;
   rounds: number;
+  /** 这一遍录音的标准差（v0.160.0，没录就没有） */
+  stdevMs?: number;
+  /** 和同速上一遍比稳了多少（v0.160.0，正=稳了，负=散了） */
+  deltaMs?: number;
 }
 
 function dateKey(date: Date): string {
@@ -235,7 +239,27 @@ function parseLoop(value: unknown): LoopEntry | null {
   const date = typeof item.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.date) ? item.date : "";
   if (!date) return null;
   const at = typeof item.at === "string" && /^\d{2}:\d{2}$/.test(item.at) ? item.at : "00:00";
-  return { id: item.id, date, at, bpm: Math.round(bpm), fromBar, toBar, rounds: Math.round(rounds) };
+  const stdevRaw = Number(item.stdevMs);
+  const stdevMs =
+    Number.isFinite(stdevRaw) && stdevRaw > 0 && stdevRaw <= 500
+      ? Math.round(stdevRaw * 10) / 10
+      : undefined;
+  const deltaRaw = Number(item.deltaMs);
+  const deltaMs =
+    Number.isFinite(deltaRaw) && Math.abs(deltaRaw) <= 500
+      ? Math.round(deltaRaw * 10) / 10
+      : undefined;
+  return {
+    id: item.id,
+    date,
+    at,
+    bpm: Math.round(bpm),
+    fromBar,
+    toBar,
+    rounds: Math.round(rounds),
+    ...(stdevMs !== undefined ? { stdevMs } : {}),
+    ...(deltaMs !== undefined ? { deltaMs } : {}),
+  };
 }
 
 export function loadLoops(): LoopEntry[] {
@@ -263,7 +287,14 @@ function persistLoops(loops: LoopEntry[]): void {
 }
 
 /** 记一条「这一段循环了几轮」；返回记完之后的全部（面板直接拿来渲染） */
-export function pushLoop(input: { bpm: number; fromBar: number; toBar: number; rounds: number }): LoopEntry[] {
+export function pushLoop(input: {
+  bpm: number;
+  fromBar: number;
+  toBar: number;
+  rounds: number;
+  stdevMs?: number;
+  deltaMs?: number;
+}): LoopEntry[] {
   const now = new Date();
   const entry: LoopEntry = {
     id: `loop-${now.getTime().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
@@ -273,6 +304,12 @@ export function pushLoop(input: { bpm: number; fromBar: number; toBar: number; r
     fromBar: Math.round(input.fromBar),
     toBar: Math.round(input.toBar),
     rounds: Math.round(input.rounds),
+    ...(Number.isFinite(input.stdevMs) && (input.stdevMs ?? 0) > 0
+      ? { stdevMs: Math.round((input.stdevMs as number) * 10) / 10 }
+      : {}),
+    ...(Number.isFinite(input.deltaMs)
+      ? { deltaMs: Math.round((input.deltaMs as number) * 10) / 10 }
+      : {}),
   };
   const next = [...loadLoops(), entry].slice(-MAX_LOOPS);
   persistLoops(next);
@@ -443,18 +480,19 @@ export async function runMetaMarkdown(
       (item) => `第 ${item.index + 1} 拍${item.offset < 0 ? "抢" : "拖"} ${Math.abs(item.offset)} 毫秒`,
     );
     lines.push(`- 偏得最多的三拍：${worst.join("、")}`);
-    // 这三拍单独裁一条波形（v0.158.0）：整段缩略图里它们可能挤在几像素里，放大才看得出
+    // 这三拍单独裁一条波形（v0.158.0）；v0.160.0 改成「左边整段框出位置 + 右边放大」并排
     const window = worstWindowOf(run);
     if (run.audio && window) {
-      const worstThumb = await wavePngDataUrl(run.audio, {
-        width: 240,
-        height: 40,
-        trim: window,
+      const worstThumb = await waveComparePngDataUrl(run.audio, {
+        from: window.from,
+        to: window.to,
         offsets: run.offsets,
         bpm: run.bpm,
         originMs: run.originMs ?? 0,
       });
-      if (worstThumb) lines.push("", `![偏得最多的三拍（放大）](${worstThumb})`);
+      if (worstThumb) {
+        lines.push("", `![偏得最多的三拍：左边是整段里的位置，右边是放大](${worstThumb})`);
+      }
     }
     // 这三拍还能单独存成一小段音频（v0.159.0）：说明文件里先写清名字
     if (clipName) lines.push(`- 偏得最多的三拍录音：${clipName}`);

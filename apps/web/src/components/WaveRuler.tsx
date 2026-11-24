@@ -67,6 +67,8 @@ export default function WaveRuler({
   // 长按往下听时跟着走的竖线（v0.159.0）：只有声音在动，看不见就更不知道听到第几拍了
   const [marker, setMarker] = useState<number | null>(null);
   const dragRef = useRef<number | null>(null);
+  // 竖线拖动（v0.160.0）：抓住那根线拖到哪儿就从哪儿听
+  const seekDragRef = useRef(false);
   // 长按落点差：按住不放就一拍一拍往下听（v0.158.0）
   const holdRef = useRef<{ delay: number | null; timer: number | null; index: number; stepped: boolean }>({
     delay: null,
@@ -243,6 +245,12 @@ export default function WaveRuler({
     onPick?.(fromBeat, toBeat);
   };
 
+  // 那根竖线也能拖：拖到哪儿就从哪儿接着听
+  const secondsAt = (clientX: number, rect: DOMRect) =>
+    Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(1, rect.width))) * seconds;
+  const nearPlayhead = (clientX: number, rect: DOMRect) =>
+    Boolean(onSeek) && marker !== null && Math.abs(secondsAt(clientX, rect) - marker) < 0.35;
+
   return (
     <div className={`wave-ruler-wrap${className ? ` ${className}` : ""}`}>
       <svg
@@ -251,19 +259,39 @@ export default function WaveRuler({
         role="img"
         aria-label={aria}
         onPointerDown={(event) => {
-          if (!onPick) return;
           const rect = event.currentTarget.getBoundingClientRect();
+          // 落在竖线附近就抓住竖线，不再起框选
+          if (nearPlayhead(event.clientX, rect)) {
+            seekDragRef.current = true;
+            setMarker(secondsAt(event.clientX, rect));
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+            return;
+          }
+          if (!onPick) return;
           const x = xToPick(event.clientX, rect);
           dragRef.current = x;
           setPick({ fromX: x, toX: x });
           event.currentTarget.setPointerCapture?.(event.pointerId);
         }}
         onPointerMove={(event) => {
+          if (seekDragRef.current) {
+            const rect = event.currentTarget.getBoundingClientRect();
+            setMarker(secondsAt(event.clientX, rect));
+            return;
+          }
           if (!onPick || dragRef.current === null) return;
           const rect = event.currentTarget.getBoundingClientRect();
           setPick({ fromX: dragRef.current, toX: xToPick(event.clientX, rect) });
         }}
         onPointerUp={(event) => {
+          if (seekDragRef.current) {
+            seekDragRef.current = false;
+            const rect = event.currentTarget.getBoundingClientRect();
+            const secondsAtPointer = secondsAt(event.clientX, rect);
+            setMarker(secondsAtPointer);
+            onSeek?.(secondsAtPointer);
+            return;
+          }
           if (!onPick || dragRef.current === null) return;
           const rect = event.currentTarget.getBoundingClientRect();
           const current = { fromX: dragRef.current, toX: xToPick(event.clientX, rect) };
@@ -271,6 +299,7 @@ export default function WaveRuler({
           finishPick(current);
         }}
         onPointerCancel={() => {
+          seekDragRef.current = false;
           dragRef.current = null;
           setPick(null);
         }}
@@ -383,20 +412,29 @@ export default function WaveRuler({
           />
         )}
         {marker !== null && marker >= 0 && marker <= seconds + 0.02 && (
-          <line
-            className="wave-ruler-playhead"
-            x1={xOf(marker)}
-            x2={xOf(marker)}
-            y1={2}
-            y2={WAVE_HEIGHT - 2}
-          />
+          <>
+            <line
+              className="wave-ruler-playhead-hit"
+              x1={xOf(marker)}
+              x2={xOf(marker)}
+              y1={2}
+              y2={WAVE_HEIGHT - 2}
+            />
+            <line
+              className="wave-ruler-playhead"
+              x1={xOf(marker)}
+              x2={xOf(marker)}
+              y1={2}
+              y2={WAVE_HEIGHT - 2}
+            />
+          </>
         )}
       </svg>
       <span className="beat-ruler-hint">
         {ghost ? `淡的那条是${ghostLabel}，深的是这一遍` : "波形上是这一遍，竖线是节拍器"}
         {onPick ? "；横着拖能选几拍" : ""}
         {ghost && diffs.length > 0 ? "；小字是这一遍比它晚（+）或早（−）多少毫秒" : ""}
-        {onSeek && diffs.length > 0 ? "，小字点一下能听那一拍附近，长按顺着往下听" : ""}
+        {onSeek && diffs.length > 0 ? "，小字点一下能听那一拍附近，长按顺着往下听，竖线也能拖着走" : ""}
       </span>
     </div>
   );

@@ -604,6 +604,8 @@ export default function Stats() {
         bpm: number;
         /** 最近那一次转了几轮（长按带过去当循环轮数，v0.159.0） */
         lastRounds: number;
+        /** 最近那一次「比同速上一遍稳/散多少毫秒」（v0.160.0，没有就 null） */
+        lastDelta: number | null;
       }
     >();
     for (const entry of loadLoops()) {
@@ -618,6 +620,7 @@ export default function Stats() {
         recent: [] as number[],
         bpm: entry.bpm,
         lastRounds: entry.rounds,
+        lastDelta: null,
       };
       next.count += 1;
       next.rounds += entry.rounds;
@@ -626,6 +629,7 @@ export default function Stats() {
         next.last = entry.date;
         next.bpm = entry.bpm;
         next.lastRounds = entry.rounds;
+        next.lastDelta = entry.deltaMs ?? null;
       }
       groups.set(key, next);
     }
@@ -2767,6 +2771,11 @@ export default function Stats() {
                     <span className="muted">
                       {group.count} 次 · 共 {group.rounds} 轮 · 最近 {group.last.slice(5)}
                     </span>
+                    {group.lastDelta !== null && Math.abs(group.lastDelta) >= 1 ? (
+                      <span className={`loop-delta${group.lastDelta > 0 ? " up" : " down"}`}>
+                        比上次{group.lastDelta > 0 ? "稳" : "散"} {Math.abs(Math.round(group.lastDelta))} 毫秒
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               );

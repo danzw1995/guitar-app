@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.159.0`，core `0.55.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.160.0`，core `0.55.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -172,6 +172,11 @@ v0.158.0 只动前端：①统计页「循环流水」每一行是按钮，点�
 （复用 v0.148.0 的 `replayArgs`，分组里多记一个 `bpm`）；②`wavePngDataUrl` 多一个可选 `trim`（秒），
 说明文件里多一张「偏得最多的三拍（放大）」；③`WaveRuler` 的落点差小字支持长按连续听（420 毫秒起手、
 每 850 毫秒一拍），并把清理 hook 挪到 early return 之前（否则解码完 hook 数变化直接崩）。存储结构没变，core 与工具都不动。
+v0.160.0 只动前端：①`LoopEntry` 多两个可选字段 `stdevMs` / `deltaMs`（循环停下时用这一遍的
+`TimingReport.stdevMs` 和 `compareRunOf()` 找到的同速上一遍算差），`guitar.steady.loops.v1` 里多这两个数；
+②`wave.ts` 加 `waveComparePngDataUrl()`（左整段 + 右放大并排 488×48），`decodeWave(audio, columns)` 多一个
+列数参数且列数进缓存键；③`WaveRuler` 的竖线可拖（竖线外一条 12 像素透明粗线，落在 0.35 秒内算抓竖线）。
+存储只是加字段，core 与工具都不动。
 v0.159.0 只动前端：①统计页「循环流水」那一行支持长按 420 毫秒 → `goTo("practice","steady", …)` 里多带
 `auto=1` 与 `srounds`（这一组最近一次的轮数，`Steady` 的 `seeded` 解析后落回 0/2/3/5 那几档）；
 ②`wave.ts` 新增 `waveClipWavDataUrl()`（解码 → 切样本 → 自拼 16 位单声道 WAV，`btoa` 分块），

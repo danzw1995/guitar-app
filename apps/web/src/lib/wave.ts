@@ -59,8 +59,9 @@ export function waveCached(audio: string): WavePeaks | null {
 }
 
 /** 解码成峰值；浏览器不认这个格式（或录音坏了）时给 null，调用方自己决定退回什么 */
-export async function decodeWave(audio: string): Promise<WavePeaks | null> {
-  const key = waveCacheKey(audio);
+export async function decodeWave(audio: string, columns = WAVE_COLUMNS): Promise<WavePeaks | null> {
+  // 列数进缓存键：放大一小段要用更密的列，不然切出来只剩十几个柱子
+  const key = `${waveCacheKey(audio)}|${columns}`;
   const cached = cache.get(key);
   if (cached) return cached;
   const Ctor =
@@ -72,7 +73,7 @@ export async function decodeWave(audio: string): Promise<WavePeaks | null> {
   try {
     const decoded = await context.decodeAudioData(buffer);
     const next = {
-      peaks: peaksOf(decoded.getChannelData(0), WAVE_COLUMNS),
+      peaks: peaksOf(decoded.getChannelData(0), Math.max(8, Math.round(columns))),
       seconds: decoded.duration,
     };
     cache.set(key, next);
@@ -181,6 +182,61 @@ function wavDataUrl(samples: Float32Array, sampleRate: number): string {
  * 给了 offsets / bpm / originMs 就把节拍线和每一拍的落点也标上去（v0.153.0），
  * 不然一张只有波形的图看不出「稳不稳」。
  */
+/** 在一段画布上画波形（内部共用）：`fromSec`/`toSec` 决定这一格画录音的哪一段 */
+function paintPane(
+  context: CanvasRenderingContext2D,
+  wave: WavePeaks,
+  box: { x: number; width: number; height: number },
+  options: { fromSec: number; toSec: number; offsets?: number[]; bpm?: number; originMs?: number; markers?: boolean },
+): void {
+  const { x, width, height } = box;
+  const { fromSec, toSec, offsets = [], bpm = 0, originMs = 0, markers = true } = options;
+  const center = height / 2;
+  const amp = height / 2 - 2;
+  const columns = wave.peaks.length;
+  const total = Math.max(0.001, wave.seconds);
+  const safeFrom = Math.max(0, Math.min(fromSec, total - 0.05));
+  const safeTo = Math.max(safeFrom + 0.05, Math.min(toSec, total));
+  const startCol = Math.floor((safeFrom / total) * columns);
+  const endCol = Math.max(startCol + 1, Math.ceil((safeTo / total) * columns));
+  const visible = wave.peaks.slice(startCol, endCol);
+  const step = width / Math.max(1, visible.length);
+  context.fillStyle = "rgba(139,148,158,0.35)";
+  for (let column = 0; column < visible.length; column += 1) {
+    const half = Math.max(0.5, visible[column] * amp);
+    context.fillRect(x + column * step, center - half, Math.max(1, step * 0.8), half * 2);
+  }
+  context.strokeStyle = "rgba(139,148,158,0.55)";
+  context.lineWidth = 1;
+  context.beginPath();
+  context.moveTo(x, center);
+  context.lineTo(x + width, center);
+  context.stroke();
+  if (!markers || bpm <= 0 || offsets.length === 0) return;
+  const beatMs = 60000 / Math.max(1, bpm);
+  const xOf = (time: number) =>
+    x + Math.max(0, Math.min(width, ((time - safeFrom) / Math.max(0.05, safeTo - safeFrom)) * width));
+  const inRange = (time: number) => time >= safeFrom - 0.02 && time <= safeTo + 0.02;
+  context.strokeStyle = "rgba(200,205,210,0.45)";
+  for (let index = 0; index < offsets.length; index += 1) {
+    const clock = (originMs + index * beatMs) / 1000;
+    if (!inRange(clock)) continue;
+    context.beginPath();
+    context.moveTo(xOf(clock), 2);
+    context.lineTo(xOf(clock), height - 2);
+    context.stroke();
+  }
+  for (let index = 0; index < offsets.length; index += 1) {
+    const hit = (originMs + index * beatMs + offsets[index]) / 1000;
+    if (!inRange(hit)) continue;
+    const offset = offsets[index];
+    context.fillStyle = Math.abs(offset) <= 8 ? "#3fb950" : offset < 0 ? "#58a6ff" : "#e8b04b";
+    context.beginPath();
+    context.arc(xOf(hit), center, 2, 0, Math.PI * 2);
+    context.fill();
+  }
+}
+
 export async function wavePngDataUrl(
   audio: string,
   options: {
@@ -201,53 +257,58 @@ export async function wavePngDataUrl(
   canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) return null;
-  const center = height / 2;
-  const amp = height / 2 - 2;
-  const columns = wave.peaks.length;
   const total = Math.max(0.001, wave.seconds);
-  // 裁一段时：只取那一段对应的列，横轴换成「这一段里的相对位置」
-  const fromSec = trim ? Math.max(0, Math.min(trim.from, total - 0.05)) : 0;
-  const toSec = trim ? Math.max(fromSec + 0.05, Math.min(trim.to, total)) : total;
-  const startCol = trim ? Math.floor((fromSec / total) * columns) : 0;
-  const endCol = trim ? Math.max(startCol + 1, Math.ceil((toSec / total) * columns)) : columns;
-  const visible = wave.peaks.slice(startCol, endCol);
-  const step = width / Math.max(1, visible.length);
-  context.fillStyle = "rgba(139,148,158,0.35)";
-  for (let column = 0; column < visible.length; column += 1) {
-    const half = Math.max(0.5, visible[column] * amp);
-    context.fillRect(column * step, center - half, Math.max(1, step * 0.8), half * 2);
-  }
-  context.strokeStyle = "rgba(139,148,158,0.55)";
-  context.lineWidth = 1;
-  context.beginPath();
-  context.moveTo(0, center);
-  context.lineTo(width, center);
-  context.stroke();
+  paintPane(
+    context,
+    wave,
+    { x: 0, width, height },
+    {
+      fromSec: trim ? trim.from : 0,
+      toSec: trim ? trim.to : total,
+      offsets,
+      bpm,
+      originMs,
+      markers: true,
+    },
+  );
+  return canvas.toDataURL("image/png");
+}
 
-  // 节拍器位置 + 每一拍的落点（v0.153.0）
-  if (bpm > 0 && offsets.length > 0) {
-    const beatMs = 60000 / Math.max(1, bpm);
-    const xOf = (time: number) =>
-      Math.max(0, Math.min(width, ((time - fromSec) / Math.max(0.05, toSec - fromSec)) * width));
-    const inRange = (time: number) => time >= fromSec - 0.02 && time <= toSec + 0.02;
-    context.strokeStyle = "rgba(200,205,210,0.45)";
-    for (let index = 0; index < offsets.length; index += 1) {
-      const clock = (originMs + index * beatMs) / 1000;
-      if (!inRange(clock)) continue;
-      context.beginPath();
-      context.moveTo(xOf(clock), 2);
-      context.lineTo(xOf(clock), height - 2);
-      context.stroke();
-    }
-    for (let index = 0; index < offsets.length; index += 1) {
-      const hit = (originMs + index * beatMs + offsets[index]) / 1000;
-      if (!inRange(hit)) continue;
-      const offset = offsets[index];
-      context.fillStyle = Math.abs(offset) <= 8 ? "#3fb950" : offset < 0 ? "#58a6ff" : "#e8b04b";
-      context.beginPath();
-      context.arc(xOf(hit), center, 2, 0, Math.PI * 2);
-      context.fill();
-    }
-  }
+/**
+ * 并排两张：左边整段波形上框出那几拍的位置，右边是放大的那一段（v0.160.0）。
+ * 说明文件里光看放大图不知道它在整段里的哪儿，光看整段又看不清。
+ */
+export async function waveComparePngDataUrl(
+  audio: string,
+  options: { from: number; to: number; offsets?: number[]; bpm?: number; originMs?: number; width?: number; height?: number },
+): Promise<string | null> {
+  const { from, to, offsets = [], bpm = 0, originMs = 0, width = 240, height = 48 } = options;
+  // 放大那一半要更密的列，否则两秒的窗口里只剩十几个柱子
+  const wave = await decodeWave(audio, width * 6);
+  if (!wave || wave.peaks.length === 0) return null;
+  const gap = 8;
+  const canvas = document.createElement("canvas");
+  canvas.width = width * 2 + gap;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+  const total = Math.max(0.001, wave.seconds);
+  const safeFrom = Math.max(0, Math.min(from, total - 0.05));
+  const safeTo = Math.max(safeFrom + 0.05, Math.min(to, total));
+  // 左：整段，不画节拍线，只框出这一段
+  paintPane(context, wave, { x: 0, width, height }, { fromSec: 0, toSec: total, markers: false });
+  const leftX = (time: number) => Math.max(0, Math.min(width, (time / total) * width));
+  context.fillStyle = "rgba(232,176,75,0.18)";
+  context.fillRect(leftX(safeFrom), 1, Math.max(2, leftX(safeTo) - leftX(safeFrom)), height - 2);
+  context.strokeStyle = "rgba(232,176,75,0.9)";
+  context.lineWidth = 1;
+  context.strokeRect(leftX(safeFrom), 1, Math.max(2, leftX(safeTo) - leftX(safeFrom)), height - 2);
+  // 右：放大这一段，带节拍线与落点
+  paintPane(
+    context,
+    wave,
+    { x: width + gap, width, height },
+    { fromSec: safeFrom, toSec: safeTo, offsets, bpm, originMs, markers: true },
+  );
   return canvas.toDataURL("image/png");
 }

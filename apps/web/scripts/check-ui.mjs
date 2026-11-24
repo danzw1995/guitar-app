@@ -4873,7 +4873,7 @@ try {
       const loops = [
         { id: 'l1', date: '2026-11-18', at: '20:12', bpm: 80, fromBar: 2, toBar: 3, rounds: 2 },
         { id: 'l2', date: '2026-11-20', at: '21:02', bpm: 80, fromBar: 2, toBar: 3, rounds: 3 },
-        { id: 'l3', date: '2026-11-22', at: '19:45', bpm: 72, fromBar: 2, toBar: 3, rounds: 5 },
+        { id: 'l3', date: '2026-11-22', at: '19:45', bpm: 72, fromBar: 2, toBar: 3, rounds: 5, stdevMs: 12.4, deltaMs: 4 },
       ];
       localStorage.setItem('guitar.steady.loops.v1', JSON.stringify(loops));
       return 'ok';
@@ -4901,8 +4901,9 @@ try {
       (loopInfo.items[0]?.text ?? "").includes("第 2–3 小节") &&
       (loopInfo.items[0]?.text ?? "").includes("3 次") &&
       (loopInfo.items[0]?.text ?? "").includes("共 10 轮") &&
+      (loopInfo.items[0]?.text ?? "").includes("比上次稳 4 毫秒") &&
       (loopInfo.items[0]?.path ?? "").startsWith("M"),
-    "统计页：循环流水按哪几小节归堆，最近几次的轮数画成折线",
+    "统计页：循环流水按哪几小节归堆，最近几次的轮数画成折线，最近一次还写着比上次稳了多少",
     `rows ${loopInfo.rows} · ${loopInfo.items[0]?.text ?? ""} · ${(loopInfo.items[0]?.path ?? "").slice(0, 16)}`,
   );
 

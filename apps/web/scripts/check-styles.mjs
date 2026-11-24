@@ -1647,6 +1647,14 @@ expect(
     Number.parseFloat(narrowDecls(".wave-ruler-playhead").get("stroke-width")) >= 1.4,
 );
 
+expect(
+  "那根竖线能拖：外面套一条看不见的粗线，鼠标上去变抓取；循环流水上的快慢用绿/橙区分",
+  Number.parseFloat(narrowDecls(".wave-ruler-playhead-hit").get("stroke-width")) >= 10 &&
+    narrowDecls(".wave-ruler-playhead-hit").get("cursor") === "grab" &&
+    (narrowDecls(".loop-delta.up").get("color") || "").includes("--green") &&
+    (narrowDecls(".loop-delta.down").get("color") || "").includes("--accent"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);
 if (failures.length) {
   console.log(`失败：${failures.join("、")}`);

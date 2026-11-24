@@ -627,12 +627,20 @@ export default function Steady() {
   const logLoopRef = useRef<(rounds: number) => void>(() => {});
   logLoopRef.current = (rounds: number) => {
     if (!pickBeats || rounds < 1) return;
+    // 顺手把这一次的稳度和「比同速上一遍稳/散多少」记进流水（v0.160.0）
+    const latestRun = runs[runs.length - 1];
+    const baseline = latestRun ? compareRunOf(latestRun, runs) : undefined;
+    const stdevMs = report?.stdevMs;
+    const deltaMs =
+      stdevMs !== undefined && baseline ? Math.round((baseline.stdevMs - stdevMs) * 10) / 10 : undefined;
     setLoops(
       pushLoop({
         bpm,
         fromBar: Math.floor(pickBeats.from / BAR_BEATS) + 1,
         toBar: Math.floor(pickBeats.to / BAR_BEATS) + 1,
         rounds,
+        ...(stdevMs !== undefined ? { stdevMs } : {}),
+        ...(deltaMs !== undefined ? { deltaMs } : {}),
       }),
     );
   };
@@ -1054,6 +1062,11 @@ export default function Steady() {
                       ? `第 ${entry.fromBar} 小节`
                       : `第 ${entry.fromBar}–${entry.toBar} 小节`}{" "}
                     · {entry.rounds} 轮 · {entry.bpm} BPM · {entry.date.slice(5)} {entry.at}
+                    {entry.deltaMs !== undefined && Math.abs(entry.deltaMs) >= 1
+                      ? ` · 比上次${entry.deltaMs > 0 ? "稳" : "散"} ${Math.abs(Math.round(entry.deltaMs))} 毫秒`
+                      : entry.stdevMs !== undefined
+                        ? ` · ±${Math.round(entry.stdevMs)} 毫秒`
+                        : ""}
                   </span>
                 ))}
             </p>

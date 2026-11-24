@@ -3962,7 +3962,7 @@ button.steady-best-tag:hover {
 /* 每一行就是一枚按钮：点一下带着「只弹这几小节」进面板（v0.158.0） */
 .loop-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 80px auto;
+  grid-template-columns: minmax(0, 1fr) 80px auto auto;
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -3975,6 +3975,22 @@ button.steady-best-tag:hover {
   font-size: 13px;
   text-align: left;
   cursor: pointer;
+}
+
+/* 最近这一次比同速上一遍稳了多少（v0.160.0） */
+.loop-delta {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.loop-delta.up {
+  color: var(--green);
+}
+
+.loop-delta.down {
+  color: var(--accent);
 }
 
 .loop-row:hover .curve-name {
@@ -4011,6 +4027,17 @@ button.steady-best-tag:hover {
   stroke: var(--accent);
   stroke-width: 1.6;
   opacity: 0.9;
+}
+
+/* 竖线外面那条看不见的粗线：鼠标放到附近能看出「这根能拖」 */
+.wave-ruler-playhead-hit {
+  stroke: transparent;
+  stroke-width: 12;
+  cursor: grab;
+}
+
+.wave-ruler-playhead-hit:active {
+  cursor: grabbing;
 }
 
 .wave-ruler-diff-hit:focus-visible {
