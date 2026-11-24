@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   ACCOMPANIMENTS,
   LEVEL_LABEL,
+  MELODY_DRILLS,
   READING_DRILLS,
   READING_SOURCE,
   readingPitch,
@@ -172,6 +173,10 @@ export default function Rhythm() {
     () => ACCOMPANIMENTS.filter((item) => level === 0 || item.level === level),
     [level],
   );
+  const melodies = useMemo(
+    () => MELODY_DRILLS.filter((item) => level === 0 || item.level === level),
+    [level],
+  );
 
   // 搜索：只在六块练习里筛（今日三条与等级筛选是另一回事）
   const q = query.trim().toLowerCase();
@@ -184,6 +189,7 @@ export default function Rhythm() {
     RHYTHM_DRILLS.filter((item) => fresh(item.id)).length +
     STRUM_DRILLS.filter((item) => fresh(item.id)).length +
     ACCOMPANIMENTS.filter((item) => fresh(item.id)).length +
+    MELODY_DRILLS.filter((item) => fresh(item.id)).length +
     STRUM_LIBRARY.filter((item) => fresh(item.id)).length +
     SONG_SNIPPETS.filter((item) => fresh(item.id)).length;
   const keep = (id: string) => !onlyNew || fresh(id);
@@ -208,6 +214,10 @@ export default function Rhythm() {
   const shownPatterns = patterns.filter(
     (item) => keep(item.id) && hit("扫弦 节奏型", item.name, item.count, item.tip),
   );
+  const shownMelodies = melodies.filter(
+    (item) =>
+      keep(item.id) && hit("旋律 节奏", item.no, item.name, item.source, item.rhythm, item.tip),
+  );
   const shownSnippets = SONG_SNIPPETS.filter(
     (item) =>
       keep(item.id) && hit("片段 曲子", item.name, item.style, item.chords.join(" "), item.tip),
@@ -217,6 +227,7 @@ export default function Rhythm() {
     shownReading.length +
     shownStrums.length +
     shownAccompaniments.length +
+    shownMelodies.length +
     shownPatterns.length +
     shownSnippets.length;
 
@@ -312,6 +323,7 @@ export default function Rhythm() {
   const rhythmDone = doneRatio(RHYTHM_DRILLS.map((drill) => drill.id), records);
   const strumDone = doneRatio(STRUM_DRILLS.map((drill) => drill.id), records);
   const accompDone = doneRatio(ACCOMPANIMENTS.map((item) => item.id), records);
+  const melodyDone = doneRatio(MELODY_DRILLS.map((item) => item.id), records);
 
   function jumpTo(id: string) {
     const card = document.getElementById(`drill-${id}`);
@@ -628,6 +640,113 @@ export default function Rhythm() {
                 <b>验收</b>：{drill.pass}
               </p>
             </details>
+          </article>
+        ))}
+      </div>
+
+      <h3 className="practice-h3">
+        <button
+          type="button"
+          className="block-toggle"
+          aria-expanded={isOpen("melody")}
+          aria-controls={`block-${"melody"}`}
+          onClick={() => toggle("melody")}
+        >
+          <span className="block-caret" aria-hidden="true">
+            {isOpen("melody") ? "\u25be" : "\u25b8"}
+          </span>
+          旋律节奏
+        </button>
+        <span className="practice-h3-hint">
+          熟悉的旋律 + 三种节奏型，先有音高再谈节奏
+        </span>
+        <span className="block-meter">
+          已练 {melodyDone.done}/{melodyDone.total}
+        </span>
+      </h3>
+      <p className="rhythm-focus">
+        节奏卡片只有箭头和时值，练久了像节拍器。这一块把公有领域的老旋律（小星星 /
+        欢乐颂 / 两只老虎）拆成「一拍一个音」的骨架，再用三种节奏型去套：四分音符原样弹、
+        八分音符每拍拆两下、前八后十六在后半拍加一个上邻音——旋律还是那首，
+        手上的密度变了。另有两段算法生成的级进旋律，不熟旋律时先练它。
+      </p>
+      <div
+        id={`block-${"melody"}`}
+        className={`drill-grid ${isOpen("melody") ? "" : "block-closed"}`}
+      >
+        {shownMelodies.length === 0 ? <p className="rhythm-empty">{emptyText}</p> : null}
+        {shownMelodies.map((item) => (
+          <article key={item.id} id={`drill-${item.id}`} className="drill-card">
+            <header className="drill-head">
+              <h4>
+                练习 {item.no} · {item.name}
+              </h4>
+              <span className={`level-badge lv${item.level}`}>{LEVEL_LABEL[item.level]}</span>
+            </header>
+            <p className="rhythm-count">
+              旋律：<b>{item.source}</b>
+              <span className="rhythm-bpm">
+                {item.meter} · {item.bpm[0]}–{item.bpm[1]} BPM
+              </span>
+            </p>
+            <p className="rhythm-count">
+              节奏：<b>{item.rhythm}</b>
+            </p>
+            <TabScore id={item.id} tab={item.tab} beat={beatOf(item.id)} />
+            <div className="drill-actions">
+              <button
+                type="button"
+                className="btn"
+                aria-label={`试听 练习 ${item.no}`}
+                onClick={() => audition(item.id, item.tab, item.bpm[0])}
+              >
+                试听
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setTarget({
+                    id: item.id,
+                    name: `练习 ${item.no} · ${item.name}`,
+                    bpm: item.bpm,
+                    tab: item.tab,
+                    meter: item.meter,
+                  });
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+              >
+                跟练
+              </button>
+              <PlanButton title={`练习 ${item.no} · ${item.name}`} tab={item.tab} bpm={item.bpm[0]} />
+              {best(item.id) !== undefined && (
+                <span className="best-badge">最高 {best(item.id)} BPM</span>
+              )}
+            </div>
+            <div className="speed-row" role="group" aria-label={`练习 ${item.no} 变速跟练`}>
+              <span className="speed-label">变速</span>
+              {speedSteps(item.bpm[0]).map((step) => (
+                <button
+                  key={step.label}
+                  type="button"
+                  className="chip"
+                  aria-label={`${step.label} ${step.bpm} BPM 跟练 练习 ${item.no}`}
+                  onClick={() => {
+                    setTarget({
+                      id: item.id,
+                      name: `练习 ${item.no} · ${item.name}`,
+                      bpm: [step.bpm, step.bpm + 30],
+                      tab: item.tab,
+                      meter: item.meter,
+                    });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                >
+                  {step.label} {step.bpm}
+                </button>
+              ))}
+            </div>
+            <p className="pb-line">{item.tip}</p>
           </article>
         ))}
       </div>

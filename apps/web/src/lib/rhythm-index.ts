@@ -1,5 +1,6 @@
 import {
   ACCOMPANIMENTS,
+  MELODY_DRILLS,
   READING_DRILLS,
   RHYTHM_DRILLS,
   SONG_SNIPPETS,
@@ -21,7 +22,7 @@ export interface RhythmItem {
 }
 
 /** 页面上的六块，顺序就是页面上的顺序。 */
-export const RHYTHM_GROUPS = ["跟读", "时值", "扫弦", "伴奏", "节奏型", "片段"] as const;
+export const RHYTHM_GROUPS = ["跟读", "时值", "旋律", "扫弦", "伴奏", "节奏型", "片段"] as const;
 
 export type RhythmGroup = (typeof RHYTHM_GROUPS)[number];
 
@@ -40,6 +41,11 @@ export const RHYTHM_ITEMS: RhythmItem[] = [
     id: drill.id,
     label: `练习 ${drill.no} · ${drill.name}`,
     group: "扫弦" as const,
+  })),
+  ...MELODY_DRILLS.map((drill) => ({
+    id: drill.id,
+    label: `练习 ${drill.no} · ${drill.name}`,
+    group: "旋律" as const,
   })),
   ...ACCOMPANIMENTS.map((item) => ({
     id: item.id,

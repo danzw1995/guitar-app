@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import {
   ACCOMPANIMENTS,
   DRILLS,
+  MELODY_DRILLS,
   READING_DRILLS,
   RHYTHM_DRILLS,
   SONG_SNIPPETS,
@@ -42,6 +43,8 @@ const items: Item[] = [
   ...STRUM_LIBRARY.map((pattern) => ({ id: pattern.id, tab: pattern.tab, bpm: 70 })),
   ...SONG_SNIPPETS.map((snippet) => ({ id: snippet.id, tab: snippet.tab, bpm: snippet.bpm[0] })),
   ...ACCOMPANIMENTS.map((item) => ({ id: item.id, tab: item.tab, bpm: item.bpm })),
+  // 旋律节奏（v0.162.0）：每拍一个音，密度比节奏卡高，宽度按小节数走默认档。
+  ...MELODY_DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab, bpm: drill.bpm[0] })),
   // 练习页的 50 关：以前是页面里现画的六线谱，现在也走同一条预渲染管线。
   ...DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab, bpm: bpmOf(drill.bpm) })),
   // 乐理页 12 节课，每节配一条示范谱。

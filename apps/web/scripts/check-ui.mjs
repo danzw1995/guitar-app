@@ -136,17 +136,17 @@ try {
   );
   log(switched === '"ok"', "能切到「节奏」页", switched === '"ok"' ? "" : String(switched));
 
-  // 3) 节奏页六块内容：跟读 16 + 时值 10 + 扫弦 24 + 伴奏 17 + 扫弦型 12 + 风格 6 = 85
+  // 3) 节奏页七块内容：跟读 16 + 时值 10 + 旋律 13 + 扫弦 24 + 伴奏型 17 + 扫弦节奏型 18 + 风格片段 18 = 116
   const cards = js("document.querySelectorAll('.drill-card').length");
-  log(cards === "103", `节奏页 6 块内容共 103 张卡（读到 ${cards}）`);
+  log(cards === "116", `节奏页 7 块内容共 116 张卡（读到 ${cards}）`);
 
   const strum = js(
-    "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('.drill-card').length : -1; })()",
+    "(() => { const g = [...document.querySelectorAll('.drill-grid')][3]; return g ? g.querySelectorAll('.drill-card').length : -1; })()",
   );
   log(strum === "24", `扫弦练习 24 条（读到 ${strum}）`);
 
   const first = js(
-    "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; const t = g?.querySelector('.drill-card')?.innerText ?? ''; return t.split('\\n').slice(0, 4).join(' | '); })()",
+    "(() => { const g = [...document.querySelectorAll('.drill-grid')][3]; const t = g?.querySelector('.drill-card')?.innerText ?? ''; return t.split('\\n').slice(0, 4).join(' | '); })()",
   );
   const firstText = typeof first === "string" ? first : "";
   log(
@@ -159,7 +159,7 @@ try {
   const speedInfo = JSON.parse(
     String(
       js(
-        "(() => { const g = [...document.querySelectorAll('.drill-grid')][3]; if (!g) return JSON.stringify({ rows: -1 }); const cards = [...g.querySelectorAll('.drill-card')]; const rows = cards.filter(c => c.querySelectorAll('.speed-row .chip').length === 3).length; const first = cards[0]?.querySelectorAll('.speed-row .chip'); const labels = first ? [...first].map(b => b.textContent.trim()) : []; return JSON.stringify({ cards: cards.length, rows, labels }); })()",
+        "(() => { const g = [...document.querySelectorAll('.drill-grid')][4]; if (!g) return JSON.stringify({ rows: -1 }); const cards = [...g.querySelectorAll('.drill-card')]; const rows = cards.filter(c => c.querySelectorAll('.speed-row .chip').length === 3).length; const first = cards[0]?.querySelectorAll('.speed-row .chip'); const labels = first ? [...first].map(b => b.textContent.trim()) : []; return JSON.stringify({ cards: cards.length, rows, labels }); })()",
       ),
     )
       .replace(/^"|"$/g, "")
@@ -173,7 +173,7 @@ try {
 
   // 谱是懒加载的图片（进视口才请求），这里先数占位，滚完整页再验有没有真的加载出来。
   const boxes = js(
-    "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; return g ? g.querySelectorAll('.tab-score').length : -1; })()",
+    "(() => { const g = [...document.querySelectorAll('.drill-grid')][3]; return g ? g.querySelectorAll('.tab-score').length : -1; })()",
   );
   log(boxes === "24", `每条扫弦练习都有一个谱位（读到 ${boxes} 个）`);
 
@@ -215,7 +215,7 @@ try {
 
   // 4) 跟练：点开 → 面板出现，带着这条练习的起始速度
   const clicked = js(
-    "(() => { const g = [...document.querySelectorAll('.drill-grid')][2]; const b = [...g.querySelectorAll('button')].find(n => n.textContent === '跟练'); if (!b) return 'no'; b.click(); return 'ok'; })()",
+    "(() => { const g = [...document.querySelectorAll('.drill-grid')][3]; const b = [...g.querySelectorAll('button')].find(n => n.textContent === '跟练'); if (!b) return 'no'; b.click(); return 'ok'; })()",
   );
   log(clicked === '"ok"', "能点开练习 1 的「跟练」");
 
@@ -287,7 +287,7 @@ try {
     dues,
   );
   log(
-    today.meters.length === 4 && today.meters.every((text) => /^已练 \d+\/\d+$/.test(text)),
+    today.meters.length === 5 && today.meters.every((text) => /^已练 \d+\/\d+$/.test(text)),
     "每块练习的标题上都有「已练 N/M」",
     today.meters.join(" / "),
   );
@@ -1958,7 +1958,7 @@ try {
   js("localStorage.removeItem('guitar.practice.v1')");
   js("localStorage.removeItem('guitar.rhythm.v1')");
 
-  // 13) 统计页：节奏与伴奏那一段（六块完成度 + 最高速度）
+  // 13) 统计页：节奏与伴奏那一段（七块完成度 + 最高速度）
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
   );
@@ -1969,8 +1969,8 @@ try {
     ),
   ).replace(/^"|"$/g, "");
   log(
-    statsInfo === "6|head|bpm",
-    "统计页：有「节奏与伴奏」，六块完成度与最高速度都在",
+    statsInfo === "7|head|bpm",
+    "统计页：有「节奏与伴奏」，七块完成度与最高速度都在",
     statsInfo,
   );
 
@@ -2358,7 +2358,7 @@ try {
     `${followFields} / ${loopOn} / ${countInText} / ${barText}`,
   );
 
-  // 16) 搜索：输入「切音」只剩几条，清掉后恢复 103 条
+  // 16) 搜索：输入「切音」只剩几条，清掉后恢复 116 条
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); b?.click(); return 'ok'; })()",
   );
@@ -2381,7 +2381,7 @@ try {
   );
   const [searchNote, searchedCards] = searchState.split("|");
   log(
-    /^找到 \d+ 条$/.test(searchNote) && Number(searchedCards) > 0 && Number(searchedCards) < 103 && clearedCards === 103,
+    /^找到 \d+ 条$/.test(searchNote) && Number(searchedCards) > 0 && Number(searchedCards) < 116 && clearedCards === 116,
     "搜索：输入「切音」只剩几条，清掉后恢复全部",
     `${searchState} / 清掉后 ${clearedCards}`,
   );
@@ -2409,8 +2409,8 @@ try {
   log(
     onlyNewState.on === "true" &&
       onlyNewState.text.includes("只看没练过的") &&
-      onlyNewState.cards === 102 &&
-      onlyNewState.note === "没练过的 102 条",
+      onlyNewState.cards === 115 &&
+      onlyNewState.note === "没练过的 115 条",
     "节奏页：打开「只看没练过的」就只剩没练过的（练过那条不见了）",
     `${onlyNewState.cards} 张 / ${onlyNewState.note}`,
   );
@@ -5044,6 +5044,62 @@ try {
     stopped.start.includes("开始闯关") && stopped.start.includes("一共答过") && stopped.quizCount === 0,
     "音程闯关：随时能停，停下后给出最长连对与总题数",
     stopped.start,
+  );
+
+  // v0.162.0：旋律节奏（熟悉的旋律 + 三种节奏型）
+  await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
+  await sleep(900);
+  await js(`(() => {
+    const button = [...document.querySelectorAll('.practice-h3 .block-toggle')].find((item) =>
+      item.textContent.includes('旋律节奏'),
+    );
+    button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return 'clicked';
+  })()`);
+  await sleep(900);
+  const melody = JSON.parse(
+    plain(
+      js(`(() => {
+        const block = document.querySelector('#block-melody');
+        const cards = block ? [...block.querySelectorAll('.drill-card')] : [];
+        const first = cards[0];
+        return JSON.stringify({
+          count: cards.length,
+          title: first?.querySelector('h4')?.textContent?.trim() ?? '',
+          lines: first ? [...first.querySelectorAll('.rhythm-count')].map((item) => item.textContent.trim()) : [],
+          image: first?.querySelector('img')?.getAttribute('src') ?? '',
+          tip: first?.querySelector('.pb-line')?.textContent?.trim() ?? '',
+        });
+      })()`),
+    ),
+  );
+  log(
+    melody.count === 13 && melody.image.includes("/scores/md-01.png"),
+    "节奏页：旋律节奏一块有 13 条，第一条是小星星四分音符",
+    JSON.stringify({ count: melody.count, title: melody.title }),
+  );
+  log(
+    melody.lines.some((line) => line.includes("传统儿歌")) && melody.tip.includes("第一遍只看音高"),
+    "节奏页：旋律卡上写着旋律出处、节奏型和怎么练",
+    JSON.stringify(melody.lines),
+  );
+
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(900);
+  const melodyGroup = plain(
+    js(`(() => {
+      const rows = [...document.querySelectorAll('.stat-group')].map((row) => ({
+        name: row.querySelector('.stat-group-name')?.textContent?.trim() ?? '',
+        count: row.querySelector('.stat-group-count')?.textContent?.trim() ?? '',
+      }));
+      const row = rows.find((item) => item.name === '旋律');
+      return JSON.stringify({ found: Boolean(row), count: row?.count ?? '', rows: rows.length });
+    })()`),
+  );
+  log(
+    melodyGroup.includes('"found":true') && melodyGroup.includes("/13"),
+    "统计页：节奏分组里多出「旋律」这一组（13 条）",
+    melodyGroup,
   );
 
 } catch (error) {

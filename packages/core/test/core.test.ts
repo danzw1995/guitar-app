@@ -117,6 +117,7 @@ import {
   INTERVALS,
   intervalTableOf,
   intervalDrillQuestion,
+  MELODY_DRILLS,
   intervalDrillAnswerText,
   intervalQualityRows,
   CHORD_QUALITIES,
@@ -3630,6 +3631,58 @@ test("音程闯关：同一个种子出同一题，答案在选项里、半音�
   const roots = new Set(Array.from({ length: 12 }, (_, index) => intervalDrillQuestion(index, 3).root));
   assert.ok(roots.size >= 3, `根音只有 ${[...roots].join(" ")}`);
 });
+
+test("旋律节奏：每拍一个音、音高都在 1–3 弦 0–12 品，小节时值刚好填满", () => {
+  assert.equal(MELODY_DRILLS.length, 13);
+  assert.equal(new Set(MELODY_DRILLS.map((drill) => drill.id)).size, 13);
+
+  for (const drill of MELODY_DRILLS) {
+    assert.equal(drill.tab.beatsPerBar, 4);
+    assert.equal(drill.tab.bars, 2);
+    assert.ok(drill.tip.length > 0, `${drill.id} 没有提示`);
+    assert.ok(drill.bpm[0] < drill.bpm[1], `${drill.id} 的速度区间反了`);
+
+    const perBar = new Map<number, number>();
+    for (const note of drill.tab.notes) {
+      // 旋律只落在 1–3 弦（高音 E / B / G），且不超过 12 品
+      assert.ok(note.s >= 1 && note.s <= 3, `${drill.id} 跑到 ${note.s} 弦`);
+      assert.ok(note.f >= 0 && note.f <= 12, `${drill.id} 跑到 ${note.f} 品`);
+      const bar = Math.floor(note.beat / 4);
+      perBar.set(bar, (perBar.get(bar) ?? 0) + note.dur);
+    }
+    assert.equal(perBar.size, 2, `${drill.id} 的小节数不对`);
+    for (const [bar, total] of perBar) {
+      // 一小节 4 拍，差一点点都不行（谱面会因为填不满而整张空白）
+      assert.ok(Math.abs(total - 4) < 1e-9, `${drill.id} 第 ${bar + 1} 小节只有 ${total} 拍`);
+    }
+  }
+});
+
+test("旋律节奏：同一条旋律的不同节奏型，拍点上的音高一致", () => {
+  const groups = new Map<string, typeof MELODY_DRILLS>();
+  for (const drill of MELODY_DRILLS) {
+    const name = drill.name.split(" · ")[0];
+    groups.set(name, [...(groups.get(name) ?? []), drill]);
+  }
+  for (const [name, drills] of groups) {
+    assert.ok(drills.length >= 2, `${name} 只有一种节奏型`);
+    // 每一拍的开头那一音：不同节奏型下必须还是同一个音（变的是密度，不是旋律）
+    const starts = drills.map((drill) => {
+      const map = new Map<number, number>();
+      for (const note of drill.tab.notes) {
+        if (!Number.isInteger(note.beat)) continue;
+        map.set(note.beat, note.s * 100 + note.f);
+      }
+      return map;
+    });
+    for (const [beat, value] of starts[0]) {
+      for (const other of starts.slice(1)) {
+        assert.equal(other.get(beat), value, `${name} 第 ${beat + 1} 拍的音高变了`);
+      }
+    }
+  }
+});
+
 
 
 
