@@ -1655,8 +1655,20 @@ expect(
     (narrowDecls(".loop-delta.down").get("color") || "").includes("--accent"),
 );
 
-console.log(`\n${checked - failures.length}/${checked} 项通过`);
-if (failures.length) {
+expect(
+  "音程表一行行读得下来：表格最宽 620，闯关的四个选项够高（≥ 44）",
+  narrowDecls(".interval-table").get("max-width") === "620px" &&
+    Number.parseFloat(narrowDecls(".interval-option").get("min-height")) >= 44,
+);
+
+expect(
+  "次要按钮有自己的样子（不再露浏览器默认灰底），手机上四个选项排两列",
+  px(narrowDecls(".btn-quiet").get("min-height")) === 40 &&
+    (narrowDecls(".btn-quiet").get("border") || "").startsWith("1px solid") &&
+    /repeat\(2,/.test(narrowDecls(".interval-options").get("grid-template-columns") || ""),
+);
+
+console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);
 }

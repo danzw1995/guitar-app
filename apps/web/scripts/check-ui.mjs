@@ -4958,6 +4958,94 @@ try {
   await ab(["open", `${URL}?r=${Date.now()}#stats`]);
   await sleep(200);
 
+  // 17) v0.161.0：音程表 + 音程闯关（无限出题、随时能停）
+  await ab(["open", `${URL}?r=${Date.now()}#scales`]);
+  await sleep(600);
+  const intervalTable = JSON.parse(
+    plain(
+      js(`(() => {
+        const rows = [...document.querySelectorAll('.interval-table tbody tr')].map((row) =>
+          [...row.querySelectorAll('th,td')].map((cell) => cell.textContent.trim()).join('|'),
+        );
+        return JSON.stringify({ rows });
+      })()`),
+    ),
+  );
+  log(
+    intervalTable.rows.length === 7 &&
+      intervalTable.rows[0].includes("大二度") &&
+      intervalTable.rows[3].includes("纯五度") &&
+      intervalTable.rows[6].includes("纯八度"),
+    "音阶页：二度到八度一张表，C 大调那列是 D E F G A B C",
+    intervalTable.rows.map((row) => row.split("|")[3]).join(" "),
+  );
+
+  await js(`(() => {
+    const button = [...document.querySelectorAll('.interval-start button')].find((item) =>
+      item.textContent.includes('开始闯关'),
+    );
+    button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return 'clicked';
+  })()`);
+  await sleep(400);
+  const quiz = JSON.parse(
+    plain(
+      js(`(() => {
+        const question = document.querySelector('.interval-question')?.textContent ?? '';
+        const options = document.querySelectorAll('.interval-option').length;
+        return JSON.stringify({ question, options });
+      })()`),
+    ),
+  );
+  log(
+    quiz.question.includes("为根音") && quiz.question.includes("哪个音") && quiz.options === 4,
+    "音阶页：开始闯关后出题，四个选项",
+    `${quiz.question} · ${quiz.options}`,
+  );
+
+  await js(`(() => {
+    document.querySelector('.interval-option')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return 'clicked';
+  })()`);
+  await sleep(400);
+  const answered = JSON.parse(
+    plain(
+      js(`(() => {
+        const feedback = document.querySelector('.interval-feedback')?.textContent ?? '';
+        const right = document.querySelectorAll('.interval-option.right').length;
+        return JSON.stringify({ feedback, right });
+      })()`),
+    ),
+  );
+  log(
+    answered.feedback.includes("个半音") && answered.right === 1,
+    "音程闯关：答完立刻说对错，还写出「几个半音」",
+    answered.feedback,
+  );
+
+  await js(`(() => {
+    const button = [...document.querySelectorAll('.interval-meta .btn-quiet')].find((item) =>
+      item.textContent.includes('停一下'),
+    );
+    button?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return 'clicked';
+  })()`);
+  await sleep(300);
+  const stopped = JSON.parse(
+    plain(
+      js(`(() => {
+        const start = document.querySelector('.interval-start')?.textContent ?? '';
+        const quizCount = document.querySelectorAll('.interval-question').length;
+        return JSON.stringify({ start, quizCount });
+      })()`),
+    ),
+  );
+  log(
+    stopped.start.includes("开始闯关") && stopped.start.includes("一共答过") && stopped.quizCount === 0,
+    "音程闯关：随时能停，停下后给出最长连对与总题数",
+    stopped.start,
+  );
+
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
   failed += 1;

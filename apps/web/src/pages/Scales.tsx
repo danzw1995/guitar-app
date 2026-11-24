@@ -15,6 +15,7 @@ import {
   solfegeAlternatives,
 } from "@guitar/core";
 import Fretboard from "../components/Fretboard";
+import IntervalDrill from "../components/IntervalDrill";
 import { cellLabel, octaveShiftFor } from "../lib/labels";
 import { loadSettings, type Settings } from "../lib/storage";
 import { useTone } from "../hooks/useTone";
@@ -157,6 +158,8 @@ export default function Scales() {
           })}
         </div>
       )}
+
+      <IntervalDrill />
     </section>
   );
 }

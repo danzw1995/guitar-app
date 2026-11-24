@@ -7,6 +7,7 @@ export * from "./solfege.ts";
 export * from "./chords.ts";
 export * from "./chord-drill.ts";
 export * from "./intervals.ts";
+export * from "./interval-drill.ts";
 export * from "./rhythm.ts";
 export * from "./tab.ts";
 export * from "./alphatex.ts";

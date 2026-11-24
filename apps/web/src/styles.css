@@ -160,6 +160,24 @@ button, select, input { font: inherit; color: inherit; }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn.primary { background: var(--accent); color: var(--on-accent); border-color: transparent; font-weight: 700; }
 .btn.ghost { background: transparent; }
+/* 次要按钮的基础样子（以前只靠各处的上下文样式，没写就露出浏览器默认灰底） */
+.btn-quiet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn-quiet:hover:not(:disabled) { border-color: var(--line-strong); }
+.btn-quiet:disabled { opacity: 0.45; cursor: not-allowed; }
 .muted { color: var(--muted); }
 
 .legend { display: flex; flex-wrap: wrap; gap: 16px; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
@@ -294,6 +312,48 @@ button, select, input { font: inherit; color: inherit; }
 .solfege-cell b { color: var(--text); font-size: 11px; font-weight: 600; }
 .solfege-cell.on { border-color: rgba(88, 166, 255, 0.5); background: rgba(88, 166, 255, 0.1); color: #9ecbff; }
 .solfege-cell.on b { color: #cfe6ff; }
+
+/* interval table + drill (v0.161.0) */
+.interval-block { margin-top: 22px; }
+.interval-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 10px; font-size: 13px; }
+.interval-toolbar select { min-height: 40px; }
+.interval-table { width: 100%; max-width: 620px; border-collapse: collapse; font-size: 13px; }
+.interval-table th,
+.interval-table td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+.interval-table thead th { color: var(--muted); font-size: 11px; font-weight: 600; }
+.interval-table tbody th { font-weight: 600; color: var(--muted); white-space: nowrap; }
+.interval-table b { color: var(--accent); }
+.interval-semi { color: var(--muted); font-variant-numeric: tabular-nums; }
+.interval-quality { margin: 12px 0 0; font-size: 13px; }
+.interval-quality summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; color: var(--muted); }
+.interval-quality ul { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 6px; }
+.interval-quality li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.interval-quality li > .muted { min-width: 44px; font-size: 12px; }
+.interval-qchip { padding: 1px 8px; border-radius: 999px; background: rgba(139, 148, 158, 0.14); font-size: 12px; white-space: nowrap; }
+.interval-qchip em { color: var(--muted); font-style: normal; font-variant-numeric: tabular-nums; }
+.interval-start { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.interval-start .btn { min-height: 40px; }
+.interval-quiz { display: grid; gap: 10px; max-width: 620px; }
+.interval-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.interval-meta .btn-quiet { min-height: 40px; }
+.interval-question { margin: 0; font-size: 15px; }
+.interval-question b { color: var(--accent); }
+.interval-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.interval-option {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2);
+  color: var(--text); font: inherit; font-size: 14px; cursor: pointer; text-align: left;
+}
+.interval-option i { color: var(--muted); font-style: normal; font-size: 11px; }
+.interval-option:hover { border-color: rgba(88, 166, 255, 0.5); }
+.interval-option.right { border-color: rgba(63, 185, 80, 0.7); background: rgba(63, 185, 80, 0.14); }
+.interval-option.wrong { border-color: rgba(232, 176, 75, 0.7); background: rgba(232, 176, 75, 0.12); }
+.interval-option.dim { opacity: 0.55; }
+.interval-feedback { margin: 0; font-size: 13px; }
+.interval-feedback.right { color: var(--green); }
+.interval-feedback.wrong { color: var(--accent); }
+.interval-feedback .btn-quiet { margin-left: 8px; min-height: 40px; }
+
 
 /* chords */
 .chord-layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; margin-top: 14px; }
@@ -6498,3 +6558,10 @@ button.steady-best-tag:hover {
   }
 }
 
+
+/* v0.161.0：手机上音程闯关的四个选项排成两列，别挤成三列 */
+@media (max-width: 720px) {
+  .interval-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .interval-table th,
+  .interval-table td { padding: 6px 6px; }
+}

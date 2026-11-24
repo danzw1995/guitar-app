@@ -115,6 +115,10 @@ import {
 import {
   CIRCLE,
   INTERVALS,
+  intervalTableOf,
+  intervalDrillQuestion,
+  intervalDrillAnswerText,
+  intervalQualityRows,
   CHORD_QUALITIES,
   circleKey,
   circleQuestion,
@@ -3579,6 +3583,52 @@ test("弹给节拍器听：预备拍不进统计，离谱的一下丢掉，太�
   // 少于 4 下：不给结论
   assert.equal(analyzeTiming([0, interval], bpm), null);
   assert.equal(analyzeTiming(onsets, 0), null);
+});
+
+test("音程表：一个调里从二度到八度，音名按调内拼写", () => {
+  const c = intervalTableOf("C");
+  assert.equal(c.root, "C");
+  assert.deepEqual(c.rows.map((row) => row.note), ["D", "E", "F", "G", "A", "B", "C"]);
+  assert.deepEqual(c.rows.map((row) => row.label), [
+    "大二度", "大三度", "纯四度", "纯五度", "大六度", "大七度", "纯八度",
+  ]);
+  assert.deepEqual(c.rows.map((row) => row.semitones), [2, 4, 5, 7, 9, 11, 12]);
+  assert.deepEqual(c.rows.map((row) => row.degree), [2, 3, 4, 5, 6, 7, 8]);
+
+  // Eb 调写 Ab / Bb，而不是 G# / A#
+  const eb = intervalTableOf("Eb");
+  assert.equal(eb.root, "Eb");
+  assert.deepEqual(eb.rows.map((row) => row.note), ["F", "G", "Ab", "Bb", "C", "D", "Eb"]);
+
+  // 同一个度数上的另一种（大/小/纯/增/减）
+  const quality = intervalQualityRows();
+  assert.equal(quality.length, 7);
+  assert.deepEqual(quality[0].items.map((item) => item.name), ["小二度", "大二度"]);
+  assert.deepEqual(quality[1].items.map((item) => item.name), ["小三度", "大三度"]);
+  assert.deepEqual(quality[6].items.map((item) => item.name), ["纯八度"]);
+});
+
+test("音程闯关：同一个种子出同一题，答案在选项里、半音数对得上", () => {
+  for (let index = 0; index < 24; index += 1) {
+    const a = intervalDrillQuestion(index, 7);
+    const b = intervalDrillQuestion(index, 7);
+    assert.deepEqual(a, b);
+    assert.ok(a.options.includes(a.answer), "答案要在选项里");
+    assert.equal(new Set(a.options).size, 4);
+    assert.ok(a.degree >= 2 && a.degree <= 8);
+
+    const table = intervalTableOf(a.keyId);
+    const row = table.rows.find((item) => item.degree === a.degree)!;
+    assert.equal(a.answer, row.note);
+    assert.equal(a.semitones, row.semitones);
+    // 四个选项都在这个调里，考的是「几度是哪个音」，不是认不认识的音
+    for (const option of a.options) assert.ok(table.rows.some((item) => item.note === option));
+    assert.match(intervalDrillAnswerText(a), /个半音/);
+  }
+
+  // 换个种子应该能落到不同的根音上
+  const roots = new Set(Array.from({ length: 12 }, (_, index) => intervalDrillQuestion(index, 3).root));
+  assert.ok(roots.size >= 3, `根音只有 ${[...roots].join(" ")}`);
 });
 
 
