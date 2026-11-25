@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.164.0`，core `0.59.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.165.0`，core `0.60.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -196,6 +196,13 @@ v0.164.0 给 `generate.ts` 加了 `generateMelodyPiece()` / `MELODY_CHOICES` / `
 id `genm-<旋律>-<技巧>-<档>-<号>-<小节>`。前端生成面板加「素材」切换与「跟练」按钮；
 跟练记录多存一个 `title`（`RhythmRecord` 早就有的字段，这次真的写进去），生成谱过一天在统计页
 也能认得出是哪一条。存储结构没变（还是 `guitar.rhythm.v1` / `guitar.scores.v1`）。
+
+v0.165.0 把旋律骨架抽成共用体 `melodyPieceOf`（骨架凑成 4 的倍数拍），给 `generate.ts` 加了
+`MelodyLine` / `generateMelodyLinePiece()`——拿自己存的谱当骨架（id `genl-…`），新增导出算 MINOR，
+core 到 `0.60.0`。前端：生成面板素材加「我存的谱」（`lineOfScore()` 一拍取最高音、休止拿前一个音
+顶上）；点「跟练」没存过就顺手存一份（按标题查重）；上次选的素材 / 技能 / 档位 / 长度写进
+`guitar.settings.v1` 的 `genMode` / `genSkill` / `genMelody` / `genTech` / `genDensity` / `genBars` /
+`genMelodyBars`（`loadSettings` 逐项校验）。内置旋律那支（`genm-…`）行为不变。
 
 v0.161.0 给 core 加了 `interval-drill.ts`（`intervalTableOf` / `intervalQualityRows` / `intervalDrillQuestion` /
 `intervalDrillAnswerText` / `INTERVAL_KEYS`），新增导出算 MINOR，core 到 `0.56.0`；前端只多了音阶页的

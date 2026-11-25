@@ -58,6 +58,20 @@ export interface Settings {
   steadyClear: "all" | 5 | 10;
   /** 「稳不稳」上次数的小节数。 */
   steadyBars: number;
+  /** 生成面板上次选的素材（v0.165.0）：自己生成 / 熟悉旋律 / 我存的谱。 */
+  genMode: "skill" | "melody" | "my";
+  /** 生成面板上次选的技能（`SKILLS` 的 id，认不出来当四分）。 */
+  genSkill: string;
+  /** 生成面板上次选的内置旋律（认不出来当第一条）。 */
+  genMelody: string;
+  /** 生成面板上次叠的技巧。 */
+  genTech: "slide" | "hammer";
+  /** 生成面板上次的难度档。 */
+  genDensity: 1 | 2 | 3;
+  /** 自己生成时上次的长度（小节）。 */
+  genBars: number;
+  /** 旋律 / 我存的谱上次的长度（小节）。 */
+  genMelodyBars: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -71,6 +85,13 @@ export const DEFAULT_SETTINGS: Settings = {
   steadyBpm: 70,
   steadyClear: "all",
   steadyBars: 4,
+  genMode: "skill",
+  genSkill: "quarter",
+  genMelody: "",
+  genTech: "slide",
+  genDensity: 2,
+  genBars: 4,
+  genMelodyBars: 4,
 };
 
 function readJson(key: string): unknown {
@@ -573,6 +594,22 @@ export function loadSettings(): Settings {
   const steadyBars = [2, 4, 6, 8].includes(steadyBarsRaw) ? steadyBarsRaw : DEFAULT_SETTINGS.steadyBars;
   const theme: ThemeMode =
     v.theme === "dark" || v.theme === "light" ? v.theme : "auto";
+  const genMode: Settings["genMode"] =
+    v.genMode === "melody" || v.genMode === "my" ? v.genMode : "skill";
+  const genSkill =
+    typeof v.genSkill === "string" &&
+    ["quarter", "eighth", "slide", "hammer", "strum"].includes(v.genSkill)
+      ? v.genSkill
+      : "quarter";
+  const genMelody = typeof v.genMelody === "string" ? v.genMelody.slice(0, 40) : "";
+  const genTech: "slide" | "hammer" = v.genTech === "hammer" ? "hammer" : "slide";
+  const genDensityRaw = Number(v.genDensity);
+  const genDensity: 1 | 2 | 3 =
+    genDensityRaw === 1 || genDensityRaw === 3 ? genDensityRaw : 2;
+  const genBarsRaw = Number(v.genBars);
+  const genBars = [4, 8].includes(genBarsRaw) ? genBarsRaw : 4;
+  const genMelodyBarsRaw = Number(v.genMelodyBars);
+  const genMelodyBars = [2, 4, 8].includes(genMelodyBarsRaw) ? genMelodyBarsRaw : 4;
 
   return {
     strictSpelling: v.strictSpelling === true,
@@ -585,6 +622,13 @@ export function loadSettings(): Settings {
     steadyClear,
     steadyBars,
     theme,
+    genMode,
+    genSkill,
+    genMelody,
+    genTech,
+    genDensity,
+    genBars,
+    genMelodyBars,
   };
 }
 
@@ -600,6 +644,13 @@ export function saveSettings(settings: Settings): void {
     steadyClear: settings.steadyClear,
     steadyBars: settings.steadyBars,
     theme: settings.theme,
+    genMode: settings.genMode,
+    genSkill: settings.genSkill,
+    genMelody: settings.genMelody,
+    genTech: settings.genTech,
+    genDensity: settings.genDensity,
+    genBars: settings.genBars,
+    genMelodyBars: settings.genMelodyBars,
   });
 }
 

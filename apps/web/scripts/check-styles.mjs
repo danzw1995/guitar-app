@@ -1676,6 +1676,12 @@ expect(
     anyDecls(".generate-score img").get("height") === "auto",
 );
 
+expect(
+  "生成谱那块：没有能当骨架的谱时给的是一句灰字说明，不是空白",
+  px(anyDecls(".generate-none").get("font-size")) <= 13 &&
+    anyDecls(".generate-none").get("color") === "var(--muted)",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

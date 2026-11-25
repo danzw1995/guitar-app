@@ -300,30 +300,67 @@ export const MELODY_CHOICES = FAMILIAR.map((melody) => ({
     melody.id === "star" ? "传统儿歌" : melody.id === "joy" ? "贝多芬主题" : melody.id === "tiger" ? "法国民歌" : "熟悉旋律",
 }));
 
+/** 我存的谱抽出来的旋律线（v0.165.0）：id 是「我的谱」那一条的 id，midis 一拍一个音。 */
+export interface MelodyLine {
+  id: string;
+  name: string;
+  midis: number[];
+}
+
+export interface MelodyLineOptions {
+  tech: MelodyTech;
+  density: MelodyDensity;
+  seed: number;
+  bars: number;
+}
+
+/** 一支骨架旋律生成时要用的全部信息。 */
+interface MelodyBase {
+  /** 进 id 和 rng 的盐（收成小写字母数字与横线）。 */
+  key: string;
+  name: string;
+  /** hint 开头那句「XX的骨架」。 */
+  hintSource: string;
+  /** 一轮的骨架，一拍一个音；不足 4 拍会补齐、超过 64 拍会截断，再凑成 4 的倍数。 */
+  line: number[];
+  /** id 前缀：内置旋律 genm，我存的谱 genl。 */
+  prefix: string;
+}
+
 /**
- * 熟悉旋律做骨架、技巧叠上去（v0.164.0）。
+ * 旋律做骨架、技巧叠上去（v0.164.0；v0.165.0 抽出来给「我存的谱」复用）。
  *
- * 旋律每轮 2 小节（一拍一个音），重复到要的长度；整条放在同一根弦上，
- * 击勾弦才有「同一根弦的前一个音」可接。候选分两种：
+ * 骨架一拍一个音，重复到要的长度；整条放在同一根弦上时击勾弦才有
+ * 「同一根弦的前一个音」可接，放不下（音域太宽）就散开落弦、同弦相邻处才有击勾候选。
+ * 候选分两种：
  *   - 相邻两个音品差 2–4：击弦（往上）/ 勾弦（往下）；
  *   - 品 ≥ 2 的音：从下面 2–3 品滑进来。
  * 密度是「候选里挑几成」：轻松 1/3、标准 2/3、加密全上——加密档
  * 两种技巧都叠（被击勾弦吃掉的音就不再滑音进）。
  */
-export function generateMelodyPiece(options: MelodyPieceOptions): GeneratedPiece {
-  const melody = FAMILIAR.find((item) => item.id === options.melodyId) ?? FAMILIAR[0];
+function melodyPieceOf(
+  base: MelodyBase,
+  options: { tech: MelodyTech; density: MelodyDensity; seed: number; bars: number },
+): GeneratedPiece {
   const tech: MelodyTech = options.tech === "hammer" ? "hammer" : "slide";
   const density: MelodyDensity = options.density === 3 ? 3 : options.density === 2 ? 2 : 1;
   const skill = SKILL_BY_ID.get(tech) ?? SKILLS[0];
-  const reps = Math.max(1, Math.min(8, Math.round(options.bars / 2) || 1));
-  const bars = reps * 2;
-  const rng = randomOf(Math.abs(Math.round(options.seed)) + melody.id.length * 613);
+
+  // 骨架凑成 4 的倍数拍：小节才填得满（多出来的尾巴剪掉，太短的补齐）
+  const line = base.line.slice(0, 64);
+  while (line.length > 4 && line.length % 4 !== 0) line.pop();
+  while (line.length < 4) line.push(...line.slice(0, 4 - line.length));
+
+  const reps = Math.max(
+    1,
+    Math.min(Math.floor(64 / line.length), Math.ceil((Math.max(2, options.bars) * 4) / line.length)),
+  );
+  const bars = (line.length * reps) / 4;
+  const rng = randomOf(Math.abs(Math.round(options.seed)) + base.key.length * 613);
 
   // 整条旋律放同一根弦（3 弦优先试试，放不下换 2 弦）：击勾弦要「同一根弦的前一个音」
   const midis: number[] = [];
-  for (let rep = 0; rep < reps; rep += 1) {
-    for (const degree of melody.degrees) midis.push(DEGREES[Math.max(0, Math.min(7, degree))]);
-  }
+  for (let rep = 0; rep < reps; rep += 1) midis.push(...line);
   const onString = (s: number) => midis.every((midi) => {
     const fret = midi - OPEN[s - 1];
     return fret >= 0 && fret <= 12;
@@ -402,20 +439,61 @@ export function generateMelodyPiece(options: MelodyPieceOptions): GeneratedPiece
     beatsPerBar: 4,
     bars,
     bpm: [skill.bpm[0], skill.bpm[0]],
-    caption: `${melody.name} · ${MELODY_TECH_LABEL[tech]}`,
+    caption: `${base.name} · ${MELODY_TECH_LABEL[tech]}`,
   });
 
   return {
-    id: `genm-${melody.id}-${tech}-${density}-${options.seed}-${bars}`,
+    id: `${base.prefix}-${base.key}-${tech}-${density}-${options.seed}-${bars}`,
     skill: "melody",
     seed: options.seed,
     bars,
     meter: "4/4",
     bpm: skill.bpm,
-    title: `生成 · ${melody.name} · ${MELODY_TECH_LABEL[tech]} · ${bars} 小节`,
-    hint: `${melody.source}的骨架。${skill.tip}${density === 3 ? "加密档击勾弦和滑音都叠上了。" : ""}`,
+    title: `生成 · ${base.name} · ${MELODY_TECH_LABEL[tech]} · ${bars} 小节`,
+    hint: `${base.hintSource}。${skill.tip}${density === 3 ? "加密档击勾弦和滑音都叠上了。" : ""}`,
     tab,
   };
+}
+
+/** 熟悉旋律做骨架（v0.164.0）。 */
+export function generateMelodyPiece(options: MelodyPieceOptions): GeneratedPiece {
+  const melody = FAMILIAR.find((item) => item.id === options.melodyId) ?? FAMILIAR[0];
+  return melodyPieceOf(
+    {
+      key: melody.id,
+      name: melody.name,
+      hintSource: `${melody.source}的骨架`,
+      line: melody.degrees.map((degree) => DEGREES[Math.max(0, Math.min(7, degree))]),
+      prefix: "genm",
+    },
+    options,
+  );
+}
+
+/**
+ * 拿自己存的谱当骨架（v0.165.0）。
+ *
+ * midis 夹进 1–3 弦 0–12 品弹得到的范围（40–76）；音域跨得太大时整条放不进
+ * 同一根弦，会散开落弦——击勾候选只剩同弦相邻处，滑音照常。其余与熟悉旋律
+ * 同一条路：同种子每次都一样、可弹性检查照样过。
+ */
+export function generateMelodyLinePiece(line: MelodyLine, options: MelodyLineOptions): GeneratedPiece {
+  const midis = line.midis
+    .map((midi) => Math.max(40, Math.min(76, Math.round(Number(midi)))))
+    .filter((midi) => Number.isFinite(midi));
+  const name = line.name.trim().slice(0, 24) || "我存的谱";
+  const key =
+    line.id.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "line";
+  return melodyPieceOf(
+    {
+      key,
+      name,
+      hintSource: `自己存的谱「${name.slice(0, 12)}」的骨架`,
+      line: midis.length > 0 ? midis : [60, 60, 60, 60],
+      prefix: "genl",
+    },
+    options,
+  );
 }
 
 export interface PieceCheck {

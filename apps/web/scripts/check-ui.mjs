@@ -5106,7 +5106,10 @@ try {
   js(
     `(() => {
       sessionStorage.setItem('chk10.scores', localStorage.getItem('guitar.scores.v1') ?? '');
+      sessionStorage.setItem('chk10.settings', localStorage.getItem('guitar.settings.v1') ?? '');
       localStorage.removeItem('guitar.scores.v1');
+      // 生成面板会记住上次选的（v0.165.0）：拿掉设置，从默认的「自己生成」开始
+      localStorage.removeItem('guitar.settings.v1');
       location.hash = '#rhythm';
       return 'ok';
     })()`,
@@ -5161,7 +5164,7 @@ try {
   );
   log(
     gen.found === true &&
-      gen.chips === 7 &&
+      gen.chips === 8 &&
       String(gen.picked).includes("自己生成") &&
       String(gen.picked).includes("四分音符") &&
       gen.image === true &&
@@ -5269,6 +5272,139 @@ try {
       };
       put('guitar.rhythm.v1', sessionStorage.getItem('chk11.rhythm'));
       sessionStorage.removeItem('chk11.rhythm');
+      return 'restored';
+    })()`,
+  );
+
+  // 17c) v0.165.0：我存的谱当骨架、跟练顺手存一份、记住上次选的
+  js(
+    `(() => {
+      const notes = [];
+      const frets = [3, 5, 7, 8, 7, 5, 3, 0];
+      frets.forEach((f, index) => notes.push({ s: 1, f, beat: index, dur: 1 }));
+      localStorage.setItem('guitar.scores.v1', JSON.stringify([{
+        id: 'my-seed1',
+        title: '测试骨架段',
+        ascii: '',
+        source: 'transcribe',
+        tab: { beatsPerBar: 4, bars: 2, notes },
+        meter: '4/4',
+        bpm: 60,
+        createdAt: Date.now(),
+      }]));
+      location.hash = '#rhythm';
+      return 'ok';
+    })()`,
+  );
+  await ab(["reload"]);
+  await sleep(1200);
+  js("(() => { document.querySelector('[data-generate]')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(400);
+  js("(() => { const b = document.querySelector('.generate-start'); b?.click(); return 'ok'; })()");
+  // 切到「我存的谱」，骨架 chip 落在种进去那条上
+  js(
+    `(() => {
+      const b = [...document.querySelectorAll('[data-generate] .generate-skills .chip')].find((node) => (node.textContent ?? '').includes('我存的谱'));
+      b?.click();
+      return 'ok';
+    })()`,
+  );
+  for (let round = 0; round < 12; round += 1) {
+    const ready = plain(
+      js(`(() => {
+        const meta = document.querySelector('[data-generate] .generate-meta')?.textContent ?? '';
+        return meta.includes('测试骨架段') && Boolean(document.querySelector('[data-generate] .generate-score img')) ? '1' : '0';
+      })()`),
+    );
+    if (ready === "1") break;
+    await sleep(400);
+  }
+  const myPanel = plain(
+    js(`(() => {
+      const panel = document.querySelector('[data-generate]');
+      const picked = [...(panel?.querySelectorAll('.generate-skills .chip[aria-pressed="true"]') ?? [])].map((chip) => chip.textContent?.trim() ?? '').join('|');
+      const meta = panel?.querySelector('.generate-meta')?.textContent?.trim() ?? '';
+      const mode = JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}').genMode ?? '';
+      const img = panel?.querySelector('.generate-score img');
+      return JSON.stringify({ picked, meta, mode, image: Boolean(img) });
+    })()`),
+  );
+  const gen4 = JSON.parse(myPanel);
+  // 点「跟练」：没存过就顺手存一份，跟练面板开着、列表里多一张
+  js(
+    `(() => {
+      const b = [...document.querySelectorAll('[data-generate] .generate-actions .btn')].find((node) => (node.textContent ?? '').includes('跟练'));
+      b?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(1200);
+  const afterFollow = plain(
+    js(`(() => {
+      const follow = document.querySelector('.follow');
+      const cards = [...document.querySelectorAll('.my-card h4')].map((head) => head.textContent?.trim() ?? '');
+      const note = document.querySelector('[data-generate] .generate-note')?.textContent?.trim() ?? '';
+      return JSON.stringify({ head: follow?.querySelector('h3')?.textContent?.trim() ?? '', cards: cards.length, note });
+    })()`),
+  );
+  const gen5 = JSON.parse(afterFollow);
+  js(`(() => { const b = [...document.querySelectorAll('.follow .btn')].find((node) => (node.textContent ?? '').includes('收起')); b?.click(); return 'ok'; })()`);
+  await sleep(400);
+  // 换到「加密」档（写设置），重开一遍还得记得：素材还是我存的谱、档位还是加密
+  js(
+    `(() => {
+      const b = [...document.querySelectorAll('[data-generate] .generate-skills .chip')].find((node) => (node.textContent ?? '').includes('加密'));
+      b?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(400);
+  await ab(["reload"]);
+  await sleep(1200);
+  js("(() => { document.querySelector('[data-generate]')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(400);
+  js("(() => { const b = document.querySelector('.generate-start'); b?.click(); return 'ok'; })()");
+  for (let round = 0; round < 12; round += 1) {
+    const ready = plain(
+      js(`(() => {
+        const picked = [...document.querySelectorAll('[data-generate] .generate-skills .chip[aria-pressed="true"]')].map((chip) => chip.textContent?.trim() ?? '').join('|');
+        return picked.includes('我存的谱') && picked.includes('加密') && picked.includes('测试骨架段') ? '1' : '0';
+      })()`),
+    );
+    if (ready === "1") break;
+    await sleep(400);
+  }
+  const remembered = plain(
+    js(`(() => {
+      const picked = [...document.querySelectorAll('[data-generate] .generate-skills .chip[aria-pressed="true"]')].map((chip) => chip.textContent?.trim() ?? '').join('|');
+      return picked;
+    })()`),
+  );
+  log(
+    gen4.picked.includes("我存的谱") &&
+      gen4.picked.includes("测试骨架段") &&
+      gen4.meta.includes("测试骨架段") &&
+      gen4.mode === "my" &&
+      gen4.image === true &&
+      gen5.head.includes("测试骨架段") &&
+      gen5.cards === 2 &&
+      gen5.note.includes("顺手存进") &&
+      remembered.includes("我存的谱") &&
+      remembered.includes("加密"),
+    "我的谱：自己存的谱当骨架、跟练顺手存一份、重开还记得上次的选法（v0.165.0）",
+    `${gen4.meta} · 跟练「${gen5.head}」 · 卡片 ${gen5.cards} 张 · 记住「${remembered}」`,
+  );
+  // 种子数据放回去（17a 存的备份在这里统一还）
+  await js(
+    `(() => {
+      const put = (key, stored) => {
+        if (stored) localStorage.setItem(key, stored);
+        else localStorage.removeItem(key);
+      };
+      put('guitar.scores.v1', sessionStorage.getItem('chk10.scores'));
+      put('guitar.settings.v1', sessionStorage.getItem('chk10.settings'));
+      sessionStorage.removeItem('chk10.scores');
+      sessionStorage.removeItem('chk10.settings');
       return 'restored';
     })()`,
   );

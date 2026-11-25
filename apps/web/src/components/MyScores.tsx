@@ -741,7 +741,7 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
         <code>-</code> 是延音，用 <code>|</code> 分小节；时值看列距，不写符号。
         开头可以写 <code>title:</code>、<code>tempo:</code>、<code>ts: 4/4</code>。
       </p>
-      <Generate follow={follow} best={best} />
+      <Generate follow={follow} best={best} scores={scores} />
       <div className="my-examples">
         <span className="my-examples-label">不会写？先拿一个改：</span>
         {EXAMPLES.map((example) => (

@@ -4456,6 +4456,11 @@ button.steady-best-tag:hover {
   color: var(--muted);
   font-size: 12px;
 }
+.generate-none {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
 .my-editor {
   display: grid;
   gap: 10px;

@@ -123,6 +123,7 @@ import {
   CHORD_QUALITIES,
   generatePiece,
   generateMelodyPiece,
+  generateMelodyLinePiece,
   MELODY_CHOICES,
   checkPiece,
   SKILLS,
@@ -3803,6 +3804,42 @@ test("生成谱：旋律骨架每小节填满、一拍一个音，加密档两�
   assert.ok(countTech(heavy, "h") + countTech(heavy, "p") > countTech(light, "h") + countTech(light, "p"), "加密档的击勾弦没有变多");
   assert.ok(countTech(heavy, "s") > 0, "加密档没有滑音");
   assert.ok(countTech(light, "s") === 0, "轻松档（击勾弦）不该出现滑音");
+});
+
+test("生成谱：我存的谱当骨架，也能叠上滑音击勾弦", () => {
+  // C E G C' B A F E：一个八度上下，3 弦放得下，品差 2–4 的击勾候选有好几处
+  const line = { id: "my-abc", name: "自己扒的片段", midis: [60, 64, 67, 72, 71, 69, 65, 62] };
+  for (const tech of ["slide", "hammer"] as const) {
+    for (const density of [1, 2, 3] as const) {
+      const piece = generateMelodyLinePiece(line, { tech, density, seed: 5, bars: 4 });
+      const check = checkPiece(piece);
+      assert.ok(check.ok, `my ${tech} ${density}：${check.problems.join("；")}`);
+      assert.equal(piece.skill, "melody");
+      assert.equal(piece.tab.bars, 4);
+      assert.ok(piece.id.startsWith(`genl-my-abc-${tech}-${density}-`), `id 前缀不对：${piece.id}`);
+      assert.ok(piece.title.includes("自己扒的片段"), `标题里没有谱名：${piece.title}`);
+      assert.ok(piece.hint.startsWith("自己存的谱「自己扒的片段」的骨架"), `hint 不对：${piece.hint}`);
+    }
+  }
+  // 同种子每次都一样
+  assert.deepEqual(
+    generateMelodyLinePiece(line, { tech: "slide", density: 2, seed: 5, bars: 4 }).tab.notes,
+    generateMelodyLinePiece(line, { tech: "slide", density: 2, seed: 5, bars: 4 }).tab.notes,
+  );
+
+  // 音域跨得太宽（夹进 40–76 后整条放不进同一根弦）就散开落弦，滑音照常、击勾只剩同弦相邻处
+  const wild = generateMelodyLinePiece(
+    { id: "Wide Line!", name: "跨度很大", midis: [30, 100, 55, -8, 88, 40] },
+    { tech: "slide", density: 3, seed: 11, bars: 4 },
+  );
+  assert.ok(checkPiece(wild).ok, checkPiece(wild).problems.join("；"));
+  assert.ok(wild.tab.notes.some((note) => note.tech === "s"), "宽音域一条里没有滑音");
+
+  // 不足 4 拍的线会补齐到 4 拍；1 小节抬到 2、99 压到 16
+  const short = generateMelodyLinePiece({ id: "s", name: "短", midis: [60, 64] }, { tech: "hammer", density: 2, seed: 9, bars: 4 });
+  assert.ok(checkPiece(short).ok, short ? checkPiece(short).problems.join("；") : "");
+  assert.equal(generateMelodyLinePiece(line, { tech: "slide", density: 1, seed: 2, bars: 1 }).tab.bars, 2);
+  assert.equal(generateMelodyLinePiece(line, { tech: "slide", density: 1, seed: 2, bars: 99 }).tab.bars, 16);
 });
 
 
