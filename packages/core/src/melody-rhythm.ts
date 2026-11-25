@@ -66,7 +66,8 @@ const MAJOR_STEPS = [0, 2, 4, 5, 7, 9, 11, 12];
 /** 1–3 弦的空弦音高（1 = 高音 E）。 */
 const OPEN: Record<number, number> = { 1: 64, 2: 59, 3: 55 };
 
-interface Melody {
+/** 一条旋律骨架：`degrees` 是「每拍一个调内级数（0 = C4）」。 */
+export interface Melody {
   id: string;
   name: string;
   source: string;
@@ -76,7 +77,8 @@ interface Melody {
   note?: string;
 }
 
-const FAMILIAR: Melody[] = [
+/** 公有领域的熟悉旋律（v0.164.0 起给「按技能生成」当骨架用，所以导出）。 */
+export const FAMILIAR: Melody[] = [
   {
     id: "star",
     name: "小星星",

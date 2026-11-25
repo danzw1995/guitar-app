@@ -1,20 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SKILLS, checkPiece, generatePiece, tabAriaLabel, tabToAlphaTex, type SkillId } from "@guitar/core";
+import {
+  MELODY_CHOICES,
+  MELODY_DENSITY_LABEL,
+  MELODY_TECH_LABEL,
+  SKILLS,
+  checkPiece,
+  generateMelodyPiece,
+  generatePiece,
+  tabAriaLabel,
+  tabToAlphaTex,
+  type MelodyDensity,
+  type MelodyTech,
+  type SkillId,
+} from "@guitar/core";
 import { useScoreImage } from "../hooks/useScoreImage";
 import { useTone } from "../hooks/useTone";
 import { addScore } from "../lib/my-scores";
+import type { FollowTarget } from "./FollowAlong";
 
 /**
- * 按技能生成谱（v0.163.0）。
+ * 按技能生成谱（v0.163.0；v0.164.0 加了「熟悉旋律」一支和「跟练」入口）。
  *
  * 「我的谱」这一页对初学者其实很难：写不出、也编配不好。所以这里给一条更短的路：
- * 先选一个技能（四分、八分、滑音、击勾弦、扫弦），选长度，系统按乐理约束生成一段
- * 能弹的谱——看完不满意就「换一条」，觉得有意思就存进「我的谱」接着跟练。
+ *   - 自己生成：选一个技能（四分、八分、滑音、击勾弦、扫弦），选长度，系统按乐理
+ *     约束生成一段能弹的谱；
+ *   - 熟悉旋律：小星星 / 欢乐颂 / 两只老虎做骨架，在上面叠滑音或击勾弦——
+ *     旋律是现成的，只需要管新技巧。
  *
- * 谱是本地算出来的（`generatePiece()`，同一个种子每次都一样），不联网、不用模型；
- * 生成完还要过一遍 `checkPiece()` 的可弹性检查，出问题会直接说出来而不是悄悄画上去。
+ * 谱是本地算出来的（同一个种子每次都一样），不联网、不用模型；生成完还要过一遍
+ * `checkPiece()` 的可弹性检查，出问题会直接说出来而不是悄悄画上去。
+ * 生成完可以直接进跟练，最高速度记在这条谱自己的记录里。
  */
 const LENGTHS = [4, 8];
+const MELODY_LENGTHS = [2, 4, 8];
 
 const LEVEL_LABEL: Record<number, string> = {
   1: "入门",
@@ -24,9 +42,22 @@ const LEVEL_LABEL: Record<number, string> = {
   5: "挑战",
 };
 
-export default function Generate() {
+interface Props {
+  /** 进跟练（v0.164.0）：「我的谱」那一页已经有一份现成的 follow。 */
+  follow?: (target: FollowTarget) => void;
+  /** 这条谱练到的最高速度（v0.164.0）。 */
+  best?: (id: string) => number | undefined;
+}
+
+export default function Generate({ follow, best }: Props) {
+  // 「素材」从哪来：自己生成，还是拿熟悉旋律当骨架（v0.164.0）
+  const [mode, setMode] = useState<"skill" | "melody">("skill");
   const [skill, setSkill] = useState<SkillId>("quarter");
   const [bars, setBars] = useState(4);
+  const [melodyId, setMelodyId] = useState<string>(MELODY_CHOICES[0]?.id ?? "star");
+  const [tech, setTech] = useState<MelodyTech>("slide");
+  const [density, setDensity] = useState<MelodyDensity>(2);
+  const [melodyBars, setMelodyBars] = useState(4);
   const [seed, setSeed] = useState(3);
   const [note, setNote] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -38,13 +69,21 @@ export default function Generate() {
   toneRef.current = tone;
   const stopTimer = useRef<number | null>(null);
 
-  const piece = useMemo(() => generatePiece(skill, seed, bars), [skill, seed, bars]);
+  const piece = useMemo(
+    () =>
+      mode === "melody"
+        ? generateMelodyPiece({ melodyId, tech, density, seed, bars: melodyBars })
+        : generatePiece(skill, seed, bars),
+    [mode, melodyId, tech, density, seed, melodyBars, skill, bars],
+  );
   const check = useMemo(() => checkPiece(piece), [piece]);
   // 画布给宽一点：四小节一行放得下，八小节折成两行（窄画布会被折成三行，卡片长得离谱）
   const tex = useMemo(() => tabToAlphaTex(piece.tab), [piece]);
   const label = useMemo(() => tabAriaLabel(piece.tab), [piece]);
   const { image, error: imageError } = useScoreImage(started ? tex : null, 820, 1000);
-  const info = SKILLS.find((item) => item.id === skill) ?? SKILLS[0];
+  const info = SKILLS.find((item) => item.id === piece.skill) ?? SKILLS[0];
+  const melody = MELODY_CHOICES.find((item) => item.id === melodyId) ?? MELODY_CHOICES[0];
+  const high = best ? best(piece.id) : undefined;
 
   // 离开这一页 / 换技能换速度时把正在响的停下，否则会跟新的一条叠在一起
   useEffect(() => () => {
@@ -55,7 +94,7 @@ export default function Generate() {
   useEffect(() => {
     toneRef.current.stop();
     setPlaying(false);
-  }, [skill, seed, bars]);
+  }, [piece]);
 
   function nextSeed() {
     setStarted(true);
@@ -80,6 +119,18 @@ export default function Generate() {
     stopTimer.current = window.setTimeout(() => setPlaying(false), seconds * 1000);
   }
 
+  function practice() {
+    if (!follow) return;
+    follow({
+      id: piece.id,
+      name: piece.title,
+      bpm: [piece.bpm[0], piece.bpm[1]],
+      tab: piece.tab,
+      meter: piece.meter,
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function save() {
     addScore({
       title: `${piece.title} · ${seed} 号`,
@@ -96,39 +147,124 @@ export default function Generate() {
   return (
     <div className="generate" data-generate="">
       <p className="generate-hint">
-        写不出也没关系：选一个技能，系统按乐理规则编一段能弹的谱给你。
+        写不出也没关系：选一个技能，系统按乐理规则编一段能弹的谱；也可以拿熟悉的旋律当骨架，往上叠技巧。
       </p>
-      <div className="generate-skills" role="group" aria-label="想练哪个技能">
-        {SKILLS.map((item) => (
+      <div className="generate-skills" role="group" aria-label="素材从哪来">
+        {(
+          [
+            ["skill", "自己生成", "选技能"],
+            ["melody", "熟悉旋律", "叠技巧"],
+          ] as const
+        ).map(([value, text, sub]) => (
           <button
-            key={item.id}
+            key={value}
             type="button"
-            className={`chip${skill === item.id ? " on" : ""}`}
-            aria-pressed={skill === item.id}
+            className={`chip${mode === value ? " on" : ""}`}
+            aria-pressed={mode === value}
             onClick={() => {
-              setSkill(item.id);
+              setMode(value);
               setStarted(true);
               setNote(null);
             }}
           >
-            {item.label}
-            <span className="generate-lv">{LEVEL_LABEL[item.level] ?? ""}</span>
+            {text}
+            <span className="generate-lv">{sub}</span>
           </button>
         ))}
       </div>
+
+      {mode === "skill" ? (
+        <div className="generate-skills" role="group" aria-label="想练哪个技能">
+          {SKILLS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`chip${skill === item.id ? " on" : ""}`}
+              aria-pressed={skill === item.id}
+              onClick={() => {
+                setSkill(item.id);
+                setStarted(true);
+                setNote(null);
+              }}
+            >
+              {item.label}
+              <span className="generate-lv">{LEVEL_LABEL[item.level] ?? ""}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="generate-skills" role="group" aria-label="拿哪条旋律当骨架">
+            {MELODY_CHOICES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`chip${melodyId === item.id ? " on" : ""}`}
+                aria-pressed={melodyId === item.id}
+                onClick={() => {
+                  setMelodyId(item.id);
+                  setStarted(true);
+                  setNote(null);
+                }}
+              >
+                {item.name}
+                <span className="generate-lv">{item.short}</span>
+              </button>
+            ))}
+          </div>
+          <div className="generate-skills" role="group" aria-label="往上叠哪种技巧">
+            {(Object.keys(MELODY_TECH_LABEL) as MelodyTech[]).map((id) => (
+              <button
+                key={id}
+                type="button"
+                className={`chip${tech === id ? " on" : ""}`}
+                aria-pressed={tech === id}
+                onClick={() => {
+                  setTech(id);
+                  setStarted(true);
+                  setNote(null);
+                }}
+              >
+                {MELODY_TECH_LABEL[id]}
+              </button>
+            ))}
+          </div>
+          <div className="generate-skills" role="group" aria-label="技巧叠多密">
+            {[1, 2, 3].map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={`chip${density === value ? " on" : ""}`}
+                aria-pressed={density === value}
+                onClick={() => {
+                  setDensity(value as MelodyDensity);
+                  setStarted(true);
+                  setNote(null);
+                }}
+              >
+                {MELODY_DENSITY_LABEL[value as MelodyDensity]}
+                <span className="generate-lv">{value === 1 ? "三分之一" : value === 2 ? "三分之二" : "全上"}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       <div className="generate-row">
         <label className="generate-field">
           <span>长度</span>
           <select
             aria-label="生成几小节"
-            value={bars}
+            value={mode === "melody" ? melodyBars : bars}
             onChange={(event) => {
-              setBars(Number(event.target.value));
+              const value = Number(event.target.value);
+              if (mode === "melody") setMelodyBars(value);
+              else setBars(value);
               setStarted(true);
               setNote(null);
             }}
           >
-            {LENGTHS.map((value) => (
+            {(mode === "melody" ? MELODY_LENGTHS : LENGTHS).map((value) => (
               <option key={value} value={value}>
                 {value} 小节
               </option>
@@ -139,7 +275,9 @@ export default function Generate() {
           换一条
         </button>
         <span className="generate-meta">
-          C 大调 · {piece.meter} · {piece.bpm[0]}–{piece.bpm[1]} BPM · 第 {seed} 号
+          {mode === "melody"
+            ? `${melody.name} · ${piece.meter} · ${piece.bpm[0]}–${piece.bpm[1]} BPM · 第 ${seed} 号`
+            : `C 大调 · ${piece.meter} · ${piece.bpm[0]}–${piece.bpm[1]} BPM · 第 ${seed} 号`}
         </span>
       </div>
 
@@ -165,11 +303,17 @@ export default function Generate() {
         <button type="button" className="btn primary" onClick={audition}>
           {playing ? "停" : "试听"}
         </button>
+        {follow && (
+          <button type="button" className="btn" onClick={practice}>
+            跟练
+          </button>
+        )}
         <button type="button" className="btn" onClick={save}>
           存进我的谱
         </button>
+        {high !== undefined && <span className="best-badge">最高 {high} BPM</span>}
         <span className="generate-note" role="status">
-          {note ?? `${info.trains}`}
+          {note ?? (mode === "melody" ? `${melody.name}的骨架 · ${MELODY_TECH_LABEL[tech]}叠上去` : `${info.trains}`)}
         </span>
       </div>
     </div>

@@ -122,6 +122,8 @@ import {
   intervalQualityRows,
   CHORD_QUALITIES,
   generatePiece,
+  generateMelodyPiece,
+  MELODY_CHOICES,
   checkPiece,
   SKILLS,
   circleKey,
@@ -195,6 +197,8 @@ import {
   tabAriaLabel,
   tabOf,
   n,
+  FAMILIAR,
+  type TabNote,
 } from "../src/index.ts";
 import { loadLevels } from "../src/levels.ts";
 
@@ -3739,6 +3743,68 @@ test("生成谱：滑音品差 2–4、击弦往上、勾弦往下，扫弦每�
   assert.equal(generatePiece("quarter", 1, 1).tab.bars, 2);
   assert.equal(generatePiece("quarter", 1, 99).tab.bars, 16);
 });
+
+test("生成谱：熟悉旋律做骨架，三条旋律 × 两种技巧 × 三档密度都弹得出来", () => {
+  assert.equal(MELODY_CHOICES.length, FAMILIAR.length);
+  for (const melody of MELODY_CHOICES) {
+    for (const tech of ["slide", "hammer"] as const) {
+      for (const density of [1, 2, 3] as const) {
+        const piece = generateMelodyPiece({ melodyId: melody.id, tech, density, seed: 7, bars: 4 });
+        const check = checkPiece(piece);
+        assert.ok(check.ok, `${melody.id} ${tech} ${density}：${check.problems.join("；")}`);
+        assert.equal(piece.skill, "melody");
+        assert.equal(piece.meter, "4/4");
+        assert.equal(piece.tab.bars, 4);
+        assert.equal(piece.tab.beatsPerBar, 4);
+        assert.ok(piece.title.includes(melody.name), `标题里没有旋律名：${piece.title}`);
+        assert.ok(piece.id.startsWith(`genm-${melody.id}-${tech}-${density}-`));
+        // 同种子每次都一样
+        assert.deepEqual(
+          generateMelodyPiece({ melodyId: melody.id, tech, density, seed: 7, bars: 4 }).tab.notes,
+          piece.tab.notes,
+        );
+      }
+    }
+  }
+  // 长度按「几轮 2 小节」取整：1 小节抬到 2，99 压到 16
+  assert.equal(generateMelodyPiece({ melodyId: "star", tech: "slide", density: 2, seed: 3, bars: 1 }).tab.bars, 2);
+  assert.equal(generateMelodyPiece({ melodyId: "star", tech: "slide", density: 2, seed: 3, bars: 99 }).tab.bars, 16);
+});
+
+test("生成谱：旋律骨架每小节填满、一拍一个音，加密档两种技巧都出现", () => {
+  // 小星星 8 拍里有品差 2–4 的相邻音（C→E、E→G、G→A、A→G），击勾弦有候选
+  const light = generateMelodyPiece({ melodyId: "star", tech: "hammer", density: 1, seed: 3, bars: 4 });
+  const heavy = generateMelodyPiece({ melodyId: "star", tech: "hammer", density: 3, seed: 3, bars: 4 });
+
+  // 每拍最多一个起音：整数拍上都只有 1 或 2 个音（滑音进才算 2 个）
+  for (const piece of [light, heavy]) {
+    const onsets = new Map<number, TabNote[]>();
+    for (const note of piece.tab.notes) {
+      const key = Math.floor(note.beat);
+      const list = onsets.get(key) ?? [];
+      list.push(note);
+      onsets.set(key, list);
+    }
+    assert.equal(onsets.size, piece.tab.bars * 4, "起音数量不是一拍一个");
+    for (const [beat, list] of onsets) {
+      assert.ok(list.length <= 2, `第 ${beat} 拍挤了 ${list.length} 个音`);
+      if (list.length === 2) {
+        // 两个音只能是「滑音进」：同一根弦、后半拍、带 s
+        assert.equal(list[0].s, list[1].s, `第 ${beat} 拍两个音不在同一根弦`);
+        assert.equal(Math.abs(list[0].beat - list[1].beat), 0.5);
+        assert.ok(list[1].tech === "s", `第 ${beat} 拍第二个音不是滑音`);
+      }
+    }
+  }
+
+  // 加密档：击勾弦和滑音都得出现，而且比轻松档多
+  const countTech = (piece: typeof heavy, tech: string) =>
+    piece.tab.notes.filter((note) => note.tech === tech).length;
+  assert.ok(countTech(heavy, "h") + countTech(heavy, "p") > countTech(light, "h") + countTech(light, "p"), "加密档的击勾弦没有变多");
+  assert.ok(countTech(heavy, "s") > 0, "加密档没有滑音");
+  assert.ok(countTech(light, "s") === 0, "轻松档（击勾弦）不该出现滑音");
+});
+
 
 
 

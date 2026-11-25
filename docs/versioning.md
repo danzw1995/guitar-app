@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.163.0`，core `0.58.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.164.0`，core `0.59.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -189,6 +189,13 @@ core 到 `0.58.0`。生成谱按「技能 → 节奏 → 调内级数落点 → 
 前端在「我的谱」上方加了生成面板（点一下才画谱），存下的记录 `source: "generated"`；评分卡只读。
 顺带给 `alpha-preview` / `score-image` / `useScoreImage` 加了 `layoutWidth`（默认仍 700），生成谱用 1000
 排成一行四小节。这样一来「我的谱」里会在浏览器里现画的谱有两条路径，缓存键都带上了版心宽度。
+v0.164.0 给 `generate.ts` 加了 `generateMelodyPiece()` / `MELODY_CHOICES` / `MELODY_TECH_LABEL` /
+`MELODY_DENSITY_LABEL`，`melody-rhythm.ts` 开始导出 `FAMILIAR` / `Melody`——新增导出算 MINOR，core 到 `0.59.0`。
+「熟悉旋律做骨架」：三条公有领域旋律放同一根弦（3 弦优先，够不到换 2 弦），相邻品差 2–4 做
+击 / 勾、品 ≥ 2 做滑音进，密度档 1/3、2/3、全上（加密 = 两种技巧都叠）；长度按「几轮 2 小节」取整，
+id `genm-<旋律>-<技巧>-<档>-<号>-<小节>`。前端生成面板加「素材」切换与「跟练」按钮；
+跟练记录多存一个 `title`（`RhythmRecord` 早就有的字段，这次真的写进去），生成谱过一天在统计页
+也能认得出是哪一条。存储结构没变（还是 `guitar.rhythm.v1` / `guitar.scores.v1`）。
 
 v0.161.0 给 core 加了 `interval-drill.ts`（`intervalTableOf` / `intervalQualityRows` / `intervalDrillQuestion` /
 `intervalDrillAnswerText` / `INTERVAL_KEYS`），新增导出算 MINOR，core 到 `0.56.0`；前端只多了音阶页的

@@ -248,6 +248,9 @@ export default function Rhythm() {
         sessions: (previous?.sessions ?? 0) + 1,
         minutes: (previous?.minutes ?? 0) + result.minutes,
         lastAt: today,
+        // 名字跟着记录走（v0.164.0）：生成谱 / 我的谱的 id 是运行时拼出来的，
+        // 过一天统计页只剩 id，存下名字才认得出是哪一条
+        title: target.name,
         history: pushBpmPoint(previous?.history, today, result.bpm),
         ...(result.hardest
           ? { hardest: { ...result.hardest, at: today } }

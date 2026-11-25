@@ -5133,7 +5133,7 @@ try {
       return JSON.stringify({
         found: Boolean(panel),
         chips: chips.length,
-        picked: panel?.querySelector('.generate-skills .chip[aria-pressed="true"]')?.textContent?.trim() ?? '',
+        picked: [...(panel?.querySelectorAll('.generate-skills .chip[aria-pressed="true"]') ?? [])].map((chip) => chip.textContent?.trim() ?? '').join('|'),
         meta,
         image: Boolean(img && img.getAttribute('src')?.startsWith('data:image/png')),
         actions,
@@ -5161,16 +5161,116 @@ try {
   );
   log(
     gen.found === true &&
-      gen.chips === 5 &&
+      gen.chips === 7 &&
+      String(gen.picked).includes("自己生成") &&
       String(gen.picked).includes("四分音符") &&
       gen.image === true &&
       Array.isArray(gen.actions) &&
       gen.actions.some((item) => item.includes("试听")) &&
+      gen.actions.some((item) => item.includes("跟练")) &&
       beforeMeta !== afterMeta &&
       genSaved.includes('"cards":1') &&
       genSaved.includes("生成 · "),
     "我的谱：能按技能生成一段、换一条换号、存下来进列表（v0.163.0）",
     `${gen.chips} 个 chip · ${gen.image ? "有谱图" : "没谱图"} · ${beforeMeta} → ${afterMeta} · ${genSaved}`,
+  );
+
+  // 17b) v0.164.0：熟悉旋律做骨架，跟练入口和最高 BPM 都在，能直接进跟练
+  js(
+    `(() => {
+      sessionStorage.setItem('chk11.rhythm', localStorage.getItem('guitar.rhythm.v1') ?? '');
+      const now = new Date();
+      const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+      localStorage.setItem('guitar.rhythm.v1', JSON.stringify({
+        'genm-star-slide-2-3-4': { bestBpm: 64, sessions: 2, minutes: 4, lastAt: today, history: [{ date: today, bpm: 64 }] },
+      }));
+      location.hash = '#rhythm';
+      return 'ok';
+    })()`,
+  );
+  await ab(["reload"]);
+  await sleep(1200);
+  js("(() => { document.querySelector('[data-generate]')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(400);
+  js("(() => { const b = document.querySelector('.generate-start'); b?.click(); return 'ok'; })()");
+  for (let round = 0; round < 10; round += 1) {
+    const ready = plain(js("(() => Boolean(document.querySelector('.generate-score img')) ? '1' : '0')()"));
+    if (ready === "1") break;
+    await sleep(400);
+  }
+  // 切到「熟悉旋律」：默认小星星 + 滑音 + 标准档，谱要重画一张
+  js(
+    `(() => {
+      const b = [...document.querySelectorAll('[data-generate] .generate-skills .chip')].find((node) => (node.textContent ?? '').includes('熟悉旋律'));
+      b?.click();
+      return 'ok';
+    })()`,
+  );
+  for (let round = 0; round < 10; round += 1) {
+    const ready = plain(
+      js(`(() => {
+        const meta = document.querySelector('[data-generate] .generate-meta')?.textContent ?? '';
+        return meta.includes('小星星') && Boolean(document.querySelector('[data-generate] .generate-score img')) ? '1' : '0';
+      })()`),
+    );
+    if (ready === "1") break;
+    await sleep(400);
+  }
+  const melodyPanel = plain(
+    js(`(() => {
+      const panel = document.querySelector('[data-generate]');
+      const meta = panel?.querySelector('.generate-meta')?.textContent?.trim() ?? '';
+      const badge = panel?.querySelector('.best-badge')?.textContent?.trim() ?? '';
+      const rows = [...(panel?.querySelectorAll('.generate-skills') ?? [])].length;
+      const actions = [...(panel?.querySelectorAll('.generate-actions .btn') ?? [])].map((button) => button.textContent?.trim() ?? '');
+      const img = panel?.querySelector('.generate-score img');
+      return JSON.stringify({ meta, badge, rows, actions, image: Boolean(img) });
+    })()`),
+  );
+  const gen2 = JSON.parse(melodyPanel);
+  log(
+    gen2.meta.includes("小星星") &&
+      gen2.badge.includes("64") &&
+      gen2.rows >= 4 &&
+      Array.isArray(gen2.actions) &&
+      gen2.actions.some((item) => item.includes("跟练")) &&
+      gen2.image === true,
+    "我的谱：熟悉旋律做骨架（小星星 + 滑音），跟练入口和最高 BPM 都在（v0.164.0）",
+    `${gen2.meta} · badge「${gen2.badge}」 · ${gen2.rows} 行 chips`,
+  );
+  js(
+    `(() => {
+      const b = [...document.querySelectorAll('[data-generate] .generate-actions .btn')].find((node) => (node.textContent ?? '').includes('跟练'));
+      b?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(1200);
+  const followText = plain(
+    js(`(() => {
+      const panel = document.querySelector('.follow');
+      return JSON.stringify({ found: Boolean(panel), head: panel?.querySelector('h3')?.textContent?.trim() ?? '' });
+    })()`),
+  );
+  const gen3 = JSON.parse(followText);
+  log(
+    gen3.found === true && gen3.head.includes("小星星"),
+    "我的谱：生成的谱能直接进跟练，标题就是这条谱的名字（v0.164.0）",
+    gen3.head || "no-follow",
+  );
+  // 收起跟练面板，把种子数据放回去
+  js(`(() => { const b = [...document.querySelectorAll('.follow .btn')].find((node) => (node.textContent ?? '').includes('收起')); b?.click(); return 'ok'; })()`);
+  await sleep(400);
+  await js(
+    `(() => {
+      const put = (key, stored) => {
+        if (stored) localStorage.setItem(key, stored);
+        else localStorage.removeItem(key);
+      };
+      put('guitar.rhythm.v1', sessionStorage.getItem('chk11.rhythm'));
+      sessionStorage.removeItem('chk11.rhythm');
+      return 'restored';
+    })()`,
   );
 
 } catch (error) {

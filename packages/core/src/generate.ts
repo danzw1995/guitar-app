@@ -11,6 +11,7 @@
  */
 
 import { chordTab, n, progressionTab, tabOf, type Tab, type TabNote } from "./tab.ts";
+import { FAMILIAR } from "./melody-rhythm.ts";
 import type { Level } from "./rhythm-drills.ts";
 
 export type SkillId = "quarter" | "eighth" | "slide" | "hammer" | "strum";
@@ -172,7 +173,8 @@ const STRUM_PATTERNS: ("D" | "U" | null)[][] = [
 
 export interface GeneratedPiece {
   id: string;
-  skill: SkillId;
+  /** "melody" = 熟悉旋律做骨架那一支（v0.164.0）。 */
+  skill: SkillId | "melody";
   seed: number;
   bars: number;
   meter: "4/4";
@@ -261,6 +263,157 @@ export function generatePiece(skillId: SkillId = "quarter", seed = 1, bars = 8):
     bpm: skill.bpm,
     title: `生成 · ${skill.label} · ${count} 小节`,
     hint: `${skill.trains}。${skill.tip}`,
+    tab,
+  };
+}
+
+/** 熟悉旋律那一支能叠的技巧。 */
+export type MelodyTech = "slide" | "hammer";
+
+/** 难度档：候选里挑几成。 */
+export type MelodyDensity = 1 | 2 | 3;
+
+export interface MelodyPieceOptions {
+  melodyId: string;
+  tech: MelodyTech;
+  density: MelodyDensity;
+  seed: number;
+  bars: number;
+}
+
+export const MELODY_TECH_LABEL: Record<MelodyTech, string> = {
+  slide: "滑音",
+  hammer: "击勾弦",
+};
+
+export const MELODY_DENSITY_LABEL: Record<MelodyDensity, string> = {
+  1: "轻松",
+  2: "标准",
+  3: "加密",
+};
+
+/** 面板上的旋律选项（短标签是 chips 里那行小字）。 */
+export const MELODY_CHOICES = FAMILIAR.map((melody) => ({
+  id: melody.id,
+  name: melody.name,
+  short:
+    melody.id === "star" ? "传统儿歌" : melody.id === "joy" ? "贝多芬主题" : melody.id === "tiger" ? "法国民歌" : "熟悉旋律",
+}));
+
+/**
+ * 熟悉旋律做骨架、技巧叠上去（v0.164.0）。
+ *
+ * 旋律每轮 2 小节（一拍一个音），重复到要的长度；整条放在同一根弦上，
+ * 击勾弦才有「同一根弦的前一个音」可接。候选分两种：
+ *   - 相邻两个音品差 2–4：击弦（往上）/ 勾弦（往下）；
+ *   - 品 ≥ 2 的音：从下面 2–3 品滑进来。
+ * 密度是「候选里挑几成」：轻松 1/3、标准 2/3、加密全上——加密档
+ * 两种技巧都叠（被击勾弦吃掉的音就不再滑音进）。
+ */
+export function generateMelodyPiece(options: MelodyPieceOptions): GeneratedPiece {
+  const melody = FAMILIAR.find((item) => item.id === options.melodyId) ?? FAMILIAR[0];
+  const tech: MelodyTech = options.tech === "hammer" ? "hammer" : "slide";
+  const density: MelodyDensity = options.density === 3 ? 3 : options.density === 2 ? 2 : 1;
+  const skill = SKILL_BY_ID.get(tech) ?? SKILLS[0];
+  const reps = Math.max(1, Math.min(8, Math.round(options.bars / 2) || 1));
+  const bars = reps * 2;
+  const rng = randomOf(Math.abs(Math.round(options.seed)) + melody.id.length * 613);
+
+  // 整条旋律放同一根弦（3 弦优先试试，放不下换 2 弦）：击勾弦要「同一根弦的前一个音」
+  const midis: number[] = [];
+  for (let rep = 0; rep < reps; rep += 1) {
+    for (const degree of melody.degrees) midis.push(DEGREES[Math.max(0, Math.min(7, degree))]);
+  }
+  const onString = (s: number) => midis.every((midi) => {
+    const fret = midi - OPEN[s - 1];
+    return fret >= 0 && fret <= 12;
+  });
+  const usable = [3, 2].filter(onString);
+  const string = usable.length > 0 ? usable[Math.floor(rng() * usable.length)] : 0;
+  const spots: Spot[] = string
+    ? midis.map((midi) => ({ s: string, f: midi - OPEN[string - 1], midi }))
+    : midis.map((midi) => place(midi));
+
+  // 击勾弦候选：相邻两个音品差 2–4（往上=击弦、往下=勾弦）
+  const legato: { index: number; tech: "h" | "p" }[] = [];
+  for (let index = 0; index < spots.length - 1; index += 1) {
+    const a = spots[index];
+    const b = spots[index + 1];
+    if (a.s !== b.s) continue;
+    const delta = b.f - a.f;
+    if (delta >= 2 && delta <= 4) legato.push({ index: index + 1, tech: "h" });
+    if (delta <= -2 && delta >= -4) legato.push({ index: index + 1, tech: "p" });
+  }
+  // 滑音候选：品 ≥ 2 的音都能从下面 2–3 品滑进来
+  const slides: number[] = [];
+  spots.forEach((spot, index) => {
+    if (spot.f >= 2) slides.push(index);
+  });
+
+  const shuffledLegato = [...legato];
+  for (let i = shuffledLegato.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [shuffledLegato[i], shuffledLegato[j]] = [shuffledLegato[j], shuffledLegato[i]];
+  }
+  const shuffledSlides = [...slides];
+  for (let i = shuffledSlides.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [shuffledSlides[i], shuffledSlides[j]] = [shuffledSlides[j], shuffledSlides[i]];
+  }
+
+  const legatoCount =
+    density === 3
+      ? shuffledLegato.length
+      : Math.ceil(shuffledLegato.length * (density === 1 ? 1 / 3 : 2 / 3));
+  const legatoMap = new Map<number, "h" | "p">();
+  for (const item of shuffledLegato.slice(0, legatoCount)) legatoMap.set(item.index, item.tech);
+
+  const legatoUsed = new Set(legatoMap.keys());
+  const slideCount =
+    density === 3
+      ? shuffledSlides.length
+      : tech === "slide"
+        ? Math.ceil(shuffledSlides.length * (density === 1 ? 1 / 3 : 2 / 3))
+        : 0;
+  const slideSet = new Set<number>();
+  for (const index of shuffledSlides.slice(0, slideCount)) {
+    if (!legatoUsed.has(index)) slideSet.add(index);
+  }
+
+  const notes: TabNote[] = [];
+  spots.forEach((spot, index) => {
+    const beat = index;
+    const legatoTech = legatoMap.get(index);
+    if (legatoTech) {
+      notes.push(n(spot.s, spot.f, beat, 1, { tech: legatoTech }));
+      return;
+    }
+    if (slideSet.has(index)) {
+      const gap = rng() < 0.5 ? 2 : 3;
+      const from = Math.max(0, spot.f - gap);
+      notes.push(n(spot.s, from, beat, 0.5));
+      notes.push(n(spot.s, spot.f, beat + 0.5, 0.5, { tech: "s" }));
+      return;
+    }
+    notes.push(n(spot.s, spot.f, beat, 1));
+  });
+
+  const tab = tabOf(notes, {
+    beatsPerBar: 4,
+    bars,
+    bpm: [skill.bpm[0], skill.bpm[0]],
+    caption: `${melody.name} · ${MELODY_TECH_LABEL[tech]}`,
+  });
+
+  return {
+    id: `genm-${melody.id}-${tech}-${density}-${options.seed}-${bars}`,
+    skill: "melody",
+    seed: options.seed,
+    bars,
+    meter: "4/4",
+    bpm: skill.bpm,
+    title: `生成 · ${melody.name} · ${MELODY_TECH_LABEL[tech]} · ${bars} 小节`,
+    hint: `${melody.source}的骨架。${skill.tip}${density === 3 ? "加密档击勾弦和滑音都叠上了。" : ""}`,
     tab,
   };
 }
