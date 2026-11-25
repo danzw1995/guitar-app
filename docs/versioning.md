@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.162.0`，core `0.57.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.163.0`，core `0.58.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -182,6 +182,13 @@ core 到 `0.57.0`。旋律拆成「一拍一个音」的骨架（C 大调 2 小�
 节奏型是每拍怎么切（四分 / 八分同音重复 / 前八后十六 + 上邻音）。生成旋律带固定种子（LCG），
 同一条每次生成都一样。前端节奏页多一块「旋律节奏」，`RHYTHM_ITEMS` 从 103 条到 116 条，
 统计页多「旋律」一组；谱图仍是预渲染（`gen-scores` 多了 13 张，共 178 张）。存储结构没变。
+v0.163.0 给 core 加了 `generate.ts`（`SKILLS` 五条 / `generatePiece()` / `checkPiece()`），新增导出算 MINOR，
+core 到 `0.58.0`。生成谱按「技能 → 节奏 → 调内级数落点 → 可弹性检查」拼：五条技能（四分 / 八分 / 滑音 /
+击勾弦 / 扫弦），长度 2–16 小节，LCG 换种子；`checkPiece` 校验弦品范围、同拍同弦不叠音、每小节时值、
+技法方向（击弦往上、勾弦往下、滑音 2–4 品）、扫弦每下带方向，测试里五个技能 × 三个种子都跑。
+前端在「我的谱」上方加了生成面板（点一下才画谱），存下的记录 `source: "generated"`；评分卡只读。
+顺带给 `alpha-preview` / `score-image` / `useScoreImage` 加了 `layoutWidth`（默认仍 700），生成谱用 1000
+排成一行四小节。这样一来「我的谱」里会在浏览器里现画的谱有两条路径，缓存键都带上了版心宽度。
 
 v0.161.0 给 core 加了 `interval-drill.ts`（`intervalTableOf` / `intervalQualityRows` / `intervalDrillQuestion` /
 `intervalDrillAnswerText` / `INTERVAL_KEYS`），新增导出算 MINOR，core 到 `0.56.0`；前端只多了音阶页的

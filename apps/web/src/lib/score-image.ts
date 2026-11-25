@@ -57,8 +57,8 @@ function inkBounds(data: Uint8ClampedArray, width: number, height: number): Ink 
   return { x: left, y: top, w: right - left + 1, h: bottom - top + 1 };
 }
 
-async function rasterize(tex: string, minWidth: number): Promise<ScoreImage> {
-  const composed = await renderTexToSvg(tex);
+async function rasterize(tex: string, minWidth: number, layoutWidth: number): Promise<ScoreImage> {
+  const composed = await renderTexToSvg(tex, layoutWidth);
   const image = await loadSvg(composed.svg);
   const width = Math.max(1, Math.round(image.naturalWidth || image.width));
   const height = Math.max(1, Math.round(image.naturalHeight || image.height));
@@ -125,12 +125,16 @@ async function rasterize(tex: string, minWidth: number): Promise<ScoreImage> {
  * `minWidth` 是一倍像素下的最小宽度：整段的谱留 420 才不会一截一截；
  * 单个和弦那种一格的谱用 `200`，省得两边空一大片。
  */
-export function renderScoreImage(tex: string, options: { minWidth?: number } = {}): Promise<ScoreImage> {
+export function renderScoreImage(
+  tex: string,
+  options: { minWidth?: number; layoutWidth?: number } = {},
+): Promise<ScoreImage> {
   const minWidth = options.minWidth ?? MIN_WIDTH;
-  const key = `${minWidth}\u0000${tex}`;
+  const layoutWidth = options.layoutWidth ?? 700;
+  const key = `${minWidth}\u0000${layoutWidth}\u0000${tex}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const run = rasterize(tex, minWidth).catch((error: unknown) => {
+  const run = rasterize(tex, minWidth, layoutWidth).catch((error: unknown) => {
     cache.delete(key);
     throw error;
   });

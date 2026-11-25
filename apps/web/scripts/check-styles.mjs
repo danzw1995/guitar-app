@@ -1668,6 +1668,14 @@ expect(
     /repeat\(2,/.test(narrowDecls(".interval-options").get("grid-template-columns") || ""),
 );
 
+expect(
+  "生成谱那块：技能 chips 与下拉都够 40 高，谱图能缩进卡片里",
+  px(anyDecls(".generate-skills .chip").get("min-height")) >= 40 &&
+    px(anyDecls(".generate-field select").get("min-height")) >= 40 &&
+    (anyDecls(".generate-score img").get("max-width") || "") === "100%" &&
+    anyDecls(".generate-score img").get("height") === "auto",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

@@ -410,14 +410,21 @@ async function composeSvg(state: Engine): Promise<PreviewScore> {
 
 const svgCache = new Map<string, PreviewScore>();
 
-/** 谱面画成一张独立 SVG（同一份 tex 只画一次），顺带给出每一拍的位置。 */
-export async function renderTexToSvg(tex: string): Promise<PreviewScore> {
-  const hit = svgCache.get(tex);
+/**
+ * 谱面画成一张独立 SVG（同一份 tex + 同一个版心宽度只画一次），顺带给出每一拍的位置。
+ *
+ * `layoutWidth` 是 alphaTab 的排版宽度：默认 700（两三小节的谱刚好），
+ * 生成谱那种四小节一行的要更宽，否则会被折成「三小节 + 一小节」。
+ */
+export async function renderTexToSvg(tex: string, layoutWidth = 700): Promise<PreviewScore> {
+  const cacheKey = `${layoutWidth}\u0000${tex}`;
+  const hit = svgCache.get(cacheKey);
   if (hit) return hit;
 
   const task = async (): Promise<PreviewScore> => {
     const state = await ensureEngine();
     await waitForFonts();
+    state.host.style.width = `${layoutWidth}px`;
     state.errors.length = 0;
     state.finishedAt = 0;
     const before = state.host.innerHTML;
@@ -425,7 +432,7 @@ export async function renderTexToSvg(tex: string): Promise<PreviewScore> {
     await waitForPaint(state, before);
     if (state.errors.length > 0) throw new Error(state.errors[0]);
     const composed = await composeSvg(state);
-    svgCache.set(tex, composed);
+    svgCache.set(cacheKey, composed);
     return composed;
   };
 

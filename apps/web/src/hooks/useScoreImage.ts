@@ -12,7 +12,7 @@ export interface ImageState {
  * `tex` 为 `null` 时清空——调用方靠这个在「还没到要画的时候」省掉一次渲染。
  * `minWidth` 透传给 `renderScoreImage`：单个和弦那种一格的谱可以画窄一点。
  */
-export function useScoreImage(tex: string | null, minWidth?: number): ImageState {
+export function useScoreImage(tex: string | null, minWidth?: number, layoutWidth?: number): ImageState {
   const [state, setState] = useState<ImageState>({});
   useEffect(() => {
     if (!tex) {
@@ -21,7 +21,10 @@ export function useScoreImage(tex: string | null, minWidth?: number): ImageState
     }
     let alive = true;
     setState({});
-    renderScoreImage(tex, minWidth === undefined ? {} : { minWidth })
+    renderScoreImage(tex, {
+      ...(minWidth === undefined ? {} : { minWidth }),
+      ...(layoutWidth === undefined ? {} : { layoutWidth }),
+    })
       .then((image) => {
         if (alive) setState({ image });
       })
@@ -31,6 +34,6 @@ export function useScoreImage(tex: string | null, minWidth?: number): ImageState
     return () => {
       alive = false;
     };
-  }, [tex, minWidth]);
+  }, [tex, minWidth, layoutWidth]);
   return state;
 }

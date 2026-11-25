@@ -18,6 +18,7 @@ import BassOverlay from "./BassOverlay";
 import { useTone } from "../hooks/useTone";
 import { goTo } from "../lib/nav";
 import { retimeTab } from "../lib/retime";
+import Generate from "./Generate";
 import ChordDiagram from "./ChordDiagram";
 import PlanButton from "./PlanButton";
 import { degreeLine } from "../lib/degrees";
@@ -186,7 +187,8 @@ function ScoreCard({
     score.source === "transcribe" ||
     score.source === "chord" ||
     score.source === "progression" ||
-    score.source === "slice"
+    score.source === "slice" ||
+    score.source === "generated"
       ? score.source
       : null;
   const earTab = storedSource && score.tab ? score.tab : null;
@@ -362,7 +364,9 @@ function ScoreCard({
               ? "从一段扫弦切出来的和弦谱 · 只能试听、导出，不能编辑"
               : storedSource === "slice"
                 ? "从跟练里切出来的一小节 · 只能试听、导出，不能编辑"
-                : "扒出来的 · 能试听、导出，也能逐音改（点「改音」）"}
+                : storedSource === "generated"
+                  ? "系统按技能生成的 · 只能试听、导出，不能编辑"
+                  : "扒出来的 · 能试听、导出，也能逐音改（点「改音」）"}
         </p>
       )}
       {storedSource === "chord" && score.chordName ? (
@@ -737,6 +741,7 @@ export default function MyScores({ audition, follow, best, beatOf }: Props) {
         <code>-</code> 是延音，用 <code>|</code> 分小节；时值看列距，不写符号。
         开头可以写 <code>title:</code>、<code>tempo:</code>、<code>ts: 4/4</code>。
       </p>
+      <Generate />
       <div className="my-examples">
         <span className="my-examples-label">不会写？先拿一个改：</span>
         {EXAMPLES.map((example) => (

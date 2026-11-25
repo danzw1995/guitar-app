@@ -5102,6 +5102,77 @@ try {
     melodyGroup,
   );
 
+  // 17a) v0.163.0：我的谱里能按技能生成一段、换一条、存下来
+  js(
+    `(() => {
+      sessionStorage.setItem('chk10.scores', localStorage.getItem('guitar.scores.v1') ?? '');
+      localStorage.removeItem('guitar.scores.v1');
+      location.hash = '#rhythm';
+      return 'ok';
+    })()`,
+  );
+  await ab(["reload"]);
+  await sleep(1200);
+  js("(() => { document.querySelector('[data-generate]')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(400);
+  // 生成面板要点一下才画谱（免得一进节奏页就跟一百多张卡抢渲染）
+  js("(() => { const b = document.querySelector('.generate-start'); b?.click(); return 'ok'; })()");
+  // 画一次三四百毫秒，慢的时候一两秒
+  for (let round = 0; round < 10; round += 1) {
+    const ready = plain(js("(() => Boolean(document.querySelector('.generate-score img')) ? '1' : '0')()"));
+    if (ready === "1") break;
+    await sleep(400);
+  }
+  const genPanel = plain(
+    js(`(() => {
+      const panel = document.querySelector('[data-generate]');
+      const chips = [...(panel?.querySelectorAll('.generate-skills .chip') ?? [])].map((chip) => chip.textContent?.trim() ?? '');
+      const meta = panel?.querySelector('.generate-meta')?.textContent?.trim() ?? '';
+      const img = panel?.querySelector('.generate-score img');
+      const actions = [...(panel?.querySelectorAll('.generate-actions .btn') ?? [])].map((button) => button.textContent?.trim() ?? '');
+      return JSON.stringify({
+        found: Boolean(panel),
+        chips: chips.length,
+        picked: panel?.querySelector('.generate-skills .chip[aria-pressed="true"]')?.textContent?.trim() ?? '',
+        meta,
+        image: Boolean(img && img.getAttribute('src')?.startsWith('data:image/png')),
+        actions,
+      });
+    })()`),
+  );
+  const gen = JSON.parse(genPanel);
+  const beforeMeta = String(gen.meta);
+  js(`(() => { const b = document.querySelector('.generate-next'); b?.click(); return 'ok'; })()`);
+  await sleep(900);
+  const afterMeta = plain(js("(() => document.querySelector('.generate-meta')?.textContent?.trim() ?? '')()"));
+  js(
+    `(() => {
+      const b = [...document.querySelectorAll('.generate-actions .btn')].find((node) => node.textContent.includes('存进我的谱'));
+      b?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(900);
+  const genSaved = plain(
+    js(`(() => {
+      const cards = [...document.querySelectorAll('.my-card h4')].map((head) => head.textContent?.trim() ?? '');
+      return JSON.stringify({ cards: cards.length, first: cards[0] ?? '' });
+    })()`),
+  );
+  log(
+    gen.found === true &&
+      gen.chips === 5 &&
+      String(gen.picked).includes("四分音符") &&
+      gen.image === true &&
+      Array.isArray(gen.actions) &&
+      gen.actions.some((item) => item.includes("试听")) &&
+      beforeMeta !== afterMeta &&
+      genSaved.includes('"cards":1') &&
+      genSaved.includes("生成 · "),
+    "我的谱：能按技能生成一段、换一条换号、存下来进列表（v0.163.0）",
+    `${gen.chips} 个 chip · ${gen.image ? "有谱图" : "没谱图"} · ${beforeMeta} → ${afterMeta} · ${genSaved}`,
+  );
+
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
   failed += 1;

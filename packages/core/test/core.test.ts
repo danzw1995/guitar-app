@@ -121,6 +121,9 @@ import {
   intervalDrillAnswerText,
   intervalQualityRows,
   CHORD_QUALITIES,
+  generatePiece,
+  checkPiece,
+  SKILLS,
   circleKey,
   circleQuestion,
   fifthsDistance,
@@ -3681,6 +3684,60 @@ test("旋律节奏：同一条旋律的不同节奏型，拍点上的音高一�
       }
     }
   }
+});
+
+test("生成谱：五个技能 × 三个种子都过得了可弹性检查，同种子每次都一样", () => {
+  assert.equal(SKILLS.length, 5);
+  assert.equal(new Set(SKILLS.map((skill) => skill.id)).size, 5);
+
+  for (const skill of SKILLS) {
+    for (const seed of [1, 2, 3]) {
+      const piece = generatePiece(skill.id, seed, 8);
+      const check = checkPiece(piece);
+      assert.ok(check.ok, `${skill.id} / ${seed}：${check.problems.join("；")}`);
+      assert.equal(piece.tab.bars, 8);
+      assert.equal(piece.tab.beatsPerBar, 4);
+      assert.ok(piece.tab.notes.length > 0);
+      assert.ok(piece.title.includes(skill.label));
+      assert.ok(piece.hint.length > 0);
+      // 同一份种子 + 同一技能，每次生成的谱必须完全一样（用户「换一条」才有确定感）
+      assert.deepEqual(generatePiece(skill.id, seed, 8).tab.notes, piece.tab.notes);
+    }
+  }
+});
+
+test("生成谱：滑音品差 2–4、击弦往上、勾弦往下，扫弦每一下都有方向", () => {
+  const slide = generatePiece("slide", 5, 8);
+  const slides = slide.tab.notes.filter((note) => note.tech === "s");
+  assert.ok(slides.length >= 8, `滑音只有 ${slides.length} 个`);
+  for (const note of slides) {
+    // 同一根弦上、紧挨着前面那个音
+    const before = slide.tab.notes
+      .filter((item) => item.s === note.s && item.beat < note.beat)
+      .sort((a, b) => b.beat - a.beat)[0];
+    assert.ok(before, "滑音前面没有同一根弦的音");
+    assert.ok(Math.abs(note.f - before.f) >= 2 && Math.abs(note.f - before.f) <= 4);
+  }
+
+  const hammer = generatePiece("hammer", 5, 8);
+  for (const note of hammer.tab.notes) {
+    if (note.tech !== "h" && note.tech !== "p") continue;
+    const before = hammer.tab.notes
+      .filter((item) => item.s === note.s && item.beat < note.beat)
+      .sort((a, b) => b.beat - a.beat)[0];
+    assert.ok(before);
+    if (note.tech === "h") assert.ok(note.f - before.f >= 2, "击弦没有往高品走");
+    if (note.tech === "p") assert.ok(before.f - note.f >= 2, "勾弦没有往低品走");
+  }
+
+  const strum = generatePiece("strum", 5, 8);
+  assert.ok(strum.tab.notes.every((note) => note.arrow === "D" || note.arrow === "U"));
+  const arrows = new Set(strum.tab.notes.map((note) => note.arrow));
+  assert.ok(arrows.has("D") && arrows.has("U"), "扫弦只有同一个方向");
+
+  // 长度也要夹住：传 1 小节会被抬到 2，传 99 会被压到 16
+  assert.equal(generatePiece("quarter", 1, 1).tab.bars, 2);
+  assert.equal(generatePiece("quarter", 1, 99).tab.bars, 16);
 });
 
 

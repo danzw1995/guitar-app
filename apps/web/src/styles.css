@@ -4360,6 +4360,102 @@ button.steady-best-tag:hover {
   color: var(--muted);
   font-size: 13px;
 }
+/* 按技能生成谱（v0.163.0）：选技能 → 换一条 → 试试听 → 存进我的谱 */
+.generate {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+.generate-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.generate-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.generate-skills .chip {
+  min-height: 40px;
+  gap: 4px;
+  font-size: 12px;
+}
+.generate-lv {
+  color: var(--muted);
+  font-size: 10px;
+}
+.generate-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.generate-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.generate-field select {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.generate-next {
+  min-height: 40px;
+}
+.generate-meta {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.generate-score {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.generate-score img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.generate-loading {
+  color: var(--muted);
+  font-size: 12px;
+}
+.generate-tip {
+  margin: 0;
+  font-size: 13px;
+}
+.generate-bad {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12px;
+}
+.generate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+.generate-actions .btn {
+  min-height: 40px;
+}
+.generate-note {
+  color: var(--muted);
+  font-size: 12px;
+}
 .my-editor {
   display: grid;
   gap: 10px;
