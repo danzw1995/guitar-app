@@ -369,6 +369,13 @@ function ScoreCard({
                   : "扒出来的 · 能试听、导出，也能逐音改（点「改音」）"}
         </p>
       )}
+      {storedSource === "generated" && score.goal ? (
+        <p className="my-goal">
+          <span className="generate-goal-tag">小目标</span>
+          {score.goal.text}
+          {score.goal.muscle ? <span className="generate-muscle">这条练的是：{score.goal.muscle}</span> : null}
+        </p>
+      ) : null}
       {storedSource === "chord" && score.chordName ? (
         <p className="my-source">
           <button

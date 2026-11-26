@@ -625,10 +625,19 @@ export function practiceGoalOf(piece: GeneratedPiece): string {
  * 候选数只是「这一段有多少可叠的地方」。
  */
 export function melodyCandidatesOf(line: MelodyLine, tech: MelodyTech): number {
+  return melodyCandidateBeatsOf(line, tech).length;
+}
+
+/**
+ * 候选落在哪几拍（v0.168.0）：返回**这一段的下标**（0 起，一段一拍），
+ * 击勾弦给「这一对的前一个音」的下标，滑音给「这个音」的下标。
+ * 前端拼「候选在第 2、5、7 拍」时自己 +1。同种子摆位与 `melodyCandidatesOf` 完全一致。
+ */
+export function melodyCandidateBeatsOf(line: MelodyLine, tech: MelodyTech): number[] {
   const midis = line.midis
     .map((midi) => Math.max(40, Math.min(76, Math.round(Number(midi)))))
     .filter((midi) => Number.isFinite(midi));
-  if (midis.length === 0) return 0;
+  if (midis.length === 0) return [];
   const onString = (s: number) =>
     midis.every((midi) => {
       const fret = midi - OPEN[s - 1];
@@ -640,15 +649,15 @@ export function melodyCandidatesOf(line: MelodyLine, tech: MelodyTech): number {
     ? midis.map((midi) => ({ s: string, f: midi - OPEN[string - 1] }))
     : midis.map((midi) => place(midi));
   if (tech === "hammer") {
-    let count = 0;
+    const beats: number[] = [];
     for (let index = 0; index < spots.length - 1; index += 1) {
       if (spots[index].s !== spots[index + 1].s) continue;
       const delta = Math.abs(spots[index + 1].f - spots[index].f);
-      if (delta >= 2 && delta <= 4) count += 1;
+      if (delta >= 2 && delta <= 4) beats.push(index);
     }
-    return count;
+    return beats;
   }
-  return spots.filter((spot) => spot.f >= 2).length;
+  return spots.flatMap((spot, index) => (spot.f >= 2 ? [index] : []));
 }
 
 export interface PieceCheck {

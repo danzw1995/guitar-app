@@ -9,6 +9,7 @@ import {
   generateMelodyPiece,
   generatePiece,
   melodyCandidatesOf,
+  melodyCandidateBeatsOf,
   melodySegmentsOf,
   practiceGoalDetailOf,
   tabAriaLabel,
@@ -157,6 +158,11 @@ export default function Generate({ follow, best, scores }: Props) {
     [segments, tech],
   );
   const bestCandidates = segments.length > 0 ? Math.max(...segmentCandidates) : 0;
+  // 选中那一段（没切段就是整条）的候选落在哪几拍（v0.168.0）：第 N 拍按 1 起算
+  const activeCandidates = useMemo(
+    () => melodyCandidateBeatsOf(activeSegment ?? activeLine ?? { id: "none", name: "", midis: [] }, tech),
+    [activeSegment, activeLine, tech],
+  );
   // 画布给宽一点：四小节一行放得下，八小节折成两行（窄画布会被折成三行，卡片长得离谱）
   const tex = useMemo(() => tabToAlphaTex(piece.tab), [piece]);
   const label = useMemo(() => tabAriaLabel(piece.tab), [piece]);
@@ -270,6 +276,12 @@ export default function Generate({ follow, best, scores }: Props) {
         tab: piece.tab,
         meter: piece.meter,
         bpm: piece.bpm[0],
+        // 小目标跟着卡走（v0.168.0）：不用回生成面板也知道这条练哪儿、练哪块肌肉
+        goal: {
+          text: goal.text,
+          ...(goal.bar !== undefined ? { bar: goal.bar } : {}),
+          ...(goal.muscle ? { muscle: goal.muscle } : {}),
+        },
       });
       window.dispatchEvent(new Event("guitar:scores"));
       setNote(`顺手存进「我的谱」了：${title}`);
@@ -294,6 +306,11 @@ export default function Generate({ follow, best, scores }: Props) {
       tab: piece.tab,
       meter: piece.meter,
       bpm: piece.bpm[0],
+      goal: {
+        text: goal.text,
+        ...(goal.bar !== undefined ? { bar: goal.bar } : {}),
+        ...(goal.muscle ? { muscle: goal.muscle } : {}),
+      },
     });
     window.dispatchEvent(new Event("guitar:scores"));
     setNote(`存好了：「${piece.title} · ${seed} 号」`);
@@ -429,6 +446,13 @@ export default function Generate({ follow, best, scores }: Props) {
                 );
               })}
             </div>
+          )}
+          {mode === "my" && (
+            <p className="generate-cand">
+              {activeCandidates.length > 0
+                ? `${MELODY_TECH_LABEL[tech]}的候选落在：第 ${activeCandidates.map((beat) => beat + 1).join("、")} 拍`
+                : `这一段叠不上${MELODY_TECH_LABEL[tech]}——${tech === "hammer" ? "相邻两拍的品差得在 2–4" : "音得落在品 ≥ 2 的位置"}`}
+            </p>
           )}
           <div className="generate-skills" role="group" aria-label="往上叠哪种技巧">
             {(Object.keys(MELODY_TECH_LABEL) as MelodyTech[]).map((id) => (

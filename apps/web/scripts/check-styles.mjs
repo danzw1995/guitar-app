@@ -1698,6 +1698,14 @@ expect(
     (anyDecls(".generate-seg-hot .generate-lv").get("color") || "") === "var(--accent)",
 );
 
+expect(
+  "生成谱那块：候选落点是灰字小字，存下来的卡上那行小目标跟生成面板同款 (v0.168.0)",
+  px(anyDecls(".generate-cand").get("font-size")) <= 12 &&
+    anyDecls(".generate-cand").get("color") === "var(--muted)" &&
+    px(anyDecls(".my-goal").get("font-size")) <= 13 &&
+    (anyDecls(".my-goal").get("flex-wrap") || "") === "wrap",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

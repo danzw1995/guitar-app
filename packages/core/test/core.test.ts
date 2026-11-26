@@ -126,6 +126,7 @@ import {
   generateMelodyLinePiece,
   melodySegmentsOf,
   melodyCandidatesOf,
+  melodyCandidateBeatsOf,
   practiceGoalOf,
   practiceGoalDetailOf,
   type MelodyLine,
@@ -3948,6 +3949,26 @@ test("生成谱：一段能叠几处候选数得出来（v0.167.0）", () => {
   assert.ok(melodyCandidatesOf(wide, "slide") >= 0 && melodyCandidatesOf(wide, "hammer") >= 0, "宽音域不崩");
   // 空线
   assert.strictEqual(melodyCandidatesOf({ id: "e", name: "空", midis: [] }, "slide"), 0);
+  // 候选数与落点一一对应（v0.168.0）：数得出来，也指得出在哪几拍
+  assert.deepEqual(melodyCandidateBeatsOf(open, "hammer"), []);
+  assert.deepEqual(melodyCandidateBeatsOf(open, "slide"), []);
+  const starHammerBeats = melodyCandidateBeatsOf(star, "hammer");
+  const starSlideBeats = melodyCandidateBeatsOf(star, "slide");
+  assert.equal(starHammerBeats.length, hammer, "击勾落点数对不上");
+  assert.equal(starSlideBeats.length, slide, "滑音落点数对不上");
+  assert.ok(
+    starHammerBeats.every((beat) => beat >= 0 && beat < star.midis.length - 1),
+    `击勾落点越界：${starHammerBeats}`,
+  );
+  assert.ok(
+    starSlideBeats.every((beat) => beat >= 0 && beat < star.midis.length),
+    `滑音落点越界：${starSlideBeats}`,
+  );
+  // 3 弦上品 5,5,9,9,10,10,9,9：滑音候选就是每一拍（品都 ≥2）
+  assert.deepEqual(starSlideBeats, [0, 1, 2, 3, 4, 5, 6, 7]);
+  // 击勾候选是「5→9 那一对」的下标（第 1 处的下标 1，0 起：frets 5,5,9,9,… 的第二拍到第三拍）
+  assert.ok(starHammerBeats.includes(1), `5→9 的落点应在下标 1：${starHammerBeats}`);
+  assert.ok(melodyCandidateBeatsOf(wide, "slide").length === melodyCandidatesOf(wide, "slide"), "宽音域落点数对不上");
 });
 
 

@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.167.0`，core `0.62.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.168.0`，core `0.63.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -215,6 +215,15 @@ MINOR，core 到 `0.62.0`。前端：小目标行加「这条练的是：…」�
 按钮（复用 `FollowAlong` 的 `startBar`，一打开就圈住那一小节，顺手存一份同 v0.165 的那条路）；
 段落 chips 标「· N 处」，候选最多的那段加亮「候选最多」（`.generate-seg-hot`）。顺手修：拿上一轮
 存下来的生成谱再当骨架时，名字里的「生成 · 」前缀与「 · N 号」后缀先剥掉，标题不再叠双前缀。
+
+v0.168.0 给 `generate.ts` 加了 `melodyCandidateBeatsOf()`（候选落在哪几拍，与 `melodyCandidatesOf`
+同一套摆位，只是返回下标数组）——新增导出算 MINOR，core 到 `0.63.0`。前端：①「我存的谱」当骨架时
+选中那段的候选落点写成「第 3、4、5… 拍」（`.generate-cand`），一段叠不上时说明原因（品差 / 品位）；
+②跟练回执里「比上次（MM-DD）的 M BPM 快了 / 慢了 X」——`FollowAlong` 加可选 `previous`，面板打开时
+用 `previousRef` 拍下 `RhythmRecord.history` 的最后一个点（record 写完 history 就变成本次的），
+节奏页与练习页都传（`previousOf(id)`）；③生成谱存进「我的谱」时带 `goal: { text, bar?, muscle? }`
+（`MyScore` 新可选字段，`loadScores` 清洗坏数据），卡片上挂「小目标…这条练的是：…」（`.my-goal`）。
+存储结构没变（`guitar.scores.v1` 的条目多了个可选 `goal` 字段，旧记录照常读）。
 
 v0.161.0 给 core 加了 `interval-drill.ts`（`intervalTableOf` / `intervalQualityRows` / `intervalDrillQuestion` /
 `intervalDrillAnswerText` / `INTERVAL_KEYS`），新增导出算 MINOR，core 到 `0.56.0`；前端只多了音阶页的

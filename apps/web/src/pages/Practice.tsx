@@ -180,6 +180,8 @@ export default function Practice() {
    */
   const followKey = (id: string) => `p:${id}`;
   const best = (key: string) => records[key]?.bestBpm;
+  // 开练前最后一次记下的速度（v0.168.0）：跟练回执里「比上次快 / 慢多少」的基准
+  const previousOf = (key: string) => (records[key]?.history ?? []).slice(-1)[0];
 
   function openFollow(drill: Drill, startBar?: number) {
     setFollowBar(startBar ?? null);
@@ -821,6 +823,7 @@ export default function Practice() {
           target={follow}
           startBar={followBar ?? undefined}
           best={best(follow.id)}
+          previous={previousOf(follow.id)}
           onFinish={recordFollow}
           onSpot={recordSpot}
           onClose={() => {

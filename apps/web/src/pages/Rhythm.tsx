@@ -277,6 +277,8 @@ export default function Rhythm() {
   }
 
   const best = (id: string) => records[id]?.bestBpm;
+  // 开练前最后一次记下的速度（v0.168.0）：跟练回执里「比上次快 / 慢多少」的基准
+  const previousOf = (id: string) => (records[id]?.history ?? []).slice(-1)[0];
 
   const today = dateKeyOf(new Date());
   // 跟练速度退步的加几天紧迫度，让它们先回来
@@ -391,6 +393,7 @@ export default function Rhythm() {
         <FollowAlong
           target={target}
           best={best(target.id)}
+          previous={previousOf(target.id)}
           onFinish={record}
           onClose={() => setTarget(null)}
           startBar={target.startBar}

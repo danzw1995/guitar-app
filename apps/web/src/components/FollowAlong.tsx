@@ -50,6 +50,8 @@ export interface FollowAlongProps {
   onSpot?: (spot: FollowHardest) => void;
   /** 一打开就圈住这一小节并开练（v0.129.0）：从统计页曲线上双击过来时用。 */
   startBar?: number;
+  /** 开练前最后一次记下的速度（v0.168.0）：回执里比「这次 vs 上次」用；面板存的是历史，写完会变，所以进来先拍下来。 */
+  previous?: { date: string; bpm: number };
 }
 
 function clock(seconds: number): string {
@@ -89,6 +91,7 @@ export default function FollowAlong({
   onClose,
   onSpot,
   startBar,
+  previous,
 }: FollowAlongProps) {
   const meter = target.meter ?? "4/4";
   const [startBpm, setStartBpm] = useState(target.bpm[0]);
@@ -115,6 +118,8 @@ export default function FollowAlong({
   /** 点级数方块单独去练的次数：点得最多的那一处就是「最卡的」。 */
   const hardRef = useRef(new Map<string, FollowHardest>());
   const loopPassRef = useRef(0);
+  /** 开练前最后一次记下的速度（v0.168.0）：回执里「比上次快 / 慢多少」用，换练习时拍下来。 */
+  const previousRef = useRef<{ date: string; bpm: number } | null>(null);
   /** 上次记成绩时留下的「最卡的一处」：练到那一小节时提醒一下（v0.101.0）。 */
   const remembered = useMemo(() => loadRhythm()[target.id]?.hardest ?? null, [target.id]);
   /** 这一次记录过成绩的那几处（v0.111.0）：一次跟练可能点了不止一小节，按处记状态。 */
@@ -467,6 +472,8 @@ export default function FollowAlong({
     setSavedSpots([]);
     setPlanSpots([]);
     setSpotsOpen(false);
+    // 「比上次」的基准拍下来（v0.168.0）：record 写完父组件的 history 就变成本次的了，不能现读
+    previousRef.current = previous ?? null;
     // 换练习时把「单独练过几次」也换成这一条的
     const rows = loadRhythm()[target.id]?.spots ?? [];
     setSpotTimes(Object.fromEntries(rows.map((row) => [`${row.bar}-${row.degree}`, row.times])));
@@ -823,6 +830,13 @@ export default function FollowAlong({
         <div className="follow-done" role="status">
           <p className="follow-done-text">
             记下了：{done.bpm} BPM
+            {previousRef.current
+              ? previousRef.current.bpm === done.bpm
+                ? ` · 跟上次（${previousRef.current.date.slice(5)}）的 ${previousRef.current.bpm} BPM 持平`
+                : done.bpm > previousRef.current.bpm
+                  ? ` · 比上次（${previousRef.current.date.slice(5)}）的 ${previousRef.current.bpm} BPM 快了 ${done.bpm - previousRef.current.bpm}`
+                  : ` · 比上次（${previousRef.current.date.slice(5)}）的 ${previousRef.current.bpm} BPM 慢了 ${previousRef.current.bpm - done.bpm}`
+              : ""}
             {done.hardest
               ? ` · 这段最卡的是第 ${done.hardest.bar} 小节${degreeName(done.hardest.degree)}（${done.hardest.name}），点了 ${done.hardest.count} 次`
               : " · 这一段没有单独去练哪一小节"}

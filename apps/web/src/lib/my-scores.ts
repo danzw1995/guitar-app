@@ -29,6 +29,8 @@ export interface MyScore {
   imageHeight?: number;
   /** 每一拍的位置（图片像素），试听时画高亮条用；旧记录没有就不画。 */
   beats?: { x: number; w: number; y: number; h: number }[];
+  /** 生成谱存下时的小目标（v0.168.0）：卡片上直接挂「练哪儿 + 哪块肌肉」，不用回生成面板。 */
+  goal?: { text: string; bar?: number; muscle?: string };
 }
 
 interface SpecNote {
@@ -135,6 +137,20 @@ export function parseScore(text: string): ParsedScore {
   };
 }
 
+/** 卡片上那行小目标（v0.168.0）：坏数据直接丢，不挡卡片。 */
+function parseGoal(value: unknown): MyScore["goal"] {
+  if (typeof value !== "object" || value === null) return undefined;
+  const goal = value as { text?: unknown; bar?: unknown; muscle?: unknown };
+  if (typeof goal.text !== "string" || !goal.text.trim()) return undefined;
+  const bar = Number(goal.bar);
+  const muscle = typeof goal.muscle === "string" && goal.muscle.trim() ? goal.muscle.trim().slice(0, 120) : undefined;
+  return {
+    text: goal.text.trim().slice(0, 160),
+    ...(Number.isInteger(bar) && bar >= 1 && bar <= 64 ? { bar } : {}),
+    ...(muscle ? { muscle } : {}),
+  };
+}
+
 export function loadScores(): MyScore[] {
   if (typeof localStorage === "undefined") return [];
   try {
@@ -155,7 +171,11 @@ export function loadScores(): MyScore[] {
               item.source === "generated") &&
               item.tab)),
       )
-      .map((item) => ({ ...item, ascii: typeof item.ascii === "string" ? item.ascii : "" }))
+      .map((item) => ({
+        ...item,
+        ascii: typeof item.ascii === "string" ? item.ascii : "",
+        goal: item.source === "generated" ? parseGoal(item.goal) : undefined,
+      }))
       .sort((a, b) => b.createdAt - a.createdAt);
   } catch {
     return [];
@@ -199,6 +219,7 @@ export function addScore(input: {
   imageWidth?: number;
   imageHeight?: number;
   beats?: { x: number; w: number; y: number; h: number }[];
+  goal?: { text: string; bar?: number; muscle?: string };
 }): MyScore[] {
   const score: MyScore = {
     id: `my-${Date.now().toString(36)}`,
@@ -214,6 +235,7 @@ export function addScore(input: {
     imageWidth: input.imageWidth,
     imageHeight: input.imageHeight,
     beats: input.beats,
+    goal: input.goal,
   };
   // 只有手写谱能按原文去重（同一段别存两遍）；扒谱与和弦卡没有原文（`ascii` 都是空串），
   // 一律按 id 保留——否则存第二个和弦时会把第一个挤掉。

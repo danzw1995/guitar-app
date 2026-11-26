@@ -5670,6 +5670,143 @@ try {
   );
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 
+  // 17f) v0.168.0：候选落点写成「第 N、M 拍」、回执里「比上次快 / 慢多少」、存下的卡上挂着小目标
+  js(
+    `(() => {
+      sessionStorage.setItem('chk15.scores', localStorage.getItem('guitar.scores.v1') ?? '');
+      sessionStorage.setItem('chk15.settings', localStorage.getItem('guitar.settings.v1') ?? '');
+      sessionStorage.setItem('chk15.rhythm', localStorage.getItem('guitar.rhythm.v1') ?? '');
+      const now = new Date();
+      const pad = (v) => String(v).padStart(2, '0');
+      const key = (d) => \`\${d.getFullYear()}-\${pad(d.getMonth() + 1)}-\${pad(d.getDate())}\`;
+      const last = new Date(now.getTime() - 6 * 86400000);
+      const notes = [];
+      for (let beat = 0; beat < 24; beat += 1) notes.push({ s: 1, f: beat % 12, beat, dur: 1 });
+      localStorage.setItem('guitar.scores.v1', JSON.stringify([{
+        id: 'my-long', title: '长谱一段', ascii: '', source: 'transcribe',
+        tab: { beatsPerBar: 4, bars: 6, notes }, meter: '4/4', bpm: 60, createdAt: Date.now(),
+      }]));
+      localStorage.setItem('guitar.rhythm.v1', JSON.stringify({
+        'genm-star-slide-2-3-4': { bestBpm: 64, sessions: 1, minutes: 2, lastAt: key(last),
+          history: [{ date: key(last), bpm: 64 }] },
+      }));
+      localStorage.setItem('guitar.settings.v1', JSON.stringify({
+        theme: 'dark', genMode: 'melody', genMelody: 'star', genTech: 'slide', genDensity: 2, genMelodyBars: 4,
+      }));
+      return 'seeded';
+    })()`,
+  );
+  await ab(["reload"]);
+  await sleep(1200);
+  js("(() => { document.querySelector('[data-generate]')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(400);
+  js("(() => { const b = document.querySelector('.generate-start'); b?.click(); return 'ok'; })()");
+  let v168Goal = "";
+  for (let round = 0; round < 14; round += 1) {
+    const state = plain(
+      js(`(() => {
+        const go = document.querySelector('[data-generate] .generate-goal-go')?.textContent ?? '';
+        const muscle = document.querySelector('[data-generate] .generate-muscle')?.textContent ?? '';
+        return go.includes('只练') && muscle.includes('练的是') ? JSON.stringify({ go, muscle }) : '';
+      })()`),
+    );
+    if (state) {
+      v168Goal = state;
+      break;
+    }
+    await sleep(400);
+  }
+  // 点「只练第 N 小节」进跟练：面板自己开起来（practiceBar 已调 start）
+  js("(() => { document.querySelector('[data-generate] .generate-goal-go')?.click(); return 'ok'; })()");
+  let running = false;
+  for (let round = 0; round < 10; round += 1) {
+    await sleep(500);
+    const text = plain(js(`(() => {
+      const btn = [...document.querySelectorAll('.follow .btn')].find((b) => b.textContent === '停止' || b.textContent === '开始跟练');
+      return btn ? btn.textContent : '';
+    })()`));
+    if (text === "停止") {
+      running = true;
+      break;
+    }
+    // 没自己跑起来就点一下「开始跟练」
+    if (text === "开始跟练") js("(() => { [...document.querySelectorAll('.follow .btn')].find((b) => b.textContent === '开始跟练')?.click(); return 'ok'; })()");
+  }
+  // 计时器走两秒，够「记录成绩」亮起来
+  await sleep(2200);
+  js("(() => { [...document.querySelectorAll('.follow .btn')].find((b) => b.textContent.includes('记录成绩'))?.click(); return 'ok'; })()");
+  let receipt = "";
+  for (let round = 0; round < 12; round += 1) {
+    const state = plain(
+      js(`(() => {
+        const text = document.querySelector('.follow-done-text')?.textContent ?? '';
+        return text.includes('记下了') && text.includes('比上次') ? text : '';
+      })()`),
+    );
+    if (state) {
+      receipt = state;
+      break;
+    }
+    await sleep(400);
+  }
+  // 收起跟练，回生成面板看「我存的谱」那支的候选落点行
+  js("(() => { [...document.querySelectorAll('.follow .btn')].find((b) => b.textContent.includes('收起'))?.click(); return 'ok'; })()");
+  await sleep(500);
+  js("(() => { [...document.querySelectorAll('[data-generate] .chip')].find((c) => c.textContent.includes('我存的谱'))?.click(); return 'ok'; })()");
+  await sleep(400);
+  js("(() => { [...document.querySelectorAll('[data-generate] .chip')].find((c) => c.textContent.includes('长谱一段'))?.click(); return 'ok'; })()");
+  await sleep(400);
+  js("(() => { [...document.querySelectorAll('[data-generate] .chip')].find((c) => c.textContent.trim() === '滑音')?.click(); return 'ok'; })()");
+  let candLine = "";
+  for (let round = 0; round < 10; round += 1) {
+    const state = plain(
+      js(`(() => {
+        const text = document.querySelector('[data-generate] .generate-cand')?.textContent ?? '';
+        return /候选落在：第 [\\d、]+ 拍/.test(text) ? text : '';
+      })()`),
+    );
+    if (state) {
+      candLine = state;
+      break;
+    }
+    await sleep(400);
+  }
+  // 顺手存下来的那张卡：小目标跟肌肉一起挂在卡上
+  const cardGoal = plain(
+    js(`(() => {
+      const card = [...document.querySelectorAll('.my-card')].find((c) => c.textContent.includes('生成 · 小星星'));
+      const goal = card?.querySelector('.my-goal')?.textContent ?? '';
+      return goal.includes('小目标') && goal.includes('练的是') ? goal : '';
+    })()`),
+  );
+  const v168GoalObj = v168Goal ? JSON.parse(v168Goal) : { go: "", muscle: "" };
+  log(
+    v168GoalObj.go.includes("只练") &&
+      receipt.includes("比上次") &&
+      /比上次（\d{2}-\d{2}）的 64 BPM 慢了 \d+/.test(receipt) &&
+      candLine.includes("候选落在") &&
+      cardGoal.includes("小目标") &&
+      running,
+    "我的谱：候选落点写成拍、回执里比上次、存下的卡挂着小目标（v0.168.0）",
+    `回执「${receipt.slice(0, 42)}」 · 落点「${candLine.slice(0, 34)}」 · 卡上「${cardGoal.slice(0, 22)}」`,
+  );
+  js(
+    `(() => {
+      const put = (key, stored) => {
+        if (stored) localStorage.setItem(key, stored);
+        else localStorage.removeItem(key);
+      };
+      put('guitar.scores.v1', sessionStorage.getItem('chk15.scores'));
+      put('guitar.settings.v1', sessionStorage.getItem('chk15.settings'));
+      put('guitar.rhythm.v1', sessionStorage.getItem('chk15.rhythm'));
+      sessionStorage.removeItem('chk15.scores');
+      sessionStorage.removeItem('chk15.settings');
+      sessionStorage.removeItem('chk15.rhythm');
+      return 'restored';
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
+
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
   failed += 1;

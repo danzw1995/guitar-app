@@ -4463,6 +4463,20 @@ button.steady-best-tag:hover {
   color: var(--muted);
   font-size: 12px;
 }
+/* v0.168.0：候选落在哪几拍的一句灰字 + 存下来的生成谱卡上那行小目标 */
+.generate-cand {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.my-goal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 6px 0 0;
+  font-size: 13px;
+}
 .generate-goal-go {
   min-height: 40px;
   padding: 0 10px;
