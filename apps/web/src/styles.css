@@ -2862,6 +2862,21 @@ button.steady-best-tag:hover {
 .follow-done-note {
   font-size: 12px;
 }
+/* 「按这次的 BPM 再来一轮」（v0.169.0）：回执里直接接着练，不用回上面改速度 */
+.follow-done-again-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0;
+  color: var(--muted);
+}
+.follow-done-again {
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--accent);
+  font-size: 13px;
+}
 /* 这一次点了不止一处（v0.111.0）：其余几处收在下面，默认不展开 */
 .follow-spots {
   display: grid;
@@ -4421,14 +4436,38 @@ button.steady-best-tag:hover {
   font-variant-numeric: tabular-nums;
 }
 .generate-score {
-  display: block;
+  display: inline-block;
+  position: relative;
   max-width: 100%;
-  overflow-x: auto;
+  vertical-align: top;
+  /* 底下留一条给「候选落点」的橙线，免得贴着谱边被裁掉（v0.169.0） */
+  padding-bottom: 7px;
 }
 .generate-score img {
   display: block;
   max-width: 100%;
   height: auto;
+}
+/* 候选落在哪几拍（v0.169.0）：谱底下一小段强调色，跟着图片一起缩放 */
+.generate-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.generate-cand-mark {
+  position: absolute;
+  bottom: 0;
+  height: 3px;
+  min-width: 5px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--accent);
+  opacity: 0.85;
+}
+.generate-cand-note {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 .generate-loading {
   color: var(--muted);
@@ -4480,6 +4519,13 @@ button.steady-best-tag:hover {
 .generate-goal-go {
   min-height: 40px;
   padding: 0 10px;
+}
+/* 存下来的卡上那颗「小目标」也能直接进跟练（v0.169.0） */
+.my-goal-go {
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--accent);
+  font-size: 12px;
 }
 .generate-seg-hot .generate-lv {
   color: var(--accent);

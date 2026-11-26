@@ -5807,6 +5807,174 @@ try {
   );
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 
+  // 17g) v0.169.0：卡上小目标直接进跟练、回执里「再来一轮」、候选落点圈在谱上
+  js(
+    `(() => {
+      sessionStorage.setItem('chk16.scores', localStorage.getItem('guitar.scores.v1') ?? '');
+      sessionStorage.setItem('chk16.settings', localStorage.getItem('guitar.settings.v1') ?? '');
+      const notes = [];
+      for (let beat = 0; beat < 24; beat += 1) notes.push({ s: 1, f: beat % 12, beat, dur: 1 });
+      const goalNotes = [];
+      for (let beat = 0; beat < 8; beat += 1) goalNotes.push({ s: 3, f: (beat % 4) + 2, beat, dur: 1 });
+      localStorage.setItem('guitar.scores.v1', JSON.stringify([
+        {
+          id: 'my-long', title: '长谱一段', ascii: '', source: 'transcribe',
+          tab: { beatsPerBar: 4, bars: 6, notes }, meter: '4/4', bpm: 60, createdAt: Date.now(),
+        },
+        {
+          id: 'gen-test', title: '生成 · 长谱一段 · 滑音 · 2 小节', ascii: '', source: 'generated',
+          tab: { beatsPerBar: 4, bars: 2, notes: goalNotes }, meter: '4/4', bpm: 60, createdAt: Date.now(),
+          goal: { text: '第 2 小节滑音最密（2 处连着）', bar: 2, muscle: '换把位的手感——手指不离弦' },
+        },
+      ]));
+      localStorage.setItem('guitar.settings.v1', JSON.stringify({ theme: 'dark', genMode: 'my' }));
+      location.hash = '#rhythm';
+      return 'seed';
+    })()`,
+  );
+  await ab(["reload"]);
+  await sleep(1400);
+  // ① 存下来的卡上「只练第 2 小节」点得动
+  js(
+    `(() => {
+      const card = [...document.querySelectorAll('.my-card')].find((c) => c.textContent.includes('生成 · 长谱一段'));
+      card?.scrollIntoView({ block: 'center' });
+      return 'ok';
+    })()`,
+  );
+  await sleep(300);
+  js(
+    `(() => {
+      const card = [...document.querySelectorAll('.my-card')].find((c) => c.textContent.includes('生成 · 长谱一段'));
+      card?.querySelector('.my-goal-go')?.click();
+      return 'ok';
+    })()`,
+  );
+  let v169Loop = "";
+  for (let round = 0; round < 12; round += 1) {
+    await sleep(400);
+    const state = plain(
+      js(`(() => {
+        const note = document.querySelector('.follow .follow-loop-note')?.textContent ?? '';
+        return note.includes('只练第 2 小节') ? note : '';
+      })()`),
+    );
+    if (state) {
+      v169Loop = state;
+      break;
+    }
+  }
+  // ② 记完成绩 → 回执里「按这次的 BPM 再来一轮」→ 点了直接重新开练
+  await sleep(1600);
+  js(
+    `(() => {
+      [...document.querySelectorAll('.follow .btn')]
+        .find((b) => b.textContent.includes('记录成绩'))
+        ?.click();
+      return 'ok';
+    })()`,
+  );
+  let v169Again = "";
+  for (let round = 0; round < 10; round += 1) {
+    await sleep(400);
+    const state = plain(
+      js(`(() => {
+        const again = document.querySelector('.follow-done-again')?.textContent ?? '';
+        return again.includes('再来一轮') ? again : '';
+      })()`),
+    );
+    if (state) {
+      v169Again = state;
+      break;
+    }
+  }
+  js("(() => { document.querySelector('.follow-done-again')?.click(); return 'ok'; })()");
+  await sleep(1600);
+  const v169Restart = plain(
+    js(`(() => JSON.stringify({
+      done: document.querySelectorAll('.follow-done').length,
+      running: [...document.querySelectorAll('.follow .btn')].some((b) => b.textContent === '停止'),
+    }))()`),
+  );
+  const restartParsed = v169Restart ? JSON.parse(v169Restart) : { done: 1, running: false };
+  js(
+    `(() => {
+      [...document.querySelectorAll('.follow .btn')].find((b) => b.textContent.includes('收起'))?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(500);
+  // ③ 生成面板：「我存的谱」那支把候选落点圈在谱上
+  js("(() => { document.querySelector('[data-generate]')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(300);
+  js(
+    `(() => {
+      [...document.querySelectorAll('[data-generate] .chip')]
+        .find((c) => c.textContent.trim() === '我存的谱')
+        ?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(400);
+  js(
+    `(() => {
+      [...document.querySelectorAll('[data-generate] .chip')]
+        .find((c) => c.textContent.includes('长谱一段'))
+        ?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(400);
+  js(
+    `(() => {
+      [...document.querySelectorAll('[data-generate] .chip')]
+        .find((c) => c.textContent.trim() === '滑音')
+        ?.click();
+      return 'ok';
+    })()`,
+  );
+  js("(() => { document.querySelector('.generate-start')?.click(); return 'ok'; })()");
+  let v169Marks = { marks: 0, total: 0 };
+  for (let round = 0; round < 16; round += 1) {
+    await sleep(400);
+    const state = plain(
+      js(`(() => {
+        const wrap = document.querySelector('[data-generate] .generate-marks');
+        const marks = document.querySelectorAll('[data-generate] .generate-cand-mark').length;
+        const total = Number(wrap?.getAttribute('data-cand-marks') ?? 0);
+        return marks > 0 ? JSON.stringify({ marks, total }) : '';
+      })()`),
+    );
+    if (state) {
+      v169Marks = JSON.parse(state);
+      break;
+    }
+  }
+  log(
+    v169Loop.includes("只练第 2 小节") &&
+      v169Again.includes("再来一轮") &&
+      restartParsed.done === 0 &&
+      restartParsed.running &&
+      v169Marks.marks > 0 &&
+      v169Marks.total >= v169Marks.marks,
+    "我的谱/跟练/生成：卡上小目标直接进跟练、回执里「再来一轮」、候选落点圈在谱上（v0.169.0）",
+    `圈住「${v169Loop.slice(0, 16)}」 · 按钮「${v169Again.slice(0, 18)}」 · 重开 done=${restartParsed.done} running=${restartParsed.running} · 落点 ${v169Marks.marks}/${v169Marks.total}`,
+  );
+  js(
+    `(() => {
+      const put = (key, stored) => {
+        if (stored) localStorage.setItem(key, stored);
+        else localStorage.removeItem(key);
+      };
+      put('guitar.scores.v1', sessionStorage.getItem('chk16.scores'));
+      put('guitar.settings.v1', sessionStorage.getItem('chk16.settings'));
+      sessionStorage.removeItem('chk16.scores');
+      sessionStorage.removeItem('chk16.settings');
+      return 'restored';
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
+
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
   failed += 1;

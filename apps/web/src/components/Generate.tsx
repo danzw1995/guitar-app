@@ -163,6 +163,21 @@ export default function Generate({ follow, best, scores }: Props) {
     () => melodyCandidateBeatsOf(activeSegment ?? activeLine ?? { id: "none", name: "", midis: [] }, tech),
     [activeSegment, activeLine, tech],
   );
+  // 谱上圈出来的那几拍（v0.169.0）：生成谱会把骨架重复几遍，候选也跟着重复
+  const candMarkBeats = useMemo(() => {
+    const lineLength = (activeSegment ?? activeLine)?.midis.length ?? 0;
+    if (mode !== "my" || lineLength <= 0 || activeCandidates.length === 0) return [];
+    const totalBeats = piece.tab.bars * piece.tab.beatsPerBar;
+    const passes = Math.max(1, Math.round(totalBeats / lineLength));
+    const beats = new Set<number>();
+    for (let pass = 0; pass < passes; pass += 1) {
+      for (const index of activeCandidates) {
+        const beat = pass * lineLength + index;
+        if (beat < totalBeats) beats.add(beat);
+      }
+    }
+    return [...beats].sort((a, b) => a - b);
+  }, [mode, activeSegment, activeLine, activeCandidates, piece.tab.bars, piece.tab.beatsPerBar]);
   // 画布给宽一点：四小节一行放得下，八小节折成两行（窄画布会被折成三行，卡片长得离谱）
   const tex = useMemo(() => tabToAlphaTex(piece.tab), [piece]);
   const label = useMemo(() => tabAriaLabel(piece.tab), [piece]);
@@ -525,12 +540,37 @@ export default function Generate({ follow, best, scores }: Props) {
                 编一段试试
               </button>
             ) : image ? (
-              <img className="tab-score" src={image.dataUrl} alt={label} width={image.width} />
+              <>
+                <img className="tab-score" src={image.dataUrl} alt={label} width={image.width} />
+                {candMarkBeats.length > 0 && (
+                  <span className="generate-marks" aria-hidden="true" data-cand-marks={candMarkBeats.length}>
+                    {candMarkBeats.map((beat) => {
+                      const spot = image.beats?.[beat];
+                      if (!spot) return null;
+                      return (
+                        <span
+                          key={beat}
+                          className="generate-cand-mark"
+                          style={{
+                            left: `${((spot.x + spot.w / 2) / image.width) * 100}%`,
+                            width: `${Math.max(4, (spot.w / image.width) * 62)}%`,
+                          }}
+                        />
+                      );
+                    })}
+                  </span>
+                )}
+              </>
             ) : (
               <span className="generate-loading">{imageError ? "这张谱没画出来" : "画谱中…"}</span>
             )}
           </span>
 
+          {candMarkBeats.length > 0 && (
+            <p className="generate-cand-note">
+              谱底下那 {candMarkBeats.length} 条橙线，就是能叠{MELODY_TECH_LABEL[tech]}的拍子——先按谱上的位置把手指放好，再跟着跟练。
+            </p>
+          )}
           <p className="generate-tip">{piece.hint}</p>
           <p className="generate-goal">
             <span className="generate-goal-tag">小目标</span>

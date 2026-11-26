@@ -1706,6 +1706,15 @@ expect(
     (anyDecls(".my-goal").get("flex-wrap") || "") === "wrap",
 );
 
+expect(
+  "候选落点在谱底下一小段强调色；回执里的「再来一轮」和卡上的「只练第 N 小节」都够 40 高 (v0.169.0)",
+  anyDecls(".generate-cand-mark").get("position") === "absolute" &&
+    anyDecls(".generate-cand-mark").get("background") === "var(--accent)" &&
+    px(anyDecls(".follow-done-again").get("min-height")) >= 40 &&
+    px(anyDecls(".my-goal-go").get("min-height")) >= 40 &&
+    (anyDecls(".follow-done-again-row").get("flex-wrap") || "") === "wrap",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

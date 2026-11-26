@@ -374,6 +374,26 @@ function ScoreCard({
           <span className="generate-goal-tag">小目标</span>
           {score.goal.text}
           {score.goal.muscle ? <span className="generate-muscle">这条练的是：{score.goal.muscle}</span> : null}
+          {score.goal.bar !== undefined && tab ? (
+            <button
+              type="button"
+              className="btn-quiet my-goal-go"
+              onClick={() => {
+                follow({
+                  id: score.id,
+                  name: score.title,
+                  bpm: [bpm, bpm + 40],
+                  tab: tab as Tab,
+                  meter,
+                  startBar: score.goal!.bar,
+                });
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              title="打开跟练，直接圈住这一小节"
+            >
+              只练第 {score.goal.bar} 小节
+            </button>
+          ) : null}
         </p>
       ) : null}
       {storedSource === "chord" && score.chordName ? (

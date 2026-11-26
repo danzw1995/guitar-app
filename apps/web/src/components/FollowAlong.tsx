@@ -115,6 +115,8 @@ export default function FollowAlong({
     hardest: FollowHardest | null;
     spots: FollowHardest[];
   } | null>(null);
+  /** 「按这次的 BPM 再来一轮」（v0.169.0）：先改速度，等这一轮渲染完再开练。 */
+  const [restartAt, setRestartAt] = useState<number | null>(null);
   /** 点级数方块单独去练的次数：点得最多的那一处就是「最卡的」。 */
   const hardRef = useRef(new Map<string, FollowHardest>());
   const loopPassRef = useRef(0);
@@ -333,6 +335,27 @@ export default function FollowAlong({
     loop,
   });
   runningRef.current = running;
+
+  /**
+   * 记完成绩「按这次的 BPM 再来一轮」（v0.169.0）。
+   *
+   * 速度是 `useMetronome` 的入参，`start()` 闭包里拿的是**这一次渲染**的值；所以先把速度改掉、
+   * 等下一轮渲染（`start` 也跟着换了）再由 effect 开练，别在同一次事件里直接调 `start()`——
+   * 那样会拿旧速度数拍。
+   */
+  useEffect(() => {
+    if (restartAt === null) return;
+    setRestartAt(null);
+    setDone(null);
+    setSeconds(0);
+    start();
+  }, [restartAt, start]);
+
+  function restartAtBpm(speed: number): void {
+    setStartBpm(speed);
+    setBpm(speed);
+    setRestartAt(speed);
+  }
 
   // 现在弹到第几级（v0.96.0）：按起音拍往后找，找不到就退回第一个
   const degrees = useMemo(() => degreesOf(target.tab), [target.tab]);
@@ -841,6 +864,19 @@ export default function FollowAlong({
               ? ` · 这段最卡的是第 ${done.hardest.bar} 小节${degreeName(done.hardest.degree)}（${done.hardest.name}），点了 ${done.hardest.count} 次`
               : " · 这一段没有单独去练哪一小节"}
           </p>
+          <div className="follow-done-again-row">
+            <button
+              type="button"
+              className="btn-quiet follow-done-again"
+              onClick={() => restartAtBpm(done.bpm)}
+              title="速度已经按这次记下的改好，按一下就从这个速度重新数预备拍"
+            >
+              按这次的 {done.bpm} BPM 再来一轮
+            </button>
+            <span className="follow-done-note">
+              不用再回上面改速度——按一下就从这个速度重新数拍。
+            </span>
+          </div>
           {done.hardest ? (
             <div className="follow-done-actions">
               <button
