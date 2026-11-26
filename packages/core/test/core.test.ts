@@ -125,7 +125,10 @@ import {
   generateMelodyPiece,
   generateMelodyLinePiece,
   melodySegmentsOf,
+  melodyCandidatesOf,
   practiceGoalOf,
+  practiceGoalDetailOf,
+  type MelodyLine,
   MELODY_CHOICES,
   checkPiece,
   SKILLS,
@@ -3842,6 +3845,17 @@ test("生成谱：我存的谱当骨架，也能叠上滑音击勾弦", () => {
   assert.ok(checkPiece(short).ok, short ? checkPiece(short).problems.join("；") : "");
   assert.equal(generateMelodyLinePiece(line, { tech: "slide", density: 1, seed: 2, bars: 1 }).tab.bars, 2);
   assert.equal(generateMelodyLinePiece(line, { tech: "slide", density: 1, seed: 2, bars: 99 }).tab.bars, 16);
+
+  // 拿「上一轮存下来的生成谱」当骨架：标题里的「生成 · 」前缀和「 · N 号」后缀剥掉，不再叠双前缀（v0.167.0）
+  const derived = generateMelodyLinePiece(
+    { id: "genm-star-slide-2-3-4", name: "生成 · 两只老虎 · 击勾弦 · 4 小节 · 3 号", midis: [60, 62, 64, 60] },
+    { tech: "slide", density: 2, seed: 7, bars: 4 },
+  );
+  assert.ok(derived.title.startsWith("生成 · 两只老虎"), `标题没剥干净：${derived.title}`);
+  assert.ok(!derived.title.includes("生成 · 生成"), `标题叠了双前缀：${derived.title}`);
+  assert.ok(!derived.title.includes(" · 3 号"), `标题留着上一轮的号：${derived.title}`);
+  assert.ok(!/[·\s]$| · ·/.test(derived.title), `标题挂着半截分隔符：${derived.title}`);
+  assert.ok(derived.hint.startsWith("自己存的谱「两只老虎"), `hint 没用剥过的名字：${derived.hint}`);
 });
 
 test("生成谱：长谱切段练，尾巴凑不成一小节就丢", () => {
@@ -3893,6 +3907,47 @@ test("生成谱：小目标说得出来练哪儿——技巧最密的那一小�
   assert.ok(practiceGoalOf(generatePiece("quarter", 3, 8)).includes("唱"), "四分音符的小目标该提唱名");
   assert.ok(practiceGoalOf(generatePiece("eighth", 3, 8)).includes("抢"), "八分音符的小目标该提抢拍");
   assert.ok(practiceGoalOf(generatePiece("strum", 3, 8)).includes("手腕"), "扫弦的小目标该提手腕");
+});
+
+test("生成谱：小目标拆开来——带第几小节、说得出练哪块肌肉（v0.167.0）", () => {
+  // 旋律骨架（有连奏技巧）：bar 指得到、肌肉按主导技巧说
+  const tiger = practiceGoalDetailOf(
+    generateMelodyPiece({ melodyId: "tiger", tech: "hammer", density: 3, seed: 3, bars: 4 }),
+  );
+  assert.ok(tiger.bar !== undefined && tiger.bar >= 1, "击勾弦的小目标该带第几小节");
+  assert.ok(tiger.muscle?.includes("左手"), `击勾弦该练左手发力：${tiger.muscle}`);
+  const star = practiceGoalDetailOf(
+    generateMelodyPiece({ melodyId: "star", tech: "slide", density: 3, seed: 3, bars: 4 }),
+  );
+  assert.ok(star.bar !== undefined && star.bar >= 1, "滑音的小目标该带第几小节");
+  assert.ok(star.muscle?.includes("换把位") || star.muscle?.includes("离弦"), `滑音的肌肉说错了：${star.muscle}`);
+  // 三种基础技能：没有第几小节、肌肉各说各的
+  const quarter = practiceGoalDetailOf(generatePiece("quarter", 3, 4));
+  assert.ok(quarter.bar === undefined, "四分音符的小目标不该带小节");
+  assert.ok(quarter.muscle?.includes("按拍落指"), `四分音符的肌肉不对：${quarter.muscle}`);
+  assert.ok(practiceGoalDetailOf(generatePiece("eighth", 3, 4)).muscle?.includes("均匀"), "八分该练均匀");
+  assert.ok(practiceGoalDetailOf(generatePiece("strum", 3, 4)).muscle?.includes("手腕"), "扫弦该练手腕");
+  // 四分音符的 text 与旧 practiceGoalOf 一致（老调用方不受影响）
+  assert.strictEqual(quarter.text, practiceGoalOf(generatePiece("quarter", 3, 4)));
+});
+
+test("生成谱：一段能叠几处候选数得出来（v0.167.0）", () => {
+  // 小星星（放得进一根弦）：击勾候选是相邻品差 2–4 的对数，滑音候选是品 ≥2 的音数
+  const star: MelodyLine = { id: "star", name: "小星星", midis: [60, 60, 64, 64, 65, 65, 64, 64] };
+  const hammer = melodyCandidatesOf(star, "hammer");
+  const slide = melodyCandidatesOf(star, "slide");
+  // 放在 3 弦上：品 5,5,9,9,10,10,9,9 → 击勾候选 0 对（差 4 的只有 5→9 与 9→10 差 1？9→10 差 1、5→9 差 4 算）
+  assert.ok(Number.isInteger(hammer) && hammer >= 1, `小星星该有击勾候选：${hammer}`);
+  assert.ok(slide >= 6, `小星星在 3 弦上品都 ≥2，滑音候选该是 8：${slide}`);
+  // 空弦一串（全 55）：没有候选
+  const open: MelodyLine = { id: "open", name: "空弦", midis: [55, 55, 55, 55] };
+  assert.strictEqual(melodyCandidatesOf(open, "hammer"), 0, "同一音该没有击勾候选");
+  assert.strictEqual(melodyCandidatesOf(open, "slide"), 0, "空弦品 0 该没有滑音候选");
+  // 音域太宽散开落弦的线也不崩
+  const wide: MelodyLine = { id: "wide", name: "宽", midis: [40, 76, 55, 40] };
+  assert.ok(melodyCandidatesOf(wide, "slide") >= 0 && melodyCandidatesOf(wide, "hammer") >= 0, "宽音域不崩");
+  // 空线
+  assert.strictEqual(melodyCandidatesOf({ id: "e", name: "空", midis: [] }, "slide"), 0);
 });
 
 

@@ -5530,6 +5530,146 @@ try {
     })()`,
   );
 
+  // 17e) v0.167.0：小目标点一下只练那一小节、「哪块肌肉」说得出来、段落 chips 标候选数
+  js(
+    `(() => {
+      sessionStorage.setItem('chk14.scores', localStorage.getItem('guitar.scores.v1') ?? '');
+      sessionStorage.setItem('chk14.settings', localStorage.getItem('guitar.settings.v1') ?? '');
+      const notes = [];
+      for (let beat = 0; beat < 24; beat += 1) notes.push({ s: 1, f: beat % 12, beat, dur: 1 });
+      localStorage.setItem('guitar.scores.v1', JSON.stringify([{
+        id: 'my-long',
+        title: '长谱一段',
+        ascii: '',
+        source: 'transcribe',
+        tab: { beatsPerBar: 4, bars: 6, notes },
+        meter: '4/4',
+        bpm: 60,
+        createdAt: Date.now(),
+      }]));
+      localStorage.setItem('guitar.settings.v1', JSON.stringify({ theme: 'dark', genMode: 'melody', genMelody: 'tiger', genTech: 'hammer', genDensity: 3 }));
+      location.hash = '#rhythm';
+      return 'ok';
+    })()`,
+  );
+  await ab(["reload"]);
+  await sleep(1200);
+  js("(() => { document.querySelector('[data-generate]')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(400);
+  js("(() => { const b = document.querySelector('.generate-start'); b?.click(); return 'ok'; })()");
+  let goalReady = "";
+  for (let round = 0; round < 14; round += 1) {
+    const state = plain(
+      js(`(() => {
+        const goal = document.querySelector('[data-generate] .generate-goal')?.textContent ?? '';
+        const muscle = document.querySelector('[data-generate] .generate-muscle')?.textContent ?? '';
+        const go = document.querySelector('[data-generate] .generate-goal-go')?.textContent ?? '';
+        return goal.includes('最密') && go.includes('只练') ? JSON.stringify({ goal, muscle, go }) : '';
+      })()`),
+    );
+    if (state) {
+      goalReady = state;
+      break;
+    }
+    await sleep(400);
+  }
+  // 点「只练第 N 小节」：跟练面板圈住同一小节，顺手存一份
+  const goalBar = goalReady ? Number(JSON.parse(goalReady).go.match(/第 (\d+) 小节/)?.[1] ?? 0) : 0;
+  js("(() => { document.querySelector('[data-generate] .generate-goal-go')?.click(); return 'ok'; })()");
+  let followState = "";
+  for (let round = 0; round < 16; round += 1) {
+    await sleep(400);
+    const state = plain(
+      js(`(() => {
+        const head = document.querySelector('.follow h3')?.textContent ?? '';
+        const loopNote = document.querySelector('.follow .follow-loop-note')?.textContent ?? '';
+        const cards = document.querySelectorAll('.my-card').length;
+        return head.includes('跟练') && loopNote.includes('只练') ? JSON.stringify({ head, loopNote, cards }) : '';
+      })()`),
+    );
+    if (state) {
+      followState = state;
+      break;
+    }
+  }
+  const followParsed = followState ? JSON.parse(followState) : { head: "", loopNote: "", cards: 0 };
+  // 收起跟练面板，切到「我存的谱」看段落 chips 上的候选数
+  js(
+    `(() => {
+      const close = [...document.querySelectorAll('.follow .btn')].find((node) => (node.textContent ?? '').includes('收起'));
+      close?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(600);
+  js(
+    `(() => {
+      const chip = [...document.querySelectorAll('[data-generate] .generate-skills .chip')].find((node) => (node.textContent ?? '').includes('我存的谱'));
+      chip?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(600);
+  // 切进「我存的谱」后默认选中的是最新那条（刚顺手存的老虎，16 拍不切段）——点「长谱一段」才看得到切段
+  js(
+    `(() => {
+      const chip = [...document.querySelectorAll('[data-generate] .generate-skills .chip')].find((node) => (node.textContent ?? '').includes('长谱一段'));
+      chip?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(500);
+  // 这条线相邻品差全是 ±1，击勾弦候选为 0（显示「0 处」是对的）；换成滑音才看得到「N 处 + 候选最多」
+  js(
+    `(() => {
+      const chip = [...document.querySelectorAll('[data-generate] .generate-skills .chip')].find((node) => (node.textContent ?? '').trim().startsWith('滑音'));
+      chip?.click();
+      return 'ok';
+    })()`,
+  );
+  let segState = "";
+  for (let round = 0; round < 14; round += 1) {
+    await sleep(400);
+    const state = plain(
+      js(`(() => {
+        const chips = [...document.querySelectorAll('[data-generate] .generate-segments .chip')].map((chip) => chip.textContent?.trim() ?? '');
+        const hot = chips.some((text) => text.includes('候选最多'));
+        const numbered = chips.length > 0 && chips.every((text) => /\\d+ 处/.test(text));
+        return chips.length >= 2 && numbered ? JSON.stringify({ chips: chips.join('|'), hot }) : '';
+      })()`),
+    );
+    if (state) {
+      segState = state;
+      break;
+    }
+  }
+  const segParsed = segState ? JSON.parse(segState) : { chips: "", hot: false };
+  log(
+    goalReady &&
+      goalBar >= 1 &&
+      followParsed.loopNote.includes(`只练第 ${goalBar} 小节`) &&
+      followParsed.cards >= 1 &&
+      JSON.parse(goalReady).muscle.includes("练的是") &&
+      segParsed.chips.includes("1–4") &&
+      segParsed.hot,
+    "我的谱：小目标点一下只练那一小节、说得出练哪块肌肉、段落 chips 标着候选数（v0.167.0）",
+    `按钮「${JSON.parse(goalReady).go}」 · 圈住「${followParsed.loopNote.slice(0, 18)}」 · 肌肉「${JSON.parse(goalReady).muscle.slice(0, 18)}」 · 段落「${segParsed.chips}」`,
+  );
+  js(
+    `(() => {
+      const put = (key, stored) => {
+        if (stored) localStorage.setItem(key, stored);
+        else localStorage.removeItem(key);
+      };
+      put('guitar.scores.v1', sessionStorage.getItem('chk14.scores'));
+      put('guitar.settings.v1', sessionStorage.getItem('chk14.settings'));
+      sessionStorage.removeItem('chk14.scores');
+      sessionStorage.removeItem('chk14.settings');
+      return 'restored';
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
+
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
   failed += 1;

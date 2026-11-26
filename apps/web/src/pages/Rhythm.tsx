@@ -393,6 +393,7 @@ export default function Rhythm() {
           best={best(target.id)}
           onFinish={record}
           onClose={() => setTarget(null)}
+          startBar={target.startBar}
         />
       )}
 

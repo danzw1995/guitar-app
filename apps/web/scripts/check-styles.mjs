@@ -1690,6 +1690,14 @@ expect(
     px(anyDecls(".generate-segments").get("margin-top")) <= 4,
 );
 
+expect(
+  "生成谱那块：「只练第 N 小节」够高、「哪块肌肉」是灰字小字、候选最多那一段的小字用强调色 (v0.167.0)",
+  px(anyDecls(".generate-goal-go").get("min-height")) >= 40 &&
+    px(anyDecls(".generate-muscle").get("font-size")) <= 12 &&
+    anyDecls(".generate-muscle").get("color") === "var(--muted)" &&
+    (anyDecls(".generate-seg-hot .generate-lv").get("color") || "") === "var(--accent)",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

@@ -4458,6 +4458,19 @@ button.steady-best-tag:hover {
   font-size: 10px;
   white-space: nowrap;
 }
+/* v0.167.0：「哪块肌肉」的一句灰字 + 「只练第 N 小节」的小按钮 + 候选最多那一段的小字 */
+.generate-muscle {
+  color: var(--muted);
+  font-size: 12px;
+}
+.generate-goal-go {
+  min-height: 40px;
+  padding: 0 10px;
+}
+.generate-seg-hot .generate-lv {
+  color: var(--accent);
+  opacity: 0.9;
+}
 .generate-bad {
   margin: 0;
   color: var(--accent);

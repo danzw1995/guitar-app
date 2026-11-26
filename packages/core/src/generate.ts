@@ -25,6 +25,8 @@ export interface Skill {
   /** 怎么练。 */
   tip: string;
   bpm: [number, number];
+  /** 这条练的是哪块肌肉（v0.167.0）：跟「小目标」一起露在面板上。 */
+  muscle?: string;
 }
 
 export const SKILLS: Skill[] = [
@@ -34,6 +36,7 @@ export const SKILLS: Skill[] = [
     level: 1,
     trains: "每拍一个音、稳稳落在拍点上",
     tip: "先数四拍，一拍一个音；下拨，每一拍都落在拍点上，不快不慢。",
+    muscle: "按拍落指的准头——眼到、手到，音准落在拍上",
     bpm: [60, 80],
   },
   {
@@ -42,6 +45,7 @@ export const SKILLS: Skill[] = [
     level: 2,
     trains: "一拍两下的均匀",
     tip: "八分是「一拍两下」——最容易越弹越快，跟着节拍器数「一 二」再弹。",
+    muscle: "右手拨弦的均匀——每一下力度一样大，快慢全跟拍子",
     bpm: [56, 76],
   },
   {
@@ -50,6 +54,7 @@ export const SKILLS: Skill[] = [
     level: 3,
     trains: "同一根弦上滑动的准头",
     tip: "滑音：前一个音拨响后手指不抬起，滑到目标品才让后一个音响，中间不断。",
+    muscle: "换把位的手感——手指不离弦、手臂带动，不是抠着品爬",
     bpm: [50, 70],
   },
   {
@@ -58,6 +63,7 @@ export const SKILLS: Skill[] = [
     level: 3,
     trains: "左手发力与两个音的连贯",
     tip: "击勾弦：第二个音右手不拨——击弦用手指砸下去，勾弦靠手指往侧下方勾开。",
+    muscle: "左手的击 / 勾发力——右手只拨第一个音，后面的音全靠左手打出来",
     bpm: [50, 70],
   },
   {
@@ -66,6 +72,7 @@ export const SKILLS: Skill[] = [
     level: 2,
     trains: "右手方向与和弦转换",
     tip: "扫弦：先慢速把每一下方向弹清楚，手一直保持摆动，空拍也别停手。",
+    muscle: "手腕的来回摆——不是手臂抡，也不是手指抓",
     bpm: [60, 80],
   },
 ];
@@ -175,6 +182,8 @@ export interface GeneratedPiece {
   id: string;
   /** "melody" = 熟悉旋律做骨架那一支（v0.164.0）。 */
   skill: SkillId | "melody";
+  /** 旋律骨架那两支选的技巧（v0.167.0）：「练哪块肌肉」按它说。 */
+  tech?: MelodyTech;
   seed: number;
   bars: number;
   meter: "4/4";
@@ -445,6 +454,7 @@ function melodyPieceOf(
   return {
     id: `${base.prefix}-${base.key}-${tech}-${density}-${options.seed}-${bars}`,
     skill: "melody",
+    tech,
     seed: options.seed,
     bars,
     meter: "4/4",
@@ -481,7 +491,17 @@ export function generateMelodyLinePiece(line: MelodyLine, options: MelodyLineOpt
   const midis = line.midis
     .map((midi) => Math.max(40, Math.min(76, Math.round(Number(midi)))))
     .filter((midi) => Number.isFinite(midi));
-  const name = line.name.trim().slice(0, 24) || "我存的谱";
+  // 自己存的谱标题可能本身就是「生成 · … · N 号」（上一轮存下来的）：拿它当骨架时把这套前后缀
+  // 剥掉，不然拼出来的新标题是「生成 · 生成 · …」，截断后还可能挂着半截「·」（v0.167.0）。
+  const name =
+    line.name
+      .trim()
+      .replace(/^(?:生成 ·\s*)+/, "")
+      .replace(/ · \d+ 号$/, "")
+      .trim()
+      .slice(0, 24)
+      .replace(/[·\s]+$/, "")
+      .trim() || "我存的谱";
   const key =
     line.id.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "") || "line";
   return melodyPieceOf(
@@ -514,19 +534,40 @@ export function melodySegmentsOf(line: MelodyLine, size = 16): MelodyLine[] {
 
 const GOAL_TECH_NAME: Record<string, string> = { s: "滑音", h: "击弦", p: "勾弦" };
 
-/**
- * 这一条的「小目标」（v0.166.0）：一句可执行的建议，不是描述——
- * 有连奏技巧的找「技巧最密的那一小节」让你单独练，没有的按技能给一句要点。
- */
-export function practiceGoalOf(piece: GeneratedPiece): string {
+/** 旋律骨架那两支按技巧给的「哪块肌肉」（v0.167.0）。 */
+const MELODY_TECH_MUSCLE: Record<MelodyTech, string> = {
+  slide: "换把位的手感——手指不离弦、手臂带动，不是抠着品爬",
+  hammer: "左手的击 / 勾发力——右手只拨第一个音，后面的音全靠左手打出来",
+};
+
+/** 这一条的「小目标」拆开来的样子（v0.167.0）。 */
+export interface PracticeGoal {
+  /** 一句可执行的建议。 */
+  text: string;
+  /** 技巧最密的那一小节（1 起）：点一下直接只练这一小节。 */
+  bar?: number;
+  /** 这一条练的是哪块肌肉。 */
+  muscle?: string;
+}
+
+export function practiceGoalDetailOf(piece: GeneratedPiece): PracticeGoal {
   if (piece.skill === "strum") {
-    return "扫弦看的是手腕不是音：空拍那一下手腕照样走、只是不碰弦——先空手把节奏画两遍再拿琴。";
+    return {
+      text: "扫弦看的是手腕不是音：空拍那一下手腕照样走、只是不碰弦——先空手把节奏画两遍再拿琴。",
+      muscle: "手腕的来回摆——不是手臂抡，也不是手指抓",
+    };
   }
   if (piece.skill === "quarter") {
-    return "这条只有四分音符：先不看点位，跟着节拍器把这一条的音名唱一遍再上手。";
+    return {
+      text: "这条只有四分音符：先不看点位，跟着节拍器把这一条的音名唱一遍再上手。",
+      muscle: "按拍落指的准头——眼到、手到，音准落在拍上",
+    };
   }
   if (piece.skill === "eighth") {
-    return "每拍两个同音高：第二个音最容易抢，把速度压到 56 数「一-and」，稳了再快起来。";
+    return {
+      text: "每拍两个同音高：第二个音最容易抢，把速度压到 56 数「一-and」，稳了再快起来。",
+      muscle: "右手拨弦的均匀——每一下力度一样大，快慢全跟拍子",
+    };
   }
   // 旋律骨架 / 滑音 / 击勾弦：找技巧最密的那一小节
   const bars = piece.tab.bars;
@@ -547,12 +588,67 @@ export function practiceGoalOf(piece: GeneratedPiece): string {
     }
   });
   if (bestBar < 0) {
-    return "这一条没有连奏技巧：把节拍器开到目标速度的八成，从头到尾不间断弹三遍。";
+    return {
+      text: "这一条没有连奏技巧：把节拍器开到目标速度的八成，从头到尾不间断弹三遍。",
+      muscle: "按拍落指的准头——眼到、手到，音准落在拍上",
+    };
   }
   const names = [...counts[bestBar].names]
     .map((tech) => GOAL_TECH_NAME[tech] ?? tech)
     .join("、");
-  return `第 ${bestBar + 1} 小节${names}最密（${bestCount} 处连着）：先单独把这一小节放慢弹三遍，再从头接起来。`;
+  // 「练哪块肌肉」按这一支选的技巧说（加密档两种都叠，但主线是用户挑的那种）；
+  // 技能那两支（slide / hammer 生成）没有 tech 字段，看 skill 就够
+  const techName: MelodyTech | undefined =
+    piece.tech ?? (piece.skill === "hammer" ? "hammer" : piece.skill === "slide" ? "slide" : undefined);
+  const muscle = techName ? MELODY_TECH_MUSCLE[techName] : MELODY_TECH_MUSCLE.slide;
+  return {
+    text: `第 ${bestBar + 1} 小节${names}最密（${bestCount} 处连着）：先单独把这一小节放慢弹三遍，再从头接起来。`,
+    bar: bestBar + 1,
+    muscle,
+  };
+}
+
+/**
+ * 这一条的「小目标」（v0.166.0）：一句可执行的建议，不是描述——
+ * 有连奏技巧的找「技巧最密的那一小节」让你单独练，没有的按技能给一句要点。
+ */
+export function practiceGoalOf(piece: GeneratedPiece): string {
+  return practiceGoalDetailOf(piece).text;
+}
+
+/**
+ * 一段旋律线在这套叠法下有多少处可叠的候选（v0.167.0）：
+ * 击勾弦数「同弦相邻、品差 2–4」的对数；滑音数「品 ≥ 2」的音。
+ *
+ * 摆法和 `melodyPieceOf` 一致（3 弦优先、放不下换 2 弦、再不行散开），
+ * 只是选弦不用种子——标注用，差一两处不影响挑段落。密度档影响最终选中多少，
+ * 候选数只是「这一段有多少可叠的地方」。
+ */
+export function melodyCandidatesOf(line: MelodyLine, tech: MelodyTech): number {
+  const midis = line.midis
+    .map((midi) => Math.max(40, Math.min(76, Math.round(Number(midi)))))
+    .filter((midi) => Number.isFinite(midi));
+  if (midis.length === 0) return 0;
+  const onString = (s: number) =>
+    midis.every((midi) => {
+      const fret = midi - OPEN[s - 1];
+      return fret >= 0 && fret <= 12;
+    });
+  const usable = [3, 2].filter(onString);
+  const string = usable[0] ?? 0;
+  const spots = string
+    ? midis.map((midi) => ({ s: string, f: midi - OPEN[string - 1] }))
+    : midis.map((midi) => place(midi));
+  if (tech === "hammer") {
+    let count = 0;
+    for (let index = 0; index < spots.length - 1; index += 1) {
+      if (spots[index].s !== spots[index + 1].s) continue;
+      const delta = Math.abs(spots[index + 1].f - spots[index].f);
+      if (delta >= 2 && delta <= 4) count += 1;
+    }
+    return count;
+  }
+  return spots.filter((spot) => spot.f >= 2).length;
 }
 
 export interface PieceCheck {

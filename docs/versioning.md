@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.166.0`，core `0.61.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.167.0`，core `0.62.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -208,6 +208,13 @@ v0.166.0 给 `generate.ts` 加了 `melodySegmentsOf()`（长谱切 4 小节一�
 `practiceGoalOf()`（一句可执行的小目标：技巧最密的那一小节 / 按技能给要点），新增导出算 MINOR，
 core 到 `0.61.0`。前端：my 骨架的段落 chips（`.generate-segments`）、「换一条」在骨架那两支改成
 「按这条再变一变」（`VARIANT_ORDER` 六档轮换 + 换号）、谱下面一行「小目标」（`.generate-goal`）。
+
+v0.167.0 给 `generate.ts` 加了 `PracticeGoal` / `practiceGoalDetailOf()` / `melodyCandidatesOf()`，
+`GeneratedPiece` 多一个可选 `tech` 字段（旋律骨架那支选的技巧，「哪块肌肉」按它说）——新增导出算
+MINOR，core 到 `0.62.0`。前端：小目标行加「这条练的是：…」（`.generate-muscle`）与「只练第 N 小节」
+按钮（复用 `FollowAlong` 的 `startBar`，一打开就圈住那一小节，顺手存一份同 v0.165 的那条路）；
+段落 chips 标「· N 处」，候选最多的那段加亮「候选最多」（`.generate-seg-hot`）。顺手修：拿上一轮
+存下来的生成谱再当骨架时，名字里的「生成 · 」前缀与「 · N 号」后缀先剥掉，标题不再叠双前缀。
 
 v0.161.0 给 core 加了 `interval-drill.ts`（`intervalTableOf` / `intervalQualityRows` / `intervalDrillQuestion` /
 `intervalDrillAnswerText` / `INTERVAL_KEYS`），新增导出算 MINOR，core 到 `0.56.0`；前端只多了音阶页的

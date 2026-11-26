@@ -8,8 +8,9 @@ import {
   generateMelodyLinePiece,
   generateMelodyPiece,
   generatePiece,
+  melodyCandidatesOf,
   melodySegmentsOf,
-  practiceGoalOf,
+  practiceGoalDetailOf,
   tabAriaLabel,
   tabEvents,
   tabToAlphaTex,
@@ -148,6 +149,14 @@ export default function Generate({ follow, best, scores }: Props) {
     return generatePiece(skill, seed, bars);
   }, [mode, melodyId, tech, density, seed, melodyBars, skill, bars, activeLine, activeSegment]);
   const check = useMemo(() => checkPiece(piece), [piece]);
+  // 「小目标」拆开：bar 是它指的那一小节（v0.167.0），点一下直接只练那一小节
+  const goal = useMemo(() => practiceGoalDetailOf(piece), [piece]);
+  // 每一段能叠的候选数（v0.167.0）：帮你挑先练哪段
+  const segmentCandidates = useMemo(
+    () => segments.map((segment) => melodyCandidatesOf(segment, tech)),
+    [segments, tech],
+  );
+  const bestCandidates = segments.length > 0 ? Math.max(...segmentCandidates) : 0;
   // 画布给宽一点：四小节一行放得下，八小节折成两行（窄画布会被折成三行，卡片长得离谱）
   const tex = useMemo(() => tabToAlphaTex(piece.tab), [piece]);
   const label = useMemo(() => tabAriaLabel(piece.tab), [piece]);
@@ -249,7 +258,7 @@ export default function Generate({ follow, best, scores }: Props) {
     stopTimer.current = window.setTimeout(() => setPlaying(false), seconds * 1000);
   }
 
-  function practice() {
+  function practice(startBar?: number) {
     if (!follow) return;
     // 没存过就顺手存一份（v0.165.0）：跟练的成绩挂在谱自己的 id 上，列表里留一条才找得回来
     const title = `${piece.title} · ${seed} 号`;
@@ -271,6 +280,8 @@ export default function Generate({ follow, best, scores }: Props) {
       bpm: [piece.bpm[0], piece.bpm[1]],
       tab: piece.tab,
       meter: piece.meter,
+      // 从「小目标」点过来时带上那一小节（v0.167.0）：一打开就圈住它
+      ...(startBar !== undefined ? { startBar } : {}),
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -396,21 +407,27 @@ export default function Generate({ follow, best, scores }: Props) {
           </div>
           {segments.length > 1 && (
             <div className="generate-skills generate-segments" role="group" aria-label="练这一条的哪一段">
-              {segments.map((segment, index) => (
-                <button
-                  key={`${segment.id}-${index}`}
-                  type="button"
-                  className={`chip${activeSegment === segment ? " on" : ""}`}
-                  aria-pressed={activeSegment === segment}
-                  onClick={() => {
-                    setMySegment(index);
-                    setStarted(true);
-                    setNote(null);
-                  }}
-                >
-                  {`第 ${(index * SEGMENT_BEATS) / 4 + 1}–${(index * SEGMENT_BEATS + segment.midis.length) / 4} 小节`}
-                </button>
-              ))}
+              {segments.map((segment, index) => {
+                const count = segmentCandidates[index] ?? 0;
+                const hot = count === bestCandidates && bestCandidates > 0;
+                return (
+                  <button
+                    key={`${segment.id}-${index}`}
+                    type="button"
+                    className={`chip${activeSegment === segment ? " on" : ""}${hot ? " generate-seg-hot" : ""}`}
+                    aria-pressed={activeSegment === segment}
+                    title={`这一段可以叠 ${count} 处${MELODY_TECH_LABEL[tech]}`}
+                    onClick={() => {
+                      setMySegment(index);
+                      setStarted(true);
+                      setNote(null);
+                    }}
+                  >
+                    {`第 ${(index * SEGMENT_BEATS) / 4 + 1}–${(index * SEGMENT_BEATS + segment.midis.length) / 4} 小节 · ${count} 处`}
+                    {hot && <span className="generate-lv">候选最多</span>}
+                  </button>
+                );
+              })}
             </div>
           )}
           <div className="generate-skills" role="group" aria-label="往上叠哪种技巧">
@@ -493,7 +510,17 @@ export default function Generate({ follow, best, scores }: Props) {
           <p className="generate-tip">{piece.hint}</p>
           <p className="generate-goal">
             <span className="generate-goal-tag">小目标</span>
-            {practiceGoalOf(piece)}
+            {goal.text}
+            {goal.muscle && <span className="generate-muscle">这条练的是：{goal.muscle}</span>}
+            {goal.bar !== undefined && follow && (
+              <button
+                type="button"
+                className="btn-quiet generate-goal-go"
+                onClick={() => practice(goal.bar)}
+              >
+                只练第 {goal.bar} 小节
+              </button>
+            )}
           </p>
           {!check.ok && (
             <p className="generate-bad" role="alert">
@@ -505,7 +532,7 @@ export default function Generate({ follow, best, scores }: Props) {
               {playing ? "停" : "试听"}
             </button>
             {follow && (
-              <button type="button" className="btn" onClick={practice}>
+              <button type="button" className="btn" onClick={() => practice()}>
                 跟练
               </button>
             )}
