@@ -3184,7 +3184,7 @@ try {
   );
   // 16d24) v0.122.0：不在计划里的两条卡得一样狠，练得快的排前面
   js(
-    "(() => { const key = 'guitar.rhythm.v1'; const store = JSON.parse(localStorage.getItem(key) ?? '{}'); const base = { sessions: 1, minutes: 1, lastAt: '2026-11-20', hardest: { bar: 1, degree: 3, name: 'E', count: 6 } }; store['p:extra-slow'] = { ...base, bestBpm: 60, title: '慢的' }; store['p:extra-fast'] = { ...base, bestBpm: 100, title: '快的' }; localStorage.setItem(key, JSON.stringify(store)); return 'ok'; })()",
+    "(() => { const key = 'guitar.rhythm.v1'; const store = JSON.parse(localStorage.getItem(key) ?? '{}'); const day = 86400000; const when = new Date(Date.now() - day); const pad = (n) => String(n).padStart(2, '0'); const lastAt = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`; const base = { sessions: 1, minutes: 1, lastAt, hardest: { bar: 1, degree: 3, name: 'E', count: 6 } }; store['p:extra-slow'] = { ...base, bestBpm: 60, title: '慢的' }; store['p:extra-fast'] = { ...base, bestBpm: 100, title: '快的' }; localStorage.setItem(key, JSON.stringify(store)); return 'ok'; })()",
   );
   js("location.hash = '#stats'");
   js("(() => { for (const key of ['degree', 'stage', 'spot', 'set']) sessionStorage.removeItem(`guitar.stats.${key}`); return 'ok'; })()");
@@ -5959,6 +5959,107 @@ try {
       v169Marks.total >= v169Marks.marks,
     "我的谱/跟练/生成：卡上小目标直接进跟练、回执里「再来一轮」、候选落点圈在谱上（v0.169.0）",
     `圈住「${v169Loop.slice(0, 16)}」 · 按钮「${v169Again.slice(0, 18)}」 · 重开 done=${restartParsed.done} running=${restartParsed.running} · 落点 ${v169Marks.marks}/${v169Marks.total}`,
+  );
+  // 17h) v0.170.0：点橙线只听那一拍、跟练里橙线随拍亮、「再来一轮」不加码并记轮次
+  js("(() => { document.querySelector('[data-generate] .generate-cand-mark')?.click(); return 'ok'; })()");
+  await sleep(500);
+  const v170Audition = plain(
+    js(`(() => {
+      const button = document.querySelector('[data-generate] .generate-actions .btn.primary');
+      const mark = document.querySelector('[data-generate] .generate-cand-mark');
+      return JSON.stringify({
+        button: button?.textContent?.trim() ?? '',
+        label: mark?.getAttribute('aria-label') ?? '',
+      });
+    })()`),
+  );
+  const auditionParsed = v170Audition ? JSON.parse(v170Audition) : { button: "", label: "" };
+  js(
+    `(() => {
+      [...document.querySelectorAll('[data-generate] .generate-actions .btn')]
+        .find((b) => b.textContent.trim() === '跟练')
+        ?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(700);
+  // 预备拍设成「不用」，不然头四秒还在空打、橙线不会亮
+  js(
+    `(() => {
+      const select = document.querySelector('.follow select[aria-label="开始前空打几小节"]');
+      if (!select) return 'no';
+      const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+      setter.call(select, '0');
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      return 'ok';
+    })()`,
+  );
+  await sleep(300);
+  js(
+    `(() => {
+      [...document.querySelectorAll('.follow .btn')]
+        .find((b) => b.textContent.includes('开始'))
+        ?.click();
+      return 'ok';
+    })()`,
+  );
+  let v170Marks = { marks: 0, on: 0, left: "" };
+  for (let round = 0; round < 14; round += 1) {
+    await sleep(400);
+    const state = plain(
+      js(`(() => {
+        const panel = document.querySelector('.follow');
+        const marks = panel?.querySelectorAll('.tab-score-mark').length ?? 0;
+        const on = panel?.querySelectorAll('.tab-score-mark.on') ?? [];
+        return marks > 0 && on.length > 0
+          ? JSON.stringify({ marks, on: on.length, left: getComputedStyle(on[0]).left })
+          : '';
+      })()`),
+    );
+    if (state) {
+      v170Marks = JSON.parse(state);
+      break;
+    }
+  }
+  // 记一轮 → 再来一轮（不加码）→ 再记一轮，回执里应写「第 2 轮」
+  js(
+    `(() => {
+      [...document.querySelectorAll('.follow .btn')]
+        .find((b) => b.textContent.includes('记录成绩'))
+        ?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(500);
+  js("(() => { document.querySelector('.follow-done-again')?.click(); return 'ok'; })()");
+  let v170Hold = "";
+  for (let round = 0; round < 10; round += 1) {
+    await sleep(300);
+    v170Hold = plain(js("(() => document.querySelector('[data-hold-speed]')?.textContent ?? '')()"));
+    if (v170Hold) break;
+  }
+  await sleep(1200);
+  js(
+    `(() => {
+      [...document.querySelectorAll('.follow .btn')]
+        .find((b) => b.textContent.includes('记录成绩'))
+        ?.click();
+      return 'ok';
+    })()`,
+  );
+  await sleep(500);
+  const v170Round = plain(
+    js("(() => document.querySelector('.follow-done-text')?.textContent ?? '')()"),
+  );
+  log(
+    auditionParsed.button === "停" &&
+      auditionParsed.label.includes("试听第") &&
+      v170Marks.marks > 0 &&
+      v170Marks.on === 1 &&
+      v170Hold.includes("不加码") &&
+      v170Round.includes("第 2 轮"),
+    "跟练/生成：点橙线只听那一拍、橙线随当前拍亮、「再来一轮」不加码并记轮次（v0.170.0）",
+    `试听「${auditionParsed.label}」→「${auditionParsed.button}」 · 橙线 ${v170Marks.on}/${v170Marks.marks}（left ${v170Marks.left}） · ${v170Hold || "没有不加码标记"} · 回执含第 2 轮=${v170Round.includes("第 2 轮")}`,
   );
   js(
     `(() => {

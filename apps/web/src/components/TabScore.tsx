@@ -19,6 +19,15 @@ interface Props {
    * 交给 CSS 拉满——单独放大一小节要用它。
    */
   fluid?: boolean;
+  /**
+   * 谱底下一排小短线（v0.170.0）：能叠技法的那几拍，`markedBeat` 对上的那条亮起来。
+   *
+   * 拍号从 0 数，与 `beat` 同一套；位置直接用 `beats.json` / 现画图的拍位，
+   * 所以缩放、换行都对得上。
+   */
+  marks?: number[];
+  /** 当前走到第几拍（0 起）：亮 `marks` 里的哪一条。`null` = 没在练。 */
+  markedBeat?: number | null;
 }
 
 /**
@@ -40,7 +49,7 @@ interface Props {
  * 生成的）在这里退回现画一张（v0.98.0）——以前会去拿一个不存在的 PNG，跟练面板上
  * 就是一块碎图。现画的图没有 `beats.json` 的拍位置，所以不画竖条。
  */
-export default function TabScore({ id, tab, className, beat, fluid }: Props) {
+export default function TabScore({ id, tab, className, beat, fluid, marks, markedBeat }: Props) {
   const label = useMemo(() => tabAriaLabel(tab), [tab]);
   const beats = useScoreBeats();
   const beatsReady = useScoreBeatsReady();
@@ -109,6 +118,32 @@ export default function TabScore({ id, tab, className, beat, fluid }: Props) {
           }}
           aria-hidden="true"
         />
+      )}
+      {marks && marks.length > 0 && bandInfo && width > 0 && (
+        <span className="tab-score-marks" aria-hidden="true">
+          {marks.map((mark, index) => {
+            const spot = bandInfo.beats[mark];
+            if (!spot) return null;
+            const on = markedBeat !== null && markedBeat !== undefined && Math.floor(markedBeat) === mark;
+            // 长谱折成两三行时，每一拍的落点要画在「它自己那一行」的底下，
+            // 不然十几条线全堆到最后一行下面（v0.170.0 第一次就是这样）。
+            const topPct =
+              height > 0 && spot.y !== undefined && spot.h !== undefined
+                ? ((spot.y + spot.h) / height) * 100
+                : null;
+            return (
+              <span
+                key={`${mark}-${index}`}
+                className={on ? "tab-score-mark on" : "tab-score-mark"}
+                style={{
+                  left: `${((spot.x + spot.w / 2) / width) * 100}%`,
+                  width: `${Math.max(3, (spot.w / width) * 55)}%`,
+                  ...(topPct !== null ? { top: `${topPct}%` } : null),
+                }}
+              />
+            );
+          })}
+        </span>
       )}
     </span>
   );

@@ -19,6 +19,8 @@ export interface FollowTarget {
   meter?: string;
   /** 一打开就圈住这一小节并开练（v0.167.0）：从生成谱的「小目标」点过来时用。 */
   startBar?: number;
+  /** 能叠技法的那几拍（0 起，v0.170.0）：谱底下画一排短线，练到哪一拍就亮哪一条。 */
+  candBeats?: number[];
 }
 
 /** 只练某几小节时，练满几遍自动接回整段（v0.99.0；v0.100.0 起遍数可选）。 */
@@ -52,6 +54,8 @@ export interface FollowAlongProps {
   startBar?: number;
   /** 开练前最后一次记下的速度（v0.168.0）：回执里比「这次 vs 上次」用；面板存的是历史，写完会变，所以进来先拍下来。 */
   previous?: { date: string; bpm: number };
+  /** 能叠技法的那几拍（0 起，v0.170.0）：跟练时谱底下画一排短线，走到哪一拍亮哪一条。 */
+  candBeats?: number[];
 }
 
 function clock(seconds: number): string {
@@ -92,6 +96,7 @@ export default function FollowAlong({
   onSpot,
   startBar,
   previous,
+  candBeats,
 }: FollowAlongProps) {
   const meter = target.meter ?? "4/4";
   const [startBpm, setStartBpm] = useState(target.bpm[0]);
@@ -114,9 +119,24 @@ export default function FollowAlong({
     bpm: number;
     hardest: FollowHardest | null;
     spots: FollowHardest[];
+    /** 这是这一条连着练的第几轮、上一轮的速度（v0.170.0）。 */
+    roundIndex: number;
+    roundBefore: number | null;
   } | null>(null);
   /** 「按这次的 BPM 再来一轮」（v0.169.0）：先改速度，等这一轮渲染完再开练。 */
   const [restartAt, setRestartAt] = useState<number | null>(null);
+  /**
+   * 「再来一轮」时先不加码（v0.170.0）。
+   *
+   * 上一轮是靠自动加速冲到某个速度的，马上再按原样加码等于跳着走；
+   * 这一轮先把速度固定住，练稳了要加速自己勾回来——按钮上也写明「这一轮不加码」。
+   */
+  const [holdSpeed, setHoldSpeed] = useState(false);
+  /** 连着练的第几轮（v0.170.0）：回执里写「第 2 轮，比上一轮快 4」。 */
+  const [rounds, setRounds] = useState<{ index: number; lastBpm: number | null }>({
+    index: 1,
+    lastBpm: null,
+  });
   /** 点级数方块单独去练的次数：点得最多的那一处就是「最卡的」。 */
   const hardRef = useRef(new Map<string, FollowHardest>());
   const loopPassRef = useRef(0);
@@ -329,7 +349,7 @@ export default function FollowAlong({
     bpm,
     meterId: meter,
     subdivision,
-    ramp: ramp ? { bars, step } : undefined,
+    ramp: ramp && !holdSpeed ? { bars, step } : undefined,
     onBpm: setBpm,
     countIn,
     loop,
@@ -354,6 +374,8 @@ export default function FollowAlong({
   function restartAtBpm(speed: number): void {
     setStartBpm(speed);
     setBpm(speed);
+    // 这一轮先不加码（v0.170.0）：刚靠加速冲到这个速度，紧接着再往上加会一直在慌的速度上弹
+    setHoldSpeed(true);
     setRestartAt(speed);
   }
 
@@ -412,6 +434,18 @@ export default function FollowAlong({
       }));
   }, [auditionBeat, zoomTab]);
   const beatNow = bar * target.tab.beatsPerBar + Math.max(0, active);
+  /**
+   * 现在走到整条谱的第几拍（v0.170.0）：候选落点跟着它亮。
+   *
+   * `bar` 在不循环时从 0 数、A-B 循环时从 `loop.from` 数（`useMetronome` 的 `plan()`）；
+   * `active` 是「每拍数几下」的格子，要除回拍。预备拍阶段一律不亮。
+   */
+  const beatCursor = (() => {
+    if (!running || countingIn) return null;
+    const perBeat = Math.max(1, subdivision);
+    const barsIn = (loop ? bar - 1 : bar) * target.tab.beatsPerBar;
+    return barsIn + Math.floor(Math.max(0, active) / perBeat);
+  })();
   const degreeIndex = degrees.length
     ? Math.max(
         0,
@@ -476,7 +510,9 @@ export default function FollowAlong({
       hardest: hardest ?? undefined,
       seg: loopOn ? { from: loopStart, to: loopEnd } : undefined,
     });
-    setDone({ bpm, hardest, spots });
+    setDone({ bpm, hardest, spots, roundIndex: rounds.index, roundBefore: rounds.lastBpm });
+    // 这一轮记完就变成「上一轮」（v0.170.0）：下一轮回执里跟它比
+    setRounds({ index: rounds.index + 1, lastBpm: bpm });
     setSpotsOpen(false);
     stop();
     setSeconds(0);
@@ -492,6 +528,8 @@ export default function FollowAlong({
     setLoopTo(target.tab.bars);
     setLoopOn(false);
     setDone(null);
+    setHoldSpeed(false);
+    setRounds({ index: 1, lastBpm: null });
     setSavedSpots([]);
     setPlanSpots([]);
     setSpotsOpen(false);
@@ -710,11 +748,20 @@ export default function FollowAlong({
               checked={ramp}
               onChange={(event) => {
                 setRamp(event.target.checked);
+                // 自己动过加速开关，就按自己的来（v0.170.0 的「这一轮不加码」到此结束）
+                setHoldSpeed(false);
                 setBpm(startBpm);
               }}
             />
             自动加速
           </label>
+
+          {/* 上一轮冲到的速度先固定住练一遍（v0.170.0）：勾回「自动加速」就恢复 */}
+          {holdSpeed && (
+            <span className="follow-hold" data-hold-speed="">
+              这一轮不加码
+            </span>
+          )}
 
           <label className="follow-field">
             <span>每</span>
@@ -863,6 +910,13 @@ export default function FollowAlong({
             {done.hardest
               ? ` · 这段最卡的是第 ${done.hardest.bar} 小节${degreeName(done.hardest.degree)}（${done.hardest.name}），点了 ${done.hardest.count} 次`
               : " · 这一段没有单独去练哪一小节"}
+            {done.roundIndex > 1 && done.roundBefore !== null
+              ? done.bpm === done.roundBefore
+                ? ` · 第 ${done.roundIndex} 轮，跟上一轮（${done.roundBefore} BPM）持平`
+                : done.bpm > done.roundBefore
+                  ? ` · 第 ${done.roundIndex} 轮，比上一轮（${done.roundBefore} BPM）快 ${done.bpm - done.roundBefore}`
+                  : ` · 第 ${done.roundIndex} 轮，比上一轮（${done.roundBefore} BPM）慢 ${done.roundBefore - done.bpm}`
+              : ""}
           </p>
           <div className="follow-done-again-row">
             <button
@@ -874,7 +928,9 @@ export default function FollowAlong({
               按这次的 {done.bpm} BPM 再来一轮
             </button>
             <span className="follow-done-note">
-              不用再回上面改速度——按一下就从这个速度重新数拍。
+              {holdSpeed
+                ? "这一轮不加码：就在这个速度上练稳，想加速自己勾回「自动加速」。"
+                : "不用再回上面改速度——按一下就从这个速度重新数拍，这一轮先不加码。"}
             </span>
           </div>
           {done.hardest ? (
@@ -962,7 +1018,12 @@ export default function FollowAlong({
         </div>
       ) : null}
 
-      <TabScore id={target.id} tab={target.tab} />
+      <TabScore
+        id={target.id}
+        tab={target.tab}
+        {...(candBeats && candBeats.length > 0 ? { marks: candBeats } : {})}
+        markedBeat={beatCursor}
+      />
 
       {/*
         只圈一小节时，把那一小节单独放大一份（v0.130.0）。

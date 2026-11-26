@@ -231,6 +231,12 @@ v0.169.0 只动前端，core 不动（`MelodyTech`、`melodyCandidateBeatsOf` �
 同一次事件里直接调会拿旧速度）；③「我的谱」卡上的小目标多一枚「只练第 N 小节」（`follow({ …, startBar })`）。
 存储结构没变。
 
+v0.170.0 也只动前端（core 仍 `0.63.0`）：①`TabScore` 新增可选 `marks` / `markedBeat`——跟练面板的谱上画
+一排落点、当前拍那条点亮（长谱多行时按各自的 `spot.y + spot.h` 定 `top`，不会全堆到最后一行）；②生成面板
+`.generate-cand-mark` 从 `<span>` 改成 `<button>`（`auditionBeat()` 抽这一拍的音、`bars: 1` 单独放一遍，
+`::before { inset: -7px 0 }` 撑命中区）；③`FollowAlong` 加 `holdSpeed` / `rounds`——「再来一轮」后自动
+「这一轮不加码」并在回执里记「第 2 轮，跟上一轮持平」，动过「自动加速」就恢复按自己的来。存储结构没变。
+
 v0.161.0 给 core 加了 `interval-drill.ts`（`intervalTableOf` / `intervalQualityRows` / `intervalDrillQuestion` /
 `intervalDrillAnswerText` / `INTERVAL_KEYS`），新增导出算 MINOR，core 到 `0.56.0`；前端只多了音阶页的
 「音程表 + 音程闯关」两块，以及一把新键 `guitar.intervals.v1`（最长连对 / 总题数）。

@@ -1715,6 +1715,22 @@ expect(
     (anyDecls(".follow-done-again-row").get("flex-wrap") || "") === "wrap",
 );
 
+expect(
+  "跟练里的候选落点：没走到时是灰的、走到就换成强调色，叠在谱上但不吃点击 (v0.170.0)",
+  anyDecls(".tab-score-marks").get("position") === "absolute" &&
+    anyDecls(".tab-score-marks").get("pointer-events") === "none" &&
+    (anyDecls(".tab-score-mark").get("background") || "") === "var(--muted)" &&
+    (anyDecls(".tab-score-mark.on").get("background") || "") === "var(--accent)",
+);
+
+expect(
+  "谱底下那排橙线能点：三像素的线上下各借一截当命中区，键盘也够得着 (v0.170.0)",
+  anyDecls(".generate-cand-mark").get("pointer-events") === "auto" &&
+    anyDecls(".generate-cand-mark").get("cursor") === "pointer" &&
+    (anyDecls(".generate-cand-mark::before").get("inset") || "") === "-7px 0" &&
+    (anyDecls(".generate-cand-mark:focus-visible").get("outline") || "").includes("2px"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

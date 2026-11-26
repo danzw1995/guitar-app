@@ -397,6 +397,7 @@ export default function Rhythm() {
           onFinish={record}
           onClose={() => setTarget(null)}
           startBar={target.startBar}
+          candBeats={target.candBeats}
         />
       )}
 

@@ -279,6 +279,25 @@ export default function Generate({ follow, best, scores }: Props) {
     stopTimer.current = window.setTimeout(() => setPlaying(false), seconds * 1000);
   }
 
+  /**
+   * 只试听某一拍（v0.170.0）：谱底下那条橙线点一下就响这一拍上的音。
+   *
+   * 滑音 / 击勾弦在这一拍上正好是一对（前一个音 + 后一个带技法的音），
+   * 所以只取「起音落在这一拍」的音，拍号归零成一拍的谱再交给 `playTab`。
+   */
+  function auditionBeat(beat: number) {
+    const from = Math.floor(beat);
+    const notes = piece.tab.notes
+      .filter((note) => Math.floor(note.beat) === from)
+      .map((note) => ({ ...note, beat: note.beat - from }));
+    if (notes.length === 0) return;
+    if (stopTimer.current !== null) window.clearTimeout(stopTimer.current);
+    tone.stop();
+    tone.playTab({ ...piece.tab, bars: 1, notes }, piece.bpm[0]);
+    setPlaying(true);
+    stopTimer.current = window.setTimeout(() => setPlaying(false), 1400);
+  }
+
   function practice(startBar?: number) {
     if (!follow) return;
     // 没存过就顺手存一份（v0.165.0）：跟练的成绩挂在谱自己的 id 上，列表里留一条才找得回来
@@ -309,6 +328,8 @@ export default function Generate({ follow, best, scores }: Props) {
       meter: piece.meter,
       // 从「小目标」点过来时带上那一小节（v0.167.0）：一打开就圈住它
       ...(startBar !== undefined ? { startBar } : {}),
+      // 候选拍跟着进跟练（v0.170.0）：谱底下那排橙线会随当前拍亮起来
+      ...(candMarkBeats.length > 0 ? { candBeats: candMarkBeats } : {}),
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -543,14 +564,23 @@ export default function Generate({ follow, best, scores }: Props) {
               <>
                 <img className="tab-score" src={image.dataUrl} alt={label} width={image.width} />
                 {candMarkBeats.length > 0 && (
-                  <span className="generate-marks" aria-hidden="true" data-cand-marks={candMarkBeats.length}>
+                  <span
+                    className="generate-marks"
+                    role="group"
+                    aria-label={`能叠${MELODY_TECH_LABEL[tech]}的拍子，点一下只听这一拍`}
+                    data-cand-marks={candMarkBeats.length}
+                  >
                     {candMarkBeats.map((beat) => {
                       const spot = image.beats?.[beat];
                       if (!spot) return null;
                       return (
-                        <span
+                        <button
                           key={beat}
+                          type="button"
                           className="generate-cand-mark"
+                          aria-label={`试听第 ${beat + 1} 拍`}
+                          title={`只听第 ${beat + 1} 拍`}
+                          onClick={() => auditionBeat(beat)}
                           style={{
                             left: `${((spot.x + spot.w / 2) / image.width) * 100}%`,
                             width: `${Math.max(4, (spot.w / image.width) * 62)}%`,

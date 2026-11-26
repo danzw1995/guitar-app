@@ -2877,6 +2877,15 @@ button.steady-best-tag:hover {
   color: var(--accent);
   font-size: 13px;
 }
+/* 「这一轮不加码」（v0.170.0）：上一轮冲到的速度先固定住练一遍 */
+.follow-hold {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(232, 176, 75, 0.14);
+  color: var(--accent);
+  font-size: 11px;
+  white-space: nowrap;
+}
 /* 这一次点了不止一处（v0.111.0）：其余几处收在下面，默认不展开 */
 .follow-spots {
   display: grid;
@@ -4347,6 +4356,28 @@ button.steady-best-tag:hover {
   pointer-events: none;
   transition: left 90ms linear, width 90ms linear;
 }
+/* 跟练时的候选落点（v0.170.0）：谱底下一排短线，走到哪一拍就亮哪一条 */
+.tab-score-marks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.tab-score-mark {
+  position: absolute;
+  bottom: -1px;
+  height: 3px;
+  min-width: 4px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--muted);
+  opacity: 0.4;
+  transition: background 90ms linear, opacity 90ms linear;
+}
+.tab-score-mark.on {
+  background: var(--accent);
+  opacity: 1;
+  box-shadow: 0 0 0 1px rgba(232, 176, 75, 0.35);
+}
 /* 我的谱：自己粘六线谱进来，谱面在浏览器里现画（alphaTab 按需加载）。 */
 .my-scores {
   margin: 22px 0 6px;
@@ -4460,9 +4491,26 @@ button.steady-best-tag:hover {
   height: 3px;
   min-width: 5px;
   margin-left: -2px;
+  padding: 0;
+  border: 0;
   border-radius: 2px;
   background: var(--accent);
   opacity: 0.85;
+  pointer-events: auto;
+  cursor: pointer;
+}
+/* 三像素的线不好点：上下各借 7 像素当命中区，看得见的还是那三像素（v0.170.0） */
+.generate-cand-mark::before {
+  content: "";
+  position: absolute;
+  inset: -7px 0;
+}
+.generate-cand-mark:hover {
+  opacity: 1;
+}
+.generate-cand-mark:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
 }
 .generate-cand-note {
   margin: 2px 0 0;
