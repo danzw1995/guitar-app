@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.165.0`，core `0.60.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.166.0`，core `0.61.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -203,6 +203,11 @@ core 到 `0.60.0`。前端：生成面板素材加「我存的谱」（`lineOfSc
 顶上）；点「跟练」没存过就顺手存一份（按标题查重）；上次选的素材 / 技能 / 档位 / 长度写进
 `guitar.settings.v1` 的 `genMode` / `genSkill` / `genMelody` / `genTech` / `genDensity` / `genBars` /
 `genMelodyBars`（`loadSettings` 逐项校验）。内置旋律那支（`genm-…`）行为不变。
+
+v0.166.0 给 `generate.ts` 加了 `melodySegmentsOf()`（长谱切 4 小节一段，尾巴不足 4 拍丢）与
+`practiceGoalOf()`（一句可执行的小目标：技巧最密的那一小节 / 按技能给要点），新增导出算 MINOR，
+core 到 `0.61.0`。前端：my 骨架的段落 chips（`.generate-segments`）、「换一条」在骨架那两支改成
+「按这条再变一变」（`VARIANT_ORDER` 六档轮换 + 换号）、谱下面一行「小目标」（`.generate-goal`）。
 
 v0.161.0 给 core 加了 `interval-drill.ts`（`intervalTableOf` / `intervalQualityRows` / `intervalDrillQuestion` /
 `intervalDrillAnswerText` / `INTERVAL_KEYS`），新增导出算 MINOR，core 到 `0.56.0`；前端只多了音阶页的

@@ -5409,6 +5409,127 @@ try {
     })()`,
   );
 
+  // 17d) v0.166.0：长谱切段练，「按这条再变一变」轮换技巧档位，小目标说得出练哪儿
+  js(
+    `(() => {
+      sessionStorage.setItem('chk13.scores', localStorage.getItem('guitar.scores.v1') ?? '');
+      sessionStorage.setItem('chk13.settings', localStorage.getItem('guitar.settings.v1') ?? '');
+      const notes = [];
+      for (let beat = 0; beat < 24; beat += 1) notes.push({ s: 1, f: beat % 12, beat, dur: 1 });
+      localStorage.setItem('guitar.scores.v1', JSON.stringify([{
+        id: 'my-long',
+        title: '长谱一段',
+        ascii: '',
+        source: 'transcribe',
+        tab: { beatsPerBar: 4, bars: 6, notes },
+        meter: '4/4',
+        bpm: 60,
+        createdAt: Date.now(),
+      }]));
+      localStorage.setItem('guitar.settings.v1', JSON.stringify({ theme: 'dark', genMode: 'my', genTech: 'slide', genDensity: 2 }));
+      location.hash = '#rhythm';
+      return 'ok';
+    })()`,
+  );
+  await ab(["reload"]);
+  await sleep(1200);
+  js("(() => { document.querySelector('[data-generate]')?.scrollIntoView({ block: 'center' }); return 'ok'; })()");
+  await sleep(400);
+  js("(() => { const b = document.querySelector('.generate-start'); b?.click(); return 'ok'; })()");
+  let segmentChips = "";
+  for (let round = 0; round < 14; round += 1) {
+    const ready = plain(
+      js(`(() => {
+        const chips = [...document.querySelectorAll('[data-generate] .generate-segments .chip')].map((chip) => chip.textContent?.trim() ?? '');
+        const goal = document.querySelector('[data-generate] .generate-goal')?.textContent ?? '';
+        return chips.length >= 2 && goal.includes('小目标') ? chips.join('|') : '';
+      })()`),
+    );
+    if (ready) {
+      segmentChips = ready;
+      break;
+    }
+    await sleep(400);
+  }
+  // 点第二段（第 5–6 小节）：换骨架段落，图重画
+  const beforeSegmentImage = plain(js(`(() => document.querySelector('[data-generate] .generate-score img')?.getAttribute('src')?.length ?? 0)()`));
+  js(
+    `(() => {
+      const b = [...document.querySelectorAll('[data-generate] .generate-segments .chip')].find((node) => (node.textContent ?? '').includes('5–6'));
+      b?.click();
+      return 'ok';
+    })()`,
+  );
+  let afterSegment = "";
+  for (let round = 0; round < 14; round += 1) {
+    await sleep(400);
+    const picked = plain(
+      js(`(() => {
+        const on = [...document.querySelectorAll('[data-generate] .generate-segments .chip[aria-pressed="true"]')].map((chip) => chip.textContent?.trim() ?? '').join('|');
+        const img = document.querySelector('[data-generate] .generate-score img')?.getAttribute('src')?.length ?? 0;
+        return JSON.stringify({ on, img });
+      })()`),
+    );
+    const parsed = JSON.parse(picked);
+    if (parsed.on.includes("5–6") && parsed.img !== Number(beforeSegmentImage)) {
+      afterSegment = picked;
+      break;
+    }
+  }
+  // 「按这条再变一变」：滑音标准 → 滑音加密，号也换
+  const beforeVariant = plain(
+    js(`(() => {
+      const picked = [...document.querySelectorAll('[data-generate] .generate-skills .chip[aria-pressed="true"]')].map((chip) => chip.textContent?.trim() ?? '').join('|');
+      const meta = document.querySelector('[data-generate] .generate-meta')?.textContent ?? '';
+      return JSON.stringify({ picked, meta });
+    })()`),
+  );
+  js("(() => { const b = document.querySelector('[data-generate] .generate-next'); b?.click(); return 'ok'; })()");
+  let afterVariant = "";
+  for (let round = 0; round < 14; round += 1) {
+    await sleep(400);
+    const state = plain(
+      js(`(() => {
+        const picked = [...document.querySelectorAll('[data-generate] .generate-skills .chip[aria-pressed="true"]')].map((chip) => chip.textContent?.trim() ?? '').join('|');
+        const goal = document.querySelector('[data-generate] .generate-goal')?.textContent ?? '';
+        const meta = document.querySelector('[data-generate] .generate-meta')?.textContent ?? '';
+        return JSON.stringify({ picked, goal, meta });
+      })()`),
+    );
+    const parsed = JSON.parse(state);
+    if (parsed.picked.includes("加密") && parsed.meta !== JSON.parse(beforeVariant).meta) {
+      afterVariant = state;
+      break;
+    }
+  }
+  const seg = afterSegment ? JSON.parse(afterSegment) : { on: "", img: 0 };
+  const variant = afterVariant ? JSON.parse(afterVariant) : { picked: "", goal: "" };
+  const goalText = plain(js(`(() => document.querySelector('[data-generate] .generate-goal')?.textContent ?? '')()`));
+  log(
+    segmentChips.includes("1–4") &&
+      segmentChips.includes("5–6") &&
+      seg.on.includes("5–6") &&
+      variant.picked.includes("加密") &&
+      variant.goal.includes("小目标") &&
+      /第 \d+ 小节/.test(goalText) &&
+      goalText.includes("三遍"),
+    "我的谱：长谱切段练、按这条再变一变、小目标指向最密的那一小节（v0.166.0）",
+    `切段「${segmentChips}」 · 段落选中「${seg.on}」 · 变一变「${variant.picked}」 · 小目标「${goalText.slice(0, 40)}」`,
+  );
+  js(
+    `(() => {
+      const put = (key, stored) => {
+        if (stored) localStorage.setItem(key, stored);
+        else localStorage.removeItem(key);
+      };
+      put('guitar.scores.v1', sessionStorage.getItem('chk13.scores'));
+      put('guitar.settings.v1', sessionStorage.getItem('chk13.settings'));
+      sessionStorage.removeItem('chk13.scores');
+      sessionStorage.removeItem('chk13.settings');
+      return 'restored';
+    })()`,
+  );
+
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
   failed += 1;

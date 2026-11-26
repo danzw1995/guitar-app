@@ -4438,6 +4438,26 @@ button.steady-best-tag:hover {
   margin: 0;
   font-size: 13px;
 }
+/* v0.166.0：长谱切段的那一行 chips 与「小目标」 */
+.generate-segments {
+  margin-top: 2px;
+}
+.generate-goal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+.generate-goal-tag {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(232, 176, 75, 0.16);
+  color: var(--accent);
+  font-size: 10px;
+  white-space: nowrap;
+}
 .generate-bad {
   margin: 0;
   color: var(--accent);

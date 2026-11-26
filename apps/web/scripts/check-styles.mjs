@@ -1682,6 +1682,14 @@ expect(
     anyDecls(".generate-none").get("color") === "var(--muted)",
 );
 
+expect(
+  "生成谱那块：小目标是「小目标」药丸 + 一句正文，长谱切段那行紧贴在骨架行下面",
+  px(anyDecls(".generate-goal").get("font-size")) <= 13 &&
+    px(anyDecls(".generate-goal-tag").get("font-size")) <= 10 &&
+    (anyDecls(".generate-goal-tag").get("background") || "").includes("rgba(232, 176, 75") &&
+    px(anyDecls(".generate-segments").get("margin-top")) <= 4,
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

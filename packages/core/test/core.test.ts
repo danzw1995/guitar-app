@@ -124,6 +124,8 @@ import {
   generatePiece,
   generateMelodyPiece,
   generateMelodyLinePiece,
+  melodySegmentsOf,
+  practiceGoalOf,
   MELODY_CHOICES,
   checkPiece,
   SKILLS,
@@ -3840,6 +3842,57 @@ test("生成谱：我存的谱当骨架，也能叠上滑音击勾弦", () => {
   assert.ok(checkPiece(short).ok, short ? checkPiece(short).problems.join("；") : "");
   assert.equal(generateMelodyLinePiece(line, { tech: "slide", density: 1, seed: 2, bars: 1 }).tab.bars, 2);
   assert.equal(generateMelodyLinePiece(line, { tech: "slide", density: 1, seed: 2, bars: 99 }).tab.bars, 16);
+});
+
+test("生成谱：长谱切段练，尾巴凑不成一小节就丢", () => {
+  const lineOf = (count: number) => ({
+    id: "long",
+    name: "长谱",
+    midis: Array.from({ length: count }, (_, index) => 60 + (index % 8)),
+  });
+  // 16 拍以内不切
+  assert.deepEqual(
+    melodySegmentsOf(lineOf(16)).map((item) => item.midis.length),
+    [16],
+  );
+  // 24 拍切成 16 + 8
+  assert.deepEqual(
+    melodySegmentsOf(lineOf(24)).map((item) => item.midis.length),
+    [16, 8],
+  );
+  // 17 拍：尾巴 1 拍凑不成一小节，直接丢
+  assert.deepEqual(
+    melodySegmentsOf(lineOf(17)).map((item) => item.midis.length),
+    [16],
+  );
+  // 20 拍正好 16 + 4
+  assert.deepEqual(
+    melodySegmentsOf(lineOf(20)).map((item) => item.midis.length),
+    [16, 4],
+  );
+  // 每一段都能当骨架用：16 拍的段落正好 4 小节，8 拍的重复到 4 小节
+  for (const segment of melodySegmentsOf(lineOf(24))) {
+    const piece = generateMelodyLinePiece(segment, { tech: "slide", density: 2, seed: 3, bars: 4 });
+    const check = checkPiece(piece);
+    assert.ok(check.ok, check.problems.join("；"));
+    assert.equal(piece.tab.bars, 4);
+  }
+});
+
+test("生成谱：小目标说得出来练哪儿——技巧最密的那一小节", () => {
+  // 旋律骨架（加密档）一定有连奏技巧，指向「第 N 小节 … 放慢弹三遍」
+  const melody = practiceGoalOf(
+    generateMelodyPiece({ melodyId: "tiger", tech: "hammer", density: 3, seed: 3, bars: 4 }),
+  );
+  assert.ok(/第 \d+ 小节.+最密/.test(melody), `小目标没指向小节：${melody}`);
+  assert.ok(melody.includes("放慢弹三遍"), `小目标没说练几遍：${melody}`);
+  // 滑音技能的小节里也有滑音
+  const slide = practiceGoalOf(generatePiece("slide", 3, 8));
+  assert.ok(slide.includes("滑音") || slide.includes("小节"), `滑音的小目标不对：${slide}`);
+  // 三种基础技能各给一句要点
+  assert.ok(practiceGoalOf(generatePiece("quarter", 3, 8)).includes("唱"), "四分音符的小目标该提唱名");
+  assert.ok(practiceGoalOf(generatePiece("eighth", 3, 8)).includes("抢"), "八分音符的小目标该提抢拍");
+  assert.ok(practiceGoalOf(generatePiece("strum", 3, 8)).includes("手腕"), "扫弦的小目标该提手腕");
 });
 
 

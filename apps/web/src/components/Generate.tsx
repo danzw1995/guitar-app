@@ -8,6 +8,8 @@ import {
   generateMelodyLinePiece,
   generateMelodyPiece,
   generatePiece,
+  melodySegmentsOf,
+  practiceGoalOf,
   tabAriaLabel,
   tabEvents,
   tabToAlphaTex,
@@ -40,6 +42,17 @@ import type { FollowTarget } from "./FollowAlong";
  */
 const LENGTHS = [4, 8];
 const MELODY_LENGTHS = [2, 4, 8];
+/** 长谱切段的一段几拍（v0.166.0）：4 小节一段。 */
+const SEGMENT_BEATS = 16;
+/** 「按这条再变一变」轮换的顺序（v0.166.0）：滑音轻松 → 标准 → 加密，再击勾弦一轮。 */
+const VARIANT_ORDER: { tech: MelodyTech; density: MelodyDensity }[] = [
+  { tech: "slide", density: 1 },
+  { tech: "slide", density: 2 },
+  { tech: "slide", density: 3 },
+  { tech: "hammer", density: 1 },
+  { tech: "hammer", density: 2 },
+  { tech: "hammer", density: 3 },
+];
 
 const LEVEL_LABEL: Record<number, string> = {
   1: "入门",
@@ -95,6 +108,8 @@ export default function Generate({ follow, best, scores }: Props) {
   const [density, setDensity] = useState<MelodyDensity>(saved.genDensity);
   const [melodyBars, setMelodyBars] = useState(saved.genMelodyBars);
   const [myId, setMyId] = useState<string | null>(null);
+  // 长谱切成段落后选第几段（v0.166.0）：换一条骨架时回到第一段
+  const [mySegment, setMySegment] = useState(0);
   const [seed, setSeed] = useState(3);
   const [note, setNote] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -115,15 +130,23 @@ export default function Generate({ follow, best, scores }: Props) {
     [scores],
   );
   const activeLine = lines.find((item) => item.id === myId) ?? lines[0];
+  // 长谱（超过 16 拍）切成 4 小节一段让你挑（v0.166.0）；短谱就一条
+  const segments = useMemo(
+    () => (mode === "my" && activeLine ? melodySegmentsOf(activeLine, SEGMENT_BEATS) : []),
+    [mode, activeLine],
+  );
+  const activeSegment =
+    segments.length > 0 ? segments[Math.max(0, Math.min(mySegment, segments.length - 1))] : undefined;
   const myReady = mode !== "my" || activeLine !== undefined;
 
   const piece = useMemo(() => {
     if (mode === "melody") return generateMelodyPiece({ melodyId, tech, density, seed, bars: melodyBars });
     if (mode === "my" && activeLine) {
-      return generateMelodyLinePiece(activeLine, { tech, density, seed, bars: melodyBars });
+      const base = activeSegment ?? activeLine;
+      return generateMelodyLinePiece(base, { tech, density, seed, bars: melodyBars });
     }
     return generatePiece(skill, seed, bars);
-  }, [mode, melodyId, tech, density, seed, melodyBars, skill, bars, activeLine]);
+  }, [mode, melodyId, tech, density, seed, melodyBars, skill, bars, activeLine, activeSegment]);
   const check = useMemo(() => checkPiece(piece), [piece]);
   // 画布给宽一点：四小节一行放得下，八小节折成两行（窄画布会被折成三行，卡片长得离谱）
   const tex = useMemo(() => tabToAlphaTex(piece.tab), [piece]);
@@ -198,6 +221,18 @@ export default function Generate({ follow, best, scores }: Props) {
       return next === current ? current + 1 : next;
     });
     setNote(null);
+  }
+
+  /** 按这条再变一变（v0.166.0）：骨架不动，轮换「技巧 × 档位」，号也换一个。 */
+  function nextVariant() {
+    const index = VARIANT_ORDER.findIndex((item) => item.tech === tech && item.density === density);
+    const next = VARIANT_ORDER[(index + 1 + VARIANT_ORDER.length) % VARIANT_ORDER.length];
+    setTech(next.tech);
+    setDensity(next.density);
+    setStarted(true);
+    setNote(null);
+    saveSettings({ ...loadSettings(), genTech: next.tech, genDensity: next.density });
+    setSeed((current) => (current + 37 + Math.floor(Math.random() * 900)) % 100000);
   }
 
   function audition() {
@@ -349,6 +384,7 @@ export default function Generate({ follow, best, scores }: Props) {
                 aria-pressed={activeLine?.id === line.id}
                 onClick={() => {
                   setMyId(line.id);
+                  setMySegment(0);
                   setStarted(true);
                   setNote(null);
                 }}
@@ -358,6 +394,25 @@ export default function Generate({ follow, best, scores }: Props) {
               </button>
             ))}
           </div>
+          {segments.length > 1 && (
+            <div className="generate-skills generate-segments" role="group" aria-label="练这一条的哪一段">
+              {segments.map((segment, index) => (
+                <button
+                  key={`${segment.id}-${index}`}
+                  type="button"
+                  className={`chip${activeSegment === segment ? " on" : ""}`}
+                  aria-pressed={activeSegment === segment}
+                  onClick={() => {
+                    setMySegment(index);
+                    setStarted(true);
+                    setNote(null);
+                  }}
+                >
+                  {`第 ${(index * SEGMENT_BEATS) / 4 + 1}–${(index * SEGMENT_BEATS + segment.midis.length) / 4} 小节`}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="generate-skills" role="group" aria-label="往上叠哪种技巧">
             {(Object.keys(MELODY_TECH_LABEL) as MelodyTech[]).map((id) => (
               <button
@@ -409,8 +464,12 @@ export default function Generate({ follow, best, scores }: Props) {
                 ))}
               </select>
             </label>
-            <button type="button" className="btn-quiet generate-next" onClick={nextSeed}>
-              换一条
+            <button
+              type="button"
+              className="btn-quiet generate-next"
+              onClick={mode === "skill" ? nextSeed : nextVariant}
+            >
+              {mode === "skill" ? "换一条" : "按这条再变一变"}
             </button>
             <span className="generate-meta">
               {mode === "skill"
@@ -432,6 +491,10 @@ export default function Generate({ follow, best, scores }: Props) {
           </span>
 
           <p className="generate-tip">{piece.hint}</p>
+          <p className="generate-goal">
+            <span className="generate-goal-tag">小目标</span>
+            {practiceGoalOf(piece)}
+          </p>
           {!check.ok && (
             <p className="generate-bad" role="alert">
               这条生成得有问题：{check.problems.slice(0, 2).join("；")}

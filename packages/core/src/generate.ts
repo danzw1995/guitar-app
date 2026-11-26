@@ -496,6 +496,65 @@ export function generateMelodyLinePiece(line: MelodyLine, options: MelodyLineOpt
   );
 }
 
+/**
+ * 长谱切成段落（v0.166.0）：一段默认 16 拍（4 小节），不足 16 拍不切；
+ * 尾巴不足 4 拍直接丢——凑不成一小节的段落没有单独练的价值。
+ */
+export function melodySegmentsOf(line: MelodyLine, size = 16): MelodyLine[] {
+  const midis = line.midis.slice(0, 64);
+  if (midis.length <= size) return [{ ...line, midis }];
+  const segments: MelodyLine[] = [];
+  for (let start = 0; start < midis.length; start += size) {
+    segments.push({ ...line, midis: midis.slice(start, start + size) });
+  }
+  const last = segments[segments.length - 1];
+  if (last.midis.length < 4 && segments.length > 1) segments.pop();
+  return segments;
+}
+
+const GOAL_TECH_NAME: Record<string, string> = { s: "滑音", h: "击弦", p: "勾弦" };
+
+/**
+ * 这一条的「小目标」（v0.166.0）：一句可执行的建议，不是描述——
+ * 有连奏技巧的找「技巧最密的那一小节」让你单独练，没有的按技能给一句要点。
+ */
+export function practiceGoalOf(piece: GeneratedPiece): string {
+  if (piece.skill === "strum") {
+    return "扫弦看的是手腕不是音：空拍那一下手腕照样走、只是不碰弦——先空手把节奏画两遍再拿琴。";
+  }
+  if (piece.skill === "quarter") {
+    return "这条只有四分音符：先不看点位，跟着节拍器把这一条的音名唱一遍再上手。";
+  }
+  if (piece.skill === "eighth") {
+    return "每拍两个同音高：第二个音最容易抢，把速度压到 56 数「一-and」，稳了再快起来。";
+  }
+  // 旋律骨架 / 滑音 / 击勾弦：找技巧最密的那一小节
+  const bars = piece.tab.bars;
+  const counts: { count: number; names: Set<string> }[] = [];
+  for (const note of piece.tab.notes) {
+    if (!note.tech) continue;
+    const bar = Math.max(0, Math.min(bars - 1, Math.floor(note.beat / piece.tab.beatsPerBar)));
+    if (!counts[bar]) counts[bar] = { count: 0, names: new Set<string>() };
+    counts[bar].count += 1;
+    counts[bar].names.add(note.tech);
+  }
+  let bestBar = -1;
+  let bestCount = 0;
+  counts.forEach((item, bar) => {
+    if (item && item.count > bestCount) {
+      bestCount = item.count;
+      bestBar = bar;
+    }
+  });
+  if (bestBar < 0) {
+    return "这一条没有连奏技巧：把节拍器开到目标速度的八成，从头到尾不间断弹三遍。";
+  }
+  const names = [...counts[bestBar].names]
+    .map((tech) => GOAL_TECH_NAME[tech] ?? tech)
+    .join("、");
+  return `第 ${bestBar + 1} 小节${names}最密（${bestCount} 处连着）：先单独把这一小节放慢弹三遍，再从头接起来。`;
+}
+
 export interface PieceCheck {
   ok: boolean;
   problems: string[];
