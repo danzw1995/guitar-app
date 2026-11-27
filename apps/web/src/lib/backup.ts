@@ -38,6 +38,7 @@ export const BACKUP_KEYS = [
   "guitar.patterns.v1",
   "guitar.steady.v1",
   "guitar.steady.loops.v1",
+  "guitar.rounds.v1",
   "guitar.plan.v1",
   "guitar.plan.sets.v1",
   "guitar.plan.done.v1",
@@ -242,8 +243,47 @@ function mergeScores(current: unknown, incoming: unknown): unknown[] {
     .slice(0, 40);
 }
 
-/** 跳过表：同一天取并集（导入不会把「今天不想练」的那条又变回来）。 */
-function mergeSkips(a: unknown, b: unknown): Record<string, string[]> {
+/**
+ * 跟练轮次流水（v0.171.0）：按「条目 id → 轮次数组」合并。
+ *
+ * 同一条按 `date|at|round|bpm` 去重（同一天同一轮在两份备份里是同一条），
+ * 按时间排好、每条留最近 24 轮——和 `pushRound()` 的上限一致。
+ */
+function mergeRounds(a: unknown, b: unknown): Dict {
+  const out: Record<string, unknown[]> = {};
+  for (const source of [a, b]) {
+    if (!isDict(source)) continue;
+    for (const [id, rows] of Object.entries(source)) {
+      if (!Array.isArray(rows)) continue;
+      const list = out[id] ?? [];
+      const seen = new Set(
+        list.map((row) =>
+          isDict(row) ? `${row.date}|${row.at}|${row.round}|${row.bpm}` : "",
+        ),
+      );
+      for (const row of rows) {
+        if (!isDict(row)) continue;
+        const key = `${row.date}|${row.at}|${row.round}|${row.bpm}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        list.push(row);
+      }
+      if (list.length) out[id] = list;
+    }
+  }
+  for (const [id, rows] of Object.entries(out)) {
+    out[id] = [...rows]
+      .sort((left, right) =>
+        `${(left as Dict).date}|${(left as Dict).at}`.localeCompare(
+          `${(right as Dict).date}|${(right as Dict).at}`,
+        ),
+      )
+      .slice(-24);
+  }
+  return out;
+}
+
+/** 跳过表：同一天取并集（导入不会把「今天不想练」的那条又变回来）。 */function mergeSkips(a: unknown, b: unknown): Record<string, string[]> {
   const out: Record<string, string[]> = {};
   for (const source of [a, b]) {
     if (!isDict(source)) continue;
@@ -514,6 +554,9 @@ export function mergeBackup(
   const loops = mergeLoops(a["guitar.steady.loops.v1"], b["guitar.steady.loops.v1"]);
   if (loops.length) data["guitar.steady.loops.v1"] = loops;
   else delete data["guitar.steady.loops.v1"];
+  const rounds = mergeRounds(a["guitar.rounds.v1"], b["guitar.rounds.v1"]);
+  if (Object.keys(rounds).length) data["guitar.rounds.v1"] = rounds;
+  else delete data["guitar.rounds.v1"];
   const patterns = mergePatterns(a["guitar.patterns.v1"], b["guitar.patterns.v1"]);
   if (patterns.length) data["guitar.patterns.v1"] = patterns;
 

@@ -824,6 +824,29 @@ button, select, input { font: inherit; color: inherit; }
   gap: 8px;
   max-width: 620px;
 }
+/* 跟练轮次流水（v0.171.0）：名字 / 折线 / 几轮，与「跟练进步」同一套排法 */
+.round-list {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-width: 620px;
+}
+.round-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.round-svg path {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .st-range {
   display: flex;
   flex-wrap: wrap;
@@ -2886,6 +2909,17 @@ button.steady-best-tag:hover {
   font-size: 11px;
   white-space: nowrap;
 }
+/* 走到能做技法的那一拍，轻轻响一下这一拍的两个音（v0.171.0） */
+.follow-tip-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
 /* 这一次点了不止一处（v0.111.0）：其余几处收在下面，默认不展开 */
 .follow-spots {
   display: grid;
@@ -4378,6 +4412,14 @@ button.steady-best-tag:hover {
   opacity: 1;
   box-shadow: 0 0 0 1px rgba(232, 176, 75, 0.35);
 }
+/* 两行谱时标出每一行对应第几拍到第几拍（v0.171.0） */
+.tab-score-rows {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
 /* 我的谱：自己粘六线谱进来，谱面在浏览器里现画（alphaTab 按需加载）。 */
 .my-scores {
   margin: 22px 0 6px;
@@ -4516,6 +4558,15 @@ button.steady-best-tag:hover {
   margin: 2px 0 0;
   color: var(--muted);
   font-size: 12px;
+}
+/* 两行谱时「第 1 行 1–8 拍 · 第 2 行 9–16 拍」（v0.171.0） */
+.generate-rows {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  opacity: 0.85;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 .generate-loading {
   color: var(--muted);

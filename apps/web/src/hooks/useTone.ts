@@ -162,6 +162,18 @@ export function useTone() {
     midis.forEach((midi, index) => pluck(ctx, start + index * step, midi, 1));
   }
 
+  /**
+   * 很轻地同时响一小簇音（v0.171.0）：跟练里给「能叠技法的那一拍」一个提示音，
+   * 比节拍器轻得多，听得出音高又不抢拍子。
+   */
+  function hint(midis: number[], level = 0.1) {
+    if (midis.length === 0) return;
+    const ctx = ensure();
+    if (!ctx) return;
+    const start = ctx.currentTime + 0.02;
+    for (const midi of midis) pluck(ctx, start, midi, 0.45, level);
+  }
+
   /** 一声节拍器的"哒"（试听谱子时用来定拍）。 */
   function tick(ctx: AudioContext, at: number, accent: boolean) {
     const osc = ctx.createOscillator();
@@ -244,7 +256,7 @@ export function useTone() {
 
   useEffect(() => stop, []);
 
-  return { strum, arpeggio, play, playTab, stop };
+  return { strum, arpeggio, play, playTab, hint, stop };
 }
 
 /** 分解和弦的弦序：低音弦 + 3-2-3-1-3-2-3（最常用的 53231323）。 */

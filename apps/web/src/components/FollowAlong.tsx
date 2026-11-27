@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Tab } from "@guitar/core";
-import { METERS, SUBDIVISION_LABEL, sliceTab, type Subdivision } from "@guitar/core";
+import { METERS, SUBDIVISION_LABEL, sliceTab, tabEvents, type Subdivision } from "@guitar/core";
 import { degreeName, degreesOf } from "../lib/degrees";
 import { useMetronome } from "../hooks/useMetronome";
 import { useTone } from "../hooks/useTone";
@@ -56,6 +56,8 @@ export interface FollowAlongProps {
   previous?: { date: string; bpm: number };
   /** 能叠技法的那几拍（0 起，v0.170.0）：跟练时谱底下画一排短线，走到哪一拍亮哪一条。 */
   candBeats?: number[];
+  /** 这一轮练完（v0.171.0）：父组件把「第几轮、多少 BPM、几分钟、是不是不加码」记进轮次流水。 */
+  onRound?: (entry: { round: number; bpm: number; minutes: number; hold: boolean }) => void;
 }
 
 function clock(seconds: number): string {
@@ -97,6 +99,7 @@ export default function FollowAlong({
   startBar,
   previous,
   candBeats,
+  onRound,
 }: FollowAlongProps) {
   const meter = target.meter ?? "4/4";
   const [startBpm, setStartBpm] = useState(target.bpm[0]);
@@ -132,6 +135,8 @@ export default function FollowAlong({
    * 这一轮先把速度固定住，练稳了要加速自己勾回来——按钮上也写明「这一轮不加码」。
    */
   const [holdSpeed, setHoldSpeed] = useState(false);
+  /** 走到能叠技法的那一拍时，轻轻响一下那两个音（v0.171.0，可以在控件里关掉）。 */
+  const [beatAudio, setBeatAudio] = useState(true);
   /** 连着练的第几轮（v0.170.0）：回执里写「第 2 轮，比上一轮快 4」。 */
   const [rounds, setRounds] = useState<{ index: number; lastBpm: number | null }>({
     index: 1,
@@ -270,7 +275,7 @@ export default function FollowAlong({
     practiceBar(hit.bar, false);
   }
 
-  const { playTab: playBarTone } = useTone();
+  const { playTab: playBarTone, hint: hintTone } = useTone();
 
   /**
    * 只放圈住的那一段（v0.131.0）：不开节拍器，直接把这一段按当前速度弹一遍。
@@ -446,6 +451,36 @@ export default function FollowAlong({
     const barsIn = (loop ? bar - 1 : bar) * target.tab.beatsPerBar;
     return barsIn + Math.floor(Math.max(0, active) / perBeat);
   })();
+  /** 候选落点的集合（v0.171.0）：判断当前拍要不要轻响用。 */
+  const candSet = useMemo(() => new Set(candBeats ?? []), [candBeats]);
+  /** 每一拍有哪些音（v0.171.0）：走到候选拍时把这一拍的音轻轻放一下。 */
+  const beatMidis = useMemo(() => {
+    const perBeat = 60 / Math.max(1, bpm);
+    const map = new Map<number, number[]>();
+    for (const event of tabEvents(target.tab, bpm)) {
+      const index = Math.floor(event.at / perBeat + 1e-6);
+      const list = map.get(index);
+      if (list) list.push(event.midi);
+      else map.set(index, [event.midi]);
+    }
+    return map;
+  }, [target.tab, bpm]);
+  /** 上一次轻响过的那一拍：同一拍只响一次（state 与 effect 之间可能会有重复渲染）。 */
+  const hintBeatRef = useRef<number | null>(null);
+
+  // 走到能做技法的那一拍，轻轻把这一拍的音放一下（v0.171.0）：
+  // 比节拍器轻得多，只是为了「手该放哪儿」有个听感上的锚点。
+  useEffect(() => {
+    if (!beatAudio || beatCursor === null) {
+      if (beatCursor === null) hintBeatRef.current = null;
+      return;
+    }
+    if (!candSet.has(beatCursor)) return;
+    if (hintBeatRef.current === beatCursor) return;
+    hintBeatRef.current = beatCursor;
+    const midis = beatMidis.get(beatCursor) ?? [];
+    if (midis.length > 0) hintTone(midis);
+  }, [beatAudio, beatCursor, beatMidis, candSet, hintTone]);
   const degreeIndex = degrees.length
     ? Math.max(
         0,
@@ -511,6 +546,13 @@ export default function FollowAlong({
       seg: loopOn ? { from: loopStart, to: loopEnd } : undefined,
     });
     setDone({ bpm, hardest, spots, roundIndex: rounds.index, roundBefore: rounds.lastBpm });
+    // 这一轮也记进轮次流水（v0.171.0）：看得出「不加码这几轮稳了没有」
+    onRound?.({
+      round: rounds.index,
+      bpm,
+      minutes: Math.max(1, Math.round(seconds / 60)),
+      hold: holdSpeed,
+    });
     // 这一轮记完就变成「上一轮」（v0.170.0）：下一轮回执里跟它比
     setRounds({ index: rounds.index + 1, lastBpm: bpm });
     setSpotsOpen(false);
@@ -540,6 +582,7 @@ export default function FollowAlong({
     setSpotTimes(Object.fromEntries(rows.map((row) => [`${row.bar}-${row.degree}`, row.times])));
     hardRef.current.clear();
     loopPassRef.current = 0;
+    hintBeatRef.current = null;
     stop();
     // 带着小节进来（v0.129.0）：重置完再圈，别被上面的 reset 清掉
     if (startBar) practiceBar(startBar, false);
@@ -762,6 +805,16 @@ export default function FollowAlong({
               这一轮不加码
             </span>
           )}
+
+          {/* 走到能叠技法的那一拍时，轻轻响一下那一拍的两个音（v0.171.0） */}
+          <label className="follow-tip-toggle">
+            <input
+              type="checkbox"
+              checked={beatAudio}
+              onChange={(event) => setBeatAudio(event.target.checked)}
+            />
+            落点轻响
+          </label>
 
           <label className="follow-field">
             <span>每</span>

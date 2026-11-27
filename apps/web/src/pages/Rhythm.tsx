@@ -54,6 +54,7 @@ import {
   type RhythmRecord,
   type SkipLog,
 } from "../lib/storage";
+import { pushRound } from "../lib/rounds";
 
 const LEVELS: Level[] = [1, 2, 3, 4, 5];
 
@@ -398,6 +399,7 @@ export default function Rhythm() {
           onClose={() => setTarget(null)}
           startBar={target.startBar}
           candBeats={target.candBeats}
+          onRound={(entry) => pushRound(target.id, entry)}
         />
       )}
 

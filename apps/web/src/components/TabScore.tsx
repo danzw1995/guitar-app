@@ -145,6 +145,25 @@ export default function TabScore({ id, tab, className, beat, fluid, marks, marke
           })}
         </span>
       )}
+      {marks && marks.length > 0 && bandInfo && width > 0
+        ? (() => {
+            // 长谱折成两行时，标一下每一行对应第几拍到第几拍（v0.171.0）
+            const rows = new Map<number, { first: number; last: number }>();
+            for (const mark of marks) {
+              const spot = bandInfo.beats[mark];
+              if (!spot || spot.y === undefined) continue;
+              const key = Math.round(spot.y);
+              const row = rows.get(key);
+              if (row) row.last = mark;
+              else rows.set(key, { first: mark, last: mark });
+            }
+            if (rows.size < 2) return null;
+            const labels = [...rows.entries()]
+              .sort((a, b) => a[0] - b[0])
+              .map(([, row], index) => `第 ${index + 1} 行 ${row.first + 1}–${row.last + 1} 拍`);
+            return <span className="tab-score-rows">{labels.join(" · ")}</span>;
+          })()
+        : null}
     </span>
   );
 }

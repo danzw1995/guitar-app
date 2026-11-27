@@ -1731,6 +1731,15 @@ expect(
     (anyDecls(".generate-cand-mark:focus-visible").get("outline") || "").includes("2px"),
 );
 
+expect(
+  "「落点轻响」够 40 高，两行谱的行号是小字，轮次流水与跟练进步同一套三列 (v0.171.0)",
+  parseInt(anyDecls(".follow-tip-toggle").get("min-height") || "0", 10) >= 40 &&
+    (anyDecls(".tab-score-rows").get("font-size") || "") === "11px" &&
+    (anyDecls(".generate-rows").get("font-size") || "") === "11px" &&
+    (anyDecls(".round-list li").get("grid-template-columns") || "").includes("minmax(0, 1fr)") &&
+    (anyDecls(".round-svg path").get("stroke") || "").includes("--blue"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

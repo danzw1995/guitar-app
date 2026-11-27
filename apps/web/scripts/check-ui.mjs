@@ -6061,6 +6061,29 @@ try {
     "跟练/生成：点橙线只听那一拍、橙线随当前拍亮、「再来一轮」不加码并记轮次（v0.170.0）",
     `试听「${auditionParsed.label}」→「${auditionParsed.button}」 · 橙线 ${v170Marks.on}/${v170Marks.marks}（left ${v170Marks.left}） · ${v170Hold || "没有不加码标记"} · 回执含第 2 轮=${v170Round.includes("第 2 轮")}`,
   );
+  // 17i) v0.171.0：两行谱标出每行第几拍到第几拍；轮次流水看得出「不加码那几轮」
+  const v171Rows = plain(
+    js("(() => document.querySelector('.follow .tab-score-rows')?.textContent ?? '')()"),
+  );
+  js("location.hash = '#stats'");
+  await ab(["reload"]);
+  await sleep(1200);
+  const v171Rounds = plain(
+    js(`(() => {
+      const rows = [...document.querySelectorAll('[data-round-list] li')].map((li) => li.textContent.trim());
+      return JSON.stringify({ rows: rows.length, text: rows.join(' | ') });
+    })()`),
+  );
+  const roundsParsed = v171Rounds ? JSON.parse(v171Rounds) : { rows: 0, text: "" };
+  log(
+    v171Rows.includes("第 1 行") &&
+      v171Rows.includes("–") &&
+      roundsParsed.rows >= 1 &&
+      roundsParsed.text.includes("轮") &&
+      roundsParsed.text.includes("不加码"),
+    "统计页/跟练：两行谱标出每行第几拍到第几拍，轮次流水看得出「不加码那几轮」（v0.171.0）",
+    `行「${v171Rows || "没有"}」 · 流水 ${roundsParsed.rows} 行「${roundsParsed.text.slice(0, 60)}」`,
+  );
   js(
     `(() => {
       const put = (key, stored) => {

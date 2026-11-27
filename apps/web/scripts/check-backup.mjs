@@ -438,3 +438,31 @@ test("合并循环流水：按 id 去重，按时间排好，只留最近 40 条
   assert.equal(merged.filter((item) => item.id === "loop-shared").length, 1, "同一条只留一份");
   assert.equal(merged[merged.length - 1].id, "loop-t29", "按 id 排，最新的在最后");
 });
+
+test("合并跟练轮次：同一天同一轮只留一份，按时间排好，每条最多 24 轮", () => {
+  const round = (day, clock, index) => ({
+    date: `2026-11-${day}`,
+    at: clock,
+    round: index,
+    bpm: 50 + index,
+    minutes: 2,
+    hold: index > 1,
+  });
+  const mine = Array.from({ length: 20 }, (_, index) => round("23", "21:00", index + 1));
+  const theirs = Array.from({ length: 20 }, (_, index) => round("24", "09:00", index + 1));
+  const shared = round("23", "21:00", 20);
+  const merged = mergeBackup(
+    { ...empty(), data: { "guitar.rounds.v1": { "p:s0-crawl": [...mine, shared] } } },
+    { ...empty(), data: { "guitar.rounds.v1": { "p:s0-crawl": [shared, ...theirs], "p:s0-scale": [shared] } } },
+  ).next.data["guitar.rounds.v1"];
+  assert.ok(merged && typeof merged === "object");
+  const rows = merged["p:s0-crawl"];
+  assert.equal(rows.length, 24, "上限 24 轮");
+  assert.equal(
+    rows.filter((row) => row.date === "2026-11-23" && row.at === "21:00" && row.round === 20).length,
+    1,
+    "同一天同一轮只留一份",
+  );
+  assert.equal(rows[rows.length - 1].date, "2026-11-24", "按日期排，最新的在最后");
+  assert.equal(merged["p:s0-scale"].length, 1, "另一边只有一轮也留着");
+});

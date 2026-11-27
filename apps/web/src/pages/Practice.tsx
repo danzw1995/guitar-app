@@ -48,6 +48,7 @@ import {
   type RhythmRecords,
   type SkipLog,
 } from "../lib/storage";
+import { pushRound } from "../lib/rounds";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import {
@@ -826,6 +827,7 @@ export default function Practice() {
           previous={previousOf(follow.id)}
           onFinish={recordFollow}
           onSpot={recordSpot}
+          onRound={(entry) => pushRound(followKey(follow.id), entry)}
           onClose={() => {
             setFollow(null);
             setFollowBar(null);

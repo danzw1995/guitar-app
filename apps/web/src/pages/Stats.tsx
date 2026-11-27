@@ -28,6 +28,7 @@ import {
 import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
 import { bestRun, compareRunOf, downloadAudio, downloadDataUrl, downloadText, loadLoops, loadRuns, restoreRuns, runMetaMarkdown, worstClipOf, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
+import { loadRounds } from "../lib/rounds";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -634,6 +635,20 @@ export default function Stats() {
       groups.set(key, next);
     }
     return [...groups.values()].sort((a, b) => b.last.localeCompare(a.last)).slice(0, 4);
+  }, []);
+  // 跟练轮次流水（v0.171.0）：有「不加码」的那几轮的条目才列出来——速度不动时，
+  // 看的就是「这几轮还在不在这个速度上」。
+  const roundItems = useMemo(() => {
+    const log = loadRounds();
+    return Object.entries(log)
+      .map(([id, rows]) => ({
+        id,
+        rows: rows.slice(-8),
+        holdCount: rows.filter((row) => row.hold).length,
+      }))
+      .filter((item) => item.rows.length >= 2 && item.holdCount > 0)
+      .sort((a, b) => b.rows.length - a.rows.length)
+      .slice(0, 4);
   }, []);
   // 每套组合「整体卡在哪一级」（v0.119.0）：把这一套所有条目的「卡了几次」按级数加总，
   // 加总最多的那一级就是这套的短板。它是「这套要不要一起补」的线索，不是单条的结论。
@@ -1747,6 +1762,43 @@ export default function Stats() {
         <p className="hint">
           「{setFilter}」这一套还没有曲线——跟练两天以上才会画出来。
         </p>
+      )}
+
+      {roundItems.length > 0 && (
+        <>
+          <h3 className="stat-sub">
+            不加码那几轮
+            <span className="stat-sub-note">速度不动，只看稳没稳</span>
+          </h3>
+          <ul className="round-list" data-round-list="">
+            {roundItems.map((item) => {
+              const values = item.rows.map((row) => row.bpm);
+              const spark = sparklineOf(values, 120, 30);
+              const first = values[0];
+              const last = values[values.length - 1];
+              const name = titleOf(item.id);
+              return (
+                <li key={item.id}>
+                  <span className="curve-name" title={name}>
+                    {name}
+                  </span>
+                  <svg
+                    className="curve-svg round-svg"
+                    viewBox="0 0 120 30"
+                    role="img"
+                    aria-label={`${name} 最近 ${item.rows.length} 轮的 BPM：${values.join("、")}，其中 ${item.holdCount} 轮不加码。`}
+                  >
+                    <path d={spark.d} />
+                  </svg>
+                  <span className="muted">
+                    {first} → {last} BPM · {item.rows.length} 轮
+                    {item.holdCount === item.rows.length ? "（都不加码）" : `（${item.holdCount} 轮不加码）`}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       )}
 
       {visibleSteadyCurves.length > 0 && (

@@ -182,6 +182,21 @@ export default function Generate({ follow, best, scores }: Props) {
   const tex = useMemo(() => tabToAlphaTex(piece.tab), [piece]);
   const label = useMemo(() => tabAriaLabel(piece.tab), [piece]);
   const { image, error: imageError } = useScoreImage(started ? tex : null, 820, 1000);
+  // 橙线按行分组（v0.171.0）：两行谱时标出「第 1 行 1–8 拍 · 第 2 行 9–16 拍」
+  const candRows = useMemo(() => {
+    const beats = image?.beats;
+    if (!beats) return [];
+    const rows = new Map<number, { first: number; last: number }>();
+    for (const beat of candMarkBeats) {
+      const spot = beats[beat];
+      if (!spot || spot.y === undefined) continue;
+      const key = Math.round(spot.y);
+      const row = rows.get(key);
+      if (row) row.last = beat;
+      else rows.set(key, { first: beat, last: beat });
+    }
+    return [...rows.entries()].sort((a, b) => a[0] - b[0]).map(([, row]) => row);
+  }, [candMarkBeats, image]);
   const info = SKILLS.find((item) => item.id === piece.skill) ?? SKILLS[0];
   const melody = MELODY_CHOICES.find((item) => item.id === melodyId) ?? MELODY_CHOICES[0];
   const high = best ? best(piece.id) : undefined;
@@ -599,6 +614,13 @@ export default function Generate({ follow, best, scores }: Props) {
           {candMarkBeats.length > 0 && (
             <p className="generate-cand-note">
               谱底下那 {candMarkBeats.length} 条橙线，就是能叠{MELODY_TECH_LABEL[tech]}的拍子——先按谱上的位置把手指放好，再跟着跟练。
+              {candRows.length > 1 && (
+                <span className="generate-rows">
+                  {candRows
+                    .map((row, index) => `第 ${index + 1} 行 ${row.first + 1}–${row.last + 1} 拍`)
+                    .join(" · ")}
+                </span>
+              )}
             </p>
           )}
           <p className="generate-tip">{piece.hint}</p>
