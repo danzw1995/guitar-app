@@ -23,6 +23,9 @@ export interface RoundEntry {
   minutes: number;
   /** 这一轮是不是「不加码」（只求稳）。 */
   hold: boolean;
+  /** 这一轮只练了第几到第几小节（v0.172.0）：没圈小节时是整段 1..bars。 */
+  fromBar?: number;
+  toBar?: number;
 }
 
 export type RoundsLog = Record<string, RoundEntry[]>;
@@ -46,6 +49,10 @@ function parseEntry(value: unknown): RoundEntry | null {
   if (!Number.isInteger(round) || round < 1 || round > 99) return null;
   if (!Number.isFinite(bpm) || bpm < 40 || bpm > 200) return null;
   if (!Number.isFinite(minutes) || minutes < 1 || minutes > 240) return null;
+  const fromRaw = Number(item.fromBar);
+  const toRaw = Number(item.toBar);
+  const fromBar = Number.isInteger(fromRaw) && fromRaw >= 1 && fromRaw <= 64 ? fromRaw : 0;
+  const toBar = Number.isInteger(toRaw) && toRaw >= fromBar && toRaw <= 64 ? toRaw : 0;
   return {
     date: item.date,
     at: typeof item.at === "string" && /^\d{2}:\d{2}$/.test(item.at) ? item.at : "00:00",
@@ -53,6 +60,7 @@ function parseEntry(value: unknown): RoundEntry | null {
     bpm: Math.round(bpm),
     minutes: Math.round(minutes),
     hold: item.hold === true,
+    ...(fromBar && toBar ? { fromBar, toBar } : {}),
   };
 }
 
@@ -99,10 +107,19 @@ export function roundsOf(id: string): RoundEntry[] {
 /** 记一轮（v0.171.0）：同一条最多留 `MAX_ROUNDS` 轮。 */
 export function pushRound(
   id: string,
-  entry: { round: number; bpm: number; minutes: number; hold: boolean },
+  entry: {
+    round: number;
+    bpm: number;
+    minutes: number;
+    hold: boolean;
+    fromBar?: number;
+    toBar?: number;
+  },
   now = new Date(),
 ): RoundsLog {
   const log = loadRounds();
+  const partial =
+    entry.fromBar !== undefined && entry.toBar !== undefined && entry.toBar > entry.fromBar - 1;
   const rows = [...(log[id] ?? []), {
     date: dateKeyOf(now),
     at: clockOf(now),
@@ -110,6 +127,8 @@ export function pushRound(
     bpm: Math.round(entry.bpm),
     minutes: Math.max(1, Math.round(entry.minutes)),
     hold: entry.hold,
+    // 只有圈着练的时候才写这两项（整段练就不写，统计页才不会说「第 1–4 小节」）
+    ...(partial ? { fromBar: entry.fromBar, toBar: entry.toBar } : {}),
   }].slice(-MAX_ROUNDS);
   return persist({ ...log, [id]: rows });
 }

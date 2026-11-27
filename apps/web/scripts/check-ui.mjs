@@ -6084,6 +6084,63 @@ try {
     "统计页/跟练：两行谱标出每行第几拍到第几拍，轮次流水看得出「不加码那几轮」（v0.171.0）",
     `行「${v171Rows || "没有"}」 · 流水 ${roundsParsed.rows} 行「${roundsParsed.text.slice(0, 60)}」`,
   );
+  // 17j) v0.172.0：点「不加码那几轮」那一行 → 按那条最近的速度直接开一轮（不加码）
+  js(
+    `(() => {
+      sessionStorage.setItem('chk17.rounds', localStorage.getItem('guitar.rounds.v1') ?? '');
+      const rows = [
+        { date: '2026-11-26', at: '20:00', round: 1, bpm: 56, minutes: 2, hold: true, fromBar: 2, toBar: 3 },
+        { date: '2026-11-27', at: '20:10', round: 2, bpm: 61, minutes: 3, hold: true, fromBar: 2, toBar: 3 },
+      ];
+      localStorage.setItem('guitar.rounds.v1', JSON.stringify({ 'md-01': rows }));
+      return 'seeded';
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(1200);
+  const v172Row = plain(
+    js(`(() => {
+      const row = document.querySelector('[data-round-list] .round-row');
+      if (!row) return JSON.stringify({ found: false });
+      const text = row.textContent.trim();
+      row.click();
+      return JSON.stringify({ found: true, text });
+    })()`),
+  );
+  await sleep(1400);
+  const v172Follow = plain(
+    js(`(() => {
+      const panel = document.querySelector('.follow');
+      const input = panel?.querySelector('input[aria-label="起始速度（每分钟拍数）"]');
+      return JSON.stringify({
+        panel: Boolean(panel),
+        start: input ? input.value : '',
+        hold: Boolean(panel?.querySelector('[data-hold-speed]')),
+        rhythm: (location.hash || '').startsWith('#rhythm'),
+      });
+    })()`),
+  );
+  const rowParsed = v172Row ? JSON.parse(v172Row) : { found: false, text: "" };
+  const v172FollowParsed = v172Follow ? JSON.parse(v172Follow) : { panel: false, start: "", hold: false, rhythm: false };
+  log(
+    rowParsed.found &&
+      rowParsed.text.includes("第 2–3 小节") &&
+      v172FollowParsed.panel &&
+      v172FollowParsed.start === "61" &&
+      v172FollowParsed.hold &&
+      v172FollowParsed.rhythm,
+    "统计页：点「不加码那几轮」那一行，按那条最近的速度直接开一轮（v0.172.0）",
+    `行「${rowParsed.text.slice(0, 50)}」 · 面板 ${v172FollowParsed.panel} · 起始 ${v172FollowParsed.start} · 不加码 ${v172FollowParsed.hold} · 落在节奏页 ${v172FollowParsed.rhythm}`,
+  );
+  js(
+    `(() => {
+      const stored = sessionStorage.getItem('chk17.rounds');
+      if (stored) localStorage.setItem('guitar.rounds.v1', stored);
+      else localStorage.removeItem('guitar.rounds.v1');
+      sessionStorage.removeItem('chk17.rounds');
+      return 'restored';
+    })()`,
+  );
   js(
     `(() => {
       const put = (key, stored) => {

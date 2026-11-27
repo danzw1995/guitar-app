@@ -834,11 +834,31 @@ button, select, input { font: inherit; color: inherit; }
   max-width: 620px;
 }
 .round-list li {
+  font-size: 13px;
+}
+/* 整行是按钮：点一下按这条最近的速度再来一轮（v0.172.0） */
+.round-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px auto;
   align-items: center;
   gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.round-row:hover .curve-name {
+  color: var(--accent);
+}
+.round-row:focus-visible {
+  outline: 1px solid var(--text);
+  outline-offset: 2px;
 }
 .round-svg path {
   fill: none;
@@ -2909,7 +2929,7 @@ button.steady-best-tag:hover {
   font-size: 11px;
   white-space: nowrap;
 }
-/* 走到能做技法的那一拍，轻轻响一下这一拍的两个音（v0.171.0） */
+/* 走到能做技法的那一拍，轻轻响一下这一拍的两个音（v0.171.0；v0.172.0 可选频率） */
 .follow-tip-toggle {
   display: inline-flex;
   align-items: center;
@@ -2918,6 +2938,17 @@ button.steady-best-tag:hover {
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
+  cursor: pointer;
+}
+.follow-tip-select {
+  min-height: 40px;
+  padding: 0 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
   cursor: pointer;
 }
 /* 这一次点了不止一处（v0.111.0）：其余几处收在下面，默认不展开 */

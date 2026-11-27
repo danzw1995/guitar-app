@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.171.0`，core `0.63.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.172.0`，core `0.63.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -245,6 +245,13 @@ v0.171.0 只动前端（core 仍 `0.63.0`）：①`useTone()` 新增 `hint(midis
 `FollowAlong` 的 `onRound` 在「记录成绩」时写），统计页「不加码那几轮」把最近几轮的 BPM 画成折线；
 ④备份 `BACKUP_KEYS` 加这把键，`mergeRounds()` 合并时同一天同一轮只留一份、按时间排好、每条最多 24 轮，
 合完是空表要删键。
+
+v0.172.0 也只动前端（core 仍 `0.63.0`）：①「落点轻响」从开关变成三档下拉（`每拍` / `只第一下` / `关`，
+`FollowAlong` 的 `beatAudio` 类型改成 `"each" | "first" | "off"`）；②统计页「不加码那几轮」整行改成按钮，
+`goTo("rhythm", undefined, { follow, bpm, hold: "1" })` 带参数过去，`Rhythm.tsx` 在挂载时读 hash 的 query、
+用新增的 `lib/follow-lookup.ts`（`lookupFollow(id)`）查出那条练习，开完立刻 `replaceState` 抹参数；
+`FollowTarget` 多两个可选字段 `startBpm` / `holdSpeed`；③`RoundEntry` 多两个可选字段 `fromBar` / `toBar`
+（只有勾「只练」圈着练的那一轮才写），统计页那行右边多「· 第 2–3 小节」。存储结构只多了这两个可选字段。
 
 v0.161.0 给 core 加了 `interval-drill.ts`（`intervalTableOf` / `intervalQualityRows` / `intervalDrillQuestion` /
 `intervalDrillAnswerText` / `INTERVAL_KEYS`），新增导出算 MINOR，core 到 `0.56.0`；前端只多了音阶页的

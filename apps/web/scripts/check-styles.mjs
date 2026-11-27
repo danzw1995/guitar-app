@@ -1732,12 +1732,19 @@ expect(
 );
 
 expect(
-  "「落点轻响」够 40 高，两行谱的行号是小字，轮次流水与跟练进步同一套三列 (v0.171.0)",
+  "「落点轻响」够 40 高，两行谱的行号是小字，轮次流水那一行是够 40 高的整行按钮 (v0.171.0)",
   parseInt(anyDecls(".follow-tip-toggle").get("min-height") || "0", 10) >= 40 &&
     (anyDecls(".tab-score-rows").get("font-size") || "") === "11px" &&
     (anyDecls(".generate-rows").get("font-size") || "") === "11px" &&
-    (anyDecls(".round-list li").get("grid-template-columns") || "").includes("minmax(0, 1fr)") &&
+    (anyDecls(".round-row").get("grid-template-columns") || "").includes("minmax(0, 1fr)") &&
+    Number.parseFloat(anyDecls(".round-row").get("min-height") || "0") >= 40 &&
     (anyDecls(".round-svg path").get("stroke") || "").includes("--blue"),
+);
+
+expect(
+  "「落点轻响」的频率是个够 40 高的下拉，轮次那一行有手型 (v0.172.0)",
+  Number.parseFloat(anyDecls(".follow-tip-select").get("min-height") || "0") >= 40 &&
+    (anyDecls(".round-row").get("cursor") || "") === "pointer",
 );
 
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {

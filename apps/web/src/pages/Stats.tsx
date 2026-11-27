@@ -1777,23 +1777,44 @@ export default function Stats() {
               const first = values[0];
               const last = values[values.length - 1];
               const name = titleOf(item.id);
+              // 最近一轮圈着练了哪几小节（v0.172.0）：有就写在右边
+              const barred = [...item.rows].reverse().find((row) => row.fromBar && row.toBar);
+              const barsText = barred
+                ? barred.fromBar === barred.toBar
+                  ? `第 ${barred.fromBar} 小节`
+                  : `第 ${barred.fromBar}–${barred.toBar} 小节`
+                : "";
               return (
                 <li key={item.id}>
-                  <span className="curve-name" title={name}>
-                    {name}
-                  </span>
-                  <svg
-                    className="curve-svg round-svg"
-                    viewBox="0 0 120 30"
-                    role="img"
-                    aria-label={`${name} 最近 ${item.rows.length} 轮的 BPM：${values.join("、")}，其中 ${item.holdCount} 轮不加码。`}
+                  <button
+                    type="button"
+                    className="round-row"
+                    title={`按 ${last} BPM 再来一轮（不加码）`}
+                    onClick={() =>
+                      goTo("rhythm", undefined, {
+                        follow: item.id,
+                        bpm: String(last),
+                        hold: "1",
+                      })
+                    }
                   >
-                    <path d={spark.d} />
-                  </svg>
-                  <span className="muted">
-                    {first} → {last} BPM · {item.rows.length} 轮
-                    {item.holdCount === item.rows.length ? "（都不加码）" : `（${item.holdCount} 轮不加码）`}
-                  </span>
+                    <span className="curve-name" title={name}>
+                      {name}
+                    </span>
+                    <svg
+                      className="curve-svg round-svg"
+                      viewBox="0 0 120 30"
+                      role="img"
+                      aria-label={`${name} 最近 ${item.rows.length} 轮的 BPM：${values.join("、")}，其中 ${item.holdCount} 轮不加码。`}
+                    >
+                      <path d={spark.d} />
+                    </svg>
+                    <span className="muted">
+                      {first} → {last} BPM · {item.rows.length} 轮
+                      {item.holdCount === item.rows.length ? "（都不加码）" : `（${item.holdCount} 轮不加码）`}
+                      {barsText ? ` · ${barsText}` : ""}
+                    </span>
+                  </button>
                 </li>
               );
             })}

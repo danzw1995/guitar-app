@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ACCOMPANIMENTS,
   LEVEL_LABEL,
@@ -55,6 +55,8 @@ import {
   type SkipLog,
 } from "../lib/storage";
 import { pushRound } from "../lib/rounds";
+import { lookupFollow } from "../lib/follow-lookup";
+import { parseHash } from "../lib/nav";
 
 const LEVELS: Level[] = [1, 2, 3, 4, 5];
 
@@ -141,6 +143,24 @@ export default function Rhythm() {
   /** 只看还没练过的（103 张卡翻起来太长，先看没碰过的）。 */
   const [onlyNew, setOnlyNew] = useState(false);
   const [target, setTarget] = useState<FollowTarget | null>(null);
+  // 从统计页「不加码那几轮」点过来（v0.172.0）：按那条最近的速度、不开加速，直接开一轮。
+  // 用 hash 的 query 传参，落地后立刻把参数抹掉——刷新不会又开一遍。
+  useEffect(() => {
+    const route = parseHash(window.location.hash);
+    const id = route?.query.follow;
+    if (!id) return;
+    const found = lookupFollow(id);
+    if (!found) return;
+    const raw = Number(route?.query.bpm);
+    const startBpm = Number.isFinite(raw) && raw >= 30 && raw <= 220 ? Math.round(raw) : undefined;
+    setTarget({
+      ...found,
+      bpm: startBpm ? [startBpm, Math.max(startBpm, found.bpm[1])] : found.bpm,
+      ...(startBpm ? { startBpm } : {}),
+      ...(route?.query.hold === "1" ? { holdSpeed: true } : {}),
+    });
+    window.history.replaceState(null, "", "#rhythm");
+  }, []);
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
   const [skips, setSkips] = useState<SkipLog>(() => loadSkips());
   const [pauses, setPauses] = useState<PauseLog>(() => loadPauses());
