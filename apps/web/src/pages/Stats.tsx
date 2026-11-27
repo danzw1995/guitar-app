@@ -1789,12 +1789,13 @@ export default function Stats() {
                   <button
                     type="button"
                     className="round-row"
-                    title={`按 ${last} BPM 再来一轮（不加码）`}
+                    title={`按 ${last} BPM 再来一轮（不加码${barsText ? `，只弹${barsText}` : ""}）`}
                     onClick={() =>
                       goTo("rhythm", undefined, {
                         follow: item.id,
                         bpm: String(last),
                         hold: "1",
+                        ...(barred ? { from: String(barred.fromBar), to: String(barred.toBar) } : {}),
                       })
                     }
                   >
@@ -1814,6 +1815,22 @@ export default function Stats() {
                       {item.holdCount === item.rows.length ? "（都不加码）" : `（${item.holdCount} 轮不加码）`}
                       {barsText ? ` · ${barsText}` : ""}
                     </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-quiet round-batch"
+                    title="按这个速度、不加码，连着练 3 轮"
+                    onClick={() =>
+                      goTo("rhythm", undefined, {
+                        follow: item.id,
+                        bpm: String(last),
+                        hold: "1",
+                        rounds: "3",
+                        ...(barred ? { from: String(barred.fromBar), to: String(barred.toBar) } : {}),
+                      })
+                    }
+                  >
+                    连练 3 轮
                   </button>
                 </li>
               );

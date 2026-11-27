@@ -6141,6 +6141,57 @@ try {
       return 'restored';
     })()`,
   );
+  // 17k) v0.173.0：点「连练 3 轮」→ 圈住那一轮练过的小节、带着「连练 3 轮」的进度牌
+  js(
+    `(() => {
+      sessionStorage.setItem('chk17.rounds', localStorage.getItem('guitar.rounds.v1') ?? '');
+      const rows = [
+        { date: '2026-11-26', at: '20:00', round: 1, bpm: 56, minutes: 2, hold: true, fromBar: 2, toBar: 3 },
+        { date: '2026-11-27', at: '20:10', round: 2, bpm: 61, minutes: 3, hold: true, fromBar: 2, toBar: 3 },
+      ];
+      localStorage.setItem('guitar.rounds.v1', JSON.stringify({ 'md-01': rows }));
+      return 'seeded';
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(1200);
+  js("(() => { document.querySelector('[data-round-list] .round-batch')?.click(); return 'clicked'; })()");
+  await sleep(1400);
+  const v173 = plain(
+    js(`(() => {
+      const panel = document.querySelector('.follow');
+      return JSON.stringify({
+        panel: Boolean(panel),
+        from: panel?.querySelector('select[aria-label="循环从第几小节开始"]')?.value ?? '',
+        to: panel?.querySelector('select[aria-label="循环到第几小节结束"]')?.value ?? '',
+        zoom: panel?.querySelector('.follow-zoom-title')?.textContent?.trim() ?? '',
+        batch: panel?.querySelector('[data-batch-goal]')?.textContent?.trim() ?? '',
+        hold: Boolean(panel?.querySelector('[data-hold-speed]')),
+      });
+    })()`),
+  );
+  const batchParsed = v173
+    ? JSON.parse(v173)
+    : { panel: false, from: "", to: "", zoom: "", batch: "", hold: false };
+  log(
+    batchParsed.panel &&
+      batchParsed.from === "2" &&
+      batchParsed.to === "2" &&
+      batchParsed.zoom.includes("第 2 小节") &&
+      batchParsed.batch.includes("连练 3 轮") &&
+      batchParsed.hold,
+    "统计页：点「连练 3 轮」，圈住那一轮练过的小节、带着连练进度（v0.173.0）",
+    `面板 ${batchParsed.panel} · 圈住 ${batchParsed.from}–${batchParsed.to} · 放大「${batchParsed.zoom}」 · 进度牌「${batchParsed.batch}」 · 不加码 ${batchParsed.hold}`,
+  );
+  js(
+    `(() => {
+      const stored = sessionStorage.getItem('chk17.rounds');
+      if (stored) localStorage.setItem('guitar.rounds.v1', stored);
+      else localStorage.removeItem('guitar.rounds.v1');
+      sessionStorage.removeItem('chk17.rounds');
+      return 'restored';
+    })()`,
+  );
   js(
     `(() => {
       const put = (key, stored) => {

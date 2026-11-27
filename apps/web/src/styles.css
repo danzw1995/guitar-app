@@ -834,10 +834,14 @@ button, select, input { font: inherit; color: inherit; }
   max-width: 620px;
 }
 .round-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
 }
 /* 整行是按钮：点一下按这条最近的速度再来一轮（v0.172.0） */
 .round-row {
+  flex: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px auto;
   align-items: center;
@@ -859,6 +863,23 @@ button, select, input { font: inherit; color: inherit; }
 .round-row:focus-visible {
   outline: 1px solid var(--text);
   outline-offset: 2px;
+}
+/* 「连练 3 轮」：一行右端的小按钮（v0.173.0） */
+.round-batch {
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--accent);
+  font-size: 12px;
+  white-space: nowrap;
+}
+/* 连练进度的小牌子（v0.173.0） */
+.follow-batch {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(88, 166, 255, 0.16);
+  color: var(--blue);
+  font-size: 11px;
+  white-space: nowrap;
 }
 .round-svg path {
   fill: none;

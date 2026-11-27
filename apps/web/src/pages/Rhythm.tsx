@@ -147,17 +147,27 @@ export default function Rhythm() {
   // 用 hash 的 query 传参，落地后立刻把参数抹掉——刷新不会又开一遍。
   useEffect(() => {
     const route = parseHash(window.location.hash);
-    const id = route?.query.follow;
+    const q = route?.query ?? {};
+    const id = q.follow;
     if (!id) return;
     const found = lookupFollow(id);
     if (!found) return;
-    const raw = Number(route?.query.bpm);
+    const raw = Number(q.bpm);
     const startBpm = Number.isFinite(raw) && raw >= 30 && raw <= 220 ? Math.round(raw) : undefined;
+    const from = Number(q.from);
+    const to = Number(q.to);
+    const loopRange =
+      Number.isInteger(from) && Number.isInteger(to) && from >= 1 && to >= from
+        ? { from, to }
+        : undefined;
+    const goal = Number(q.rounds);
     setTarget({
       ...found,
       bpm: startBpm ? [startBpm, Math.max(startBpm, found.bpm[1])] : found.bpm,
       ...(startBpm ? { startBpm } : {}),
-      ...(route?.query.hold === "1" ? { holdSpeed: true } : {}),
+      ...(q.hold === "1" ? { holdSpeed: true } : {}),
+      ...(loopRange ? { loopRange } : {}),
+      ...(Number.isInteger(goal) && goal >= 2 ? { roundsGoal: goal } : {}),
     });
     window.history.replaceState(null, "", "#rhythm");
   }, []);

@@ -1747,6 +1747,13 @@ expect(
     (anyDecls(".round-row").get("cursor") || "") === "pointer",
 );
 
+expect(
+  "「连练 3 轮」够 40 高，连练进度是蓝色小牌子 (v0.173.0)",
+  Number.parseFloat(anyDecls(".round-batch").get("min-height") || "0") >= 40 &&
+    (anyDecls(".follow-batch").get("color") || "").includes("--blue") &&
+    (anyDecls(".follow-batch").get("border-radius") || "") === "999px",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

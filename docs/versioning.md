@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.172.0`，core `0.63.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.173.0`，core `0.63.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -252,6 +252,12 @@ v0.172.0 也只动前端（core 仍 `0.63.0`）：①「落点轻响」从开关
 用新增的 `lib/follow-lookup.ts`（`lookupFollow(id)`）查出那条练习，开完立刻 `replaceState` 抹参数；
 `FollowTarget` 多两个可选字段 `startBpm` / `holdSpeed`；③`RoundEntry` 多两个可选字段 `fromBar` / `toBar`
 （只有勾「只练」圈着练的那一轮才写），统计页那行右边多「· 第 2–3 小节」。存储结构只多了这两个可选字段。
+
+v0.173.0 也只动前端（core 仍 `0.63.0`）：①`FollowTarget` 多两个可选字段 `loopRange`（`{ from, to }`）与
+`roundsGoal`（连练几轮，2–5）；`Rhythm.tsx` 从 hash 的 `from` / `to` / `rounds` 解析后传下去，面板打开时
+照着圈好；②「只第一下」的轻响改成先按 `[loopFrom, loopTo]` 过滤候选、段内没有就不响；③`FollowAlong`
+加 `batchGoal`，记完一轮 0.6 秒后自动 `restartAtBpm(bpm)` 接下一轮（卸载时清定时器）。
+备份格式没变。
 
 v0.161.0 给 core 加了 `interval-drill.ts`（`intervalTableOf` / `intervalQualityRows` / `intervalDrillQuestion` /
 `intervalDrillAnswerText` / `INTERVAL_KEYS`），新增导出算 MINOR，core 到 `0.56.0`；前端只多了音阶页的

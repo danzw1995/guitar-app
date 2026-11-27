@@ -25,6 +25,10 @@ export interface FollowTarget {
   startBpm?: number;
   /** 一打开就勾上「这一轮不加码」（v0.172.0）：「再来一轮」那条路的默认行为。 */
   holdSpeed?: boolean;
+  /** 一打开就圈住这几小节（v0.173.0）：统计页那一行记着「第 2–3 小节」时照着圈。 */
+  loopRange?: { from: number; to: number };
+  /** 连着练几轮（v0.173.0）：2–5，练完一轮自动接着下一轮；0/不填＝不连练。 */
+  roundsGoal?: number;
 }
 
 /** 只练某几小节时，练满几遍自动接回整段（v0.99.0；v0.100.0 起遍数可选）。 */
@@ -146,7 +150,19 @@ export default function FollowAlong({
    * 上一轮是靠自动加速冲到某个速度的，马上再按原样加码等于跳着走；
    * 这一轮先把速度固定住，练稳了要加速自己勾回来——按钮上也写明「这一轮不加码」。
    */
-  const [holdSpeed, setHoldSpeed] = useState(false);
+  const [holdSpeed, setHoldSpeed] = useState(target.holdSpeed === true);
+  /** 连着练几轮（v0.173.0）：从统计页「连练 N 轮」点过来时记着，练完一轮自动接下一轮。 */
+  const [batchGoal, setBatchGoal] = useState(
+    target.roundsGoal && target.roundsGoal >= 2 ? Math.min(5, Math.round(target.roundsGoal)) : 0,
+  );
+  /** 连练之间那 0.6 秒的定时器：关掉面板就清掉，别在卸载后再 setState。 */
+  const batchTimerRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (batchTimerRef.current !== null) window.clearTimeout(batchTimerRef.current);
+    },
+    [],
+  );
   /** 走到能叠技法的那一拍时，轻轻响一下那两个音（v0.171.0，可以在控件里关掉）。 */
   /** 落点要不要轻轻响一下（v0.171.0）：默认每拍都响，也可以只响第一下或者关掉（v0.172.0）。 */
   const [beatAudio, setBeatAudio] = useState<"each" | "first" | "off">("each");
@@ -492,12 +508,15 @@ export default function FollowAlong({
     if (!candSet.has(beatCursor)) return;
     if (hintBeatRef.current === beatCursor) return;
     if (beatAudio === "first") {
-      // 这一轮里更靠前的候选拍还没走到（或者已经开始练了）→ 只响最先出现的那个
-      const start = loopOn ? (loopStart - 1) * target.tab.beatsPerBar : 0;
-      const first = candBeats && candBeats.length > 0
-        ? candBeats.map((beat) => (beat >= start ? beat : beat + target.tab.bars * target.tab.beatsPerBar)).sort((a, b) => a - b)[0]
-        : undefined;
-      if (first !== undefined && beatCursor !== first) return;
+      // 只在这「一遍 / 这一段」里最先出现的那一拍响（v0.172.0；v0.173.0 起严格在圈住的段内找）：
+      // 段里一处候选都没有就干脆不响，不回绕到段外去
+      const perBar = target.tab.beatsPerBar;
+      const start = loopOn ? (loopStart - 1) * perBar : 0;
+      const end = loopOn ? loopTo * perBar - 1 : target.tab.bars * perBar - 1;
+      const inRange = (candBeats ?? []).filter((beat) => beat >= start && beat <= end);
+      if (inRange.length === 0) return;
+      const first = Math.min(...inRange);
+      if (beatCursor !== first) return;
     }
     hintBeatRef.current = beatCursor;
     const midis = beatMidis.get(beatCursor) ?? [];
@@ -579,6 +598,14 @@ export default function FollowAlong({
     });
     // 这一轮记完就变成「上一轮」（v0.170.0）：下一轮回执里跟它比
     setRounds({ index: rounds.index + 1, lastBpm: bpm });
+    // 连练（v0.173.0）：还没到轮数就自动接着下一轮——速度不变、不加码，隔 0.6 秒再开
+    if (batchGoal >= 2 && rounds.index < batchGoal) {
+      if (batchTimerRef.current !== null) window.clearTimeout(batchTimerRef.current);
+      batchTimerRef.current = window.setTimeout(() => {
+        batchTimerRef.current = null;
+        restartAtBpm(bpm);
+      }, 600);
+    }
     setSpotsOpen(false);
     stop();
     setSeconds(0);
@@ -595,6 +622,9 @@ export default function FollowAlong({
     setLoopOn(false);
     setDone(null);
     setHoldSpeed(target.holdSpeed === true);
+    setBatchGoal(
+      target.roundsGoal && target.roundsGoal >= 2 ? Math.min(5, Math.round(target.roundsGoal)) : 0,
+    );
     setRounds({ index: 1, lastBpm: null });
     setSavedSpots([]);
     setPlanSpots([]);
@@ -609,7 +639,14 @@ export default function FollowAlong({
     hintBeatRef.current = null;
     stop();
     // 带着小节进来（v0.129.0）：重置完再圈，别被上面的 reset 清掉
-    if (startBar) practiceBar(startBar, false);
+    if (target.loopRange) {
+      // 统计页那一行记着「第 2–3 小节」（v0.173.0）：照着圈好，等用户点开始
+      const from = Math.min(Math.max(1, target.loopRange.from), target.tab.bars);
+      const to = Math.min(Math.max(from, target.loopRange.to), target.tab.bars);
+      setLoopOn(true);
+      setLoopFrom(from);
+      setLoopTo(to);
+    } else if (startBar) practiceBar(startBar, false);
     else {
       // 上次圈住练的那一段（v0.132.0）：照着圈回去，不用再从头挑一遍
       const saved = loadRhythm()[target.id]?.seg;
@@ -827,6 +864,13 @@ export default function FollowAlong({
           {holdSpeed && (
             <span className="follow-hold" data-hold-speed="">
               这一轮不加码
+            </span>
+          )}
+
+          {/* 连练（v0.173.0）：从统计页「连练 N 轮」点过来，记完一轮自动接下一轮 */}
+          {batchGoal >= 2 && (
+            <span className="follow-batch" data-batch-goal={batchGoal}>
+              连练 {batchGoal} 轮 · 第 {Math.min(rounds.index, batchGoal)} 轮
             </span>
           )}
 
