@@ -30,7 +30,7 @@ import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
 import { bestRun, compareRunOf, downloadAudio, downloadDataUrl, downloadText, loadLoops, loadRuns, restoreRuns, runMetaMarkdown, worstClipOf, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
 import { loadRounds } from "../lib/rounds";
-import { JUDGE_LEVEL_LABEL, loadJudgeLevels } from "../lib/judge-levels";
+import { JUDGE_LEVEL_LABEL, clearJudgeLevel, loadJudgeLevels, setJudgeLevel } from "../lib/judge-levels";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -320,10 +320,22 @@ export default function Stats() {
   // 曲目（v0.176.0）：六首各自旋律 / 伴奏的最高速度。曲目页不另开键，
   // 所以这里直接从 `guitar.rhythm.v1` 的 `song-<id>-melody` / `-strum` 读。
   // v0.179.0：整首连弹（`-run`）也算进「这一首」的速度与次数，并标出各条用的判稳档位。
-  const judgeLevels = loadJudgeLevels();
-  const judgeTagOf = (id: string): string => {
-    const level = judgeLevels[id];
-    return level ? `（${JUDGE_LEVEL_LABEL[level]}）` : "";
+  const [judgeBump, setJudgeBump] = useState(0);
+  const judgeLevels = useMemo(() => loadJudgeLevels(), [judgeBump]);
+  /**
+   * 点一下那颗小标签换一档（v0.180.0）：默认 → 宽松 → 标准 → 严格 → 默认。
+   *
+   * 统计页是被问「这一条为什么判得松/严」的地方，改档位要能就地改，
+   * 不用再回曲目页点进跟练面板。
+   */
+  const cycleJudge = (id: string): void => {
+    const order: ("wide" | "normal" | "tight")[] = ["wide", "normal", "tight"];
+    const current = judgeLevels[id];
+    const index = current === undefined ? -1 : order.indexOf(current);
+    const next = order[index + 1];
+    if (next === undefined) clearJudgeLevel(id);
+    else setJudgeLevel(id, next);
+    setJudgeBump((value) => value + 1);
   };
   const songRows = SONGS.map((song) => {
     const melodyId = `${song.id}-melody`;
@@ -341,9 +353,10 @@ export default function Stats() {
       melodyBest: melody?.bestBpm ?? 0,
       strumBest: strum?.bestBpm ?? 0,
       runBest: run?.bestBpm ?? 0,
-      melodyJudge: judgeTagOf(melodyId),
-      strumJudge: judgeTagOf(strumId),
-      runJudge: judgeTagOf(runId),
+      melodyJudge: judgeLevels[melodyId] ?? null,
+      strumJudge: judgeLevels[strumId] ?? null,
+      runJudge: judgeLevels[runId] ?? null,
+      wholeRuns: run?.wholeRuns ?? 0,
       best,
       sessions,
       lastAt,
@@ -1685,12 +1698,41 @@ export default function Stats() {
             {songTop.map((row) => (
               <li key={row.song.id}>
                 <span>{row.song.title}</span>
-                <span className="muted">
-                  旋律 {row.melodyBest > 0 ? `${row.melodyBest} BPM` : "—"}
-                  {row.melodyJudge} · 伴奏 {row.strumBest > 0 ? `${row.strumBest} BPM` : "—"}
-                  {row.strumJudge}
-                  {row.runBest > 0 ? ` · 整首 ${row.runBest} BPM${row.runJudge}` : ""} · 练{" "}
-                  {row.sessions} 次
+                <span className="muted song-stat-line">
+                  旋律 {row.melodyBest > 0 ? `${row.melodyBest} BPM` : "—"}{" "}
+                  <button
+                    type="button"
+                    className="judge-tag"
+                    data-judge-level={row.melodyJudge ?? "none"}
+                    title="点一下换判稳档位：默认 → 宽松 → 标准 → 严格"
+                    onClick={() => cycleJudge(`${row.song.id}-melody`)}
+                  >
+                    {row.melodyJudge ? JUDGE_LEVEL_LABEL[row.melodyJudge] : "按默认"}
+                  </button>
+                  {" · 伴奏 "}
+                  {row.strumBest > 0 ? `${row.strumBest} BPM` : "—"}{" "}
+                  <button
+                    type="button"
+                    className="judge-tag"
+                    data-judge-level={row.strumJudge ?? "none"}
+                    title="点一下换判稳档位：默认 → 宽松 → 标准 → 严格"
+                    onClick={() => cycleJudge(`${row.song.id}-strum`)}
+                  >
+                    {row.strumJudge ? JUDGE_LEVEL_LABEL[row.strumJudge] : "按默认"}
+                  </button>
+                  {row.runBest > 0 ? ` · 整首 ${row.runBest} BPM` : ""}{" "}
+                  {row.runBest > 0 && (
+                    <button
+                      type="button"
+                      className="judge-tag"
+                      data-judge-level={row.runJudge ?? "none"}
+                      title="点一下换判稳档位：默认 → 宽松 → 标准 → 严格"
+                      onClick={() => cycleJudge(`${row.song.id}-run`)}
+                    >
+                      {row.runJudge ? JUDGE_LEVEL_LABEL[row.runJudge] : "按默认"}
+                    </button>
+                  )}
+                  {row.wholeRuns > 0 ? ` · 走通 ${row.wholeRuns} 次` : ""} · 练 {row.sessions} 次
                   {row.lastAt ? ` · ${row.lastAt.slice(5)}` : ""}
                 </span>
               </li>
@@ -1703,7 +1745,7 @@ export default function Stats() {
         <ul className="stat-list">
           {topRhythm.map((item) => (
             <li key={item.id}>
-              <span>{nameOf(item.id)}</span>
+              <span>{rhythm[item.id]?.title ?? nameOf(item.id)}</span>
               <span className="muted">
                 {item.bestBpm} BPM · 练 {item.sessions} 次
                 {item.lastAt ? ` · ${item.lastAt.slice(5)}` : ""}

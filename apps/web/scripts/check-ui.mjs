@@ -6642,11 +6642,19 @@ try {
   await ab(["open", `${URL}?r=${Date.now()}#stats`]);
   await sleep(1500);
   const songStatLine = plain(
-    js("(() => document.querySelector('[data-song-stats] li')?.textContent?.trim() ?? 'none')()"),
+    js("(() => document.querySelector('[data-song-stats] li')?.textContent?.replace(/\\s+/g, ' ').trim() ?? 'none')()"),
+  );
+  const judgeTags = plain(
+    js(
+      "(() => [...document.querySelectorAll('[data-song-stats] .judge-tag')].map(n => n.dataset.judgeLevel + ':' + n.textContent.trim()).join('|'))()",
+    ),
   );
   log(
-    songStatLine.includes("旋律 76 BPM（严格）") && songStatLine.includes("整首 90 BPM（宽松）"),
-    `统计页：曲目那行标出判稳档位（${songStatLine}）`,
+    songStatLine.includes("旋律 76 BPM") &&
+      songStatLine.includes("整首 90 BPM") &&
+      judgeTags.includes("tight:严格") &&
+      judgeTags.includes("wide:宽松"),
+    `统计页：曲目那行标出判稳档位（${songStatLine} · ${judgeTags}）`,
   );
   js(
     "(() => { const rhythm = sessionStorage.getItem('chk21.rhythm'); if (rhythm) { localStorage.setItem('guitar.rhythm.v1', rhythm); } else { localStorage.removeItem('guitar.rhythm.v1'); } const levels = sessionStorage.getItem('chk21.levels'); if (levels) { localStorage.setItem('guitar.judgeLevels.v1', levels); } else { localStorage.removeItem('guitar.judgeLevels.v1'); } return 'ok'; })()",
@@ -6674,6 +6682,90 @@ try {
     "(() => { const b = [...document.querySelectorAll('.follow .btn')].find(n => n.textContent.includes('收起')); b?.click(); return 'ok'; })()",
   );
   await sleep(300);
+
+  // 18m) 曲目页（v0.180.0）：整首走通过几次——跟最高速度分开记
+  const day22 = (() => {
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  })();
+  js(
+    `(() => {
+      const raw = JSON.parse(localStorage.getItem("guitar.rhythm.v1") ?? "{}");
+      sessionStorage.setItem("chk22.rhythm", JSON.stringify(raw));
+      raw["song-star-run"] = { bestBpm: 90, sessions: 2, minutes: 6, lastAt: "${day22}", title: "小星星 · 整首连弹", wholeRuns: 2, history: [] };
+      localStorage.setItem("guitar.rhythm.v1", JSON.stringify(raw));
+      return "ok";
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  const wholeBadge = plain(
+    js(
+      "(() => { const n = document.querySelector('[data-song-whole]'); return n ? n.textContent.trim() : ''; })()",
+    ),
+  );
+  log(wholeBadge.includes("走通 2 次"), `曲目页：整首连弹那张卡上有「走通 N 次」（读到「${wholeBadge}」）`);
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(1400);
+  const wholeLine = plain(
+    js(
+      "(() => { const n = [...document.querySelectorAll('[data-song-stats] li')].find(li => li.textContent.includes('整首')); return n ? n.textContent.replace(/\\s+/g, ' ').trim() : ''; })()",
+    ),
+  );
+  log(wholeLine.includes("走通 2 次"), `统计页：曲目那一行写着走通几次（读到「${wholeLine}」）`);
+
+  // 18n) 统计页（v0.180.0）：判稳档位点一下换一档
+  const judgeBefore = plain(
+    js(
+      "(() => { const b = document.querySelector('[data-song-stats] .judge-tag'); return b ? (b.dataset.judgeLevel + '|' + b.textContent.trim()) : ''; })()",
+    ),
+  );
+  js(
+    "(() => { const b = document.querySelector('[data-song-stats] .judge-tag'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const judgeAfter = plain(
+    js(
+      `(() => {
+        const b = document.querySelector('[data-song-stats] .judge-tag');
+        const stored = JSON.parse(localStorage.getItem("guitar.judgeLevels.v1") ?? "{}");
+        return (b ? (b.dataset.judgeLevel + '|' + b.textContent.trim()) : '') + '#' + Object.keys(stored).length;
+      })()`,
+    ),
+  );
+  log(
+    judgeBefore !== "" && judgeAfter.split("#")[0] !== judgeBefore && judgeAfter.endsWith("1"),
+    `统计页：判稳档位点一下换一档并记住（「${judgeBefore}」→「${judgeAfter}」）`,
+  );
+
+  // 18o) 曲目页（v0.180.0）：记住上次看的那首，进来滚到那张卡
+  js(
+    `(() => {
+      const raw = JSON.parse(localStorage.getItem("guitar.settings.v1") ?? "{}");
+      raw.songLast = "song-tiger";
+      raw.songFilter = "all";
+      localStorage.setItem("guitar.settings.v1", JSON.stringify(raw));
+      return "ok";
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1500);
+  const lastCard = plain(
+    js(
+      "(() => { const n = document.getElementById('song-song-tiger'); return n ? String(n.classList.contains('song-last')) : 'none'; })()",
+    ),
+  );
+  log(lastCard === "true", `曲目页：进来滚到上次看的那首（#song-song-tiger 高亮 ${lastCard}）`);
+  js(
+    `(() => {
+      const raw = JSON.parse(sessionStorage.getItem("chk22.rhythm") ?? "null");
+      if (raw) localStorage.setItem("guitar.rhythm.v1", JSON.stringify(raw));
+      const levels = localStorage.getItem("guitar.judgeLevels.v1");
+      if (levels) localStorage.removeItem("guitar.judgeLevels.v1");
+      return "ok";
+    })()`,
+  );
 
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 

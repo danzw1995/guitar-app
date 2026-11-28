@@ -78,6 +78,8 @@ export interface Settings {
   judgeTolerance: "wide" | "normal" | "tight";
   /** 曲目页上次选的筛子（v0.179.0）：下次进来还是这一类。 */
   songFilter: "all" | "both" | "melody" | "strum" | "none";
+  /** 曲目页上次看的那首（v0.180.0）：进来滚到它那张卡。 */
+  songLast: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -101,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   songBalance: 60,
   judgeTolerance: "normal",
   songFilter: "all",
+  songLast: "",
 };
 
 function readJson(key: string): unknown {
@@ -260,6 +263,13 @@ export interface RhythmRecord {
    * 一圈几小节就是那天的练法，下次打开跟练直接照着圈回去，不用再从头挑一遍。
    */
   seg?: { from: number; to: number };
+  /**
+   * 从头到尾一遍没停地走完过几次（v0.180.0）。
+   *
+   * 跟 `bestBpm` 分开记：速度只说明「弹到过多快」，这一条才说明「整首走通过了」——
+   * 曲目页的「整首连弹」靠它显示「走通 N 次」，统计页那一行也写出来。
+   */
+  wholeRuns?: number;
 }
 
 /** 某一遍「稳不稳」：哪天、什么速度、标准差多少（毫秒）。 */
@@ -418,9 +428,19 @@ function parseRecords(raw: unknown): RhythmRecords {
       Number.isFinite(steadyStdevRaw) && steadyStdevRaw > 0 && steadyStdevRaw < 500
         ? Math.round(steadyStdevRaw * 10) / 10
         : null;
+    const wholeRunsRaw = Number(item.wholeRuns);
+    const wholeRuns =
+      Number.isInteger(wholeRunsRaw) && wholeRunsRaw > 0 ? Math.min(999, wholeRunsRaw) : 0;
     // 只单独练过某一处、还没整段练完时 bestBpm 会是 0——这种记录也得留住（v0.113.0）
     if (!Number.isFinite(bestBpm) || bestBpm < 0) continue;
-    if (bestBpm <= 0 && spots.length === 0 && steadyStdev === null && steadyHistory.length === 0) continue;
+    if (
+      bestBpm <= 0 &&
+      spots.length === 0 &&
+      steadyStdev === null &&
+      steadyHistory.length === 0 &&
+      wholeRuns === 0
+    )
+      continue;
     records[id] = {
       bestBpm: Math.round(bestBpm),
       sessions: Number.isFinite(Number(item.sessions)) ? Number(item.sessions) : 1,
@@ -432,6 +452,7 @@ function parseRecords(raw: unknown): RhythmRecords {
       ...(seg ? { seg } : {}),
       ...(steadyStdev !== null ? { steadyStdev } : {}),
       ...(steadyHistory.length ? { steadyHistory } : {}),
+      ...(wholeRuns > 0 ? { wholeRuns } : {}),
       ...(typeof item.title === "string" && item.title.trim()
         ? { title: item.title.trim() }
         : {}),
@@ -641,6 +662,9 @@ export function loadSettings(): Settings {
     songFilterRaw === "both" || songFilterRaw === "melody" || songFilterRaw === "strum" || songFilterRaw === "none"
       ? songFilterRaw
       : "all";
+  const songLastRaw = v.songLast;
+  const songLast =
+    typeof songLastRaw === "string" && /^[a-z0-9-]{1,40}$/.test(songLastRaw) ? songLastRaw : "";
 
   return {
     strictSpelling: v.strictSpelling === true,
@@ -663,6 +687,7 @@ export function loadSettings(): Settings {
     songBalance,
     judgeTolerance,
     songFilter,
+    songLast,
   };
 }
 
@@ -688,6 +713,7 @@ export function saveSettings(settings: Settings): void {
     songBalance: settings.songBalance,
     judgeTolerance: settings.judgeTolerance,
     songFilter: settings.songFilter,
+    songLast: settings.songLast,
   });
 }
 

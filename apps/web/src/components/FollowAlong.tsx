@@ -71,6 +71,8 @@ export interface FollowAlongProps {
     hardest?: FollowHardest;
     /** 这次圈住练的那一段（v0.132.0），下次打开照着圈回去。 */
     seg?: { from: number; to: number };
+    /** 整首从头走到底了没有（v0.180.0）：没圈段、没提前停才算「走通」。 */
+    complete: boolean;
   }) => void;
   onClose: () => void;
   /** 点了「只练这一处」（v0.113.0）：父组件记一笔「这一处单独练过几次」。 */
@@ -258,6 +260,9 @@ export default function FollowAlong({
   const loopRef = useRef({ from: loopFrom, to: loopTo });
   loopRef.current = { from: loopFrom, to: loopTo };
   const runningRef = useRef(false);
+  /** 这一遍走到过第几小节（v0.180.0）：判「整首走通」用，循环 / 只练某段不算。 */
+  const maxBarRef = useRef(0);
+  const wasRunningRef = useRef(false);
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -442,6 +447,15 @@ export default function FollowAlong({
     loop,
   });
   runningRef.current = running;
+
+  // 这一遍走到过第几小节（v0.180.0）：开练清零，不循环时把 bar 折成 1..总小节数
+  useEffect(() => {
+    if (running && !wasRunningRef.current) maxBarRef.current = 0;
+    wasRunningRef.current = running;
+    if (!running || loopOn) return;
+    const barNumber = Math.min(totalBars, (bar % totalBars) + 1);
+    if (barNumber > maxBarRef.current) maxBarRef.current = barNumber;
+  }, [bar, loopOn, running, totalBars]);
 
   /**
    * 记完成绩「按这次的 BPM 再来一轮」（v0.169.0）。
@@ -725,6 +739,7 @@ export default function FollowAlong({
       minutes: Math.max(1, Math.round(seconds / 60)),
       hardest: hardest ?? undefined,
       seg: loopOn ? { from: loopStart, to: loopEnd } : undefined,
+      complete: !loopOn && !countingIn && maxBarRef.current >= totalBars,
     });
     setDone({ bpm, hardest, spots, roundIndex: rounds.index, roundBefore: rounds.lastBpm });
     // 这一轮也记进轮次流水（v0.171.0）：看得出「不加码这几轮稳了没有」
@@ -766,6 +781,8 @@ export default function FollowAlong({
       target.roundsGoal && target.roundsGoal >= 2 ? Math.min(5, Math.round(target.roundsGoal)) : 0,
     );
     setRounds({ index: 1, lastBpm: null });
+    maxBarRef.current = 0;
+    wasRunningRef.current = false;
     // 这一条自己的判稳档位（v0.178.0）：没有就回落到全局默认
     setJudgeLevelState(judgeLevelOverride ?? loadSettings().judgeTolerance);
     setJudgeNote("");

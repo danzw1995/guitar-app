@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   SONGS,
   songRunTab,
@@ -96,11 +96,23 @@ export default function Songs() {
               : tone === "strum"
                 ? { text: "还差旋律", tone: "half" as const }
                 : { text: "还没练过", tone: "none" as const };
-        return { song, melodyId, strumId, melodyBest, strumBest, tone, badge };
+        return { song, melodyId, strumId, melodyBest, strumBest, tone, badge, wholeRuns: records[`${song.id}-run`]?.wholeRuns ?? 0 };
       }),
     [records],
   );
   const shownRows = filter === "all" ? songRows : songRows.filter((row) => row.tone === filter);
+
+  // 进来先滚到上次看的那首（v0.180.0）：六张卡一屏放不下，回来还得自己找一遍。
+  useEffect(() => {
+    const last = loadSettings().songLast;
+    if (!last) return;
+    const node = document.getElementById(`song-${last}`);
+    if (!node) return;
+    node.scrollIntoView({ block: "center", behavior: "smooth" });
+    node.classList.add("song-last");
+    const timer = window.setTimeout(() => node.classList.remove("song-last"), 2400);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   function audition(id: string, tab: Tab, bpm: number): void {
     stop();
@@ -157,9 +169,10 @@ export default function Songs() {
     saveRhythm(next);
   }
 
-  function record(result: { bpm: number; minutes: number }): void {
+  function record(result: { bpm: number; minutes: number; complete: boolean }): void {
     if (!target) return;
     const previous = records[target.id];
+    const wholeRuns = (previous?.wholeRuns ?? 0) + (result.complete ? 1 : 0);
     const next: RhythmRecords = {
       ...records,
       [target.id]: {
@@ -169,6 +182,7 @@ export default function Songs() {
         lastAt: today,
         title: target.name,
         history: pushBpmPoint(previous?.history, today, result.bpm),
+        ...(wholeRuns > 0 ? { wholeRuns } : {}),
       },
     };
     setRecords(next);
@@ -188,6 +202,7 @@ export default function Songs() {
 
   function follow(song: Song, part: "melody" | "strum"): void {
     stop();
+    saveSettings({ ...loadSettings(), songLast: song.id });
     const id = `${song.id}-${part}`;
     const section = sections[song.id] ?? "all";
     const loopRange =
@@ -211,6 +226,7 @@ export default function Songs() {
    */
   function followRun(song: Song): void {
     stop();
+    saveSettings({ ...loadSettings(), songLast: song.id });
     const section = sections[song.id] ?? "all";
     const loopRange =
       section === "A" ? { from: 1, to: 4 } : section === "B" ? { from: 5, to: 8 } : null;
@@ -267,7 +283,7 @@ export default function Songs() {
 
       <div className="song-grid">
         {shownRows.map((row) => {
-          const { song, melodyId, strumId, melodyBest, strumBest, badge } = row;
+          const { song, melodyId, strumId, melodyBest, strumBest, badge, wholeRuns } = row;
           return (
             <article className="song-card" id={`song-${song.id}`} key={song.id}>
               <div className="song-head">
@@ -277,6 +293,11 @@ export default function Songs() {
                 <span className={`song-badge ${badge.tone}`} data-song-badge={badge.tone}>
                   {badge.text}
                 </span>
+                {wholeRuns > 0 && (
+                  <span className="song-whole" data-song-whole={wholeRuns}>
+                    走通 {wholeRuns} 次
+                  </span>
+                )}
               </div>
               <p className="song-meta">
                 {song.source} · {song.keyLabel} · {song.meter} · {song.bpm[0]}–{song.bpm[1]} BPM

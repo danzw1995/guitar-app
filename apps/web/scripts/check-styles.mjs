@@ -1800,6 +1800,15 @@ expect(
     (anyDecls(".song-empty").get("color") || "").includes("--muted"),
 );
 
+expect(
+  "「走通 N 次」是蓝色小药丸，上次看的那张卡有强调色描边，统计页的档位标签点得动 (v0.180.0)",
+  (anyDecls(".song-whole").get("border-radius") || "") === "999px" &&
+    (anyDecls(".song-whole").get("color") || "").includes("--blue") &&
+    (anyDecls(".song-card.song-last").get("border-color") || "").includes("--accent") &&
+    (anyDecls(".judge-tag").get("cursor") || "") === "pointer" &&
+    (anyDecls(".judge-tag").get("font-size") || "") === "11px",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

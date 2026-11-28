@@ -158,12 +158,15 @@ for (const device of VIEWPORTS) {
       // 它另有 aria-label、方向键和「点开看明细」这条路。
       // 「今天练过」是标题里的一枚小标签（v0.116.0），旁边还有整块的「已勾」按钮可点。
       // 「最稳 11-20」也是文字里的一枚药丸（v0.150.0），同一条曲线上点那个点一样能看能听。
+      // 「严格 / 按默认」这类判稳档位标签（v0.180.0）夹在一行文字里，点一下换一档，
+      // 和它同一行还有文字说明，不按 40×40 的点按目标要求。
       const smallButtons = [...document.querySelectorAll("main button, main .btn")]
         .filter(
           (node) =>
             !node.classList.contains("heat-cell") &&
             !node.classList.contains("pb-done-tag") &&
-            !node.classList.contains("steady-best-tag"),
+            !node.classList.contains("steady-best-tag") &&
+            !node.classList.contains("judge-tag"),
         )
         .filter((node) => {
           const rect = node.getBoundingClientRect();
