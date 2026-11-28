@@ -74,6 +74,8 @@ export interface Settings {
   genMelodyBars: number;
   /** 曲目页「听两个声部一起」时伴奏的音量（0–100，v0.176.0）。 */
   songBalance: number;
+  /** 跟练自动判稳的松紧（v0.177.0）：宽一点 / 标准 / 严一点。 */
+  judgeTolerance: "wide" | "normal" | "tight";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -95,6 +97,7 @@ export const DEFAULT_SETTINGS: Settings = {
   genBars: 4,
   genMelodyBars: 4,
   songBalance: 60,
+  judgeTolerance: "normal",
 };
 
 function readJson(key: string): unknown {
@@ -289,7 +292,17 @@ function parseHistory(value: unknown): BpmPoint[] {
     const date = typeof point.date === "string" ? point.date : "";
     const bpm = Number(point.bpm);
     if (!isValidDateKey(date) || !Number.isFinite(bpm) || bpm <= 0) continue;
-    points.push({ date, bpm: Math.round(bpm) });
+    // 自动判稳记下的标准差（v0.177.0）：只收站得住的数，坏值就当没判过
+    const stdevRaw = Number(point.stdevMs);
+    const stdevMs =
+      Number.isFinite(stdevRaw) && stdevRaw > 0 && stdevRaw < 500
+        ? Math.round(stdevRaw * 10) / 10
+        : null;
+    points.push({
+      date,
+      bpm: Math.round(bpm),
+      ...(stdevMs === null ? {} : { stdevMs }),
+    });
   }
   points.sort((a, b) => a.date.localeCompare(b.date));
   return points.slice(-60);
@@ -617,6 +630,9 @@ export function loadSettings(): Settings {
   const songBalance = Number.isFinite(songBalanceRaw)
     ? Math.max(0, Math.min(100, Math.round(songBalanceRaw)))
     : DEFAULT_SETTINGS.songBalance;
+  const judgeToleranceRaw = v.judgeTolerance;
+  const judgeTolerance: "wide" | "normal" | "tight" =
+    judgeToleranceRaw === "wide" || judgeToleranceRaw === "tight" ? judgeToleranceRaw : "normal";
 
   return {
     strictSpelling: v.strictSpelling === true,
@@ -637,6 +653,7 @@ export function loadSettings(): Settings {
     genBars,
     genMelodyBars,
     songBalance,
+    judgeTolerance,
   };
 }
 
@@ -660,6 +677,7 @@ export function saveSettings(settings: Settings): void {
     genBars: settings.genBars,
     genMelodyBars: settings.genMelodyBars,
     songBalance: settings.songBalance,
+    judgeTolerance: settings.judgeTolerance,
   });
 }
 

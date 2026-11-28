@@ -6452,6 +6452,75 @@ try {
   );
   await sleep(900);
 
+  // 18f) 曲目页（v0.177.0）：旋律 + 伴奏都练过的挂「整首都练过」，只练过旋律的写「还差伴奏」
+  js(
+    "(() => { sessionStorage.setItem('chk19.rhythm', localStorage.getItem('guitar.rhythm.v1') ?? ''); return 'ok'; })()",
+  );
+  js(
+    "(() => { localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'song-star-melody': { bestBpm: 72, sessions: 2 }, 'song-star-strum': { bestBpm: 64, sessions: 1 }, 'song-tiger-melody': { bestBpm: 68, sessions: 1 } })); return 'ok'; })()",
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  const badges = plain(
+    js(
+      "(() => { const cards = [...document.querySelectorAll('.song-card')]; const read = (c) => { const b = c.querySelector('[data-song-badge]'); return b ? b.getAttribute('data-song-badge') + ':' + b.textContent.trim() : ''; }; return JSON.stringify(cards.slice(0, 3).map(read)); })()",
+    ),
+  );
+  let badgeList = [];
+  try {
+    badgeList = JSON.parse(badges);
+  } catch {
+    badgeList = [];
+  }
+  log(
+    badgeList[0] === "both:整首都练过" &&
+      badgeList[1] === "half:还差伴奏" &&
+      badgeList[2] === "none:还没练过",
+    `曲目页：练过两套的挂「整首都练过」，只练旋律的写「还差伴奏」（读到 ${badges}）`,
+  );
+  js(
+    "(() => { const saved = sessionStorage.getItem('chk19.rhythm'); if (saved) { localStorage.setItem('guitar.rhythm.v1', saved); } else { localStorage.removeItem('guitar.rhythm.v1'); } return 'ok'; })()",
+  );
+
+  // 18g) 跟练（v0.177.0）：判稳的松紧能选，选完记进设置、刷新也还在
+  js(
+    "(() => { const card = document.querySelector('.song-card'); const b = card ? [...card.querySelectorAll('.song-actions button')].find(n => n.textContent.includes('跟练旋律')) : null; b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  const judgeLevelCount = plain(
+    js(
+      "(() => { const s = document.querySelector('.follow-judge-level select'); return s ? String(s.options.length) : '0'; })()",
+    ),
+  );
+  js(
+    "(() => { const s = document.querySelector('.follow-judge-level select'); if (!s) return 'none'; const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')?.set; setter?.call(s, 'tight'); s.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(400);
+  const judgeSaved = plain(
+    js(
+      "(() => { const raw = localStorage.getItem('guitar.settings.v1'); const saved = raw ? JSON.parse(raw) : {}; return String(saved.judgeTolerance ?? 'none'); })()",
+    ),
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  js(
+    "(() => { const card = document.querySelector('.song-card'); const b = card ? [...card.querySelectorAll('.song-actions button')].find(n => n.textContent.includes('跟练旋律')) : null; b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  const judgeKept = plain(
+    js(
+      "(() => { const s = document.querySelector('.follow-judge-level select'); return s ? s.value : 'none'; })()",
+    ),
+  );
+  log(
+    judgeLevelCount === "3" && judgeSaved === "tight" && judgeKept === "tight",
+    `跟练：判稳的松紧有 ${judgeLevelCount} 档，选「严格」后存成 ${judgeSaved}、重开还是 ${judgeKept}`,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow .btn')].find(n => n.textContent.includes('收起')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 
 } catch (error) {

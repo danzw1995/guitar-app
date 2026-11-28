@@ -186,6 +186,7 @@ import {
   heatLevel,
   weekdayIndex,
   pushBpmPoint,
+  noteJudge,
   sparklineOf,
   regressedIds,
   lastPracticed,
@@ -1845,6 +1846,42 @@ test("跟练曲线：同一天只留最快的，点按日期排好，最多留 6
   // 非法输入不写进去
   assert.deepEqual(pushBpmPoint([], "", 60), []);
   assert.deepEqual(pushBpmPoint([], "2026-11-01", 0), []);
+});
+
+test("跟练曲线：自动判稳的 ±毫秒补到当天那个点上 (v0.177.0)", () => {
+  let points = pushBpmPoint(undefined, "2026-11-20", 64);
+  points = pushBpmPoint(points, "2026-11-21", 72);
+  assert.equal(points[0].stdevMs, undefined, "还没判过的时候不该有 stdevMs");
+
+  // 同一天、同一个 BPM：就地补上，不新开点
+  points = noteJudge(points, "2026-11-20", 64, 12.34);
+  assert.equal(points.length, 2);
+  assert.equal(points[0].stdevMs, 12.3);
+  assert.equal(points[1].stdevMs, undefined);
+
+  // 再判一次覆盖成新的（同一天练了好几遍，记最后判的那次）
+  points = noteJudge(points, "2026-11-20", 64, 8);
+  assert.equal(points[0].stdevMs, 8);
+
+  // 同一天换了更快的速度：新开一个点（那天的曲线还是最后这个 BPM）
+  points = noteJudge(points, "2026-11-21", 80, 6.5);
+  assert.equal(points.length, 3);
+  assert.deepEqual(points[2], { date: "2026-11-21", bpm: 80, stdevMs: 6.5 });
+
+  // 坏值、非法日期都不写
+  const before = [...points];
+  assert.deepEqual(noteJudge(points, "", 64, 10), before);
+  assert.deepEqual(noteJudge(points, "2026-11-20", 0, 10), before);
+  assert.deepEqual(noteJudge(points, "2026-11-20", 64, 0), before);
+  assert.deepEqual(noteJudge(points, "2026-11-20", 64, 900), before);
+
+  // 超过 cap 只留最近的
+  let many: ReturnType<typeof noteJudge> = [];
+  for (let i = 0; i < 6; i += 1) {
+    many = noteJudge(many, `2026-10-${String(10 + i).padStart(2, "0")}`, 60, 10, 3);
+  }
+  assert.equal(many.length, 3);
+  assert.equal(many[2].date, "2026-10-15");
 });
 
 test("跟练曲线：数值换算成折线，首尾落在框内", () => {

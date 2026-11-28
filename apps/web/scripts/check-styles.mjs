@@ -1782,6 +1782,15 @@ expect(
     (anyDecls(".follow-judge").get("color") || "").includes("--accent"),
 );
 
+expect(
+  "曲目卡上的「整首都练过」是圆角小药丸，判稳的松紧下拉够 40 高 (v0.177.0)",
+  (anyDecls(".song-badge").get("border-radius") || "") === "999px" &&
+    (anyDecls(".song-badge").get("font-size") || "") === "11px" &&
+    (anyDecls(".song-badge.both").get("color") || "").includes("--green") &&
+    (anyDecls(".song-badge.none").get("color") || "").includes("--muted") &&
+    Number.parseFloat(anyDecls(".follow-judge-level select").get("min-height") || "0") >= 40,
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

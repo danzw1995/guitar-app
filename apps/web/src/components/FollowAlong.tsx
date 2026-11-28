@@ -13,7 +13,7 @@ import { degreeName, degreesOf } from "../lib/degrees";
 import { useMetronome } from "../hooks/useMetronome";
 import { useTone } from "../hooks/useTone";
 import { useAudioVolume, volumeLabel } from "../lib/audio-bus";
-import { loadRhythm } from "../lib/storage";
+import { loadRhythm, loadSettings, saveSettings } from "../lib/storage";
 import { addScore } from "../lib/my-scores";
 import { addExtra } from "../lib/plan";
 import TabScore from "./TabScore";
@@ -42,6 +42,10 @@ export interface FollowTarget {
 /** 只练某几小节时，练满几遍自动接回整段（v0.99.0；v0.100.0 起遍数可选）。 */
 const LOOP_PASS_CHOICES = [1, 2, 3] as const;
 const LOOP_PASSES = 2;
+
+/** 判稳的松紧（v0.177.0）：落在 `analyzeTiming` 的 `tolerance`（允许偏多少拍内算踩上）。 */
+const JUDGE_TOLERANCE = { wide: 0.6, normal: 0.42, tight: 0.28 } as const;
+const JUDGE_LABEL = { wide: "宽松", normal: "标准", tight: "严格" } as const;
 
 /** 跟练时「最卡的一级」：用户点级数方块单独去练的那一处（v0.99.0）。 */
 export interface FollowHardest {
@@ -82,6 +86,8 @@ export interface FollowAlongProps {
     fromBar?: number;
     toBar?: number;
   }) => void;
+  /** 自动判稳出结果了（v0.177.0）：父组件把它记进那条跟练曲线的当天点上。 */
+  onJudge?: (entry: { bpm: number; stdevMs: number; hits: number }) => void;
 }
 
 function clock(seconds: number): string {
@@ -124,6 +130,7 @@ export default function FollowAlong({
   previous,
   candBeats,
   onRound,
+  onJudge,
 }: FollowAlongProps) {
   const meter = target.meter ?? "4/4";
   const [startBpm, setStartBpm] = useState(target.startBpm ?? target.bpm[0]);
@@ -179,6 +186,10 @@ export default function FollowAlong({
    * 判的是这一遍的落点散不散，而不是音准。
    */
   const [autoJudge, setAutoJudge] = useState(false);
+  /** 判稳的松紧（v0.177.0）：宽一点/标准/严一点，落在 `analyzeTiming` 的 tolerance 上。 */
+  const [judgeLevel, setJudgeLevel] = useState<"wide" | "normal" | "tight">(
+    () => loadSettings().judgeTolerance,
+  );
   const [judgeNote, setJudgeNote] = useState("");
   const [judgeBusy, setJudgeBusy] = useState(false);
   const judgeStreamRef = useRef<MediaStream | null>(null);
@@ -503,14 +514,16 @@ export default function FollowAlong({
           const report = analyzeTiming(onsets, bpm, {
             beatsPerBar: 4,
             origin: onsets[0],
+            tolerance: JUDGE_TOLERANCE[judgeLevel],
           });
           if (!report) {
             setJudgeNote("这一遍的起音太少，判不出稳不稳。");
             return;
           }
           setJudgeNote(
-            `这一遍 ±${Math.round(report.stdevMs)} 毫秒（踩到 ${report.hits.length} 下）：${report.verdict}`,
+            `这一遍 ±${Math.round(report.stdevMs)} 毫秒（踩到 ${report.hits.length} 下，按「${JUDGE_LABEL[judgeLevel]}」算）：${report.verdict}`,
           );
+          onJudge?.({ bpm, stdevMs: report.stdevMs, hits: report.hits.length });
         } catch {
           setJudgeNote("这一遍没判成——录音解不开，或者环境不支持。");
         } finally {
@@ -1017,6 +1030,24 @@ export default function FollowAlong({
               }}
             />
             录下来自动判稳
+          </label>
+          {/* 判稳的松紧（v0.177.0）：宽一点/标准/严一点，记在设置里 */}
+          <label className="follow-tip-toggle follow-judge-level">
+            <span>判稳</span>
+            <select
+              className="follow-tip-select"
+              aria-label="判稳的松紧"
+              value={judgeLevel}
+              onChange={(event) => {
+                const next = event.target.value as "wide" | "normal" | "tight";
+                setJudgeLevel(next);
+                saveSettings({ ...loadSettings(), judgeTolerance: next });
+              }}
+            >
+              <option value="wide">宽松</option>
+              <option value="normal">标准</option>
+              <option value="tight">严格</option>
+            </select>
           </label>
 
           <label className="follow-field">

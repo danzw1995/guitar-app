@@ -10,6 +10,36 @@ export interface BpmPoint {
   /** `YYYY-MM-DD`。 */
   date: string;
   bpm: number;
+  /** 那天自动判稳出来的标准差（毫秒，越小越稳）——没判过就没有这一项（v0.177.0）。 */
+  stdevMs?: number;
+}
+
+/**
+ * 把一次自动判稳的结果记到曲线上（v0.177.0）。
+ *
+ * 同一天、同一个 BPM 的点就地补上 `stdevMs`（那次练的稳度）；
+ * 找不到对应的点就新加一个（可能同一天有两个 BPM：先 60 后 72）。
+ * 纯函数，返回新数组。
+ */
+export function noteJudge(
+  points: BpmPoint[] | undefined,
+  date: string,
+  bpm: number,
+  stdevMs: number,
+  cap = 60,
+): BpmPoint[] {
+  const list = [...(points ?? [])];
+  const value = Math.round(bpm);
+  const stdev = Math.round(stdevMs * 10) / 10;
+  if (!date || !Number.isFinite(value) || value <= 0) return list;
+  if (!Number.isFinite(stdev) || stdev <= 0 || stdev > 500) return list;
+
+  const at = list.findIndex((point) => point.date === date && point.bpm === value);
+  if (at >= 0) list[at] = { ...list[at], stdevMs: stdev };
+  else list.push({ date, bpm: value, stdevMs: stdev });
+
+  list.sort((a, b) => a.date.localeCompare(b.date));
+  return list.length > cap ? list.slice(list.length - cap) : list;
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   STRUM_LIBRARY,
   dateKeyOf,
   dueDaysOf,
+  noteJudge,
   pickDue,
   pushBpmPoint,
   recordBlock,
@@ -262,6 +263,23 @@ export default function Rhythm() {
     shownPatterns.length +
     shownSnippets.length;
 
+  /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上。 */
+  function judgeAfter(entry: { bpm: number; stdevMs: number }) {
+    if (!target) return;
+    const today = dateKeyOf(new Date());
+    const previous = records[target.id];
+    if (!previous) return;
+    const next: RhythmRecords = {
+      ...records,
+      [target.id]: {
+        ...previous,
+        history: noteJudge(previous.history, today, entry.bpm, entry.stdevMs),
+      },
+    };
+    setRecords(next);
+    saveRhythm(next);
+  }
+
   /** 记成绩：跟练记录（最高速度）+ 当天练习时长（让连续天数也涨）。 */
   function record(result: {
     bpm: number;
@@ -430,6 +448,7 @@ export default function Rhythm() {
           startBar={target.startBar}
           candBeats={target.candBeats}
           onRound={(entry) => pushRound(target.id, entry)}
+          onJudge={judgeAfter}
         />
       )}
 

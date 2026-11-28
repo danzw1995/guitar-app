@@ -1707,11 +1707,10 @@ export default function Stats() {
               // 加餐的 id 是运行时生成的（`p:extra-<base36>`），`drillNames` 里没有它——
               // 记录里存了标题就先用标题，否则那一行只剩一串机器名（v0.127.1）
               const recordTitle = rhythm[curve.id]?.title;
-              const name = recordTitle
-                ? `${recordTitle} · 练习页`
-                : practice
-                  ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
-                  : nameOf(curve.id);
+              // 「· 练习页」只给 p: 那批（练习页的关卡与加餐）；曲目与节奏页条目用各自的标签（v0.177.0）
+              const name = practice
+                ? `${recordTitle ?? drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
+                : nameOf(curve.id);
               const picked = curvePoint?.id === curve.id ? curve.points[curvePoint.index] : null;
               const pickedIndex = picked ? curvePoint!.index : -1;
               const pickedDelta =
@@ -1793,10 +1792,12 @@ export default function Stats() {
                   </svg>
                   <span className="muted">
                     {first.bpm} → {last.bpm} BPM · {curve.points.length} 天
+                    {last.stdevMs !== undefined && ` · 最近 ±${Math.round(last.stdevMs)} 毫秒`}
                   </span>
                   {picked && (
                     <span className="curve-day" role="status">
                       {picked.date.slice(5).replace("-", "/")} · {picked.bpm} BPM
+                      {picked.stdevMs !== undefined && ` · ±${Math.round(picked.stdevMs)} 毫秒`}
                       {pickedDelta !== 0 && ` · 比上一次 ${pickedDelta > 0 ? "+" : ""}${pickedDelta}`}
                       {pickedIsHardest &&
                         ` · 那天卡在第 ${hardest!.bar} 小节${degreeName(hardest!.degree)}`}
@@ -1939,11 +1940,10 @@ export default function Stats() {
               const bestPoint = curve.points[bestIndex];
               const practice = curve.id.startsWith("p:");
               const recordTitle = rhythm[curve.id]?.title;
-              const name = recordTitle
-                ? `${recordTitle} · 练习页`
-                : practice
-                  ? `${drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
-                  : nameOf(curve.id);
+              // 「· 练习页」只给 p: 那批（练习页的关卡与加餐）；曲目与节奏页条目用各自的标签（v0.177.0）
+              const name = practice
+                ? `${recordTitle ?? drillNames.get(curve.id.slice(2)) ?? curve.id.slice(2)} · 练习页`
+                : nameOf(curve.id);
               // 同一条练习分成「整段」与「只弹某几小节」两条线时，名字上写清是哪一种（v0.147.0）
               const rangeName =
                 curve.range === ""

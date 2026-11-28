@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.176.0`，core `0.64.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.177.0`，core `0.65.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -434,3 +434,5 @@ v0.174.0 新增 core 的 `songs.ts`（`SONGS` / `songById` / `songScoreIds`，�
 v0.175.0 只动 web：core 仍 `0.64.0`，没有新导出（`playTabs` 是 web 里 `useTone` 的新 API）；曲目页不新增 localStorage 键——成绩仍写 `guitar.rhythm.v1`，跟练轮次仍写 `guitar.rounds.v1`，加进计划仍写 `guitar.plan.v1`；谱图与上一版相同（190 张）。`PlanButton` 多了可选 `suffix`，只影响按钮文字。
 
 v0.176.0 只动前端（core 仍 \
+
+v0.177.0：core 0.65.0。history.ts 的 BpmPoint 新增可选 stdevMs、新增导出 noteJudge()（MINOR 级）；不新增 localStorage 键，只在 guitar.settings.v1 多一个 judgeTolerance，谱图仍是 190 张。

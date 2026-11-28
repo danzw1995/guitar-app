@@ -11,6 +11,7 @@ import {
   dateKeyOf,
   drillsOfStage,
   goalProgress,
+  noteJudge,
   practiceStats,
   pushBpmPoint,
   recordBlock,
@@ -489,6 +490,22 @@ export default function Practice() {
     saveRhythm(next);
   }
 
+  /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上，曲线点开就是「±N 毫秒」。 */
+  function judgeFollow(entry: { bpm: number; stdevMs: number }) {
+    if (!follow) return;
+    const previous = records[follow.id];
+    if (!previous) return;
+    const next: RhythmRecords = {
+      ...records,
+      [follow.id]: {
+        ...previous,
+        history: noteJudge(previous.history, today, entry.bpm, entry.stdevMs),
+      },
+    };
+    setRecords(next);
+    saveRhythm(next);
+  }
+
   function recordFollow(result: {
     bpm: number;
     minutes: number;
@@ -828,6 +845,7 @@ export default function Practice() {
           onFinish={recordFollow}
           onSpot={recordSpot}
           onRound={(entry) => pushRound(followKey(follow.id), entry)}
+          onJudge={judgeFollow}
           onClose={() => {
             setFollow(null);
             setFollowBar(null);

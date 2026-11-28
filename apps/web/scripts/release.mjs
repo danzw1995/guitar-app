@@ -93,7 +93,8 @@ console.log(
 const messageFile = path.join(root, "apps/web/.tmp", `commit-msg-${version}.txt`);
 fs.mkdirSync(path.dirname(messageFile), { recursive: true });
 const message = [
-  `feat: ${title.trim()} (v${version})`,
+  // 标题自带 conventional 前缀时别再套一层（v0.174.0 / v0.176.0 出现过「feat: feat(songs): …」）
+  /^[a-z]+(\([^)]+\))?: /.test(title.trim()) ? `${title.trim()} (v${version})` : `feat: ${title.trim()} (v${version})`,
   "",
   ...(notes.length > 0 ? notes.map((item) => `- ${item}`) : ["- （这一版做了什么，补一句）"]),
   "",

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   SONGS,
   dateKeyOf,
+  noteJudge,
   pushBpmPoint,
   recordBlock,
   stageForCompleted,
@@ -54,6 +55,16 @@ export default function Songs() {
     () => SONGS.filter((song) => (records[`${song.id}-melody`]?.sessions ?? 0) > 0).length,
     [records],
   );
+  /** 旋律和伴奏都跟练过的首数（v0.177.0）：卡片上的「整首都练过」徽章与这句进度都读它。 */
+  const wholeCount = useMemo(
+    () =>
+      SONGS.filter(
+        (song) =>
+          (records[`${song.id}-melody`]?.bestBpm ?? 0) > 0 &&
+          (records[`${song.id}-strum`]?.bestBpm ?? 0) > 0,
+      ).length,
+    [records],
+  );
 
   function audition(id: string, tab: Tab, bpm: number): void {
     stop();
@@ -77,6 +88,22 @@ export default function Songs() {
   function changeBalance(next: number): void {
     setBalance(next);
     saveSettings({ ...loadSettings(), songBalance: next });
+  }
+
+  /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上。 */
+  function judgeTarget(entry: { bpm: number; stdevMs: number }): void {
+    if (!target) return;
+    const previous = records[target.id];
+    if (!previous) return;
+    const next: RhythmRecords = {
+      ...records,
+      [target.id]: {
+        ...previous,
+        history: noteJudge(previous.history, today, entry.bpm, entry.stdevMs),
+      },
+    };
+    setRecords(next);
+    saveRhythm(next);
   }
 
   function record(result: { bpm: number; minutes: number }): void {
@@ -138,7 +165,7 @@ export default function Songs() {
       </div>
 
       <p className="song-progress" aria-label="曲目完成度">
-        六首里已经跟练过 <b>{doneCount}</b> 首
+        六首里已经跟练过 <b>{doneCount}</b> 首，整首（旋律 + 伴奏都练过）的 <b>{wholeCount}</b> 首
         {doneCount === 0 ? "——从第 1 首开始，慢速先把旋律走顺。" : "，挑下一首没练过的接着来。"}
       </p>
 
@@ -148,12 +175,24 @@ export default function Songs() {
           const strumId = `${song.id}-strum`;
           const melodyBest = best(melodyId);
           const strumBest = best(strumId);
+          const melodyDone = melodyBest !== undefined;
+          const strumDone = strumBest !== undefined;
+          const badge = melodyDone && strumDone
+            ? { text: "整首都练过", tone: "both" }
+            : melodyDone
+              ? { text: "还差伴奏", tone: "half" }
+              : strumDone
+                ? { text: "还差旋律", tone: "half" }
+                : { text: "还没练过", tone: "none" };
           return (
             <article className="song-card" id={`song-${song.id}`} key={song.id}>
               <div className="song-head">
                 <span className="song-no">第 {song.no} 首</span>
                 <h3>{song.title}</h3>
                 <span className={`level-badge lv${song.level}`}>{LEVEL_LABEL[song.level]}</span>
+                <span className={`song-badge ${badge.tone}`} data-song-badge={badge.tone}>
+                  {badge.text}
+                </span>
               </div>
               <p className="song-meta">
                 {song.source} · {song.keyLabel} · {song.meter} · {song.bpm[0]}–{song.bpm[1]} BPM
@@ -262,6 +301,7 @@ export default function Songs() {
           onFinish={record}
           onClose={() => setTarget(null)}
           onRound={(entry) => pushRound(target.id, entry)}
+          onJudge={judgeTarget}
           previous={previousOf(target.id)}
         />
       )}

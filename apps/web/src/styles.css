@@ -6945,7 +6945,25 @@ button.steady-best-tag:hover {
   margin: 0;
   font-size: 16px;
 }
-.song-no {
+/* 整首都练过没有（v0.177.0）：一张卡一枚小药丸，绿＝旋律 + 伴奏都练过 */
+.song-badge {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.song-badge.both {
+  background: rgba(63, 185, 80, 0.16);
+  color: var(--green);
+}
+.song-badge.half {
+  background: rgba(232, 176, 75, 0.16);
+  color: var(--accent);
+}
+.song-badge.none {
+  background: rgba(139, 148, 158, 0.12);
+  color: var(--muted);
+}.song-no {
   padding: 1px 8px;
   border-radius: 999px;
   background: rgba(139, 148, 158, 0.14);
@@ -7098,6 +7116,14 @@ button.steady-best-tag:hover {
 /* 跟练 v0.176.0：录下来自动判稳 */
 .follow-judge-toggle {
   color: var(--accent);
+}
+/* 判稳的松紧（v0.177.0）：跟「落点轻响」同一行样式，下拉够 40 高 */
+.follow-judge-level {
+  color: var(--muted);
+}
+.follow-judge-level select {
+  min-height: 40px;
+  font-size: 12px;
 }
 .follow-judge {
   margin: 4px 0 0;
