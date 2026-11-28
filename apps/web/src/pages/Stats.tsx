@@ -324,6 +324,8 @@ export default function Stats() {
   const [judgeHint, setJudgeHint] = useState("");
   /** 曲目列表按走通次数排（v0.184.0）：默认按练过的时间/速度，点一下换成「走通多的在前」。 */
   const [songSortRan, setSongSortRan] = useState(false);
+  /** 点了哪一首的走通折线（v0.185.0）：展开那几次的日期、速度、稳度。 */
+  const [wholePickId, setWholePickId] = useState<string | null>(null);
   const judgeLevels = useMemo(() => loadJudgeLevels(), [judgeBump]);
   /**
    * 点一下那颗小标签换一档（v0.180.0）：默认 → 宽松 → 标准 → 严格 → 默认。
@@ -369,6 +371,7 @@ export default function Stats() {
       // 走通那几遍最近一次的速度（v0.183.0）：卡片上「走通最多 · 最近 90 BPM」读它
       wholeLastBpm: run?.wholeHistory?.slice(-1)[0]?.bpm ?? 0,
       wholeHistory: run?.wholeHistory ?? [],
+      runSteady: run?.steadyHistory ?? [],
       best,
       sessions,
       lastAt,
@@ -1740,6 +1743,26 @@ export default function Stats() {
               </span>
             </button>
           </div>
+          {songTopWhole && songTopWhole.wholeRuns > 0 && songTopWhole.wholeHistory.length > 0 && (
+            <ul className="whole-recent" data-whole-recent="">
+              {songTopWhole.wholeHistory
+                .slice(-3)
+                .reverse()
+                .map((point) => {
+                  const steady = songTopWhole.runSteady.find((item) => item.date === point.date)?.stdevMs;
+                  return (
+                    <li key={`${point.date}-${point.bpm}`}>
+                      <span>
+                        「{songTopWhole.song.title}」{point.date.slice(5)} 走通 · {point.bpm} BPM
+                      </span>
+                      <span className="muted">
+                        {steady === undefined ? "那天没判稳" : `±${Math.round(steady)} 毫秒`}
+                      </span>
+                    </li>
+                  );
+                })}
+            </ul>
+          )}
           <div className="song-stat-sort" role="group" aria-label="曲目列表怎么排">
             <button
               type="button"
@@ -1811,20 +1834,46 @@ export default function Stats() {
                   );
                   const first = points[0];
                   const last = points[points.length - 1];
+                  const open = wholePickId === row.song.id;
                   return (
                     <li key={row.song.id}>
-                      <span className="curve-name">{row.song.title}</span>
-                      <svg
-                        className="curve-svg whole-curve-svg"
-                        viewBox="0 0 120 30"
-                        role="img"
-                        aria-label={`${row.song.title} 的走通速度：${first.date} 的 ${first.bpm} BPM，到 ${last.date} 的 ${last.bpm} BPM，共 ${points.length} 次`}
+                      <button
+                        type="button"
+                        className="whole-row"
+                        aria-expanded={open}
+                        aria-label={`${row.song.title} 的走通速度：${first.date} 的 ${first.bpm} BPM，到 ${last.date} 的 ${last.bpm} BPM，共 ${points.length} 次。点开看每一次`}
+                        onClick={() => setWholePickId((current) => (current === row.song.id ? null : row.song.id))}
                       >
-                        <path d={spark.d} />
-                      </svg>
-                      <span className="muted">
-                        {first.bpm} → {last.bpm} BPM · {points.length} 次
-                      </span>
+                        <span className="curve-name">{row.song.title}</span>
+                        <svg
+                          className="curve-svg whole-curve-svg"
+                          viewBox="0 0 120 30"
+                          role="img"
+                          aria-hidden="true"
+                        >
+                          <path d={spark.d} />
+                        </svg>
+                        <span className="muted">
+                          {first.bpm} → {last.bpm} BPM · {points.length} 次
+                        </span>
+                      </button>
+                      {open && (
+                        <ul className="whole-runs" data-whole-runs={row.song.id}>
+                          {points.map((point) => {
+                            const steady = row.runSteady.find((item) => item.date === point.date)?.stdevMs;
+                            return (
+                              <li key={`${point.date}-${point.bpm}`}>
+                                <span>
+                                  {point.date.slice(5)} · {point.bpm} BPM
+                                </span>
+                                <span className="muted">
+                                  {steady === undefined ? "那天没判稳" : `±${Math.round(steady)} 毫秒`}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
                     </li>
                   );
                 })}

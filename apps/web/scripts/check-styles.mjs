@@ -1855,6 +1855,22 @@ expect(
   })(),
 );
 
+expect(
+  "走通明细左边一条淡蓝竖线，「走过整首」角标够高且能折行 (v0.185.0)",
+  (() => {
+    const runs = anyDecls(".whole-runs");
+    const row = anyDecls(".whole-row");
+    const corner = anyDecls(".song-ran-corner");
+    return (
+      (runs.get("grid-column") || "") === "1 / -1" &&
+      (runs.get("border-left") || "").includes("88, 166, 255") &&
+      row.get("min-height") === "40px" &&
+      corner.get("cursor") === "pointer" &&
+      (corner.get("white-space") || "") === "nowrap"
+    );
+  })(),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

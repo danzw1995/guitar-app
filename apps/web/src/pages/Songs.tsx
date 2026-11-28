@@ -359,7 +359,7 @@ export default function Songs() {
                   title="点一下直接开这一首的整首连弹"
                   onClick={() => followRun(song)}
                 >
-                  走过整首
+                  走过整首{wholeLast === undefined ? "" : ` · ${wholeLast} BPM`}
                 </button>
               )}
               <div className="song-head">

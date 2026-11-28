@@ -7007,6 +7007,86 @@ try {
     "(() => { const raw = JSON.parse(sessionStorage.getItem('chk27.rhythm') ?? 'null'); if (raw) localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
   );
 
+  // 18x) 统计页（v0.185.0）：点走通折线展开那几次的明细；走通最多的卡下面顺带列最近三次
+  js(
+    `(() => {
+      const raw = JSON.parse(localStorage.getItem("guitar.rhythm.v1") ?? "{}");
+      sessionStorage.setItem("chk29.rhythm", JSON.stringify(raw));
+      raw["song-star-run"] = {
+        bestBpm: 92,
+        sessions: 3,
+        minutes: 10,
+        lastAt: "2026-11-28",
+        title: "小星星 · 整首连弹",
+        wholeRuns: 3,
+        wholeHistory: [{ date: "2026-11-20", bpm: 80 }, { date: "2026-11-24", bpm: 86 }, { date: "2026-11-28", bpm: 92 }],
+        steadyHistory: [{ date: "2026-11-24", bpm: 86, stdevMs: 14.2 }, { date: "2026-11-28", bpm: 92, stdevMs: 9.5 }],
+        history: []
+      };
+      raw["song-tiger-run"] = {
+        bestBpm: 88,
+        sessions: 4,
+        minutes: 12,
+        lastAt: "2026-11-28",
+        title: "两只老虎 · 整首连弹",
+        wholeRuns: 9,
+        wholeHistory: [{ date: "2026-11-21", bpm: 82 }, { date: "2026-11-28", bpm: 88 }],
+        steadyHistory: [{ date: "2026-11-28", bpm: 88, stdevMs: 11.2 }],
+        history: []
+      };
+      localStorage.setItem("guitar.rhythm.v1", JSON.stringify(raw));
+      return "ok";
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(1500);
+  const recentInfo = plain(
+    js(
+      "(() => { const list = document.querySelector('[data-whole-recent]'); return list ? [...list.querySelectorAll('li')].map(n => n.textContent.replace(/\\s+/g, ' ').trim()).join(' / ') : 'none'; })()",
+    ),
+  );
+  js("(() => { document.querySelector('.whole-row')?.click(); return 'ok'; })()");
+  await sleep(400);
+  const runsInfo = plain(
+    js(
+      "(() => { const list = document.querySelector('[data-whole-runs]'); return list ? [...list.querySelectorAll('li')].map(n => n.textContent.replace(/\\s+/g, ' ').trim()).join(' / ') : 'none'; })()",
+    ),
+  );
+  log(
+    recentInfo.includes("走通 ·") &&
+      recentInfo.includes("BPM") &&
+      runsInfo.includes("11-24 · 86 BPM") &&
+      runsInfo.includes("±14 毫秒") &&
+      runsInfo.includes("那天没判稳"),
+    `统计页：走通明细点得开、走通最多的卡下列最近三次（「${runsInfo.slice(0, 60)}」）`,
+  );
+  js(
+    "(() => { const raw = JSON.parse(sessionStorage.getItem('chk29.rhythm') ?? 'null'); if (raw) localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
+  );
+
+  // 18y) 曲目页（v0.185.0）：「走过整首」角标带上最近那遍的速度
+  js(
+    `(() => {
+      const raw = JSON.parse(localStorage.getItem("guitar.rhythm.v1") ?? "{}");
+      sessionStorage.setItem("chk30.rhythm", JSON.stringify(raw));
+      raw["song-star-run"] = { bestBpm: 92, sessions: 2, minutes: 5, lastAt: "2026-11-28", title: "小星星 · 整首连弹", wholeRuns: 2, wholeHistory: [{ date: "2026-11-28", bpm: 92 }], history: [] };
+      localStorage.setItem("guitar.rhythm.v1", JSON.stringify(raw));
+      return "ok";
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1400);
+  const cornerText = plain(
+    js("(() => document.querySelector('.song-ran-corner')?.textContent?.replace(/\\s+/g, ' ').trim() ?? 'none')()"),
+  );
+  log(
+    cornerText.includes("走过整首") && cornerText.includes("92 BPM"),
+    `曲目页：角标带着最近那遍的速度（读到「${cornerText}」）`,
+  );
+  js(
+    "(() => { const raw = JSON.parse(sessionStorage.getItem('chk30.rhythm') ?? 'null'); if (raw) localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
+  );
+
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 
 } catch (error) {
