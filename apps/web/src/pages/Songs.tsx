@@ -26,6 +26,7 @@ import {
 } from "../lib/storage";
 import { pushRound } from "../lib/rounds";
 import { pushSteadyPoint } from "../lib/steady";
+import { parseHash } from "../lib/nav";
 import { JUDGE_LEVEL_LABEL, judgeLevelOf, setJudgeLevel, type JudgeLevel } from "../lib/judge-levels";
 
 const LEVEL_LABEL = { 1: "入门", 2: "基础", 3: "进阶" } as const;
@@ -96,7 +97,7 @@ export default function Songs() {
               : tone === "strum"
                 ? { text: "还差旋律", tone: "half" as const }
                 : { text: "还没练过", tone: "none" as const };
-        return { song, melodyId, strumId, melodyBest, strumBest, tone, badge, wholeRuns: records[`${song.id}-run`]?.wholeRuns ?? 0 };
+        return { song, melodyId, strumId, melodyBest, strumBest, tone, badge, wholeRuns: records[`${song.id}-run`]?.wholeRuns ?? 0, wholeHistory: records[`${song.id}-run`]?.wholeHistory ?? [] };
       }),
     [records],
   );
@@ -116,7 +117,18 @@ export default function Songs() {
   const wholeRunCount = songRows.filter((row) => row.wholeRuns > 0).length;
 
   // 进来先滚到上次看的那首（v0.180.0）：六张卡一屏放不下，回来还得自己找一遍。
+  // 带 `run=<曲目 id>` 时（v0.183.0，从统计页「走通最多」点过来）直接开那一首的整首连弹。
   useEffect(() => {
+    const route = parseHash(window.location.hash);
+    const runId = route?.query.run;
+    if (runId) {
+      const song = SONGS.find((item) => item.id === runId);
+      window.history.replaceState(null, "", "#songs");
+      if (song) {
+        followRun(song);
+        return;
+      }
+    }
     const last = loadSettings().songLast;
     if (!last) return;
     const node = document.getElementById(`song-${last}`);
@@ -186,6 +198,14 @@ export default function Songs() {
     if (!target) return;
     const previous = records[target.id];
     const wholeRuns = (previous?.wholeRuns ?? 0) + (result.complete ? 1 : 0);
+    // 走通的那一遍连速度一起记（v0.183.0）：同一天只留最快的一次
+    const wholeHistory = (() => {
+      if (!result.complete) return previous?.wholeHistory ?? [];
+      const kept = (previous?.wholeHistory ?? []).filter((point) => point.date !== today);
+      return [...kept, { date: today, bpm: Math.round(result.bpm) }]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .slice(-24);
+    })();
     const next: RhythmRecords = {
       ...records,
       [target.id]: {
@@ -196,6 +216,7 @@ export default function Songs() {
         title: target.name,
         history: pushBpmPoint(previous?.history, today, result.bpm),
         ...(wholeRuns > 0 ? { wholeRuns } : {}),
+        ...(wholeHistory.length ? { wholeHistory } : {}),
       },
     };
     setRecords(next);
@@ -321,9 +342,20 @@ export default function Songs() {
 
       <div className="song-grid">
         {shownRows.map((row) => {
-          const { song, melodyId, strumId, melodyBest, strumBest, badge, wholeRuns } = row;
+          const { song, melodyId, strumId, melodyBest, strumBest, badge, wholeRuns, wholeHistory } = row;
+          const wholeLast = wholeHistory.slice(-1)[0]?.bpm;
           return (
-            <article className="song-card" id={`song-${song.id}`} key={song.id}>
+            <article
+              className={`song-card${wholeRuns > 0 ? " song-ran" : ""}`}
+              id={`song-${song.id}`}
+              key={song.id}
+              data-song-ran={wholeRuns}
+            >
+              {wholeRuns > 0 && (
+                <span className="song-ran-corner" aria-hidden="true">
+                  走过整首
+                </span>
+              )}
               <div className="song-head">
                 <span className="song-no">第 {song.no} 首</span>
                 <h3>{song.title}</h3>
@@ -334,6 +366,7 @@ export default function Songs() {
                 {wholeRuns > 0 && (
                   <span className="song-whole" data-song-whole={wholeRuns}>
                     走通 {wholeRuns} 次
+                    {wholeLast === undefined ? "" : ` · 最近 ${wholeLast} BPM`}
                   </span>
                 )}
               </div>

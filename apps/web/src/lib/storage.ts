@@ -273,6 +273,18 @@ export interface RhythmRecord {
    * 曲目页的「整首连弹」靠它显示「走通 N 次」，统计页那一行也写出来。
    */
   wholeRuns?: number;
+  /**
+   * 每次走通时的速度（v0.183.0）：哪天、多少 BPM，最多留 24 条。
+   *
+   * `wholeRuns` 只数次数；加上速度才看得出「走通的那几遍是越弹越快，还是勉强走完」。
+   */
+  wholeHistory?: WholeRunPoint[];
+}
+
+/** 一次「整首走通」的成绩：哪天、什么速度。 */
+export interface WholeRunPoint {
+  date: string;
+  bpm: number;
 }
 
 /** 某一遍「稳不稳」：哪天、什么速度、标准差多少（毫秒）。 */
@@ -357,6 +369,24 @@ function parseSteadyHistory(value: unknown): SteadyPoint[] {
   return points.slice(-24);
 }
 
+/** 走通的成绩：合法日期 + 40–200 BPM；同一天只留最快的那次，最多 24 条。 */
+function parseWholeHistory(value: unknown): WholeRunPoint[] {
+  if (!Array.isArray(value)) return [];
+  const byDate = new Map<string, WholeRunPoint>();
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const point = raw as Record<string, unknown>;
+    const date = typeof point.date === "string" ? point.date : "";
+    const bpm = Number(point.bpm);
+    if (!isValidDateKey(date)) continue;
+    if (!Number.isFinite(bpm) || bpm < 40 || bpm > 200) continue;
+    const next = { date, bpm: Math.round(bpm) };
+    const previous = byDate.get(date);
+    if (!previous || next.bpm > previous.bpm) byDate.set(date, next);
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-24);
+}
+
 /** 一张「id → 成绩」的表：跟练与和弦转换共用同一套形状。 */
 /** 「最卡的一处」只收站得住的数：小节 ≥1、级数 0–7、名字是字符串、次数 ≥1。 */
 function parseHardest(
@@ -434,6 +464,7 @@ function parseRecords(raw: unknown): RhythmRecords {
     const wholeRunsRaw = Number(item.wholeRuns);
     const wholeRuns =
       Number.isInteger(wholeRunsRaw) && wholeRunsRaw > 0 ? Math.min(999, wholeRunsRaw) : 0;
+    const wholeHistory = parseWholeHistory(item.wholeHistory);
     // 只单独练过某一处、还没整段练完时 bestBpm 会是 0——这种记录也得留住（v0.113.0）
     if (!Number.isFinite(bestBpm) || bestBpm < 0) continue;
     if (
@@ -441,7 +472,8 @@ function parseRecords(raw: unknown): RhythmRecords {
       spots.length === 0 &&
       steadyStdev === null &&
       steadyHistory.length === 0 &&
-      wholeRuns === 0
+      wholeRuns === 0 &&
+      wholeHistory.length === 0
     )
       continue;
     records[id] = {
@@ -456,6 +488,7 @@ function parseRecords(raw: unknown): RhythmRecords {
       ...(steadyStdev !== null ? { steadyStdev } : {}),
       ...(steadyHistory.length ? { steadyHistory } : {}),
       ...(wholeRuns > 0 ? { wholeRuns } : {}),
+      ...(wholeHistory.length ? { wholeHistory } : {}),
       ...(typeof item.title === "string" && item.title.trim()
         ? { title: item.title.trim() }
         : {}),

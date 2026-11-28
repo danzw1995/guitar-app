@@ -1822,6 +1822,23 @@ expect(
     (anyDecls(".follow-auto").get("color") || "").includes("--blue"),
 );
 
+expect(
+  "走过整首的角标贴在卡片右上角（蓝色），走通最多的那张卡点得动 (v0.183.0)",
+  (() => {
+    const corner = anyDecls(".song-ran-corner");
+    const card = anyDecls(".song-card.song-ran");
+    const link = anyDecls(".stat-card-link");
+    return (
+      corner.get("position") === "absolute" &&
+      corner.get("top") === "0" &&
+      corner.get("right") === "0" &&
+      /--blue/.test(corner.get("color") ?? "") &&
+      /--blue|88, 166, 255/.test(card.get("border-color") ?? "") &&
+      link.get("cursor") === "pointer"
+    );
+  })(),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

@@ -364,6 +364,8 @@ export default function Stats() {
       strumJudge: judgeLevels[strumId] ?? null,
       runJudge: judgeLevels[runId] ?? null,
       wholeRuns: run?.wholeRuns ?? 0,
+      // 走通那几遍最近一次的速度（v0.183.0）：卡片上「走通最多 · 最近 90 BPM」读它
+      wholeLastBpm: run?.wholeHistory?.slice(-1)[0]?.bpm ?? 0,
       best,
       sessions,
       lastAt,
@@ -1702,12 +1704,30 @@ export default function Stats() {
               <b>{songPracticed.reduce((sum, row) => sum + row.sessions, 0)}</b>
               <span>曲目跟练次数</span>
             </div>
-            <div className="stat-card" data-song-whole-card="">
+            <button
+              type="button"
+              className="stat-card stat-card-link"
+              data-song-whole-card=""
+              disabled={!songTopWhole || songTopWhole.wholeRuns <= 0}
+              onClick={() => {
+                if (songTopWhole && songTopWhole.wholeRuns > 0) {
+                  goTo("songs", undefined, { run: songTopWhole.song.id });
+                }
+              }}
+              title={
+                songTopWhole && songTopWhole.wholeRuns > 0
+                  ? `去弹「${songTopWhole.song.title}」的整首连弹`
+                  : "还没有走通过整首"
+              }
+            >
               <b>{songTopWhole && songTopWhole.wholeRuns > 0 ? songTopWhole.wholeRuns : "—"}</b>
               <span>
                 走通最多{songTopWhole && songTopWhole.wholeRuns > 0 ? ` · ${songTopWhole.song.title}` : ""}
+                {songTopWhole && songTopWhole.wholeLastBpm > 0
+                  ? ` · 最近 ${songTopWhole.wholeLastBpm} BPM`
+                  : ""}
               </span>
-            </div>
+            </button>
           </div>
           <ul className="song-stat-list" data-song-stats="">
             {songTop.map((row) => (

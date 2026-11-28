@@ -6886,6 +6886,66 @@ try {
     "(() => { const raw = JSON.parse(sessionStorage.getItem('chk24.rhythm') ?? 'null'); if (raw) localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
   );
 
+  // 18t) 统计页（v0.183.0）：「走通最多」那张卡点得动，点完直接开那一首的整首连弹
+  js(
+    `(() => {
+      const raw = JSON.parse(localStorage.getItem("guitar.rhythm.v1") ?? "{}");
+      sessionStorage.setItem("chk25.rhythm", JSON.stringify(raw));
+      raw["song-tiger-run"] = { bestBpm: 88, sessions: 3, minutes: 9, lastAt: "2026-11-28", title: "两只老虎 · 整首连弹", wholeRuns: 6, wholeHistory: [{ date: "2026-11-28", bpm: 88 }], history: [] };
+      localStorage.setItem("guitar.rhythm.v1", JSON.stringify(raw));
+      return "ok";
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(1500);
+  const wholeIsButton = plain(
+    js("(() => { const n = document.querySelector('[data-song-whole-card]'); return n ? n.tagName + '|' + String(n.disabled) + '|' + n.textContent.replace(/\\s+/g, ' ').trim() : 'none'; })()"),
+  );
+  js("(() => { document.querySelector('[data-song-whole-card]')?.click(); return 'ok'; })()");
+  await sleep(1600);
+  const runOpened = plain(
+    js(
+      "(() => { const h = document.querySelector('.follow h3'); return (location.hash.split('?')[0] || '') + '|' + (h ? h.textContent.replace(/\\s+/g, ' ').trim() : ''); })()",
+    ),
+  );
+  log(
+    wholeIsButton.startsWith("BUTTON|false|") &&
+      wholeIsButton.includes("6") &&
+      wholeIsButton.includes("88 BPM") &&
+      runOpened.startsWith("#songs|") &&
+      runOpened.includes("整首连弹"),
+    `统计页：点「走通最多」直接开那一首的整首连弹（卡「${wholeIsButton}」· 打开「${runOpened}」）`,
+  );
+  js(
+    "(() => { const raw = JSON.parse(sessionStorage.getItem('chk25.rhythm') ?? 'null'); if (raw) localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
+  );
+
+  // 18u) 曲目页（v0.183.0）：走过整首的卡有角标，走通次数后面带着最近那遍的速度
+  js(
+    `(() => {
+      const raw = JSON.parse(localStorage.getItem("guitar.rhythm.v1") ?? "{}");
+      sessionStorage.setItem("chk26.rhythm", JSON.stringify(raw));
+      raw["song-star-run"] = { bestBpm: 84, sessions: 2, minutes: 5, lastAt: "2026-11-28", title: "小星星 · 整首连弹", wholeRuns: 2, wholeHistory: [{ date: "2026-11-28", bpm: 84 }], history: [] };
+      localStorage.setItem("guitar.rhythm.v1", JSON.stringify(raw));
+      return "ok";
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1400);
+  const ranCards = plain(
+    js(
+      "(() => { const cards = [...document.querySelectorAll('.song-card')].filter(n => n.querySelector('.song-ran-corner')); return JSON.stringify({ count: cards.length, text: cards[0] ? cards[0].querySelector('.song-whole')?.textContent.replace(/\\s+/g, ' ').trim() ?? '' : '' }); })()",
+    ),
+  );
+  const ranParsed = JSON.parse(ranCards);
+  log(
+    ranParsed.count >= 1 && /走通 \d+ 次 · 最近 \d+ BPM/.test(ranParsed.text),
+    `曲目页：走过整首的卡带角标、次数后面带最近速度（${ranParsed.count} 张 · 「${ranParsed.text}」）`,
+  );
+  js(
+    "(() => { const raw = JSON.parse(sessionStorage.getItem('chk26.rhythm') ?? 'null'); if (raw) localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
+  );
+
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 
 } catch (error) {

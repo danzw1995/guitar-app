@@ -584,6 +584,10 @@ button, select, input { font: inherit; color: inherit; }
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+.stat-card-link:disabled {
+  cursor: default;
+  opacity: 1;
+}
 .stat-card b { font-size: 20px; font-variant-numeric: tabular-nums; }
 .stat-card span { color: var(--muted); font-size: 12px; }
 /* 比上周多练了就绿一下；少了不标红——练少了不该像报错 */
@@ -6938,6 +6942,25 @@ button.steady-best-tag:hover {
   border-radius: 12px;
   background: var(--panel-2);
   scroll-margin-top: 24px;
+  position: relative;
+}
+/* 走过整首的角标（v0.183.0）：跟「整首都练过」那颗徽章分开——那颗说的是两套谱都摸过，
+   这颗说的是真从头到尾走完过。 */
+.song-card.song-ran {
+  border-color: rgba(88, 166, 255, 0.55);
+}
+.song-ran-corner {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 2px 9px;
+  border-top-right-radius: 12px;
+  border-bottom-left-radius: 10px;
+  background: rgba(88, 166, 255, 0.18);
+  color: var(--blue);
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .song-head {
   display: flex;
