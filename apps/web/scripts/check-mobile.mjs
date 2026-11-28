@@ -160,13 +160,16 @@ for (const device of VIEWPORTS) {
       // 「最稳 11-20」也是文字里的一枚药丸（v0.150.0），同一条曲线上点那个点一样能看能听。
       // 「严格 / 按默认」这类判稳档位标签（v0.180.0）夹在一行文字里，点一下换一档，
       // 和它同一行还有文字说明，不按 40×40 的点按目标要求。
+      // 「走过整首」是卡片右上角的角标（v0.183.0，v0.184.0 起可点），同一张卡里还有
+      // 「整首连弹」那个大按钮，走的是同一条路。
       const smallButtons = [...document.querySelectorAll("main button, main .btn")]
         .filter(
           (node) =>
             !node.classList.contains("heat-cell") &&
             !node.classList.contains("pb-done-tag") &&
             !node.classList.contains("steady-best-tag") &&
-            !node.classList.contains("judge-tag"),
+            !node.classList.contains("judge-tag") &&
+            !node.classList.contains("song-ran-corner"),
         )
         .filter((node) => {
           const rect = node.getBoundingClientRect();

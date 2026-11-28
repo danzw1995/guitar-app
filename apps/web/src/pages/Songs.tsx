@@ -352,9 +352,15 @@ export default function Songs() {
               data-song-ran={wholeRuns}
             >
               {wholeRuns > 0 && (
-                <span className="song-ran-corner" aria-hidden="true">
+                <button
+                  type="button"
+                  className="song-ran-corner"
+                  aria-label={`再走一遍「${song.title}」的整首连弹`}
+                  title="点一下直接开这一首的整首连弹"
+                  onClick={() => followRun(song)}
+                >
                   走过整首
-                </span>
+                </button>
               )}
               <div className="song-head">
                 <span className="song-no">第 {song.no} 首</span>

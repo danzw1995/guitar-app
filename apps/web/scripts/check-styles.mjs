@@ -1839,6 +1839,22 @@ expect(
   })(),
 );
 
+expect(
+  "走通曲线是蓝色折线，「走过整首」角标点得动，排序 chip 够 40 高 (v0.184.0)",
+  (() => {
+    const curves = anyDecls(".whole-curves li");
+    const path = anyDecls(".whole-curve-svg path");
+    const corner = anyDecls(".song-ran-corner");
+    const sortChip = anyDecls(".song-stat-sort .chip");
+    return (
+      (curves.get("grid-template-columns") || "").includes("minmax(0, 1fr)") &&
+      (path.get("stroke") || "").includes("--blue") &&
+      corner.get("cursor") === "pointer" &&
+      sortChip.get("min-height") === "40px"
+    );
+  })(),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

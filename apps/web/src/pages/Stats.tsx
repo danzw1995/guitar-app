@@ -322,6 +322,8 @@ export default function Stats() {
   // v0.179.0：整首连弹（`-run`）也算进「这一首」的速度与次数，并标出各条用的判稳档位。
   const [judgeBump, setJudgeBump] = useState(0);
   const [judgeHint, setJudgeHint] = useState("");
+  /** 曲目列表按走通次数排（v0.184.0）：默认按练过的时间/速度，点一下换成「走通多的在前」。 */
+  const [songSortRan, setSongSortRan] = useState(false);
   const judgeLevels = useMemo(() => loadJudgeLevels(), [judgeBump]);
   /**
    * 点一下那颗小标签换一档（v0.180.0）：默认 → 宽松 → 标准 → 严格 → 默认。
@@ -366,6 +368,7 @@ export default function Stats() {
       wholeRuns: run?.wholeRuns ?? 0,
       // 走通那几遍最近一次的速度（v0.183.0）：卡片上「走通最多 · 最近 90 BPM」读它
       wholeLastBpm: run?.wholeHistory?.slice(-1)[0]?.bpm ?? 0,
+      wholeHistory: run?.wholeHistory ?? [],
       best,
       sessions,
       lastAt,
@@ -374,7 +377,15 @@ export default function Stats() {
   const songPracticed = songRows.filter((row) => row.best > 0 || row.sessions > 0);
   /** 走通次数最多的那一首（v0.182.0）：安慰一下「走通过几遍」这件事本身。 */
   const songTopWhole = [...songRows].sort((a, b) => b.wholeRuns - a.wholeRuns)[0];
+  /** 走通次数 ≥2 的曲目才画曲线（v0.184.0）：一个点看不出走势。 */
+  const wholeCurves = songRows
+    .filter((row) => row.wholeHistory.length >= 2)
+    .sort((a, b) => b.wholeHistory.length - a.wholeHistory.length)
+    .slice(0, 4);
   const songTop = [...songPracticed].sort((a, b) => b.best - a.best || b.sessions - a.sessions);
+  const shownSongRows = songSortRan
+    ? [...songTop].sort((a, b) => b.wholeRuns - a.wholeRuns || b.best - a.best)
+    : songTop;
 
   // 和弦转换：四组进行各自练到多快（`guitar.chords.v1`，v0.59.0 起）
   const chords = loadChords();
@@ -1729,8 +1740,19 @@ export default function Stats() {
               </span>
             </button>
           </div>
+          <div className="song-stat-sort" role="group" aria-label="曲目列表怎么排">
+            <button
+              type="button"
+              className={`chip${songSortRan ? " on" : ""}`}
+              aria-pressed={songSortRan}
+              aria-label="按走通次数排"
+              onClick={() => setSongSortRan((value) => !value)}
+            >
+              按走通次数排
+            </button>
+          </div>
           <ul className="song-stat-list" data-song-stats="">
-            {songTop.map((row) => (
+            {shownSongRows.map((row) => (
               <li key={row.song.id}>
                 <span>{row.song.title}</span>
                 <span className="muted song-stat-line">
@@ -1773,6 +1795,42 @@ export default function Stats() {
               </li>
             ))}
           </ul>
+          {wholeCurves.length > 0 && (
+            <>
+              <h3 className="stat-sub">
+                走通速度
+                <span className="stat-sub-note">每次走完整首记一个点（v0.184.0）</span>
+              </h3>
+              <ul className="whole-curves" data-whole-curves="">
+                {wholeCurves.map((row) => {
+                  const points = row.wholeHistory;
+                  const spark = sparklineOf(
+                    points.map((point) => point.bpm),
+                    120,
+                    30,
+                  );
+                  const first = points[0];
+                  const last = points[points.length - 1];
+                  return (
+                    <li key={row.song.id}>
+                      <span className="curve-name">{row.song.title}</span>
+                      <svg
+                        className="curve-svg whole-curve-svg"
+                        viewBox="0 0 120 30"
+                        role="img"
+                        aria-label={`${row.song.title} 的走通速度：${first.date} 的 ${first.bpm} BPM，到 ${last.date} 的 ${last.bpm} BPM，共 ${points.length} 次`}
+                      >
+                        <path d={spark.d} />
+                      </svg>
+                      <span className="muted">
+                        {first.bpm} → {last.bpm} BPM · {points.length} 次
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
           {judgeHint && (
             <p className="judge-hint" role="status">
               {judgeHint}

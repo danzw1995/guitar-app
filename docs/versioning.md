@@ -19,7 +19,7 @@ SemVer：`MAJOR.MINOR.PATCH`
 | `packages/core` | 独立 | 只在自己的 API 变化时动；新增导出算 MINOR |
 | `plugins/dsh-guitar` | 独立 | 同上；插件与产品发版节奏不同，改插件才动 |
 
-当前：产品 `0.183.0`，core `0.66.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
+当前：产品 `0.184.0`，core `0.66.0`，插件 `0.5.1`（v0.19.0 给 core 加了 `strumTab`（按音位排谱），算 MINOR；
 v0.19.6 只是排版与记法，core 不动；v0.20.0 换渲染器、core 只多了一个 `alphatex.ts`（新导出 `tabToAlphaTex` 等），
 按「新增导出算 MINOR」本该升到 0.16.0，但 alphaTex 只是渲染适配层、不属于乐理 API，这次按 PATCH 处理；
 v0.21.2 给 `TabNote` 加了 `ghost`（弦不弹、谱上画 x），向下兼容，core 升到 `0.16.0`；
@@ -448,3 +448,5 @@ core 0.66.0 新增 songRunTab(song)（songs.ts）：把前四小节旋律与后�
 v0.182.0 也只动前端（core 仍 \
 
 v0.183.0 只动前端（core 仍 0.66.0）：记录里加可选字段 wholeHistory（每次走通记日期与 BPM，同日留最快、最多 24 条）；曲目页加走过整首的角标；统计页「走通最多」变成按钮，点进曲目页并以 ?run=<id> 直接开整首连弹。
+
+v0.184.0 只动前端（core 仍 0.66.0）：统计页读 RhythmRecord.wholeHistory 画「走通速度」折线；曲目卡角标改成按钮；统计页曲目列表加排序 chip。
