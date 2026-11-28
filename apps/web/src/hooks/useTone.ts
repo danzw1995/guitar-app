@@ -209,22 +209,28 @@ export function useTone() {
    *
    * 曲目页「听两个声部一起」用它——先分别听熟，再听合起来的，
    * 才知道自己弹的那一层在整体里是什么位置。两条谱的拍号要一样。
+   *
+   * `gains`（v0.176.0）给每条谱一个音量倍率：伴奏当背景时传
+   * `[1, 0.4]`，旋律仍然清楚、伴奏退到后面。
    */
   function playTabs(
     tabs: Tab[],
     bpm: number,
-    opts: { click?: boolean; onBeat?: (beat: number) => void } = {},
+    opts: { click?: boolean; onBeat?: (beat: number) => void; gains?: number[] } = {},
   ) {
     const first = tabs[0];
     if (!first) return;
     const bars = Math.max(...tabs.map((tab) => tab.bars));
-    const events = tabs.flatMap((tab) => tabEvents(tab, bpm));
+    const events = tabs.flatMap((tab, index) => {
+      const gain = Math.max(0, Math.min(1, opts.gains?.[index] ?? 1));
+      return tabEvents(tab, bpm).map((event) => ({ ...event, level: gain }));
+    });
     startEvents(events, bars * first.beatsPerBar, first.beatsPerBar, bpm, opts);
   }
 
   /** 把一串音符排进音频时间轴，并可选地打预备拍、回调「现在第几拍」。 */
   function startEvents(
-    events: { at: number; dur: number; midi: number }[],
+    events: { at: number; dur: number; midi: number; level?: number }[],
     totalBeats: number,
     beatsPerBar: number,
     bpm: number,
@@ -245,7 +251,8 @@ export function useTone() {
       const at = start + event.at + order * 0.012;
       // 衰减跟着时值走：十六分不该响得跟二分一样长，否则节奏糊成一团
       const decay = Math.max(0.32, Math.min(1.6, event.dur * 1.8));
-      pluck(ctx, at, event.midi, decay, 0.32);
+      const level = 0.32 * (event.level ?? 1);
+      if (level > 0.002) pluck(ctx, at, event.midi, decay, level);
     }
 
     if (opts.click) {

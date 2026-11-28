@@ -1772,6 +1772,16 @@ expect(
     (anyDecls(".song-sections").get("flex-wrap") || "") === "wrap",
 );
 
+expect(
+  "曲目那几行左右排开，伴奏音量滑杆够 40 高，判稳那句是强调色小字 (v0.176.0)",
+  (anyDecls(".song-stat-list").get("display") || "") === "grid" &&
+    (anyDecls(".song-stat-list li").get("display") || "") === "flex" &&
+    (anyDecls(".song-stat-list li").get("justify-content") || "") === "space-between" &&
+    Number.parseFloat(anyDecls('.song-balance input[type="range"]').get("min-height") || "0") >= 40 &&
+    (anyDecls(".follow-judge").get("font-size") || "") === "12px" &&
+    (anyDecls(".follow-judge").get("color") || "").includes("--accent"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

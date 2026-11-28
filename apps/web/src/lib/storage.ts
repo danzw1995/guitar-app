@@ -72,6 +72,8 @@ export interface Settings {
   genBars: number;
   /** 旋律 / 我存的谱上次的长度（小节）。 */
   genMelodyBars: number;
+  /** 曲目页「听两个声部一起」时伴奏的音量（0–100，v0.176.0）。 */
+  songBalance: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -92,6 +94,7 @@ export const DEFAULT_SETTINGS: Settings = {
   genDensity: 2,
   genBars: 4,
   genMelodyBars: 4,
+  songBalance: 60,
 };
 
 function readJson(key: string): unknown {
@@ -610,6 +613,10 @@ export function loadSettings(): Settings {
   const genBars = [4, 8].includes(genBarsRaw) ? genBarsRaw : 4;
   const genMelodyBarsRaw = Number(v.genMelodyBars);
   const genMelodyBars = [2, 4, 8].includes(genMelodyBarsRaw) ? genMelodyBarsRaw : 4;
+  const songBalanceRaw = Number(v.songBalance);
+  const songBalance = Number.isFinite(songBalanceRaw)
+    ? Math.max(0, Math.min(100, Math.round(songBalanceRaw)))
+    : DEFAULT_SETTINGS.songBalance;
 
   return {
     strictSpelling: v.strictSpelling === true,
@@ -629,6 +636,7 @@ export function loadSettings(): Settings {
     genDensity,
     genBars,
     genMelodyBars,
+    songBalance,
   };
 }
 
@@ -651,6 +659,7 @@ export function saveSettings(settings: Settings): void {
     genDensity: settings.genDensity,
     genBars: settings.genBars,
     genMelodyBars: settings.genMelodyBars,
+    songBalance: settings.songBalance,
   });
 }
 

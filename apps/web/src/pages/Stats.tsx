@@ -11,6 +11,7 @@ import {
   lastNDays,
   practiceStats,
   PROGRESSIONS,
+  SONGS,
   sparklineOf,
   stageOf,
   streakOf,
@@ -314,6 +315,19 @@ export default function Stats() {
     .map(([id, item]) => ({ id, ...item }))
     .sort((a, b) => b.bestBpm - a.bestBpm || b.sessions - a.sessions)
     .slice(0, 5);
+
+  // 曲目（v0.176.0）：六首各自旋律 / 伴奏的最高速度。曲目页不另开键，
+  // 所以这里直接从 `guitar.rhythm.v1` 的 `song-<id>-melody` / `-strum` 读。
+  const songRows = SONGS.map((song) => {
+    const melody = rhythm[`${song.id}-melody`];
+    const strum = rhythm[`${song.id}-strum`];
+    const best = Math.max(melody?.bestBpm ?? 0, strum?.bestBpm ?? 0);
+    const sessions = (melody?.sessions ?? 0) + (strum?.sessions ?? 0);
+    const lastAt = [melody?.lastAt ?? "", strum?.lastAt ?? ""].sort().slice(-1)[0] ?? "";
+    return { song, melodyBest: melody?.bestBpm ?? 0, strumBest: strum?.bestBpm ?? 0, best, sessions, lastAt };
+  });
+  const songPracticed = songRows.filter((row) => row.best > 0 || row.sessions > 0);
+  const songTop = [...songPracticed].sort((a, b) => b.best - a.best || b.sessions - a.sessions);
 
   // 和弦转换：四组进行各自练到多快（`guitar.chords.v1`，v0.59.0 起）
   const chords = loadChords();
@@ -1621,6 +1635,43 @@ export default function Stats() {
           );
         })}
       </div>
+
+      {songTop.length > 0 && (
+        <>
+          <h3 className="stat-sub">
+            曲目
+            <span className="stat-sub-note">六首小曲，旋律与伴奏分开记（v0.176.0）</span>
+          </h3>
+          <div className="stat-grid">
+            <div className="stat-card">
+              <b>
+                {songPracticed.length}/{SONGS.length}
+              </b>
+              <span>练过的曲目</span>
+            </div>
+            <div className="stat-card">
+              <b>{songTop[0].best} BPM</b>
+              <span>最快的一首</span>
+            </div>
+            <div className="stat-card">
+              <b>{songPracticed.reduce((sum, row) => sum + row.sessions, 0)}</b>
+              <span>曲目跟练次数</span>
+            </div>
+          </div>
+          <ul className="song-stat-list" data-song-stats="">
+            {songTop.map((row) => (
+              <li key={row.song.id}>
+                <span>{row.song.title}</span>
+                <span className="muted">
+                  旋律 {row.melodyBest > 0 ? `${row.melodyBest} BPM` : "—"} · 伴奏{" "}
+                  {row.strumBest > 0 ? `${row.strumBest} BPM` : "—"} · 练 {row.sessions} 次
+                  {row.lastAt ? ` · ${row.lastAt.slice(5)}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       {topRhythm.length > 0 ? (
         <ul className="stat-list">

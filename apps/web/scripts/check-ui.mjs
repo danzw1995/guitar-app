@@ -6382,6 +6382,76 @@ try {
     "(() => { const saved = sessionStorage.getItem('chk18.plan'); if (saved) { localStorage.setItem('guitar.plan.v1', saved); } else { localStorage.removeItem('guitar.plan.v1'); } return 'ok'; })()",
   );
 
+  // 18d) 统计页（v0.176.0）：六首曲目的成绩单列一块
+  const day18 = (() => {
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  })();
+  js(
+    "(() => { sessionStorage.setItem('chk18.rhythm', localStorage.getItem('guitar.rhythm.v1') ?? ''); return 'ok'; })()",
+  );
+  js(
+    `(() => { localStorage.setItem('guitar.rhythm.v1', JSON.stringify({
+      'song-star-melody': { bestBpm: 72, sessions: 3, minutes: 9, lastAt: '${day18}' },
+      'song-star-strum': { bestBpm: 64, sessions: 1, minutes: 3, lastAt: '${day18}' },
+      'song-tiger-melody': { bestBpm: 68, sessions: 2, minutes: 6, lastAt: '${day18}' },
+    })); return 'ok'; })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(1500);
+  const songStats = JSON.parse(
+    plain(
+      js(
+        "(() => { const rows = [...document.querySelectorAll('[data-song-stats] li')].map((li) => li.textContent.trim()); const cards = [...document.querySelectorAll('.stat-card')].map((card) => card.textContent.trim()); return JSON.stringify({ rows, card: cards.find((text) => text.includes('练过的曲目')) ?? '' }); })()",
+      ),
+    ).replace(/\\"/g, '"'),
+  );
+  log(
+    songStats.rows.length === 2 &&
+      songStats.rows[0].includes("小星星") &&
+      songStats.rows[0].includes("旋律 72 BPM") &&
+      songStats.card.includes("2/6"),
+    `统计页：曲目单列一块（读到 ${songStats.rows.length} 行 · 首行「${songStats.rows[0] ?? ""}」· 卡「${songStats.card}」）`,
+  );
+  js(
+    "(() => { const saved = sessionStorage.getItem('chk18.rhythm'); if (saved) { localStorage.setItem('guitar.rhythm.v1', saved); } else { localStorage.removeItem('guitar.rhythm.v1'); } return 'ok'; })()",
+  );
+
+  // 18e) 跟练（v0.176.0）：勾「录下来自动判稳」后开练，主按钮变成「停并判稳」
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  js(
+    "(() => { const card = document.querySelector('.song-card'); const b = card ? [...card.querySelectorAll('.song-actions button')].find(n => n.textContent.includes('跟练旋律')) : null; b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js(
+    "(() => { document.querySelector('.follow-judge-toggle input')?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+  const judgeArmed = plain(
+    js(
+      "(() => { const box = document.querySelector('.follow-judge-toggle input'); return box && box.checked ? 'on' : 'off'; })()",
+    ),
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow-controls button')].find(n => n.textContent.includes('开始跟练')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(1200);
+  const judgeButton = plain(
+    js(
+      "(() => { const b = [...document.querySelectorAll('.follow-controls button')].find(n => /跟练|停/.test(n.textContent)); return b ? b.textContent.trim() : ''; })()",
+    ),
+  );
+  log(
+    judgeArmed === "on" && judgeButton.includes("停并判稳"),
+    `跟练：勾上「录下来自动判稳」后开练，主按钮是「${judgeButton}」（勾选 ${judgeArmed}）`,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow-controls button')].find(n => n.textContent.includes('停并判稳')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 
 } catch (error) {

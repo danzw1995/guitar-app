@@ -16,8 +16,10 @@ import {
   loadPractice,
   loadProgress,
   loadRhythm,
+  loadSettings,
   savePractice,
   saveRhythm,
+  saveSettings,
   type RhythmRecords,
 } from "../lib/storage";
 import { pushRound } from "../lib/rounds";
@@ -40,6 +42,8 @@ export default function Songs() {
   const [target, setTarget] = useState<FollowTarget | null>(null);
   /** 每首练哪一段（v0.175.0）：整首 / A 段 1–4 / B 段 5–8 */
   const [sections, setSections] = useState<Record<string, "all" | "A" | "B">>({});
+  /** 伴奏当背景时压到多少（0–100，v0.176.0）：旋律永远 100。 */
+  const [balance, setBalance] = useState(() => loadSettings().songBalance);
   const today = dateKeyOf(new Date());
 
   const best = (id: string) => records[id]?.bestBpm;
@@ -65,8 +69,14 @@ export default function Songs() {
     const ids = [`${song.id}-melody`, `${song.id}-strum`];
     setPlayhead({ ids, beat: 0 });
     playTabs([song.melody, song.strum], song.bpm[0], {
+      gains: [1, balance / 100],
       onBeat: (beat) => setPlayhead(beat < 0 ? null : { ids, beat }),
     });
+  }
+
+  function changeBalance(next: number): void {
+    setBalance(next);
+    saveSettings({ ...loadSettings(), songBalance: next });
   }
 
   function record(result: { bpm: number; minutes: number }): void {
@@ -188,6 +198,19 @@ export default function Songs() {
                 <button type="button" className="btn-quiet" onClick={() => auditionBoth(song)}>
                   听两个声部一起
                 </button>
+                <label className="song-balance">
+                  伴奏音量
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={10}
+                    value={balance}
+                    aria-label="两个声部一起听时伴奏的音量"
+                    onChange={(event) => changeBalance(Number(event.target.value))}
+                  />
+                  <span className="song-balance-value">{balance}%</span>
+                </label>
               </div>
 
               <div className="song-actions">

@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Tab } from "@guitar/core";
-import { METERS, SUBDIVISION_LABEL, sliceTab, tabEvents, type Subdivision } from "@guitar/core";
+import {
+  METERS,
+  SUBDIVISION_LABEL,
+  analyzeTiming,
+  detectOnsets,
+  sliceTab,
+  tabEvents,
+  type Subdivision,
+} from "@guitar/core";
 import { degreeName, degreesOf } from "../lib/degrees";
 import { useMetronome } from "../hooks/useMetronome";
 import { useTone } from "../hooks/useTone";
@@ -160,6 +168,29 @@ export default function FollowAlong({
   useEffect(
     () => () => {
       if (batchTimerRef.current !== null) window.clearTimeout(batchTimerRef.current);
+    },
+    [],
+  );
+  /**
+   * 录下来自动判稳（v0.176.0）。
+   *
+   * 勾上之后：开练时顺手录这一遍，点「停并判稳」就自动记成绩（不用再点「记录成绩」），
+   * 几秒后回执里多一句「这一遍 ±N 毫秒」——用 `detectOnsets` + `analyzeTiming` 算，
+   * 判的是这一遍的落点散不散，而不是音准。
+   */
+  const [autoJudge, setAutoJudge] = useState(false);
+  const [judgeNote, setJudgeNote] = useState("");
+  const [judgeBusy, setJudgeBusy] = useState(false);
+  const judgeStreamRef = useRef<MediaStream | null>(null);
+  const judgeRecorderRef = useRef<MediaRecorder | null>(null);
+  const judgeChunksRef = useRef<Blob[]>([]);
+  const judgeStartRef = useRef(0);
+  const judgeOriginRef = useRef(0);
+  useEffect(
+    () => () => {
+      const recorder = judgeRecorderRef.current;
+      if (recorder && recorder.state === "recording") recorder.stop();
+      judgeStreamRef.current?.getTracks().forEach((track) => track.stop());
     },
     [],
   );
@@ -412,6 +443,91 @@ export default function FollowAlong({
     setHoldSpeed(true);
     setRestartAt(speed);
   }
+
+  /** 开练时顺手打开录音（v0.176.0）；麦克风没开成就在面板上说一句。 */
+  async function beginJudgeRecording(): Promise<void> {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setJudgeNote("这个浏览器没法用麦克风，自动判稳不可用。");
+      return;
+    }
+    try {
+      if (!judgeStreamRef.current) {
+        judgeStreamRef.current = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        });
+      }
+      if (typeof MediaRecorder === "undefined") {
+        setJudgeNote("这个浏览器不支持录音，自动判稳不可用。");
+        return;
+      }
+      judgeChunksRef.current = [];
+      const recorder = new MediaRecorder(judgeStreamRef.current);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) judgeChunksRef.current.push(event.data);
+      };
+      recorder.start();
+      judgeRecorderRef.current = recorder;
+      judgeStartRef.current = performance.now();
+      setJudgeNote("");
+      setJudgeBusy(false);
+    } catch {
+      setJudgeNote("麦克风没开成，这一遍没法自动判稳。");
+    }
+  }
+
+  /** 停下来就把这一遍解码、找起音、算标准差（v0.176.0）。 */
+  function endJudgeRecording(): void {
+    const recorder = judgeRecorderRef.current;
+    if (!recorder || recorder.state !== "recording") return;
+    judgeRecorderRef.current = null;
+    setJudgeBusy(true);
+    recorder.onstop = () => {
+      const blob = new Blob(judgeChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+      judgeChunksRef.current = [];
+      void (async () => {
+        try {
+          const Ctor =
+            window.AudioContext ??
+            (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (!Ctor) throw new Error("no audio context");
+          const context = new Ctor();
+          const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+          const onsets = detectOnsets(buffer.getChannelData(0), buffer.sampleRate);
+          void context.close();
+          if (onsets.length < 4) {
+            setJudgeNote("这一遍听得不太清，判不出稳不稳。");
+            return;
+          }
+          // 第一声「哒」就是第 0 拍：录音的第一下起音当原点，
+          // 整体平移不影响标准差（判的是散不散，不是音准）。
+          const report = analyzeTiming(onsets, bpm, {
+            beatsPerBar: 4,
+            origin: onsets[0],
+          });
+          if (!report) {
+            setJudgeNote("这一遍的起音太少，判不出稳不稳。");
+            return;
+          }
+          setJudgeNote(
+            `这一遍 ±${Math.round(report.stdevMs)} 毫秒（踩到 ${report.hits.length} 下）：${report.verdict}`,
+          );
+        } catch {
+          setJudgeNote("这一遍没判成——录音解不开，或者环境不支持。");
+        } finally {
+          setJudgeBusy(false);
+        }
+      })();
+    };
+    recorder.stop();
+  }
+
+  // 开练 / 停下时自动接管录音（v0.176.0）：勾着这个开关才有动作
+  useEffect(() => {
+    if (!autoJudge) return;
+    if (running) void beginJudgeRecording();
+    else endJudgeRecording();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoJudge, running]);
 
   // 现在弹到第几级（v0.96.0）：按起音拍往后找，找不到就退回第一个
   const degrees = useMemo(() => degreesOf(target.tab), [target.tab]);
@@ -796,9 +912,10 @@ export default function FollowAlong({
           <button
             type="button"
             className={running ? "btn primary" : "btn"}
-            onClick={() => (running ? stop() : start())}
+            onClick={() => (running ? (autoJudge ? finish() : stop()) : start())}
+            title={autoJudge ? "停下来并自动记成绩，几秒后回执里会写这一遍的落点" : undefined}
           >
-            {running ? "停止" : "开始跟练"}
+            {running ? (autoJudge ? "停并判稳" : "停止") : "开始跟练"}
           </button>
 
           <label className="follow-field">
@@ -887,6 +1004,19 @@ export default function FollowAlong({
               <option value="first">只第一下</option>
               <option value="off">关</option>
             </select>
+          </label>
+
+          {/* 录下来自动判稳（v0.176.0）：开练时录音，停下就自动记成绩并算出这一遍的落点 */}
+          <label className="follow-tip-toggle follow-judge-toggle">
+            <input
+              type="checkbox"
+              checked={autoJudge}
+              onChange={(event) => {
+                setAutoJudge(event.target.checked);
+                if (!event.target.checked) setJudgeNote("");
+              }}
+            />
+            录下来自动判稳
           </label>
 
           <label className="follow-field">
@@ -1044,6 +1174,11 @@ export default function FollowAlong({
                   : ` · 第 ${done.roundIndex} 轮，比上一轮（${done.roundBefore} BPM）慢 ${done.roundBefore - done.bpm}`
               : ""}
           </p>
+          {(judgeBusy || judgeNote !== "") && (
+            <p className="follow-judge" role="status">
+              {judgeBusy ? "在算这一遍的落点…" : judgeNote}
+            </p>
+          )}
           <div className="follow-done-again-row">
             <button
               type="button"
