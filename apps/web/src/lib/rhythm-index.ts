@@ -3,6 +3,7 @@ import {
   MELODY_DRILLS,
   READING_DRILLS,
   RHYTHM_DRILLS,
+  SONGS,
   SONG_SNIPPETS,
   STRUM_DRILLS,
   STRUM_LIBRARY,
@@ -21,8 +22,17 @@ export interface RhythmItem {
   group: string;
 }
 
-/** 页面上的六块，顺序就是页面上的顺序。 */
-export const RHYTHM_GROUPS = ["跟读", "时值", "旋律", "扫弦", "伴奏", "节奏型", "片段"] as const;
+/** 页面上的几块，顺序就是页面上的顺序。 */
+export const RHYTHM_GROUPS = [
+  "跟读",
+  "时值",
+  "旋律",
+  "扫弦",
+  "伴奏",
+  "节奏型",
+  "片段",
+  "曲目",
+] as const;
 
 export type RhythmGroup = (typeof RHYTHM_GROUPS)[number];
 
@@ -62,6 +72,11 @@ export const RHYTHM_ITEMS: RhythmItem[] = [
     label: item.name,
     group: "片段" as const,
   })),
+  // 曲目页（v0.175.0）：每首拆成旋律、伴奏两条，统计页的完成度与排行都认
+  ...SONGS.flatMap((song) => [
+    { id: `${song.id}-melody`, label: `${song.title} · 旋律`, group: "曲目" as const },
+    { id: `${song.id}-strum`, label: `${song.title} · 伴奏`, group: "曲目" as const },
+  ]),
 ];
 
 /** 「今日三条」只从这三块里挑，保证一天里念、数、扫都碰到。 */

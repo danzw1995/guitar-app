@@ -9,6 +9,7 @@ import {
   type Song,
 } from "@guitar/core";
 import FollowAlong from "../components/FollowAlong";
+import PlanButton from "../components/PlanButton";
 import TabScore from "../components/TabScore";
 import { useTone } from "../hooks/useTone";
 import {
@@ -33,15 +34,17 @@ interface FollowTarget {
 
 /** 曲目页（v0.174.0）：把碎片练习串成「能弹一首」。 */
 export default function Songs() {
-  const { playTab, stop } = useTone();
+  const { playTab, playTabs, stop } = useTone();
   const [records, setRecords] = useState<RhythmRecords>(() => loadRhythm());
-  const [playhead, setPlayhead] = useState<{ id: string; beat: number } | null>(null);
+  const [playhead, setPlayhead] = useState<{ ids: string[]; beat: number } | null>(null);
   const [target, setTarget] = useState<FollowTarget | null>(null);
+  /** 每首练哪一段（v0.175.0）：整首 / A 段 1–4 / B 段 5–8 */
+  const [sections, setSections] = useState<Record<string, "all" | "A" | "B">>({});
   const today = dateKeyOf(new Date());
 
   const best = (id: string) => records[id]?.bestBpm;
   const previousOf = (id: string) => (records[id]?.history ?? []).slice(-1)[0];
-  const beatOf = (id: string) => (playhead?.id === id ? playhead.beat : null);
+  const beatOf = (id: string) => (playhead && playhead.ids.includes(id) ? playhead.beat : null);
 
   const doneCount = useMemo(
     () => SONGS.filter((song) => (records[`${song.id}-melody`]?.sessions ?? 0) > 0).length,
@@ -50,9 +53,19 @@ export default function Songs() {
 
   function audition(id: string, tab: Tab, bpm: number): void {
     stop();
-    setPlayhead({ id, beat: 0 });
+    setPlayhead({ ids: [id], beat: 0 });
     playTab(tab, bpm, {
-      onBeat: (beat) => setPlayhead(beat < 0 ? null : { id, beat }),
+      onBeat: (beat) => setPlayhead(beat < 0 ? null : { ids: [id], beat }),
+    });
+  }
+
+  /** 两个声部一起听：旋律 + 伴奏叠在同一条时间轴上（v0.175.0）。 */
+  function auditionBoth(song: Song): void {
+    stop();
+    const ids = [`${song.id}-melody`, `${song.id}-strum`];
+    setPlayhead({ ids, beat: 0 });
+    playTabs([song.melody, song.strum], song.bpm[0], {
+      onBeat: (beat) => setPlayhead(beat < 0 ? null : { ids, beat }),
     });
   }
 
@@ -88,12 +101,18 @@ export default function Songs() {
   function follow(song: Song, part: "melody" | "strum"): void {
     stop();
     const id = `${song.id}-${part}`;
+    const section = sections[song.id] ?? "all";
+    const loopRange =
+      section === "A" ? { from: 1, to: 4 } : section === "B" ? { from: 5, to: 8 } : null;
     setTarget({
       id,
-      name: `${song.title} · ${part === "melody" ? "旋律" : "伴奏"}`,
+      name: `${song.title} · ${part === "melody" ? "旋律" : "伴奏"}${
+        section === "all" ? "" : ` · ${section} 段`
+      }`,
       bpm: [song.bpm[0], song.bpm[0] + 24],
       tab: part === "melody" ? song.melody : song.strum,
       meter: song.meter,
+      ...(loopRange ? { loopRange } : {}),
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -148,6 +167,29 @@ export default function Songs() {
                 </div>
               </div>
 
+              <div className="song-sections">
+                <label>
+                  练哪一段
+                  <select
+                    aria-label={`${song.title} 练哪一段`}
+                    value={sections[song.id] ?? "all"}
+                    onChange={(event) =>
+                      setSections((current) => ({
+                        ...current,
+                        [song.id]: event.target.value as "all" | "A" | "B",
+                      }))
+                    }
+                  >
+                    <option value="all">整首 8 小节</option>
+                    <option value="A">A 段 1–4 小节</option>
+                    <option value="B">B 段 5–8 小节</option>
+                  </select>
+                </label>
+                <button type="button" className="btn-quiet" onClick={() => auditionBoth(song)}>
+                  听两个声部一起
+                </button>
+              </div>
+
               <div className="song-actions">
                 <button
                   type="button"
@@ -169,6 +211,20 @@ export default function Songs() {
                 <button type="button" className="btn" onClick={() => follow(song, "strum")}>
                   跟练伴奏
                 </button>
+                <PlanButton
+                  title={`${song.title} · 旋律`}
+                  tab={song.melody}
+                  bpm={song.bpm[0]}
+                  meter={song.meter}
+                  suffix="旋律"
+                />
+                <PlanButton
+                  title={`${song.title} · 伴奏`}
+                  tab={song.strum}
+                  bpm={song.bpm[0]}
+                  meter={song.meter}
+                  suffix="伴奏"
+                />
               </div>
 
               <p className="song-tip">{song.tip}</p>

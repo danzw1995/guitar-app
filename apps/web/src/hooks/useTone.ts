@@ -200,6 +200,36 @@ export function useTone() {
     bpm: number,
     opts: { click?: boolean; onBeat?: (beat: number) => void } = {},
   ) {
+    const total = tab.bars * tab.beatsPerBar;
+    startEvents(tabEvents(tab, bpm), total, tab.beatsPerBar, bpm, opts);
+  }
+
+  /**
+   * 两个声部一起响（v0.175.0）：旋律 + 伴奏叠在同一条时间轴上。
+   *
+   * 曲目页「听两个声部一起」用它——先分别听熟，再听合起来的，
+   * 才知道自己弹的那一层在整体里是什么位置。两条谱的拍号要一样。
+   */
+  function playTabs(
+    tabs: Tab[],
+    bpm: number,
+    opts: { click?: boolean; onBeat?: (beat: number) => void } = {},
+  ) {
+    const first = tabs[0];
+    if (!first) return;
+    const bars = Math.max(...tabs.map((tab) => tab.bars));
+    const events = tabs.flatMap((tab) => tabEvents(tab, bpm));
+    startEvents(events, bars * first.beatsPerBar, first.beatsPerBar, bpm, opts);
+  }
+
+  /** 把一串音符排进音频时间轴，并可选地打预备拍、回调「现在第几拍」。 */
+  function startEvents(
+    events: { at: number; dur: number; midi: number }[],
+    totalBeats: number,
+    beatsPerBar: number,
+    bpm: number,
+    opts: { click?: boolean; onBeat?: (beat: number) => void } = {},
+  ) {
     const ctx = ensure();
     if (!ctx) return;
     stop();
@@ -208,7 +238,7 @@ export function useTone() {
     const secondsPerBeat = 60 / Math.max(20, bpm);
 
     const seen = new Map<number, number>();
-    for (const event of tabEvents(tab, bpm)) {
+    for (const event of [...events].sort((a, b) => a.at - b.at)) {
       const key = Math.round(event.at * 1000);
       const order = seen.get(key) ?? 0;
       seen.set(key, order + 1);
@@ -219,9 +249,8 @@ export function useTone() {
     }
 
     if (opts.click) {
-      const beats = tab.bars * tab.beatsPerBar;
-      for (let beat = 0; beat < beats; beat++) {
-        tick(ctx, start + beat * secondsPerBeat, beat % tab.beatsPerBar === 0);
+      for (let beat = 0; beat < totalBeats; beat++) {
+        tick(ctx, start + beat * secondsPerBeat, beat % beatsPerBar === 0);
       }
     }
 
@@ -231,7 +260,7 @@ export function useTone() {
     // 两者起点都取「现在 + 80ms 预备」，几小节之内不会看出差。
     if (opts.onBeat) {
       const onBeat = opts.onBeat;
-      const total = tab.bars * tab.beatsPerBar;
+      const total = totalBeats;
       beatRef.current = onBeat;
       const t0 = performance.now() + 80;
       let last = -1;
@@ -256,7 +285,7 @@ export function useTone() {
 
   useEffect(() => stop, []);
 
-  return { strum, arpeggio, play, playTab, hint, stop };
+  return { strum, arpeggio, play, playTab, playTabs, hint, stop };
 }
 
 /** 分解和弦的弦序：低音弦 + 3-2-3-1-3-2-3（最常用的 53231323）。 */

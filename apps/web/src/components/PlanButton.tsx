@@ -10,6 +10,8 @@ interface Props {
   bpm: number;
   /** 「我的谱」里的拍号可能不是 x/4（比如 6/8），传进来就用它 */
   meter?: string;
+  /** 一个卡片上放两枚时用（v0.175.0：曲目页的「旋律 / 伴奏」），只影响按钮文字 */
+  suffix?: string;
 }
 
 /**
@@ -19,7 +21,7 @@ interface Props {
  * `guitar.plan.v1`，练习页「今天自己加的」里就能勾掉、能计时，统计页也会算进加餐。
  * 已经加过就显示「已在计划里」并禁用——同一标题只留一条。
  */
-export default function PlanButton({ title, tab, bpm, meter }: Props) {
+export default function PlanButton({ title, tab, bpm, meter, suffix }: Props) {
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
@@ -32,6 +34,8 @@ export default function PlanButton({ title, tab, bpm, meter }: Props) {
     setAdded(true);
   }
 
+  const tail = suffix ? ` · ${suffix}` : "";
+
   return (
     <button
       type="button"
@@ -40,7 +44,7 @@ export default function PlanButton({ title, tab, bpm, meter }: Props) {
       disabled={added}
       title="加到练习页的「今天自己加的」里，之后能勾掉"
     >
-      {added ? "已在计划里" : "加进今日计划"}
+      {added ? `已在计划里${tail}` : `加进今日计划${tail}`}
     </button>
   );
 }

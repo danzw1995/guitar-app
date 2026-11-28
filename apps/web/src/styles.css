@@ -6997,3 +6997,35 @@ button.steady-best-tag:hover {
   .song-grid { grid-template-columns: 1fr; }
   .song-parts { grid-template-columns: 1fr; }
 }
+
+/* 曲目页 v0.175.0：段选择 + 两个声部一起听 */
+.song-sections {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.song-sections label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.song-sections select {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+.song-sections .btn-quiet,
+.song-actions .btn-quiet {
+  min-height: 40px;
+  font-size: 12px;
+  color: var(--accent);
+}

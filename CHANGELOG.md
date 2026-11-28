@@ -2,6 +2,14 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)；版本时间线以 git tag 为准。
 
+## [0.175.0] - 2026-11-28
+
+### Added
+- 曲目页每首卡多一个「练哪一段」下拉：整首 / A 段 1–4 / B 段 5–8；选段再跟练，面板一打开就圈住那四小节（复用 FollowTarget.loopRange）。
+- 「听两个声部一起」：useTone 新增 playTabs(tabs, bpm)，把旋律与伴奏合到同一条时间轴；原来 playTab 第一句就是 stop()，两条谱叠不起来。
+- 每首卡的旋律 / 伴奏都能「加进今日计划 · 旋律 / · 伴奏」（PlanButton 新增 suffix 参数），能和加餐一起勾、拖、筛。
+- 统计页「节奏与伴奏」多一行「曲目 12 条」（RHYTHM_ITEMS 加曲目组，每首两条键）。
+
 ## [0.174.0] - 2026-11-28
 
 ### Added

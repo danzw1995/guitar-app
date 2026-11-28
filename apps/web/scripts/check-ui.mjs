@@ -2059,7 +2059,7 @@ try {
     ),
   ).replace(/^"|"$/g, "");
   log(
-    statsInfo === "7|head|bpm",
+    statsInfo === "8|head|bpm",
     "统计页：有「节奏与伴奏」，七块完成度与最高速度都在",
     statsInfo,
   );
@@ -2245,7 +2245,13 @@ try {
   js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '统计'); b?.click(); return 'ok'; })()",
   );
-  await sleep(700);
+  // 统计页内容多（v0.175.0 又多了曲目那一行），给它最多三秒把曲线画出来
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    await sleep(300);
+    if (String(js("String(document.querySelectorAll('.curve-list li').length)")).replace(/^"|"$/g, "") !== "0") {
+      break;
+    }
+  }
   const curveInfo = String(
     js(
       "(() => { const rows = [...document.querySelectorAll('.curve-list li')]; if (!rows.length) return 'none'; const d = rows[0].querySelector('.curve-svg path')?.getAttribute('d') || ''; const label = rows[0].querySelector('.curve-svg')?.getAttribute('aria-label') || ''; const name = rows[0].querySelector('.curve-name')?.textContent || ''; return `${rows.length}|${d.startsWith('M') ? 'path' : 'nopath'}|${label.includes('BPM') ? 'bpm' : 'nobpm'}|${name}`; })()",
@@ -6324,6 +6330,57 @@ try {
     "(() => { const b = [...document.querySelectorAll('.follow .btn')].find(n => n.textContent.includes('收起')); b?.click(); return 'ok'; })()",
   );
   await sleep(300);
+
+  // 18b) 曲目页（v0.175.0）：选 A 段再跟练，面板一圈就只圈 1–4 小节
+  js(
+    "(() => { const card = document.querySelector('.song-card'); const select = card?.querySelector('.song-sections select'); if (!select) return 'none'; const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')?.set; setter?.call(select, 'A'); select.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(300);
+  js(
+    "(() => { const card = document.querySelector('.song-card'); const b = card ? [...card.querySelectorAll('.song-actions button')].find(n => n.textContent === '跟练旋律') : null; b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  const songSection = JSON.parse(
+    plain(
+      js(
+        "(() => JSON.stringify({ from: document.querySelector('select[aria-label=\"循环从第几小节开始\"]')?.value ?? '', to: document.querySelector('select[aria-label=\"循环到第几小节结束\"]')?.value ?? '', zoom: document.querySelector('.follow-zoom-title')?.textContent ?? '', head: document.querySelector('.follow h3')?.textContent ?? '' }))()",
+      ),
+    ).replace(/\\"/g, '"'),
+  );
+  log(
+    songSection.from === "1" &&
+      songSection.to === "4" &&
+      songSection.head.includes("A 段") &&
+      songSection.zoom.includes("第 1–4 小节"),
+    `曲目页：选「A 段」再跟练，面板就只圈 1–4 小节（读到 ${songSection.from}–${songSection.to} · 「${songSection.zoom}」）`,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow .btn')].find(n => n.textContent.includes('收起')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+
+  // 18c) 曲目页（v0.175.0）：一首能加进今日计划
+  js(
+    "(() => { sessionStorage.setItem('chk18.plan', localStorage.getItem('guitar.plan.v1') ?? ''); localStorage.removeItem('guitar.plan.v1'); return 'ok'; })()",
+  );
+  js(
+    "(() => { const card = document.querySelector('.song-card'); const b = card ? [...card.querySelectorAll('.song-actions button')].find(n => n.textContent.startsWith('加进今日计划')) : null; b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const songPlan = JSON.parse(
+    plain(
+      js(
+        "(() => { const raw = localStorage.getItem('guitar.plan.v1'); const list = raw ? JSON.parse(raw) : []; return JSON.stringify({ count: list.length, titles: list.map((item) => item.title) }); })()",
+      ),
+    ).replace(/\\"/g, '"'),
+  );
+  log(
+    songPlan.count === 1 && songPlan.titles[0] === "小星星 · 旋律",
+    `曲目页：「加进今日计划」把这一首写进 guitar.plan.v1（读到 ${songPlan.count} 条 · ${songPlan.titles.join(" / ")}）`,
+  );
+  js(
+    "(() => { const saved = sessionStorage.getItem('chk18.plan'); if (saved) { localStorage.setItem('guitar.plan.v1', saved); } else { localStorage.removeItem('guitar.plan.v1'); } return 'ok'; })()",
+  );
 
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 

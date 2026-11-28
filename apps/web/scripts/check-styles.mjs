@@ -1764,6 +1764,14 @@ expect(
     (anyDecls(".song-tip").get("font-size") || "") === "12px",
 );
 
+expect(
+  "曲目页的「练哪一段」下拉与「听两个声部一起」都够 40 高 (v0.175.0)",
+  Number.parseFloat(anyDecls(".song-sections select").get("min-height") || "0") >= 40 &&
+    Number.parseFloat(anyDecls(".song-sections .btn-quiet").get("min-height") || "0") >= 40 &&
+    (anyDecls(".song-sections").get("display") || "") === "flex" &&
+    (anyDecls(".song-sections").get("flex-wrap") || "") === "wrap",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);
