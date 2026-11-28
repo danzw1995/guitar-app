@@ -39,6 +39,7 @@ export const BACKUP_KEYS = [
   "guitar.steady.v1",
   "guitar.steady.loops.v1",
   "guitar.rounds.v1",
+  "guitar.judgeLevels.v1",
   "guitar.plan.v1",
   "guitar.plan.sets.v1",
   "guitar.plan.done.v1",
@@ -279,6 +280,23 @@ function mergeRounds(a: unknown, b: unknown): Dict {
         ),
       )
       .slice(-24);
+  }
+  return out;
+}
+
+/**
+ * 判稳档位（v0.178.0）：按条目 id 合并，同一 id 以导入的那份为准。
+ *
+ * 只认 wide / normal / tight 三个值——坏数据直接跳过，表里不认识的键也丢掉。
+ */
+function mergeJudgeLevels(a: unknown, b: unknown): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const source of [a, b]) {
+    if (!isDict(source)) continue;
+    for (const [id, level] of Object.entries(source)) {
+      if (typeof id !== "string" || id.length === 0 || id.length > 120) continue;
+      if (level === "wide" || level === "normal" || level === "tight") out[id] = level;
+    }
   }
   return out;
 }
@@ -557,6 +575,11 @@ export function mergeBackup(
   const rounds = mergeRounds(a["guitar.rounds.v1"], b["guitar.rounds.v1"]);
   if (Object.keys(rounds).length) data["guitar.rounds.v1"] = rounds;
   else delete data["guitar.rounds.v1"];
+
+  // 判稳档位（v0.178.0）：按条目合，同一 id 以导入的那份为准
+  const judgeLevels = mergeJudgeLevels(a["guitar.judgeLevels.v1"], b["guitar.judgeLevels.v1"]);
+  if (Object.keys(judgeLevels).length) data["guitar.judgeLevels.v1"] = judgeLevels;
+  else delete data["guitar.judgeLevels.v1"];
   const patterns = mergePatterns(a["guitar.patterns.v1"], b["guitar.patterns.v1"]);
   if (patterns.length) data["guitar.patterns.v1"] = patterns;
 

@@ -81,7 +81,7 @@ import UndoToast from "../components/UndoToast";
 import Steady from "../components/Steady";
 import { useTone } from "../hooks/useTone";
 import { meterOfTab } from "../lib/meter";
-import { seedSteady } from "../lib/steady";
+import { pushSteadyPoint, seedSteady } from "../lib/steady";
 
 /** 秒 → mm:ss。 */
 function clock(totalSeconds: number): string {
@@ -490,16 +490,25 @@ export default function Practice() {
     saveRhythm(next);
   }
 
-  /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上，曲线点开就是「±N 毫秒」。 */
+  /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上，也进「稳度」那条线（v0.178.0）。 */
   function judgeFollow(entry: { bpm: number; stdevMs: number }) {
     if (!follow) return;
     const previous = records[follow.id];
     if (!previous) return;
+    const steadyHistory = pushSteadyPoint(previous.steadyHistory, {
+      date: today,
+      bpm: entry.bpm,
+      stdevMs: entry.stdevMs,
+      ...(follow.tab.bars > 0 ? { totalBars: follow.tab.bars } : {}),
+    });
+    const bestSteady = Math.min(previous.steadyStdev ?? Number.POSITIVE_INFINITY, entry.stdevMs);
     const next: RhythmRecords = {
       ...records,
       [follow.id]: {
         ...previous,
         history: noteJudge(previous.history, today, entry.bpm, entry.stdevMs),
+        steadyHistory,
+        steadyStdev: Math.round(bestSteady * 10) / 10,
       },
     };
     setRecords(next);

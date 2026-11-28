@@ -4,6 +4,7 @@
  * 存的是**标准差**（越小越稳），不是 BPM——这项练的不是速度，是「每一拍都不抢不拖」。
  */
 import { waveClipWavDataUrl, waveComparePngDataUrl, wavePngDataUrl } from "./wave";
+import type { SteadyPoint } from "./storage";
 
 export const STEADY_KEY = "guitar.steady.v1";
 /** 在页面内给「稳不稳」面板喂一组速度 / 小节数（v0.141.0） */
@@ -159,6 +160,31 @@ export function recordRun(input: Omit<SteadyRun, "id">): SteadyRun[] {
   const next = [...loadRuns(), run].slice(-MAX_RUNS);
   persist(next);
   return next;
+}
+
+/**
+ * 往某条练习的「稳度曲线」里补一个点（v0.178.0）。
+ *
+ * 跟练面板自动判稳算出来的 ±毫秒也值得进这条线——原来只有「稳不稳」那边录的才进。
+ * 规则和 `SteadyPoint` 一致：同一天就留更稳的那个，按日期排，最多 24 个点。
+ */
+export function pushSteadyPoint(
+  points: SteadyPoint[] | undefined,
+  point: SteadyPoint,
+  cap = 24,
+): SteadyPoint[] {
+  const list = points ?? [];
+  if (!Number.isFinite(point.bpm) || point.bpm < 40 || point.bpm > 200) return [...list];
+  if (!Number.isFinite(point.stdevMs) || point.stdevMs <= 0 || point.stdevMs > 500) return [...list];
+  const clean: SteadyPoint = {
+    date: point.date,
+    bpm: Math.round(point.bpm),
+    stdevMs: Math.round(point.stdevMs * 10) / 10,
+  };
+  const merged = list.some((item) => item.date === clean.date)
+    ? list.map((item) => (item.date === clean.date && item.stdevMs <= clean.stdevMs ? item : clean))
+    : [...list, clean];
+  return merged.sort((a, b) => a.date.localeCompare(b.date)).slice(-cap);
 }
 
 /** 标准差最小的那一次——「最稳的一遍」 */

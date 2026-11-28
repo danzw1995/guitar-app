@@ -466,3 +466,24 @@ test("合并跟练轮次：同一天同一轮只留一份，按时间排好，�
   assert.equal(rows[rows.length - 1].date, "2026-11-24", "按日期排，最新的在最后");
   assert.equal(merged["p:s0-scale"].length, 1, "另一边只有一轮也留着");
 });
+
+test("合并判稳档位：同一首以导入的那份为准，坏值不进", () => {
+  const merged = mergeBackup(
+    { ...empty(), data: { "guitar.judgeLevels.v1": { "song-star-melody": "wide", "song-tiger-melody": "normal" } } },
+    {
+      ...empty(),
+      data: {
+        "guitar.judgeLevels.v1": {
+          "song-star-melody": "tight",
+          "song-joy-melody": "loose",
+          "song-london-melody": "normal",
+        },
+      },
+    },
+  ).next.data["guitar.judgeLevels.v1"];
+  assert.ok(merged && typeof merged === "object");
+  assert.equal(merged["song-star-melody"], "tight", "同一首以导入的为准");
+  assert.equal(merged["song-tiger-melody"], "normal", "本机独有的留着");
+  assert.equal(merged["song-london-melody"], "normal", "导入独有的收下");
+  assert.equal(merged["song-joy-melody"], undefined, "不认识的档位丢掉");
+});

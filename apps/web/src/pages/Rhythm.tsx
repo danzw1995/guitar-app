@@ -56,6 +56,7 @@ import {
   type SkipLog,
 } from "../lib/storage";
 import { pushRound } from "../lib/rounds";
+import { pushSteadyPoint } from "../lib/steady";
 import { lookupFollow } from "../lib/follow-lookup";
 import { parseHash } from "../lib/nav";
 
@@ -263,17 +264,26 @@ export default function Rhythm() {
     shownPatterns.length +
     shownSnippets.length;
 
-  /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上。 */
+  /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上，也进「稳度」那条线（v0.178.0）。 */
   function judgeAfter(entry: { bpm: number; stdevMs: number }) {
     if (!target) return;
     const today = dateKeyOf(new Date());
     const previous = records[target.id];
     if (!previous) return;
+    const steadyHistory = pushSteadyPoint(previous.steadyHistory, {
+      date: today,
+      bpm: entry.bpm,
+      stdevMs: entry.stdevMs,
+      ...(target.tab.bars > 0 ? { totalBars: target.tab.bars } : {}),
+    });
+    const bestSteady = Math.min(previous.steadyStdev ?? Number.POSITIVE_INFINITY, entry.stdevMs);
     const next: RhythmRecords = {
       ...records,
       [target.id]: {
         ...previous,
         history: noteJudge(previous.history, today, entry.bpm, entry.stdevMs),
+        steadyHistory,
+        steadyStdev: Math.round(bestSteady * 10) / 10,
       },
     };
     setRecords(next);

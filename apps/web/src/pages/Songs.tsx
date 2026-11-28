@@ -24,6 +24,8 @@ import {
   type RhythmRecords,
 } from "../lib/storage";
 import { pushRound } from "../lib/rounds";
+import { pushSteadyPoint } from "../lib/steady";
+import { JUDGE_LEVEL_LABEL, judgeLevelOf, setJudgeLevel, type JudgeLevel } from "../lib/judge-levels";
 
 const LEVEL_LABEL = { 1: "入门", 2: "基础", 3: "进阶" } as const;
 
@@ -45,9 +47,10 @@ export default function Songs() {
   const [sections, setSections] = useState<Record<string, "all" | "A" | "B">>({});
   /** 伴奏当背景时压到多少（0–100，v0.176.0）：旋律永远 100。 */
   const [balance, setBalance] = useState(() => loadSettings().songBalance);
+  /** 只看哪一类（v0.178.0）：全部 / 整首练过 / 还差伴奏 / 还差旋律 / 还没练过。 */
+  const [filter, setFilter] = useState<"all" | "both" | "melody" | "strum" | "none">("all");
   const today = dateKeyOf(new Date());
 
-  const best = (id: string) => records[id]?.bestBpm;
   const previousOf = (id: string) => (records[id]?.history ?? []).slice(-1)[0];
   const beatOf = (id: string) => (playhead && playhead.ids.includes(id) ? playhead.beat : null);
 
@@ -65,6 +68,36 @@ export default function Songs() {
       ).length,
     [records],
   );
+
+  /** 每首的练到哪一步（v0.178.0）：徽章、筛子、计数都读这一份。 */
+  const songRows = useMemo(
+    () =>
+      SONGS.map((song) => {
+        const melodyId = `${song.id}-melody`;
+        const strumId = `${song.id}-strum`;
+        const melodyBest = records[melodyId]?.bestBpm;
+        const strumBest = records[strumId]?.bestBpm;
+        const tone =
+          melodyBest !== undefined && strumBest !== undefined
+            ? "both"
+            : melodyBest !== undefined
+              ? "melody"
+              : strumBest !== undefined
+                ? "strum"
+                : "none";
+        const badge =
+          tone === "both"
+            ? { text: "整首都练过", tone: "both" as const }
+            : tone === "melody"
+              ? { text: "还差伴奏", tone: "half" as const }
+              : tone === "strum"
+                ? { text: "还差旋律", tone: "half" as const }
+                : { text: "还没练过", tone: "none" as const };
+        return { song, melodyId, strumId, melodyBest, strumBest, tone, badge };
+      }),
+    [records],
+  );
+  const shownRows = filter === "all" ? songRows : songRows.filter((row) => row.tone === filter);
 
   function audition(id: string, tab: Tab, bpm: number): void {
     stop();
@@ -90,16 +123,25 @@ export default function Songs() {
     saveSettings({ ...loadSettings(), songBalance: next });
   }
 
-  /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上。 */
+  /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上，也进「稳度」那条线（v0.178.0）。 */
   function judgeTarget(entry: { bpm: number; stdevMs: number }): void {
     if (!target) return;
     const previous = records[target.id];
     if (!previous) return;
+    const steadyHistory = pushSteadyPoint(previous.steadyHistory, {
+      date: today,
+      bpm: entry.bpm,
+      stdevMs: entry.stdevMs,
+      ...(target.id.includes("-") && target.tab.bars > 0 ? { totalBars: target.tab.bars } : {}),
+    });
+    const bestSteady = Math.min(previous.steadyStdev ?? Number.POSITIVE_INFINITY, entry.stdevMs);
     const next: RhythmRecords = {
       ...records,
       [target.id]: {
         ...previous,
         history: noteJudge(previous.history, today, entry.bpm, entry.stdevMs),
+        steadyHistory,
+        steadyStdev: Math.round(bestSteady * 10) / 10,
       },
     };
     setRecords(next);
@@ -169,21 +211,34 @@ export default function Songs() {
         {doneCount === 0 ? "——从第 1 首开始，慢速先把旋律走顺。" : "，挑下一首没练过的接着来。"}
       </p>
 
+      {/* 只看某一类（v0.178.0）：练到哪了这件事，一眼就该看得出还差哪几首 */}
+      <div className="song-filter" role="group" aria-label="只看哪一类曲目">
+        {([
+          { id: "all", label: "全部" },
+          { id: "both", label: "整首练过" },
+          { id: "melody", label: "还差伴奏" },
+          { id: "strum", label: "还差旋律" },
+          { id: "none", label: "还没练过" },
+        ] as const).map((item) => {
+          const count =
+            item.id === "all" ? songRows.length : songRows.filter((row) => row.tone === item.id).length;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`chip${filter === item.id ? " on" : ""}`}
+              aria-pressed={filter === item.id}
+              onClick={() => setFilter(item.id)}
+            >
+              {item.label} {count}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="song-grid">
-        {SONGS.map((song) => {
-          const melodyId = `${song.id}-melody`;
-          const strumId = `${song.id}-strum`;
-          const melodyBest = best(melodyId);
-          const strumBest = best(strumId);
-          const melodyDone = melodyBest !== undefined;
-          const strumDone = strumBest !== undefined;
-          const badge = melodyDone && strumDone
-            ? { text: "整首都练过", tone: "both" }
-            : melodyDone
-              ? { text: "还差伴奏", tone: "half" }
-              : strumDone
-                ? { text: "还差旋律", tone: "half" }
-                : { text: "还没练过", tone: "none" };
+        {shownRows.map((row) => {
+          const { song, melodyId, strumId, melodyBest, strumBest, badge } = row;
           return (
             <article className="song-card" id={`song-${song.id}`} key={song.id}>
               <div className="song-head">
@@ -295,6 +350,12 @@ export default function Songs() {
         })}
       </div>
 
+      {shownRows.length === 0 && (
+        <p className="song-empty" role="status">
+          这一类现在没有——换一个筛子看看。
+        </p>
+      )}
+
       {target && (
         <FollowAlong
           target={target}
@@ -302,6 +363,8 @@ export default function Songs() {
           onClose={() => setTarget(null)}
           onRound={(entry) => pushRound(target.id, entry)}
           onJudge={judgeTarget}
+          judgeLevel={judgeLevelOf(target.id)}
+          onJudgeLevel={(level: JudgeLevel) => setJudgeLevel(target.id, level)}
           previous={previousOf(target.id)}
         />
       )}

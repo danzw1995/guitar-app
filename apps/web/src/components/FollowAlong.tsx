@@ -16,6 +16,12 @@ import { useAudioVolume, volumeLabel } from "../lib/audio-bus";
 import { loadRhythm, loadSettings, saveSettings } from "../lib/storage";
 import { addScore } from "../lib/my-scores";
 import { addExtra } from "../lib/plan";
+import {
+  JUDGE_LEVEL_LABEL as JUDGE_LABEL,
+  JUDGE_LEVEL_TOLERANCE as JUDGE_TOLERANCE,
+  JUDGE_LEVEL_ORDER as JUDGE_ORDER,
+  type JudgeLevel,
+} from "../lib/judge-levels";
 import TabScore from "./TabScore";
 
 export interface FollowTarget {
@@ -43,9 +49,8 @@ export interface FollowTarget {
 const LOOP_PASS_CHOICES = [1, 2, 3] as const;
 const LOOP_PASSES = 2;
 
-/** 判稳的松紧（v0.177.0）：落在 `analyzeTiming` 的 `tolerance`（允许偏多少拍内算踩上）。 */
-const JUDGE_TOLERANCE = { wide: 0.6, normal: 0.42, tight: 0.28 } as const;
-const JUDGE_LABEL = { wide: "宽松", normal: "标准", tight: "严格" } as const;
+/** 判稳的松紧（v0.177.0）：落在 `analyzeTiming` 的 `tolerance`（允许偏多少拍内算踩上）。
+ *  v0.178.0 起曲目页按条目单独记，档位常量搬到 `lib/judge-levels.ts`。 */
 
 /** 跟练时「最卡的一级」：用户点级数方块单独去练的那一处（v0.99.0）。 */
 export interface FollowHardest {
@@ -88,6 +93,10 @@ export interface FollowAlongProps {
   }) => void;
   /** 自动判稳出结果了（v0.177.0）：父组件把它记进那条跟练曲线的当天点上。 */
   onJudge?: (entry: { bpm: number; stdevMs: number; hits: number }) => void;
+  /** 这一条自己选的判稳档位（v0.178.0）：有就用它，没有回落到全局默认。 */
+  judgeLevel?: JudgeLevel | null;
+  /** 用户在这一条上改了档位（v0.178.0）：曲目页按条目存，其它页面不传、继续记全局。 */
+  onJudgeLevel?: (level: JudgeLevel) => void;
 }
 
 function clock(seconds: number): string {
@@ -131,6 +140,8 @@ export default function FollowAlong({
   candBeats,
   onRound,
   onJudge,
+  judgeLevel: judgeLevelOverride,
+  onJudgeLevel,
 }: FollowAlongProps) {
   const meter = target.meter ?? "4/4";
   const [startBpm, setStartBpm] = useState(target.startBpm ?? target.bpm[0]);
@@ -187,8 +198,8 @@ export default function FollowAlong({
    */
   const [autoJudge, setAutoJudge] = useState(false);
   /** 判稳的松紧（v0.177.0）：宽一点/标准/严一点，落在 `analyzeTiming` 的 tolerance 上。 */
-  const [judgeLevel, setJudgeLevel] = useState<"wide" | "normal" | "tight">(
-    () => loadSettings().judgeTolerance,
+  const [judgeLevel, setJudgeLevelState] = useState<JudgeLevel>(
+    () => judgeLevelOverride ?? loadSettings().judgeTolerance,
   );
   const [judgeNote, setJudgeNote] = useState("");
   const [judgeBusy, setJudgeBusy] = useState(false);
@@ -755,6 +766,9 @@ export default function FollowAlong({
       target.roundsGoal && target.roundsGoal >= 2 ? Math.min(5, Math.round(target.roundsGoal)) : 0,
     );
     setRounds({ index: 1, lastBpm: null });
+    // 这一条自己的判稳档位（v0.178.0）：没有就回落到全局默认
+    setJudgeLevelState(judgeLevelOverride ?? loadSettings().judgeTolerance);
+    setJudgeNote("");
     setSavedSpots([]);
     setPlanSpots([]);
     setSpotsOpen(false);
@@ -1039,9 +1053,11 @@ export default function FollowAlong({
               aria-label="判稳的松紧"
               value={judgeLevel}
               onChange={(event) => {
-                const next = event.target.value as "wide" | "normal" | "tight";
-                setJudgeLevel(next);
-                saveSettings({ ...loadSettings(), judgeTolerance: next });
+                const next = event.target.value as JudgeLevel;
+                setJudgeLevelState(next);
+                // 有 onJudgeLevel 的（曲目页）按条目记，没有的仍记全局默认（v0.178.0）
+                if (onJudgeLevel) onJudgeLevel(next);
+                else saveSettings({ ...loadSettings(), judgeTolerance: next });
               }}
             >
               <option value="wide">宽松</option>

@@ -1791,6 +1791,15 @@ expect(
     Number.parseFloat(anyDecls(".follow-judge-level select").get("min-height") || "0") >= 40,
 );
 
+expect(
+  "曲目页的筛子是一排够 40 高的 chip，筛空那句是灰字小字 (v0.178.0)",
+  (anyDecls(".song-filter").get("display") || "") === "flex" &&
+    (anyDecls(".song-filter").get("flex-wrap") || "") === "wrap" &&
+    Number.parseFloat(anyDecls(".song-filter .chip").get("min-height") || "0") >= 40 &&
+    (anyDecls(".song-empty").get("font-size") || "") === "12px" &&
+    (anyDecls(".song-empty").get("color") || "").includes("--muted"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

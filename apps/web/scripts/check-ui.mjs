@@ -6483,6 +6483,9 @@ try {
   );
 
   // 18g) 跟练（v0.177.0）：判稳的松紧能选，选完记进设置、刷新也还在
+  // （v0.178.0 起记在「这一首」名下；这一段自己打开 #songs，单独跑 --only 也成立）
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
   js(
     "(() => { const card = document.querySelector('.song-card'); const b = card ? [...card.querySelectorAll('.song-actions button')].find(n => n.textContent.includes('跟练旋律')) : null; b?.click(); return 'ok'; })()",
   );
@@ -6496,9 +6499,10 @@ try {
     "(() => { const s = document.querySelector('.follow-judge-level select'); if (!s) return 'none'; const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')?.set; setter?.call(s, 'tight'); s.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()",
   );
   await sleep(400);
+  // v0.178.0 起曲目页按条目记：这一首的档位在 guitar.judgeLevels.v1，不再改全局默认
   const judgeSaved = plain(
     js(
-      "(() => { const raw = localStorage.getItem('guitar.settings.v1'); const saved = raw ? JSON.parse(raw) : {}; return String(saved.judgeTolerance ?? 'none'); })()",
+      "(() => { const raw = localStorage.getItem('guitar.judgeLevels.v1'); const saved = raw ? JSON.parse(raw) : {}; return String(saved['song-star-melody'] ?? 'none'); })()",
     ),
   );
   await ab(["open", `${URL}?r=${Date.now()}#songs`]);
@@ -6514,12 +6518,91 @@ try {
   );
   log(
     judgeLevelCount === "3" && judgeSaved === "tight" && judgeKept === "tight",
-    `跟练：判稳的松紧有 ${judgeLevelCount} 档，选「严格」后存成 ${judgeSaved}、重开还是 ${judgeKept}`,
+    `跟练：判稳的松紧有 ${judgeLevelCount} 档，这一首选「严格」后记在它自己名下（${judgeSaved}）、重开还是 ${judgeKept}`,
   );
   js(
     "(() => { const b = [...document.querySelectorAll('.follow .btn')].find(n => n.textContent.includes('收起')); b?.click(); return 'ok'; })()",
   );
   await sleep(400);
+
+  // 18h) 曲目页（v0.178.0）：「还差伴奏 / 还没练过」这些筛子能只留下该看的那几张
+  js(
+    "(() => { sessionStorage.setItem('chk20.rhythm', localStorage.getItem('guitar.rhythm.v1') ?? ''); return 'ok'; })()",
+  );
+  js(
+    "(() => { localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'song-star-melody': { bestBpm: 76, sessions: 3 }, 'song-star-strum': { bestBpm: 68, sessions: 2 }, 'song-tiger-melody': { bestBpm: 72, sessions: 1 } })); return 'ok'; })()",
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  const filterChips = plain(
+    js(
+      "(() => JSON.stringify([...document.querySelectorAll('.song-filter .chip')].map((c) => c.textContent.trim())))()",
+    ),
+  );
+  js(
+    "(() => { const chip = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('还差伴奏')); chip?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const onlyHalf = plain(
+    js(
+      "(() => JSON.stringify({ cards: document.querySelectorAll('.song-card').length, title: document.querySelector('.song-card h3')?.textContent?.trim() ?? '' }))()",
+    ),
+  );
+  let halfParsed = { cards: 0, title: "" };
+  try {
+    halfParsed = JSON.parse(onlyHalf);
+  } catch {
+    halfParsed = { cards: 0, title: "" };
+  }
+  js(
+    "(() => { const chip = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('还没练过')); chip?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const onlyNone = plain(js("(() => String(document.querySelectorAll('.song-card').length))()"));
+  log(
+    filterChips.includes("还差伴奏 1") &&
+      filterChips.includes("还没练过 4") &&
+      halfParsed.cards === 1 &&
+      halfParsed.title === "两只老虎" &&
+      onlyNone === "4",
+    `曲目页：筛子读作 ${filterChips}；点「还差伴奏」剩 ${halfParsed.cards} 张（${halfParsed.title}），点「还没练过」剩 ${onlyNone} 张`,
+  );
+
+  // 18i) 曲目页（v0.178.0）：判稳档位按这一首单独记，不动全局默认
+  js(
+    "(() => { const chip = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('全部')); chip?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+  js(
+    "(() => { const card = document.querySelector('.song-card'); const b = card ? [...card.querySelectorAll('.song-actions button')].find(n => n.textContent.includes('跟练旋律')) : null; b?.click(); return 'ok'; })()",
+  );
+  await sleep(900);
+  js(
+    "(() => { const s = document.querySelector('.follow-judge-level select'); if (!s) return 'none'; const setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, 'value')?.set; setter?.call(s, 'wide'); s.dispatchEvent(new Event('change', { bubbles: true })); return 'ok'; })()",
+  );
+  await sleep(400);
+  const levelsSaved = plain(
+    js(
+      "(() => { const raw = localStorage.getItem('guitar.judgeLevels.v1'); const saved = raw ? JSON.parse(raw) : {}; const settings = JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}'); return JSON.stringify({ item: saved['song-star-melody'] ?? 'none', global: settings.judgeTolerance ?? 'none' }); })()",
+    ),
+  );
+  let levelsParsed = { item: "none", global: "none" };
+  try {
+    levelsParsed = JSON.parse(levelsSaved);
+  } catch {
+    levelsParsed = { item: "none", global: "none" };
+  }
+  log(
+    levelsParsed.item === "wide" && levelsParsed.global !== "wide",
+    `曲目页：这一首选「宽松」只记到它自己（${levelsParsed.item}），全局默认没被改（${levelsParsed.global}）`,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow .btn')].find(n => n.textContent.includes('收起')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+  js(
+    "(() => { const saved = sessionStorage.getItem('chk20.rhythm'); if (saved) { localStorage.setItem('guitar.rhythm.v1', saved); } else { localStorage.removeItem('guitar.rhythm.v1'); } return 'ok'; })()",
+  );
 
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 

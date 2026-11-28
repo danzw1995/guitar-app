@@ -3382,6 +3382,10 @@ button.steady-best-tag:hover {
   gap: 14px;
   flex-wrap: wrap;
 }
+/* 标签和它的下拉/数字框是一组（v0.178.0）：换行时整组一起走，别把「每」留在上一行 */
+.follow-controls > label {
+  white-space: nowrap;
+}
 .follow-field {
   display: inline-flex;
   align-items: center;
@@ -6963,7 +6967,24 @@ button.steady-best-tag:hover {
 .song-badge.none {
   background: rgba(139, 148, 158, 0.12);
   color: var(--muted);
-}.song-no {
+}
+/* 只看哪一类（v0.178.0）：练到哪了，一眼看出还差哪几首 */
+.song-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.song-filter .chip {
+  min-height: 40px;
+  font-size: 12px;
+}
+.song-empty {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.song-no {
   padding: 1px 8px;
   border-radius: 999px;
   background: rgba(139, 148, 158, 0.14);
