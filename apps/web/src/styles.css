@@ -7228,3 +7228,11 @@ button.steady-best-tag:hover {
   font-size: 12px;
 }
 
+
+/* v0.182.0 */
+.follow-auto {
+  margin: 0 0 4px;
+  color: var(--blue);
+  font-size: 12px;
+}
+

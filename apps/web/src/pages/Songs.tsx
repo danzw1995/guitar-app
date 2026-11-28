@@ -101,7 +101,7 @@ export default function Songs() {
     [records],
   );
   const [wholeOnly, setWholeOnly] = useState(false);
-  const [sortByWhole, setSortByWhole] = useState(false);
+  const [sortByWhole, setSortByWhole] = useState(() => loadSettings().songSortWhole);
   /**
    * 走通筛选 + 排序（v0.181.0）：整套过一遍才是「整首」，所以它单独一层筛子，
    * 跟「还差伴奏」这类进度筛子叠加使用（先按进度筛，再挑走过整首的）。
@@ -307,7 +307,13 @@ export default function Songs() {
           className={`chip${sortByWhole ? " on" : ""}`}
           aria-pressed={sortByWhole}
           aria-label="按走通次数排"
-          onClick={() => setSortByWhole((value) => !value)}
+          onClick={() =>
+            setSortByWhole((value) => {
+              const next = !value;
+              saveSettings({ ...loadSettings(), songSortWhole: next });
+              return next;
+            })
+          }
         >
           按走通次数排
         </button>

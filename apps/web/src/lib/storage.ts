@@ -80,6 +80,8 @@ export interface Settings {
   songFilter: "all" | "both" | "melody" | "strum" | "none";
   /** 曲目页上次看的那首（v0.180.0）：进来滚到它那张卡。 */
   songLast: string;
+  /** 曲目页按走通次数排（v0.182.0）：下次进来还是这个顺序。 */
+  songSortWhole: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -104,6 +106,7 @@ export const DEFAULT_SETTINGS: Settings = {
   judgeTolerance: "normal",
   songFilter: "all",
   songLast: "",
+  songSortWhole: false,
 };
 
 function readJson(key: string): unknown {
@@ -665,6 +668,7 @@ export function loadSettings(): Settings {
   const songLastRaw = v.songLast;
   const songLast =
     typeof songLastRaw === "string" && /^[a-z0-9-]{1,40}$/.test(songLastRaw) ? songLastRaw : "";
+  const songSortWhole = v.songSortWhole === true;
 
   return {
     strictSpelling: v.strictSpelling === true,
@@ -688,6 +692,7 @@ export function loadSettings(): Settings {
     judgeTolerance,
     songFilter,
     songLast,
+    songSortWhole,
   };
 }
 
@@ -714,6 +719,7 @@ export function saveSettings(settings: Settings): void {
     judgeTolerance: settings.judgeTolerance,
     songFilter: settings.songFilter,
     songLast: settings.songLast,
+    songSortWhole: settings.songSortWhole,
   });
 }
 

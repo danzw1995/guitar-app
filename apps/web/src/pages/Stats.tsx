@@ -370,6 +370,8 @@ export default function Stats() {
     };
   });
   const songPracticed = songRows.filter((row) => row.best > 0 || row.sessions > 0);
+  /** 走通次数最多的那一首（v0.182.0）：安慰一下「走通过几遍」这件事本身。 */
+  const songTopWhole = [...songRows].sort((a, b) => b.wholeRuns - a.wholeRuns)[0];
   const songTop = [...songPracticed].sort((a, b) => b.best - a.best || b.sessions - a.sessions);
 
   // 和弦转换：四组进行各自练到多快（`guitar.chords.v1`，v0.59.0 起）
@@ -1699,6 +1701,12 @@ export default function Stats() {
             <div className="stat-card">
               <b>{songPracticed.reduce((sum, row) => sum + row.sessions, 0)}</b>
               <span>曲目跟练次数</span>
+            </div>
+            <div className="stat-card" data-song-whole-card="">
+              <b>{songTopWhole && songTopWhole.wholeRuns > 0 ? songTopWhole.wholeRuns : "—"}</b>
+              <span>
+                走通最多{songTopWhole && songTopWhole.wholeRuns > 0 ? ` · ${songTopWhole.song.title}` : ""}
+              </span>
             </div>
           </div>
           <ul className="song-stat-list" data-song-stats="">

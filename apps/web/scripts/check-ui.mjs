@@ -6768,17 +6768,12 @@ try {
   );
 
   // 18p) 曲目页（v0.181.0）：走过整首的能单独筛、还能按走通次数排
-  const day23 = (() => {
-    const now = new Date();
-    const pad = (value) => String(value).padStart(2, "0");
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  })();
   js(
     `(() => {
       const raw = JSON.parse(localStorage.getItem("guitar.rhythm.v1") ?? "{}");
       sessionStorage.setItem("chk23.rhythm", JSON.stringify(raw));
-      raw["song-star-run"] = { bestBpm: 90, sessions: 2, minutes: 6, lastAt: "${day23}", title: "小星星 · 整首连弹", wholeRuns: 2, history: [] };
-      raw["song-tiger-run"] = { bestBpm: 80, sessions: 1, minutes: 4, lastAt: "${day23}", title: "两只老虎 · 整首连弹", wholeRuns: 5, history: [] };
+      raw["song-star-run"] = { bestBpm: 90, sessions: 2, minutes: 6, lastAt: "2026-11-28", title: "小星星 · 整首连弹", wholeRuns: 2, history: [] };
+      raw["song-tiger-run"] = { bestBpm: 80, sessions: 1, minutes: 4, lastAt: "2026-11-28", title: "两只老虎 · 整首连弹", wholeRuns: 5, history: [] };
       localStorage.setItem("guitar.rhythm.v1", JSON.stringify(raw));
       const settings = JSON.parse(localStorage.getItem("guitar.settings.v1") ?? "{}");
       settings.songFilter = "all";
@@ -6835,6 +6830,60 @@ try {
   );
   js(
     "(() => { const levels = localStorage.getItem('guitar.judgeLevels.v1'); if (levels) localStorage.removeItem('guitar.judgeLevels.v1'); const raw = JSON.parse(sessionStorage.getItem('chk23.rhythm') ?? 'null'); if (raw) localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
+  );
+
+  // 18r) 曲目页（v0.182.0）：「按走通次数排」记得住（Settings.songSortWhole）
+  js(
+    "(() => { const raw = JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}'); raw.songSortWhole = false; localStorage.setItem('guitar.settings.v1', JSON.stringify(raw)); return 'ok'; })()",
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  js(
+    "(() => { const b = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('按走通次数排')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const sortStored = plain(
+    js("(() => String(JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}').songSortWhole === true))()"),
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1400);
+  const sortPressed = plain(
+    js(
+      "(() => { const b = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('按走通次数排')); return b ? String(b.getAttribute('aria-pressed')) : 'none'; })()",
+    ),
+  );
+  log(
+    sortStored === "true" && sortPressed === "true",
+    `曲目页：按走通次数排会记住（存 ${sortStored} · 重开 aria-pressed ${sortPressed}）`,
+  );
+  js(
+    "(() => { const raw = JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}'); raw.songSortWhole = false; localStorage.setItem('guitar.settings.v1', JSON.stringify(raw)); return 'ok'; })()",
+  );
+
+  // 18s) 统计页（v0.182.0）：多一张「走通最多」的卡
+  js(
+    `(() => {
+      const raw = JSON.parse(localStorage.getItem("guitar.rhythm.v1") ?? "{}");
+      sessionStorage.setItem("chk24.rhythm", JSON.stringify(raw));
+      raw["song-star-run"] = { bestBpm: 90, sessions: 2, minutes: 6, lastAt: "2026-11-28", title: "小星星 · 整首连弹", wholeRuns: 2, history: [] };
+      raw["song-tiger-run"] = { bestBpm: 80, sessions: 3, minutes: 9, lastAt: "2026-11-28", title: "两只老虎 · 整首连弹", wholeRuns: 5, history: [] };
+      localStorage.setItem("guitar.rhythm.v1", JSON.stringify(raw));
+      return "ok";
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(1400);
+  const wholeCard = plain(
+    js(
+      "(() => { const n = document.querySelector('[data-song-whole-card]'); return n ? n.textContent.replace(/\\s+/g, ' ').trim() : ''; })()",
+    ),
+  );
+  log(
+    wholeCard.includes("5") && wholeCard.includes("两只老虎"),
+    `统计页：有一张「走通最多」的卡（读到「${wholeCard}」）`,
+  );
+  js(
+    "(() => { const raw = JSON.parse(sessionStorage.getItem('chk24.rhythm') ?? 'null'); if (raw) localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
   );
 
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);

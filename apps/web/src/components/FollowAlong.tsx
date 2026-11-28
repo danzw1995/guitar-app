@@ -265,6 +265,8 @@ export default function FollowAlong({
   const wasRunningRef = useRef(false);
   /** 走通就自动收尾只收一次（v0.181.0）；换一条/重开都清掉。 */
   const autoDoneRef = useRef(false);
+  /** 这一遍是自动收尾的（v0.182.0）：回执里写清楚「没圈段、算整首」。 */
+  const [autoFinished, setAutoFinished] = useState(false);
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -777,6 +779,7 @@ export default function FollowAlong({
     if (!running || loopOn || !autoJudge) return;
     if (bar < totalBars || autoDoneRef.current) return;
     autoDoneRef.current = true;
+    setAutoFinished(true);
     const timer = window.setTimeout(() => {
       if (runningRef.current) finish();
     }, 500);
@@ -801,6 +804,7 @@ export default function FollowAlong({
     maxBarRef.current = 0;
     wasRunningRef.current = false;
     autoDoneRef.current = false;
+    setAutoFinished(false);
     // 这一条自己的判稳档位（v0.178.0）：没有就回落到全局默认
     setJudgeLevelState(judgeLevelOverride ?? loadSettings().judgeTolerance);
     setJudgeNote("");
@@ -1236,6 +1240,9 @@ export default function FollowAlong({
 
       {done ? (
         <div className="follow-done" role="status">
+          {autoFinished && (
+            <p className="follow-auto">这一次没圈段、弹到最后一小节，自动按整首收尾。</p>
+          )}
           <p className="follow-done-text">
             记下了：{done.bpm} BPM
             {previousRef.current

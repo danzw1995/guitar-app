@@ -1816,6 +1816,12 @@ expect(
     (anyDecls(".song-filter .chip").get("min-height") || "") === "40px",
 );
 
+expect(
+  "自动收尾那句是蓝色小字（跟「记下了」分开） (v0.182.0)",
+  (anyDecls(".follow-auto").get("font-size") || "") === "12px" &&
+    (anyDecls(".follow-auto").get("color") || "").includes("--blue"),
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);
