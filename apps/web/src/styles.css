@@ -7220,3 +7220,11 @@ button.steady-best-tag:hover {
   color: var(--blue);
 }
 
+
+/* v0.181.0 */
+.judge-hint {
+  margin: 2px 0 10px;
+  color: var(--accent);
+  font-size: 12px;
+}
+

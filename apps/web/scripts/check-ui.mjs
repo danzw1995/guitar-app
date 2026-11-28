@@ -6767,6 +6767,76 @@ try {
     })()`,
   );
 
+  // 18p) 曲目页（v0.181.0）：走过整首的能单独筛、还能按走通次数排
+  const day23 = (() => {
+    const now = new Date();
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  })();
+  js(
+    `(() => {
+      const raw = JSON.parse(localStorage.getItem("guitar.rhythm.v1") ?? "{}");
+      sessionStorage.setItem("chk23.rhythm", JSON.stringify(raw));
+      raw["song-star-run"] = { bestBpm: 90, sessions: 2, minutes: 6, lastAt: "${day23}", title: "小星星 · 整首连弹", wholeRuns: 2, history: [] };
+      raw["song-tiger-run"] = { bestBpm: 80, sessions: 1, minutes: 4, lastAt: "${day23}", title: "两只老虎 · 整首连弹", wholeRuns: 5, history: [] };
+      localStorage.setItem("guitar.rhythm.v1", JSON.stringify(raw));
+      const settings = JSON.parse(localStorage.getItem("guitar.settings.v1") ?? "{}");
+      settings.songFilter = "all";
+      settings.songLast = "";
+      localStorage.setItem("guitar.settings.v1", JSON.stringify(settings));
+      return "ok";
+    })()`,
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  const wholeFilter = plain(
+    js(
+      "(() => { const b = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('走过整首')); b?.click(); return 'clicked'; })()",
+    ),
+  );
+  await sleep(500);
+  const wholeCards = plain(
+    js(
+      "(() => [...document.querySelectorAll('.song-card')].map(n => n.querySelector('h3')?.textContent?.trim() ?? '').join('|'))()",
+    ),
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('按走通次数排')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(500);
+  const sortedCards = plain(
+    js(
+      "(() => [...document.querySelectorAll('.song-card')].map(n => n.querySelector('h3')?.textContent?.trim() ?? '').join('|'))()",
+    ),
+  );
+  log(
+    wholeFilter === "clicked" &&
+      wholeCards.split("|").length === 2 &&
+      sortedCards.startsWith("两只老虎"),
+    `曲目页：走过整首能单独筛出来、还能按走通次数排（筛后 ${wholeCards} · 排后 ${sortedCards}）`,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('走过整首')); b?.click(); return 'ok'; })()",
+  );
+
+  // 18q) 统计页（v0.181.0）：改完档位给一句「下一遍按这一档判」
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(1400);
+  js(
+    "(() => { const b = document.querySelector('[data-song-stats] .judge-tag'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const hintText = plain(
+    js("(() => document.querySelector('.judge-hint')?.textContent?.trim() ?? '')()"),
+  );
+  log(
+    hintText.includes("下一遍") && hintText.includes("判"),
+    `统计页：改完档位说一句下一次怎么判（读到「${hintText}」）`,
+  );
+  js(
+    "(() => { const levels = localStorage.getItem('guitar.judgeLevels.v1'); if (levels) localStorage.removeItem('guitar.judgeLevels.v1'); const raw = JSON.parse(sessionStorage.getItem('chk23.rhythm') ?? 'null'); if (raw) localStorage.setItem('guitar.rhythm.v1', JSON.stringify(raw)); return 'ok'; })()",
+  );
+
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 
 } catch (error) {

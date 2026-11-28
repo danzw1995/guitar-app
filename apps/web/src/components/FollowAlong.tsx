@@ -263,6 +263,8 @@ export default function FollowAlong({
   /** 这一遍走到过第几小节（v0.180.0）：判「整首走通」用，循环 / 只练某段不算。 */
   const maxBarRef = useRef(0);
   const wasRunningRef = useRef(false);
+  /** 走通就自动收尾只收一次（v0.181.0）；换一条/重开都清掉。 */
+  const autoDoneRef = useRef(false);
 
   const totalBars = target.tab.bars;
   const loop = loopOn
@@ -450,7 +452,10 @@ export default function FollowAlong({
 
   // 这一遍走到过第几小节（v0.180.0）：开练清零，不循环时把 bar 折成 1..总小节数
   useEffect(() => {
-    if (running && !wasRunningRef.current) maxBarRef.current = 0;
+    if (running && !wasRunningRef.current) {
+      maxBarRef.current = 0;
+      autoDoneRef.current = false;
+    }
     wasRunningRef.current = running;
     if (!running || loopOn) return;
     const barNumber = Math.min(totalBars, (bar % totalBars) + 1);
@@ -766,6 +771,18 @@ export default function FollowAlong({
     setSeconds(0);
   }
 
+  // 整首走到底是什么时候（v0.181.0）：不圈段、走到最后一小节、开着判稳，
+  // 就让它自己收尾记一条——不用再回来点「停并判稳」。
+  useEffect(() => {
+    if (!running || loopOn || !autoJudge) return;
+    if (bar < totalBars || autoDoneRef.current) return;
+    autoDoneRef.current = true;
+    const timer = window.setTimeout(() => {
+      if (runningRef.current) finish();
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [autoJudge, bar, loopOn, running, totalBars]);
+
   // 换一条练习就重置速度与计时（卸载时由 useMetronome 自己收尾）
   useEffect(() => {
     setStartBpm(target.startBpm ?? target.bpm[0]);
@@ -783,6 +800,7 @@ export default function FollowAlong({
     setRounds({ index: 1, lastBpm: null });
     maxBarRef.current = 0;
     wasRunningRef.current = false;
+    autoDoneRef.current = false;
     // 这一条自己的判稳档位（v0.178.0）：没有就回落到全局默认
     setJudgeLevelState(judgeLevelOverride ?? loadSettings().judgeTolerance);
     setJudgeNote("");

@@ -321,6 +321,7 @@ export default function Stats() {
   // 所以这里直接从 `guitar.rhythm.v1` 的 `song-<id>-melody` / `-strum` 读。
   // v0.179.0：整首连弹（`-run`）也算进「这一首」的速度与次数，并标出各条用的判稳档位。
   const [judgeBump, setJudgeBump] = useState(0);
+  const [judgeHint, setJudgeHint] = useState("");
   const judgeLevels = useMemo(() => loadJudgeLevels(), [judgeBump]);
   /**
    * 点一下那颗小标签换一档（v0.180.0）：默认 → 宽松 → 标准 → 严格 → 默认。
@@ -336,6 +337,12 @@ export default function Stats() {
     if (next === undefined) clearJudgeLevel(id);
     else setJudgeLevel(id, next);
     setJudgeBump((value) => value + 1);
+    // 改完说一句（v0.181.0）：光换个药丸看不出「下一次判稳会变」
+    setJudgeHint(
+      next === undefined
+        ? "这一条回到默认档位：下一遍判稳按「标准」算。"
+        : `下一遍跟练会按「${JUDGE_LEVEL_LABEL[next]}」判这一条。`,
+    );
   };
   const songRows = SONGS.map((song) => {
     const melodyId = `${song.id}-melody`;
@@ -1738,6 +1745,11 @@ export default function Stats() {
               </li>
             ))}
           </ul>
+          {judgeHint && (
+            <p className="judge-hint" role="status">
+              {judgeHint}
+            </p>
+          )}
         </>
       )}
 

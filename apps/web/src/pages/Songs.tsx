@@ -62,7 +62,7 @@ export default function Songs() {
     [records],
   );
   /** 旋律和伴奏都跟练过的首数（v0.177.0）：卡片上的「整首都练过」徽章与这句进度都读它。 */
-  const wholeCount = useMemo(
+  const bothCount = useMemo(
     () =>
       SONGS.filter(
         (song) =>
@@ -100,7 +100,20 @@ export default function Songs() {
       }),
     [records],
   );
-  const shownRows = filter === "all" ? songRows : songRows.filter((row) => row.tone === filter);
+  const [wholeOnly, setWholeOnly] = useState(false);
+  const [sortByWhole, setSortByWhole] = useState(false);
+  /**
+   * 走通筛选 + 排序（v0.181.0）：整套过一遍才是「整首」，所以它单独一层筛子，
+   * 跟「还差伴奏」这类进度筛子叠加使用（先按进度筛，再挑走过整首的）。
+   */
+  const shownRows = (() => {
+    const byTone = filter === "all" ? songRows : songRows.filter((row) => row.tone === filter);
+    const byWhole = wholeOnly ? byTone.filter((row) => row.wholeRuns > 0) : byTone;
+    return sortByWhole
+      ? [...byWhole].sort((a, b) => b.wholeRuns - a.wholeRuns || b.song.no - a.song.no)
+      : byWhole;
+  })();
+  const wholeRunCount = songRows.filter((row) => row.wholeRuns > 0).length;
 
   // 进来先滚到上次看的那首（v0.180.0）：六张卡一屏放不下，回来还得自己找一遍。
   useEffect(() => {
@@ -252,7 +265,7 @@ export default function Songs() {
       </div>
 
       <p className="song-progress" aria-label="曲目完成度">
-        六首里已经跟练过 <b>{doneCount}</b> 首，整首（旋律 + 伴奏都练过）的 <b>{wholeCount}</b> 首
+        六首里已经跟练过 <b>{doneCount}</b> 首，整首（旋律 + 伴奏都练过）的 <b>{bothCount}</b> 首
         {doneCount === 0 ? "——从第 1 首开始，慢速先把旋律走顺。" : "，挑下一首没练过的接着来。"}
       </p>
 
@@ -279,6 +292,25 @@ export default function Songs() {
             </button>
           );
         })}
+        {/* 走通那一层（v0.181.0）：跟上面按进度的筛子叠加，另外能按走通次数排 */}
+        <button
+          type="button"
+          className={`chip${wholeOnly ? " on" : ""}`}
+          aria-pressed={wholeOnly}
+          aria-label="只看走过整首的"
+          onClick={() => setWholeOnly((value) => !value)}
+        >
+          走过整首 {wholeRunCount}
+        </button>
+        <button
+          type="button"
+          className={`chip${sortByWhole ? " on" : ""}`}
+          aria-pressed={sortByWhole}
+          aria-label="按走通次数排"
+          onClick={() => setSortByWhole((value) => !value)}
+        >
+          按走通次数排
+        </button>
       </div>
 
       <div className="song-grid">

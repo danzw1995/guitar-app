@@ -1809,6 +1809,13 @@ expect(
     (anyDecls(".judge-tag").get("font-size") || "") === "11px",
 );
 
+expect(
+  "改完判稳档位有一句提示，走通筛子和排序都是普通 chip (v0.181.0)",
+  (anyDecls(".judge-hint").get("font-size") || "") === "12px" &&
+    (anyDecls(".judge-hint").get("color") || "").includes("--accent") &&
+    (anyDecls(".song-filter .chip").get("min-height") || "") === "40px",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);
