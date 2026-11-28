@@ -16,6 +16,7 @@ import {
   READING_DRILLS,
   RHYTHM_DRILLS,
   SONG_SNIPPETS,
+  SONGS,
   STRUM_DRILLS,
   STRUM_LIBRARY,
   THEORY_TABS,
@@ -28,7 +29,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.resolve(here, "../public/scores");
 
 /** 每条谱：id 就是文件名，bpm 影响不到图形（谱面不画速度），只取 tab。 */
-type Item = { id: string; tab: Tab; bpm?: number };
+type Item = { id: string; tab: Tab; bpm?: number; width?: number };
 
 /** 练习页的速度写成「50–70」这种区间，谱面只关心个位数，取第一个数字。 */
 function bpmOf(value: string): number {
@@ -49,6 +50,11 @@ const items: Item[] = [
   ...DRILLS.map((drill) => ({ id: drill.id, tab: drill.tab, bpm: bpmOf(drill.bpm) })),
   // 乐理页 12 节课，每节配一条示范谱。
   ...THEORY_TABS.map((item) => ({ id: item.id, tab: item.tab, bpm: 70 })),
+  // 曲目库（v0.174.0）：每首两张——旋律谱 + 伴奏谱。
+  ...SONGS.flatMap((song) => [
+    { id: `${song.id}-melody`, tab: song.melody, bpm: song.bpm[0], width: 720 },
+    { id: `${song.id}-strum`, tab: song.strum, bpm: song.bpm[0], width: 720 },
+  ]),
 ];
 
 const WIDTH = 720;
@@ -73,9 +79,9 @@ for (const item of items) {
   const tex = tabToAlphaTex(item.tab, item.bpm ? { bpm: item.bpm } : {});
   // 五小节的伴奏型：一行排五小节会挤到看不清品数（720 宽时字只缩到 10px 左右），
   // 改成 520 宽排成两行（3+2），品数在卡片里约 17px，和别的块一致。
-  const wide = item.tab.bars >= 5;
+  const wide = item.width === undefined && item.tab.bars >= 5;
   const png = await renderPng(tex, {
-    width: wide ? 520 : WIDTH,
+    width: item.width ?? (wide ? 520 : WIDTH),
     scale: 1,
     pixelRatio: 2,
     theme: "dark",

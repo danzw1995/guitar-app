@@ -6910,3 +6910,90 @@ button.steady-best-tag:hover {
   .interval-table th,
   .interval-table td { padding: 6px 6px; }
 }
+
+/* 曲目页（v0.174.0）：一张卡一首，旋律与伴奏并排，窄屏上下排 */
+.song-progress {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.song-progress b {
+  color: var(--accent);
+  font-size: 15px;
+}
+.song-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 12px;
+}
+.song-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-2);
+  scroll-margin-top: 24px;
+}
+.song-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.song-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.song-no {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(139, 148, 158, 0.14);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.song-meta,
+.song-chords {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.song-parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 8px 12px;
+  margin-top: 4px;
+}
+.song-part h4 {
+  margin: 0 0 2px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.song-best {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.song-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin-top: 4px;
+}
+.song-actions .btn {
+  min-height: 40px;
+  font-size: 12px;
+}
+.song-tip {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+@media (max-width: 720px) {
+  .song-grid { grid-template-columns: 1fr; }
+  .song-parts { grid-template-columns: 1fr; }
+}

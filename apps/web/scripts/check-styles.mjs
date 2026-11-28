@@ -1754,6 +1754,16 @@ expect(
     (anyDecls(".follow-batch").get("border-radius") || "") === "999px",
 );
 
+expect(
+  "曲目卡片：谱子能缩进卡片，四个按钮都够 40 高 (v0.174.0)",
+  (anyDecls(".song-grid").get("display") || "") === "grid" &&
+    (anyDecls(".song-grid").get("gap") || "") === "12px" &&
+    Number.parseFloat(anyDecls(".song-actions .btn").get("min-height") || "0") >= 40 &&
+    (anyDecls(".song-card").get("border-radius") || "") === "12px" &&
+    (anyDecls(".song-card").get("display") || "") === "grid" &&
+    (anyDecls(".song-tip").get("font-size") || "") === "12px",
+);
+
 console.log(`\n${checked - failures.length}/${checked} 项通过`);if (failures.length) {
   console.log(`失败：${failures.join("、")}`);
   process.exit(1);

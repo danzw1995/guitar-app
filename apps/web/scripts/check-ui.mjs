@@ -219,7 +219,7 @@ try {
 
   // 2) 主导航 10 个 Tab，能切到「节奏」
   const tabs = js("document.querySelectorAll('nav.tabs button').length");
-  log(tabs === "10", `主导航有 10 个 Tab（读到 ${tabs}）`);
+  log(tabs === "11", `主导航有 11 个 Tab（读到 ${tabs}）`);
 
   const switched = js(
     "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '节奏'); if (!b) return 'no'; b.click(); return 'ok'; })()",
@@ -6295,6 +6295,36 @@ try {
       return 'restored';
     })()`,
   );
+  // 18a) 曲目页（v0.174.0）：六首小曲、两套谱都画出来、点「跟练旋律」进跟练
+  js(
+    "(() => { const b = [...document.querySelectorAll('nav.tabs button')].find(n => n.textContent === '曲目'); b?.click(); return 'ok'; })()",
+  );
+  await sleep(1400);
+  const songCards = JSON.parse(
+    plain(
+      js(
+        "(() => JSON.stringify({ cards: document.querySelectorAll('.song-card').length, bad: [...document.querySelectorAll('.song-card img.tab-score')].filter((img) => !img.complete || img.naturalWidth === 0).length, first: document.querySelector('.song-card h3')?.textContent ?? '', chords: document.querySelector('.song-chords')?.textContent ?? '' }))()",
+      ),
+    ).replace(/\\"/g, '"'),
+  );
+  log(
+    songCards.cards === 6 && songCards.bad === 0 && songCards.first === "小星星" && songCards.chords.includes("和弦：C"),
+    `曲目页：六首小曲、两套谱都画出来了（读到 ${songCards.cards} 张 / 坏图 ${songCards.bad}）`,
+  );
+  js(
+    "(() => { const card = document.querySelector('.song-card'); const b = card ? [...card.querySelectorAll('.song-actions button')].find(n => n.textContent === '跟练旋律') : null; b?.click(); return 'ok'; })()",
+  );
+  await sleep(1000);
+  const songFollow = plain(js("(() => document.querySelector('.follow h3')?.textContent ?? '')()"));
+  log(
+    songFollow.includes("跟练") && songFollow.includes("小星星"),
+    `曲目页：点「跟练旋律」进到跟练面板（读到「${songFollow}」）`,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow .btn')].find(n => n.textContent.includes('收起')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 
 } catch (error) {

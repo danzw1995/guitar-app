@@ -5,6 +5,7 @@ import Theory from "./pages/Theory";
 import Game from "./pages/Game";
 import Practice from "./pages/Practice";
 import Rhythm from "./pages/Rhythm";
+import Songs from "./pages/Songs";
 import Stats from "./pages/Stats";
 import Settings from "./pages/Settings";
 import Tuner from "./pages/Tuner";
@@ -18,6 +19,7 @@ import { useTheme } from "./hooks/useTheme";
 const TABS: { id: Tab; label: string }[] = [
   { id: "practice", label: "练习" },
   { id: "rhythm", label: "节奏" },
+  { id: "songs", label: "曲目" },
   { id: "chords", label: "和弦" },
   { id: "scales", label: "音阶" },
   { id: "theory", label: "乐理" },
@@ -30,7 +32,7 @@ const TABS: { id: Tab; label: string }[] = [
 
 // 手机上只放四个最常用的入口，其余收进「更多」——八个 Tab 排一行在 390 的屏上点不准
 const PRIMARY: Tab[] = ["practice", "rhythm", "theory", "stats"];
-const SECONDARY: Tab[] = ["chords", "scales", "game", "tuner", "ear", "settings"];
+const SECONDARY: Tab[] = ["songs", "chords", "scales", "game", "tuner", "ear", "settings"];
 
 // 「更多」里分成三组：光看「和弦 / 音阶 / 调音」这些名字，不知道点进去是干什么的（v0.135.0）
 interface MoreItem {
@@ -49,6 +51,7 @@ const MORE_GROUPS: MoreGroup[] = [
     title: "练琴",
     hint: "按弦、把位、反应",
     items: [
+      { id: "songs", hint: "完整小曲 · 旋律 + 伴奏" },
       { id: "chords", hint: "和弦库 · 转换训练" },
       { id: "scales", hint: "把位 · 五种形状" },
       { id: "game", hint: "限时找音的位置" },
@@ -157,6 +160,7 @@ export default function App() {
         {tab === "game" && <Game />}
         {tab === "practice" && <Practice />}
         {tab === "rhythm" && <Rhythm />}
+        {tab === "songs" && <Songs />}
         {tab === "tuner" && <Tuner />}
         {tab === "ear" && <Ear />}
         {tab === "stats" && <Stats />}

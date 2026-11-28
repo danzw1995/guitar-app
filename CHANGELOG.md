@@ -2,6 +2,14 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)；版本时间线以 git tag 为准。
 
+## [0.174.0] - 2026-11-28
+
+### Added
+- 新增第 11 个 Tab「曲目」：小星星 / 两只老虎 / 欢乐颂 / 划船歌 / 玛丽有只小羊羔 / 伦敦桥，六首八小节
+- 每首两张谱（旋律 + 四分扫弦伴奏），可分别试听、分别跟练，最高 BPM 记进 guitar.rhythm.v1
+- core 新增 songs.ts（SONGS / songById / songScoreIds），gen-scores 多 12 张谱图（190 张 / 4.90 MB）
+- 手机上「曲目」在「更多」里，check-mobile 多测一页
+
 ## [0.173.1] - 2026-11-28
 
 ### Added

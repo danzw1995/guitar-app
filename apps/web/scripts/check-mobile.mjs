@@ -18,7 +18,7 @@ mkdirSync(join(OUT, "playwright"), { recursive: true });
 process.env.TMPDIR = join(OUT, "playwright");
 process.env.TMP = process.env.TMPDIR;
 process.env.TEMP = process.env.TMPDIR;
-const TABS = ["练习", "节奏", "和弦", "音阶", "乐理", "音阶游戏", "调音", "扒谱", "统计", "设置"];
+const TABS = ["练习", "节奏", "曲目", "和弦", "音阶", "乐理", "音阶游戏", "调音", "扒谱", "统计", "设置"];
 const VIEWPORTS = [
   { name: "iPhone 15", ...devices["iPhone 15"] },
   { name: "Pixel 9", ...devices["Pixel 9"] },
@@ -102,7 +102,7 @@ for (const device of VIEWPORTS) {
   await page.locator(".bottom-nav button", { hasText: "更多" }).first().click();
   await page.waitForTimeout(250);
   const sheetItems = await page.locator(".more-sheet .more-item").count();
-  check(sheetItems === 6, "「更多」里 6 个入口", `实际 ${sheetItems} 个`);
+  check(sheetItems === 7, "「更多」里 7 个入口", `实际 ${sheetItems} 个`);
   // v0.135.0：六项分三组，每项带一句「点进去是干什么的」
   const sheetGroups = await page.evaluate(() => ({
     titles: [...document.querySelectorAll(".more-sheet .more-group-title")].map((node) =>
@@ -126,7 +126,7 @@ for (const device of VIEWPORTS) {
     JSON.stringify(sheetGroups.titles),
   );
   check(
-    sheetGroups.hints.length === 6 && sheetGroups.hints.every((hint) => hint.length >= 4),
+    sheetGroups.hints.length === 7 && sheetGroups.hints.every((hint) => hint.length >= 4),
     "「更多」每一项都带一句说明",
     JSON.stringify(sheetGroups.hints),
   );
@@ -299,4 +299,4 @@ if (failures.length) {
   for (const failure of failures) console.log(`  - ${failure}`);
   process.exit(1);
 }
-console.log("\n手机端检查全部通过（WebKit，三个尺寸 × 10 个页面 + 「加餐里有谱」那一次）");
+console.log(`\n手机端检查全部通过（WebKit，三个尺寸 × ${TABS.length} 个页面 + 「加餐里有谱」那一次）`);

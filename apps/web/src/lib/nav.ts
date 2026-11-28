@@ -13,6 +13,7 @@ export type Tab =
   | "game"
   | "practice"
   | "rhythm"
+  | "songs"
   | "tuner"
   | "ear"
   | "stats"
@@ -21,6 +22,7 @@ export type Tab =
 export const TAB_IDS: Tab[] = [
   "practice",
   "rhythm",
+  "songs",
   "chords",
   "scales",
   "theory",

@@ -129,6 +129,7 @@ import {
   melodyCandidateBeatsOf,
   practiceGoalOf,
   practiceGoalDetailOf,
+  SONGS,
   type MelodyLine,
   MELODY_CHOICES,
   checkPiece,
@@ -3969,6 +3970,43 @@ test("生成谱：一段能叠几处候选数得出来（v0.167.0）", () => {
   // 击勾候选是「5→9 那一对」的下标（第 1 处的下标 1，0 起：frets 5,5,9,9,… 的第二拍到第三拍）
   assert.ok(starHammerBeats.includes(1), `5→9 的落点应在下标 1：${starHammerBeats}`);
   assert.ok(melodyCandidateBeatsOf(wide, "slide").length === melodyCandidatesOf(wide, "slide"), "宽音域落点数对不上");
+});
+
+test("曲目库：六首都是八小节，旋律填满、把位在 1–3 弦 0–12 品，伴奏每小节一个和弦 (v0.174.0)", () => {
+  assert.equal(SONGS.length, 6, "先发六首");
+  const ids = new Set(SONGS.map((song) => song.id));
+  assert.equal(ids.size, SONGS.length, "曲目 id 不该重复");
+  for (const song of SONGS) {
+    assert.equal(song.melody.bars, 8, `${song.title} 该是八小节`);
+    assert.equal(song.melody.beatsPerBar, 4, `${song.title} 该是 4/4`);
+    assert.equal(song.chords.length, 8, `${song.title} 每小节一个和弦，一共八个`);
+    assert.equal(song.strum.bars, 8, `${song.title} 的伴奏也该是八小节`);
+    assert.ok(song.bpm[0] < song.bpm[1], `${song.title} 的速度该是区间`);
+
+    const total = song.melody.notes.reduce((sum, note) => sum + note.dur, 0);
+    assert.ok(Math.abs(total - 32) < 1e-9, `${song.title} 旋律总时长该是 32 拍：${total}`);
+
+    const byBar = new Map<number, number>();
+    for (const note of song.melody.notes) {
+      assert.ok(note.s >= 1 && note.s <= 3, `${song.title} 的旋律只落在 1–3 弦：${note.s} 弦`);
+      assert.ok(note.f >= 0 && note.f <= 12, `${song.title} 的品该在 0–12：${note.f}`);
+      const bar = Math.floor(note.beat / 4);
+      assert.ok(note.beat + note.dur <= (bar + 1) * 4 + 1e-9, `${song.title} 有音跨过了小节线`);
+      byBar.set(bar, (byBar.get(bar) ?? 0) + note.dur);
+    }
+    for (let bar = 0; bar < 8; bar += 1) {
+      const filled = byBar.get(bar) ?? 0;
+      assert.ok(Math.abs(filled - 4) < 1e-9, `${song.title} 第 ${bar + 1} 小节该刚好四拍：${filled}`);
+    }
+
+    // 伴奏：每小节都该有扫弦，而且带方向
+    const strumBars = new Set(song.strum.notes.map((note) => Math.floor(note.beat / 4)));
+    assert.equal(strumBars.size, 8, `${song.title} 的伴奏该铺满八小节`);
+    assert.ok(
+      song.strum.notes.every((note) => note.arrow === "D" || note.arrow === "U"),
+      `${song.title} 的伴奏每个音都该带扫弦方向`,
+    );
+  }
 });
 
 
