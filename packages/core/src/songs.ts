@@ -251,3 +251,25 @@ export function songById(id: string): Song | undefined {
 export function songScoreIds(song: Song): { melody: string; strum: string } {
   return { melody: `${song.id}-melody`, strum: `${song.id}-strum` };
 }
+
+/**
+ * 「整首连弹」用的谱（v0.179.0）：A 段（第 1–4 小节）弹旋律、B 段（第 5–8 小节）扫弦。
+ *
+ * 一条谱走完八小节，跟练时判稳得到的就是「两条合起来」的那一个 ±毫秒——
+ * 只弹旋律或只弹伴奏都测不到「换手」这一段，所以把两半接成一条。
+ * 记录单独存 `${song.id}-run`，不覆盖旋律 / 伴奏各自的成绩。
+ */
+export function songRunTab(song: Song): Tab {
+  // 4 小节 × 4 拍；前半取旋律、后半取伴奏（伴奏的拍号与旋律一致）
+  const split = 16;
+  const notes = [
+    ...song.melody.notes.filter((note) => note.beat < split),
+    ...song.strum.notes.filter((note) => note.beat >= split),
+  ].sort((a, b) => a.beat - b.beat || b.s - a.s);
+  return tabOf(notes, {
+    beatsPerBar: 4,
+    bars: 8,
+    bpm: [song.bpm[0], song.bpm[0]],
+    caption: `${song.title} · 整首连弹`,
+  });
+}

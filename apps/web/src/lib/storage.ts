@@ -76,6 +76,8 @@ export interface Settings {
   songBalance: number;
   /** 跟练自动判稳的松紧（v0.177.0）：宽一点 / 标准 / 严一点。 */
   judgeTolerance: "wide" | "normal" | "tight";
+  /** 曲目页上次选的筛子（v0.179.0）：下次进来还是这一类。 */
+  songFilter: "all" | "both" | "melody" | "strum" | "none";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -98,6 +100,7 @@ export const DEFAULT_SETTINGS: Settings = {
   genMelodyBars: 4,
   songBalance: 60,
   judgeTolerance: "normal",
+  songFilter: "all",
 };
 
 function readJson(key: string): unknown {
@@ -633,6 +636,11 @@ export function loadSettings(): Settings {
   const judgeToleranceRaw = v.judgeTolerance;
   const judgeTolerance: "wide" | "normal" | "tight" =
     judgeToleranceRaw === "wide" || judgeToleranceRaw === "tight" ? judgeToleranceRaw : "normal";
+  const songFilterRaw = v.songFilter;
+  const songFilter: "all" | "both" | "melody" | "strum" | "none" =
+    songFilterRaw === "both" || songFilterRaw === "melody" || songFilterRaw === "strum" || songFilterRaw === "none"
+      ? songFilterRaw
+      : "all";
 
   return {
     strictSpelling: v.strictSpelling === true,
@@ -654,6 +662,7 @@ export function loadSettings(): Settings {
     genMelodyBars,
     songBalance,
     judgeTolerance,
+    songFilter,
   };
 }
 
@@ -678,6 +687,7 @@ export function saveSettings(settings: Settings): void {
     genMelodyBars: settings.genMelodyBars,
     songBalance: settings.songBalance,
     judgeTolerance: settings.judgeTolerance,
+    songFilter: settings.songFilter,
   });
 }
 

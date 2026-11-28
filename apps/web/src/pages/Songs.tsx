@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   SONGS,
+  songRunTab,
   dateKeyOf,
   noteJudge,
   pushBpmPoint,
@@ -47,8 +48,10 @@ export default function Songs() {
   const [sections, setSections] = useState<Record<string, "all" | "A" | "B">>({});
   /** 伴奏当背景时压到多少（0–100，v0.176.0）：旋律永远 100。 */
   const [balance, setBalance] = useState(() => loadSettings().songBalance);
-  /** 只看哪一类（v0.178.0）：全部 / 整首练过 / 还差伴奏 / 还差旋律 / 还没练过。 */
-  const [filter, setFilter] = useState<"all" | "both" | "melody" | "strum" | "none">("all");
+  /** 只看哪一类（v0.178.0）：全部 / 整首练过 / 还差伴奏 / 还差旋律 / 还没练过。v0.179.0 起记住上次选的那类。 */
+  const [filter, setFilter] = useState<"all" | "both" | "melody" | "strum" | "none">(
+    () => loadSettings().songFilter,
+  );
   const today = dateKeyOf(new Date());
 
   const previousOf = (id: string) => (records[id]?.history ?? []).slice(-1)[0];
@@ -121,6 +124,12 @@ export default function Songs() {
   function changeBalance(next: number): void {
     setBalance(next);
     saveSettings({ ...loadSettings(), songBalance: next });
+  }
+
+  /** 换筛子（v0.179.0）：顺手记住，下次进来还是这一类。 */
+  function changeFilter(next: "all" | "both" | "melody" | "strum" | "none"): void {
+    setFilter(next);
+    saveSettings({ ...loadSettings(), songFilter: next });
   }
 
   /** 自动判稳出结果（v0.177.0）：补到那条跟练曲线的当天点上，也进「稳度」那条线（v0.178.0）。 */
@@ -196,6 +205,26 @@ export default function Songs() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  /**
+   * 整首连弹（v0.179.0）：前四小节弹旋律、后四小节扫弦，接成一条八小节的谱。
+   * 一次判稳量的是「两条合起来」——分头练各自的成绩不受影响，这条单独记 `${id}-run`。
+   */
+  function followRun(song: Song): void {
+    stop();
+    const section = sections[song.id] ?? "all";
+    const loopRange =
+      section === "A" ? { from: 1, to: 4 } : section === "B" ? { from: 5, to: 8 } : null;
+    setTarget({
+      id: `${song.id}-run`,
+      name: `${song.title} · 整首连弹${section === "all" ? "" : ` · ${section} 段`}`,
+      bpm: [song.bpm[0], song.bpm[0] + 24],
+      tab: songRunTab(song),
+      meter: song.meter,
+      ...(loopRange ? { loopRange } : {}),
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <section className="panel">
       <div className="panel-head">
@@ -228,7 +257,7 @@ export default function Songs() {
               type="button"
               className={`chip${filter === item.id ? " on" : ""}`}
               aria-pressed={filter === item.id}
-              onClick={() => setFilter(item.id)}
+              onClick={() => changeFilter(item.id)}
             >
               {item.label} {count}
             </button>
@@ -327,6 +356,9 @@ export default function Songs() {
                 </button>
                 <button type="button" className="btn" onClick={() => follow(song, "strum")}>
                   跟练伴奏
+                </button>
+                <button type="button" className="btn" onClick={() => followRun(song)}>
+                  整首连弹
                 </button>
                 <PlanButton
                   title={`${song.title} · 旋律`}

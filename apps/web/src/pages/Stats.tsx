@@ -30,6 +30,7 @@ import { LEVELS, LEVEL_IDS, MAX_TOTAL_STARS } from "../lib/levels";
 import { loadChords, loadDaily, loadEar, loadGoals, loadPauses, loadPractice, loadProgress, loadRhythm, loadSettings, loadSkips, removePause, saveGoals, savePauses, saveSettings, skipsOf, type DailyMap } from "../lib/storage";
 import { bestRun, compareRunOf, downloadAudio, downloadDataUrl, downloadText, loadLoops, loadRuns, restoreRuns, runMetaMarkdown, worstClipOf, steadyTrend, steadyWindow, type SteadyRun } from "../lib/steady";
 import { loadRounds } from "../lib/rounds";
+import { JUDGE_LEVEL_LABEL, loadJudgeLevels } from "../lib/judge-levels";
 import { goTo, parseHash } from "../lib/nav";
 import { earTrendOf } from "../lib/ear-trend";
 import { RHYTHM_GROUPS, RHYTHM_ITEMS, rhythmItemById, rhythmItemsOf } from "../lib/rhythm-index";
@@ -318,13 +319,35 @@ export default function Stats() {
 
   // 曲目（v0.176.0）：六首各自旋律 / 伴奏的最高速度。曲目页不另开键，
   // 所以这里直接从 `guitar.rhythm.v1` 的 `song-<id>-melody` / `-strum` 读。
+  // v0.179.0：整首连弹（`-run`）也算进「这一首」的速度与次数，并标出各条用的判稳档位。
+  const judgeLevels = loadJudgeLevels();
+  const judgeTagOf = (id: string): string => {
+    const level = judgeLevels[id];
+    return level ? `（${JUDGE_LEVEL_LABEL[level]}）` : "";
+  };
   const songRows = SONGS.map((song) => {
-    const melody = rhythm[`${song.id}-melody`];
-    const strum = rhythm[`${song.id}-strum`];
-    const best = Math.max(melody?.bestBpm ?? 0, strum?.bestBpm ?? 0);
-    const sessions = (melody?.sessions ?? 0) + (strum?.sessions ?? 0);
-    const lastAt = [melody?.lastAt ?? "", strum?.lastAt ?? ""].sort().slice(-1)[0] ?? "";
-    return { song, melodyBest: melody?.bestBpm ?? 0, strumBest: strum?.bestBpm ?? 0, best, sessions, lastAt };
+    const melodyId = `${song.id}-melody`;
+    const strumId = `${song.id}-strum`;
+    const runId = `${song.id}-run`;
+    const melody = rhythm[melodyId];
+    const strum = rhythm[strumId];
+    const run = rhythm[runId];
+    const best = Math.max(melody?.bestBpm ?? 0, strum?.bestBpm ?? 0, run?.bestBpm ?? 0);
+    const sessions = (melody?.sessions ?? 0) + (strum?.sessions ?? 0) + (run?.sessions ?? 0);
+    const lastAt =
+      [melody?.lastAt ?? "", strum?.lastAt ?? "", run?.lastAt ?? ""].sort().slice(-1)[0] ?? "";
+    return {
+      song,
+      melodyBest: melody?.bestBpm ?? 0,
+      strumBest: strum?.bestBpm ?? 0,
+      runBest: run?.bestBpm ?? 0,
+      melodyJudge: judgeTagOf(melodyId),
+      strumJudge: judgeTagOf(strumId),
+      runJudge: judgeTagOf(runId),
+      best,
+      sessions,
+      lastAt,
+    };
   });
   const songPracticed = songRows.filter((row) => row.best > 0 || row.sessions > 0);
   const songTop = [...songPracticed].sort((a, b) => b.best - a.best || b.sessions - a.sessions);
@@ -1663,8 +1686,11 @@ export default function Stats() {
               <li key={row.song.id}>
                 <span>{row.song.title}</span>
                 <span className="muted">
-                  旋律 {row.melodyBest > 0 ? `${row.melodyBest} BPM` : "—"} · 伴奏{" "}
-                  {row.strumBest > 0 ? `${row.strumBest} BPM` : "—"} · 练 {row.sessions} 次
+                  旋律 {row.melodyBest > 0 ? `${row.melodyBest} BPM` : "—"}
+                  {row.melodyJudge} · 伴奏 {row.strumBest > 0 ? `${row.strumBest} BPM` : "—"}
+                  {row.strumJudge}
+                  {row.runBest > 0 ? ` · 整首 ${row.runBest} BPM${row.runJudge}` : ""} · 练{" "}
+                  {row.sessions} 次
                   {row.lastAt ? ` · ${row.lastAt.slice(5)}` : ""}
                 </span>
               </li>

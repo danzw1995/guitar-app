@@ -130,6 +130,7 @@ import {
   practiceGoalOf,
   practiceGoalDetailOf,
   SONGS,
+  songRunTab,
   type MelodyLine,
   MELODY_CHOICES,
   checkPiece,
@@ -4045,6 +4046,34 @@ test("曲目库：六首都是八小节，旋律填满、把位在 1–3 弦 0�
     );
   }
 });
+
+test("整首连弹：前四小节取旋律、后四小节取扫弦，接成一条八小节的谱 (v0.179.0)", () => {
+  for (const song of SONGS) {
+    const run = songRunTab(song);
+    assert.equal(run.bars, 8, `${song.title} 的连弹谱该是八小节`);
+    assert.equal(run.beatsPerBar, 4, `${song.title} 的连弹谱该是 4/4`);
+    const split = 16;
+    assert.ok(
+      run.notes.every((note) => note.beat < split ? note.s >= 1 && note.s <= 3 : note.arrow === "D" || note.arrow === "U"),
+      `${song.title} 的连弹谱前半该是旋律、后半该是扫弦`,
+    );
+    assert.ok(
+      run.notes.filter((note) => note.beat < split).length === song.melody.notes.filter((note) => note.beat < split).length,
+      `${song.title} 的前四小节该与旋律一致`,
+    );
+    assert.ok(
+      run.notes.filter((note) => note.beat >= split).length === song.strum.notes.filter((note) => note.beat >= split).length,
+      `${song.title} 的后四小节该与伴奏一致`,
+    );
+    // 小节时值：前半按旋律填、后半按扫弦填，八小节都该有内容
+    const bars = new Set(run.notes.map((note) => Math.floor(note.beat / 4)));
+    assert.equal(bars.size, 8, `${song.title} 的连弹谱该铺满八小节`);
+    // 拍点仍按时间排好（渲染与逐拍高亮都靠这个顺序）
+    const sorted = [...run.notes].sort((a, b) => a.beat - b.beat || b.s - a.s);
+    assert.deepEqual(run.notes.map((note) => `${note.beat}:${note.s}:${note.f}`), sorted.map((note) => `${note.beat}:${note.s}:${note.f}`), `${song.title} 的连弹谱该按时间排序`);
+  }
+});
+
 
 
 

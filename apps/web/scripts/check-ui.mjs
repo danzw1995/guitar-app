@@ -6604,6 +6604,77 @@ try {
     "(() => { const saved = sessionStorage.getItem('chk20.rhythm'); if (saved) { localStorage.setItem('guitar.rhythm.v1', saved); } else { localStorage.removeItem('guitar.rhythm.v1'); } return 'ok'; })()",
   );
 
+  // 18j) 曲目页（v0.179.0）：选的筛子会记住，下次进来还是这一类
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  js(
+    "(() => { const chip = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('还差伴奏')); chip?.click(); return 'ok'; })()",
+  );
+  await sleep(400);
+  const filterSaved = plain(
+    js(
+      "(() => { const settings = JSON.parse(localStorage.getItem('guitar.settings.v1') ?? '{}'); return String(settings.songFilter ?? 'none'); })()",
+    ),
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  const filterKept = plain(
+    js(
+      "(() => document.querySelector('.song-filter .chip[aria-pressed=\"true\"]')?.textContent?.trim() ?? 'none')()",
+    ),
+  );
+  log(
+    filterSaved === "melody" && filterKept.startsWith("还差伴奏"),
+    `曲目页：选的筛子记在设置里（${filterSaved}），重开还是「${filterKept}」`,
+  );
+  js(
+    "(() => { const chip = [...document.querySelectorAll('.song-filter .chip')].find(n => n.textContent.includes('全部')); chip?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+
+  // 18k) 统计页（v0.179.0）：曲目那几行标出每条用的判稳档位，整首连弹也算进这一首
+  js(
+    "(() => { sessionStorage.setItem('chk21.rhythm', localStorage.getItem('guitar.rhythm.v1') ?? ''); sessionStorage.setItem('chk21.levels', localStorage.getItem('guitar.judgeLevels.v1') ?? ''); return 'ok'; })()",
+  );
+  js(
+    "(() => { localStorage.setItem('guitar.rhythm.v1', JSON.stringify({ 'song-star-melody': { bestBpm: 76, sessions: 3 }, 'song-star-run': { bestBpm: 90, sessions: 2 } })); localStorage.setItem('guitar.judgeLevels.v1', JSON.stringify({ 'song-star-melody': 'tight', 'song-star-run': 'wide' })); return 'ok'; })()",
+  );
+  await ab(["open", `${URL}?r=${Date.now()}#stats`]);
+  await sleep(1500);
+  const songStatLine = plain(
+    js("(() => document.querySelector('[data-song-stats] li')?.textContent?.trim() ?? 'none')()"),
+  );
+  log(
+    songStatLine.includes("旋律 76 BPM（严格）") && songStatLine.includes("整首 90 BPM（宽松）"),
+    `统计页：曲目那行标出判稳档位（${songStatLine}）`,
+  );
+  js(
+    "(() => { const rhythm = sessionStorage.getItem('chk21.rhythm'); if (rhythm) { localStorage.setItem('guitar.rhythm.v1', rhythm); } else { localStorage.removeItem('guitar.rhythm.v1'); } const levels = sessionStorage.getItem('chk21.levels'); if (levels) { localStorage.setItem('guitar.judgeLevels.v1', levels); } else { localStorage.removeItem('guitar.judgeLevels.v1'); } return 'ok'; })()",
+  );
+
+  // 18l) 曲目页（v0.179.0）：整首连弹——前四小节弹旋律、后四小节扫弦，一条谱接起来判稳
+  await ab(["open", `${URL}?r=${Date.now()}#songs`]);
+  await sleep(1200);
+  js(
+    "(() => { const card = document.querySelector('.song-card'); const b = card ? [...card.querySelectorAll('.song-actions button')].find(n => n.textContent.includes('整首连弹')) : null; b?.click(); return 'ok'; })()",
+  );
+  let runHead = "";
+  let runImg = "0";
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    await sleep(400);
+    runHead = plain(js("(() => document.querySelector('.follow h3')?.textContent?.trim() ?? '')()"));
+    runImg = plain(js("(() => String(document.querySelectorAll('.follow .tab-score-wrap img').length))()"));
+    if (runHead.includes("整首连弹") && runImg !== "0") break;
+  }
+  log(
+    runHead.includes("整首连弹") && Number(runImg) > 0,
+    `曲目页：「整首连弹」进到跟练面板（读到「${runHead}」，谱 ${runImg} 张）`,
+  );
+  js(
+    "(() => { const b = [...document.querySelectorAll('.follow .btn')].find(n => n.textContent.includes('收起')); b?.click(); return 'ok'; })()",
+  );
+  await sleep(300);
+
   await ab(["open", `${URL}?r=${Date.now()}#rhythm`]);
 
 } catch (error) {
