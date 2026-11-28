@@ -2,6 +2,13 @@
 
 本项目遵循 [Semantic Versioning](https://semver.org/)；版本时间线以 git tag 为准。
 
+## [0.173.1] - 2026-11-28
+
+### Added
+- check-ui 支持 --only / --list / --fail-fast：改一条断言从 10 分钟降到 10 秒
+- 新增 release.mjs：版本号、CHANGELOG、versioning、提交信息一条命令做完
+- 检查结束打印用时秒数
+
 ## [0.173.0] - 2026-11-28
 
 ### Added

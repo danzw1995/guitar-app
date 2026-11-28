@@ -207,3 +207,30 @@ v0.2.1  关卡选择器修复
 v0.2.0  Web 端
 v0.1.0  core + 40 关
 ```
+
+## 检查与发版工具（v0.173.1）
+
+浏览器冒烟检查（`apps/web/scripts/check-ui.mjs`）现在有 224 条断言、75 次重载、30 次整页打开——
+**整轮 6–11 分钟**，改一条断言就重跑一轮是最大的时间黑洞。所以给了三个开关：
+
+```bash
+node apps/web/scripts/check-ui.mjs --list                 # 列 85 个分段（编号来自源码里的 `// 17k)` 注释）
+node apps/web/scripts/check-ui.mjs <url> --only=17k       # 只跑这一段：临时拼一个脚本，9 秒
+node apps/web/scripts/check-ui.mjs <url> --only=17k,17j   # 逗号分隔；写标题里的字也行（`--only=连练`）
+node apps/web/scripts/check-ui.mjs <url> --fail-fast      # 第一条失败就停（跑完剩下两百条没意义）
+```
+
+`--only` 是从本文件里把「头部 + 选中的段 + 收尾」拼到 `apps/web/.tmp/check-ui-only.mjs` 再跑；
+被选中的段要能自己种数据（现有分段基本都是「种 localStorage → 重开 → 读」）。
+所以日常节奏是：**改断言 → `--only=那一段` 反复验 → 收尾才跑整轮**。
+
+发版的机械动作（版本号、CHANGELOG、versioning 当前行、提交信息）一条命令：
+
+```bash
+node apps/web/scripts/release.mjs 0.174.0 "标题" \
+  --note "第一条变更" --note "第二条变更" \
+  --doc "写进 docs/versioning.md 末尾的一段话" [--core 0.64.0]
+```
+
+它不写 `docs/ux.md`（那节人话得自己写），也不做检查 / commit / tag / push——跑完会把命令打出来。
+中文提交信息一律走 `git commit -F apps/web/.tmp/commit-msg-<版本>.txt`，不要用 `-m`（PowerShell 会给中文加 BOM）。

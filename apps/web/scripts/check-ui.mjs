@@ -16,16 +16,106 @@
  * 「Socket directory '...\.agent-browser' is not writable」——是沙箱不让孩子进程写用户目录，
  * 直接用 `node apps/web/scripts/check-ui.mjs <url>` 跑就正常。
  */
-import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const URL = process.argv[2] ?? process.env.UI_URL ?? "http://127.0.0.1:5173/";
+/**
+ * 命令行参数（v0.174.0）：
+ *   <url>                 要检查的地址（默认 127.0.0.1:5173）
+ *   --list                只列分段（按源码里的 `// 17k)` 这类标记），不开浏览器
+ *   --only=17k,17j        只跑这几段，其余整段跳过——改一条断言的时候别再等十分钟
+ *   --fail-fast           第一条失败就停，不再跑完剩下两百多条
+ *
+ * `--only` 的做法是从本文件里把「头部 + 选中的段 + 收尾」拼成一个临时脚本再跑；
+ * 所以被选中的段要能自己种数据（现有的段基本都是「种 localStorage → 重开 → 读」）。
+ */
+const argv = process.argv.slice(2);
+const URL =
+  argv.find((item) => !item.startsWith("--")) ?? process.env.UI_URL ?? "http://127.0.0.1:5173/";
+const ONLY = (argv.find((item) => item.startsWith("--only=")) ?? "").slice("--only=".length);
+const LIST = argv.includes("--list");
+const FAIL_FAST = argv.includes("--fail-fast");
+const SELF = fileURLToPath(import.meta.url);
+const STARTED = Date.now();
+
+/** 源码里分段标记的样子：`  // 17k) v0.173.0：…` */
+function sectionsOf(source) {
+  const lines = source.split("\n");
+  const marks = [];
+  lines.forEach((line, index) => {
+    const match = /^\s*\/\/ (\d+[a-z]?)\)/.exec(line);
+    if (match) marks.push({ id: match[1], index, head: line.trim() });
+  });
+  return { lines, marks };
+}
+
+if (LIST) {
+  const { marks } = sectionsOf(readFileSync(SELF, "utf8"));
+  console.log(`${marks.length} 段：`);
+  for (const mark of marks) console.log(`  ${mark.id}\t${mark.head.replace(/^\s*\/\/ \S+\)\s*/, "")}`);
+  process.exit(0);
+}
+
+if (ONLY) {
+  const source = readFileSync(SELF, "utf8");
+  const { marks } = sectionsOf(source);
+  const tokens = ONLY.split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  // 数字编号按「完全相同」匹配（不然 1 会把 12、13、16、17 全带上）；
+  // 文字按标题包含匹配（写 `--only=连练` 也认）
+  const matched = marks.filter((mark) =>
+    tokens.some((token) => (/^\d+[a-z]*$/.test(token) ? mark.id === token : mark.head.includes(token))),
+  );
+  if (matched.length === 0) {
+    console.error(`--only=${ONLY} 没匹配到任何段，用 --list 看看有哪些`);
+    process.exit(2);
+  }
+  const lines = source.split("\n");
+  const header = lines.slice(0, marks[0].index).join("\n");
+  const tailStart = lines.findIndex((line) => line.startsWith("} catch (error) {"));
+  if (tailStart < 0) {
+    console.error("找不到收尾的 } catch (error) {，脚本结构变了？");
+    process.exit(2);
+  }
+  const ranges = [];
+  for (const mark of matched) {
+    // 落进已选范围里的（同一个编号出现两次）跳过
+    if (ranges.some((range) => mark.index >= range.start && mark.index < range.end)) continue;
+    let end = mark.index;
+    for (const item of marks) {
+      if (item.index <= mark.index) continue;
+      const suffix = item.id.slice(mark.id.length);
+      // 子段（17 → 17a、17b…）一起带上；遇到兄弟段就停
+      if (item.id === mark.id || (item.id.startsWith(mark.id) && /^[a-z]+$/.test(suffix))) end = item.index;
+      else break;
+    }
+    const stop = marks.find((item) => item.index > end)?.index ?? tailStart;
+    ranges.push({ start: mark.index, end: stop, id: mark.id });
+  }
+  const hasSleep = /^\s*const sleep = \(ms\)/m.test(header);
+  const sleepShim = hasSleep
+    ? ""
+    : "\n  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\n";
+  const chunks = ranges.map((range) => lines.slice(range.start, range.end).join("\n"));
+  const out = `${header}\n${sleepShim}${chunks.join("\n")}\n${lines.slice(tailStart).join("\n")}`;
+  const temp = join(dirname(SELF), "..", ".tmp", "check-ui-only.mjs");
+  writeFileSync(temp, out, "utf8");
+  console.log(`只跑这几段：${ranges.map((range) => range.id).join("、")}（临时脚本 ${temp}）\n`);
+  const result = spawnSync(process.execPath, [temp, URL, ...(FAIL_FAST ? ["--fail-fast"] : [])], {
+    stdio: "inherit",
+  });
+  process.exit(result.status ?? 1);
+}
 
 let failed = 0;
 const log = (ok, label, extra = "") => {
   if (!ok) failed++;
   console.log(`${ok ? "✔" : "✖"} ${label}${extra ? `\n    ${extra}` : ""}`);
+  // 第一条失败就停（v0.174.0）：跑完剩下两百多条只是把同一个问题重复看一遍
+  if (!ok && FAIL_FAST) throw new Error(`fail-fast: ${label}`);
 };
 
 /**
@@ -6209,14 +6299,19 @@ try {
 
 } catch (error) {
   // 断言脚本自己报错也要算失败：以前只有 finally，异常会被吞掉还打印「通过」
-  failed += 1;
-  console.error("\n检查脚本自己出错了：", error);
+  if (error instanceof Error && error.message.startsWith("fail-fast: ")) {
+    console.error(`\n已停在第一条失败（--fail-fast）：${error.message.slice("fail-fast: ".length)}`);
+  } else {
+    failed += 1;
+    console.error("\n检查脚本自己出错了：", error);
+  }
 } finally {
   ab(["close"]);
+  const seconds = Math.round((Date.now() - STARTED) / 1000);
   console.log(
     failed === 0
-      ? "\n浏览器冒烟检查通过（声音本身听不到，出声还得人来听）"
-      : `\n浏览器冒烟检查失败：${failed} 项`,
+      ? `\n浏览器冒烟检查通过（用时 ${seconds} 秒；声音本身听不到，出声还得人来听）`
+      : `\n浏览器冒烟检查失败：${failed} 项（用时 ${seconds} 秒）`,
   );
   process.exit(failed === 0 ? 0 : 1);
 }
